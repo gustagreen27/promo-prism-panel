@@ -83,6 +83,8 @@ function CampaignRow({
   onChange: () => void;
 }) {
   const del = useServerFn(deleteCampaign);
+  const update = useServerFn(updateCampaign);
+  const isActive = c.status === "active";
   const publicUrl =
     typeof window !== "undefined" ? `${window.location.origin}/${c.slug}` : `/${c.slug}`;
 
