@@ -202,6 +202,11 @@ const INTENT_INVALIDATING_FIELDS = [
   "og_image_url",
   "preview_image_url",
   "category",
+  "campaign_type",
+  "link_intent",
+  "page_category",
+  "intermediate_text",
+  "cta_label",
 ] as const;
 
 export const updateCampaign = createServerFn({ method: "POST" })
