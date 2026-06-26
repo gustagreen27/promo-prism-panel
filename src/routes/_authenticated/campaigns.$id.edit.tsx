@@ -131,6 +131,45 @@ function EditCampaign() {
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
+  // Auto-aplica preset da intenção apenas em campos ainda vazios.
+  const onIntentChange = (intent: string) => {
+    setForm((f) => {
+      const base = { ...f, link_intent: intent };
+      const { next, changed } = applyIntentPreset(base, intent, false);
+      if (changed.length) {
+        toast.info("Preset da intenção aplicado nos campos vazios.", {
+          description: `Campos preenchidos: ${changed.join(", ")}`,
+        });
+      }
+      return next;
+    });
+  };
+
+  // Reaplica o preset por cima dos valores atuais (sobrescreve).
+  const reapplyIntentPreset = () => {
+    const intent = (form.link_intent ?? "").trim();
+    if (!intent) {
+      toast.error("Escolha uma intenção antes de reaplicar.");
+      return;
+    }
+    if (!getIntentPreset(intent)) {
+      toast.error("Não há preset disponível para essa intenção.");
+      return;
+    }
+    const confirmed = window.confirm(
+      `Isso vai sobrescrever os campos ${PRESET_TARGET_FIELDS.join(", ")} com o preset da intenção "${intent}". Continuar?`,
+    );
+    if (!confirmed) return;
+    setForm((f) => applyIntentPreset(f, intent, true).next);
+    toast.success("Preset da intenção reaplicado.");
+  };
+
+  const validation = validateCampaignForm(form, form.status ?? "draft");
+  const firstErrorOf = (field: string): string | undefined =>
+    validation.errorsByField[field]?.[0]?.message;
+  const firstWarningOf = (field: string): string | undefined =>
+    validation.warningsByField[field]?.[0]?.message;
+
   const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
   const [slugStatus, setSlugStatus] = useState<
     { state: "idle" | "checking" | "ok" | "invalid" | "taken"; message?: string }
