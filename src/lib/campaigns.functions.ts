@@ -19,8 +19,13 @@ const optUrl = (max = 2048) =>
 
 const campaignFields = {
   category: optStr(80),
+  campaign_type: optStr(80),
+  link_intent: optStr(80),
+  page_category: optStr(80),
   link_title: optStr(160),
   link_description: optStr(400),
+  intermediate_text: optStr(2000),
+  cta_label: optStr(80),
   preview_image_url: optUrl(),
   favicon_url: optUrl(),
   og_title: optStr(160),
@@ -197,6 +202,11 @@ const INTENT_INVALIDATING_FIELDS = [
   "og_image_url",
   "preview_image_url",
   "category",
+  "campaign_type",
+  "link_intent",
+  "page_category",
+  "intermediate_text",
+  "cta_label",
 ] as const;
 
 export const updateCampaign = createServerFn({ method: "POST" })
@@ -223,7 +233,7 @@ export const updateCampaign = createServerFn({ method: "POST" })
     // Mark intent analysis as stale if any signal it depends on changed.
     const { data: current } = await supabaseAdmin
       .from("campaigns")
-      .select("destination_url, link_title, link_description, og_title, og_description, og_image_url, preview_image_url, category")
+      .select("destination_url, link_title, link_description, og_title, og_description, og_image_url, preview_image_url, category, campaign_type, link_intent, page_category, intermediate_text, cta_label")
       .eq("id", id)
       .maybeSingle();
     if (current) {

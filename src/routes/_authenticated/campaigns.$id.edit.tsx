@@ -40,6 +40,42 @@ const CATEGORIES = [
   "Conteúdo",
   "Outro",
 ];
+const CAMPAIGN_TYPES = [
+  "Disparo em massa",
+  "Anúncio pago",
+  "Email marketing",
+  "Orgânico / social",
+  "Notificação interna",
+  "Parceria / afiliado",
+  "Outro",
+];
+const LINK_INTENTS = [
+  "Inscrição em evento",
+  "Confirmação de participação",
+  "Aula ao vivo",
+  "Conteúdo educacional",
+  "Página institucional",
+  "Atendimento",
+  "Suporte",
+  "Comunidade",
+  "Cadastro",
+  "Oferta",
+  "Upsell",
+  "Recuperação de lead",
+  "Página de aviso",
+  "Página de redirecionamento informativo",
+];
+const PAGE_CATEGORIES = [
+  "Landing page",
+  "Checkout",
+  "Formulário",
+  "Vídeo / live",
+  "Artigo / blog",
+  "Documento / PDF",
+  "Comunidade / grupo",
+  "Página de erro / aviso",
+  "Outro",
+];
 const STATUSES = [
   { value: "draft", label: "Rascunho" },
   { value: "active", label: "Ativa" },
@@ -69,8 +105,13 @@ function EditCampaign() {
       slug: data.slug ?? "",
       destination_url: data.destination_url ?? "",
       category: data.category ?? "",
+      campaign_type: data.campaign_type ?? "",
+      link_intent: data.link_intent ?? "",
+      page_category: data.page_category ?? "",
       link_title: data.link_title ?? "",
       link_description: data.link_description ?? "",
+      intermediate_text: data.intermediate_text ?? "",
+      cta_label: data.cta_label ?? "",
       preview_image_url: data.preview_image_url ?? "",
       favicon_url: data.favicon_url ?? "",
       og_title: data.og_title ?? "",
@@ -124,8 +165,13 @@ function EditCampaign() {
           slug: form.slug,
           destination_url: form.destination_url,
           category: form.category || null,
+          campaign_type: form.campaign_type || null,
+          link_intent: form.link_intent || null,
+          page_category: form.page_category || null,
           link_title: form.link_title || null,
           link_description: form.link_description || null,
+          intermediate_text: form.intermediate_text || null,
+          cta_label: form.cta_label || null,
           preview_image_url: form.preview_image_url || null,
           favicon_url: form.favicon_url || null,
           og_title: form.og_title || null,
@@ -222,19 +268,70 @@ function EditCampaign() {
               aria-invalid={slugStatus.state === "invalid" || slugStatus.state === "taken"}
             />
           </Field>
-          <Field label="Categoria / intenção" id="category">
-            <Select value={form.category || ""} onValueChange={(v) => set("category", v)}>
-              <SelectTrigger id="category"><SelectValue placeholder="Selecione..." /></SelectTrigger>
-              <SelectContent>
-                {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Categoria da campanha" id="category">
+              <Select value={form.category || ""} onValueChange={(v) => set("category", v)}>
+                <SelectTrigger id="category"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Tipo de campanha" id="campaign_type">
+              <Select value={form.campaign_type || ""} onValueChange={(v) => set("campaign_type", v)}>
+                <SelectTrigger id="campaign_type"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>
+                  {CAMPAIGN_TYPES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field
+              label="Intenção do link"
+              id="link_intent"
+              hint="Define o tom da página intermediária e dos previews — escolha o que melhor reflete o que o usuário vai encontrar."
+            >
+              <Select value={form.link_intent || ""} onValueChange={(v) => set("link_intent", v)}>
+                <SelectTrigger id="link_intent"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>
+                  {LINK_INTENTS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Categoria da página de destino" id="page_category">
+              <Select value={form.page_category || ""} onValueChange={(v) => set("page_category", v)}>
+                <SelectTrigger id="page_category"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>
+                  {PAGE_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
           <Field label="Título do link" id="link_title" hint="Aparece como título da página wrapper e nos previews.">
             <Input id="link_title" value={form.link_title ?? ""} onChange={(e) => set("link_title", e.target.value)} />
           </Field>
           <Field label="Descrição do link" id="link_description">
             <Textarea id="link_description" rows={3} value={form.link_description ?? ""} onChange={(e) => set("link_description", e.target.value)} />
+          </Field>
+          <Field
+            label="Texto principal da página intermediária"
+            id="intermediate_text"
+            hint="Mensagem exibida na página wrapper quando o destino não permitir iframe. Use para reforçar a intenção do link."
+          >
+            <Textarea
+              id="intermediate_text"
+              rows={4}
+              value={form.intermediate_text ?? ""}
+              onChange={(e) => set("intermediate_text", e.target.value)}
+              placeholder="Ex.: Sua aula confirmada começa em instantes — clique para entrar."
+            />
+          </Field>
+          <Field label="Texto do botão de ação" id="cta_label" hint="Padrão: “Continuar para o site”.">
+            <Input
+              id="cta_label"
+              value={form.cta_label ?? ""}
+              onChange={(e) => set("cta_label", e.target.value)}
+              placeholder="Entrar na aula"
+            />
           </Field>
         </TabsContent>
 

@@ -87,6 +87,11 @@ function pickMeta(c: Record<string, unknown>) {
     og_description: (c.og_description as string) ?? null,
     og_image_url: (c.og_image_url as string) ?? null,
     og_type: (c.og_type as string) ?? null,
+    link_intent: (c.link_intent as string) ?? null,
+    campaign_type: (c.campaign_type as string) ?? null,
+    page_category: (c.page_category as string) ?? null,
+    intermediate_text: (c.intermediate_text as string) ?? null,
+    cta_label: (c.cta_label as string) ?? null,
   };
 }
 
