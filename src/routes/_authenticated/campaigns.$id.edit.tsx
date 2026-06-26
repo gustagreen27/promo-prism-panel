@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import {
   analyzeCampaignIntent,
+  checkSlugAvailability,
   getCampaign,
   updateCampaign,
 } from "@/lib/campaigns.functions";
