@@ -19,7 +19,9 @@ type Props = {
 };
 
 function proxyUrl(path: string) {
-  return `/api/public/ci/${path}`;
+  const origin =
+    typeof window !== "undefined" ? window.location.origin : "";
+  return `${origin}/api/public/ci/${path}`;
 }
 
 export function ImageUpload({
