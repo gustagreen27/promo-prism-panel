@@ -33,8 +33,25 @@ async function lookupIp(ip: string) {
   }
 }
 
+// Domínios conhecidos por recusarem iframe (X-Frame-Options/CSP).
+// Evita o overhead do HEAD e garante o redirect imediato.
+const KNOWN_NO_IFRAME = [
+  "youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be",
+  "google.com", "www.google.com", "accounts.google.com",
+  "facebook.com", "www.facebook.com", "m.facebook.com",
+  "instagram.com", "www.instagram.com",
+  "x.com", "twitter.com", "www.twitter.com",
+  "linkedin.com", "www.linkedin.com",
+  "tiktok.com", "www.tiktok.com",
+  "github.com", "www.github.com",
+];
+
 export async function canEmbedInIframe(url: string): Promise<boolean> {
   try {
+    const host = new URL(url).hostname.toLowerCase();
+    if (KNOWN_NO_IFRAME.some((d) => host === d || host.endsWith(`.${d}`))) {
+      return false;
+    }
     const res = await fetch(url, {
       method: "GET",
       redirect: "follow",
