@@ -43,14 +43,20 @@ function CampaignDetail() {
     const clicks = data.clicks;
     const uniqueIps = new Set(clicks.map((c) => c.ip).filter(Boolean)).size;
     const byDay: Record<string, number> = {};
+    const byHour: number[] = new Array(24).fill(0);
     for (const c of clicks) {
       const d = new Date(c.clicked_at as string);
       const key = d.toISOString().slice(0, 10);
       byDay[key] = (byDay[key] ?? 0) + 1;
+      byHour[d.getHours()] += 1;
     }
     const series = Object.entries(byDay)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, count]) => ({ date, count }));
+    const hourly = byHour.map((count, hour) => ({
+      hour: `${String(hour).padStart(2, "0")}h`,
+      count,
+    }));
     const top = (field: keyof (typeof clicks)[number]) => {
       const m: Record<string, number> = {};
       for (const c of clicks) {
@@ -66,6 +72,7 @@ function CampaignDetail() {
       total: clicks.length,
       unique: uniqueIps,
       series,
+      hourly,
       countries: top("country"),
       cities: top("city"),
       devices: top("device_type"),
@@ -140,6 +147,30 @@ function CampaignDetail() {
                   <YAxis allowDecimals={false} fontSize={12} />
                   <Tooltip />
                   <Bar dataKey="count" fill="hsl(var(--primary, 222 47% 11%))" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Acessos por hora do dia</CardTitle>
+          <CardDescription>Soma de cliques agrupada por hora local do servidor.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-56">
+            {stats.total === 0 ? (
+              <p className="text-sm text-muted-foreground">Sem dados ainda.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats.hourly}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="hour" fontSize={11} interval={1} />
+                  <YAxis allowDecimals={false} fontSize={12} />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="hsl(var(--primary, 222 47% 11%))" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
