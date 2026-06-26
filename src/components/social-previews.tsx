@@ -87,13 +87,12 @@ export function SocialPreviews({
         <div className="rounded-lg bg-[#e5ddd5] p-3 dark:bg-slate-800">
           <div className="ml-auto max-w-sm rounded-lg bg-[#dcf8c6] p-1 shadow-sm dark:bg-emerald-900/60">
             <div className="overflow-hidden rounded-md bg-white dark:bg-slate-900">
-              {image ? (
-                <img src={image} alt="" className="h-32 w-full object-cover" />
-              ) : (
-                <div className="flex h-32 w-full items-center justify-center bg-muted text-xs text-muted-foreground">
-                  Sem imagem
-                </div>
-              )}
+              <SafeImage
+                src={image}
+                alt=""
+                className="h-32 w-full object-cover"
+                placeholder="Sem imagem"
+              />
               <div className="space-y-1 p-2">
                 <div className="line-clamp-2 text-sm font-semibold leading-tight">{title}</div>
                 <div className="line-clamp-2 text-xs text-muted-foreground">{description}</div>
@@ -109,20 +108,15 @@ export function SocialPreviews({
       <div className="space-y-2">
         <div className="text-xs font-medium text-muted-foreground">Facebook / LinkedIn</div>
         <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
-          {image ? (
-            <img src={image} alt="" className="aspect-[1.91/1] w-full object-cover" />
-          ) : (
-            <div className="flex aspect-[1.91/1] w-full items-center justify-center bg-muted text-xs text-muted-foreground">
-              Sem imagem (1200×630 recomendado)
-            </div>
-          )}
+          <SafeImage
+            src={image}
+            alt=""
+            className="aspect-[1.91/1] w-full object-cover"
+            placeholder="Sem imagem (1200×630 recomendado)"
+          />
           <div className="space-y-1 border-t bg-muted/30 px-3 py-2">
             <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-              {meta.favicon_url ? (
-                <img src={meta.favicon_url} alt="" className="h-3 w-3" />
-              ) : (
-                <Globe className="h-3 w-3" />
-              )}
+              <SafeFavicon src={meta.favicon_url ?? null} />
               <span className="truncate">{host}</span>
             </div>
             <div className="line-clamp-2 text-sm font-semibold leading-tight">{title}</div>
