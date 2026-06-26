@@ -108,22 +108,27 @@ export type Database = {
       }
       campaigns: {
         Row: {
+          campaign_type: string | null
           category: string | null
           created_at: string
           created_by: string | null
+          cta_label: string | null
           destination_url: string
           favicon_url: string | null
           id: string
           intent_checked_at: string | null
           intent_report: Json | null
           intent_score: number | null
+          intermediate_text: string | null
           link_description: string | null
+          link_intent: string | null
           link_title: string | null
           name: string
           og_description: string | null
           og_image_url: string | null
           og_title: string | null
           og_type: string | null
+          page_category: string | null
           preview_image_url: string | null
           slug: string
           status: Database["public"]["Enums"]["campaign_status"]
@@ -135,22 +140,27 @@ export type Database = {
           utm_term: string | null
         }
         Insert: {
+          campaign_type?: string | null
           category?: string | null
           created_at?: string
           created_by?: string | null
+          cta_label?: string | null
           destination_url: string
           favicon_url?: string | null
           id?: string
           intent_checked_at?: string | null
           intent_report?: Json | null
           intent_score?: number | null
+          intermediate_text?: string | null
           link_description?: string | null
+          link_intent?: string | null
           link_title?: string | null
           name: string
           og_description?: string | null
           og_image_url?: string | null
           og_title?: string | null
           og_type?: string | null
+          page_category?: string | null
           preview_image_url?: string | null
           slug: string
           status?: Database["public"]["Enums"]["campaign_status"]
@@ -162,22 +172,27 @@ export type Database = {
           utm_term?: string | null
         }
         Update: {
+          campaign_type?: string | null
           category?: string | null
           created_at?: string
           created_by?: string | null
+          cta_label?: string | null
           destination_url?: string
           favicon_url?: string | null
           id?: string
           intent_checked_at?: string | null
           intent_report?: Json | null
           intent_score?: number | null
+          intermediate_text?: string | null
           link_description?: string | null
+          link_intent?: string | null
           link_title?: string | null
           name?: string
           og_description?: string | null
           og_image_url?: string | null
           og_title?: string | null
           og_type?: string | null
+          page_category?: string | null
           preview_image_url?: string | null
           slug?: string
           status?: Database["public"]["Enums"]["campaign_status"]
