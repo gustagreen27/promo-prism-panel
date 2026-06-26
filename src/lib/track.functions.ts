@@ -50,14 +50,29 @@ async function canEmbedInIframe(url: string): Promise<boolean> {
       const m = csp.match(/frame-ancestors([^;]*)/);
       const val = m?.[1]?.trim() ?? "";
       if (val.includes("'none'") || val.includes("'self'")) return false;
-      // permissive (* or specific other hosts) — best effort allow
       if (val.includes("*")) return true;
       return false;
     }
     return true;
   } catch {
-    // Network failure: optimistic allow; client will fall back if needed
     return true;
+  }
+}
+
+function applyUtms(url: string, c: Record<string, unknown>) {
+  try {
+    const u = new URL(url);
+    const set = (k: string, v: unknown) => {
+      if (typeof v === "string" && v.trim() && !u.searchParams.has(k)) u.searchParams.set(k, v);
+    };
+    set("utm_source", c.utm_source);
+    set("utm_medium", c.utm_medium);
+    set("utm_campaign", c.utm_campaign);
+    set("utm_term", c.utm_term);
+    set("utm_content", c.utm_content);
+    return u.toString();
+  } catch {
+    return url;
   }
 }
 
@@ -68,12 +83,23 @@ export const trackClick = createServerFn({ method: "POST" })
 
     const { data: campaign, error } = await supabaseAdmin
       .from("campaigns")
-      .select("id, destination_url")
+      .select("*")
       .eq("slug", data.slug)
       .maybeSingle();
     if (error || !campaign) {
-      return { ok: false as const, notFound: true };
+      return { ok: false as const, notFound: true as const };
     }
+
+    if (campaign.status && campaign.status !== "active") {
+      return {
+        ok: false as const,
+        notFound: false as const,
+        status: campaign.status as string,
+        meta: pickMeta(campaign),
+      };
+    }
+
+    const finalUrl = applyUtms(campaign.destination_url, campaign);
 
     const ip = pickIp();
     const ua = getRequestHeader("user-agent") ?? null;
@@ -92,7 +118,7 @@ export const trackClick = createServerFn({ method: "POST" })
       }
     }
 
-    const iframeAllowed = await canEmbedInIframe(campaign.destination_url);
+    const iframeAllowed = await canEmbedInIframe(finalUrl);
 
     await supabaseAdmin.from("campaign_clicks").insert({
       campaign_id: campaign.id,
@@ -117,11 +143,27 @@ export const trackClick = createServerFn({ method: "POST" })
       referer,
       user_agent: ua,
       language: lang,
-    });
+      final_url: finalUrl,
+    } as never);
 
     return {
       ok: true as const,
-      destination_url: campaign.destination_url,
+      destination_url: finalUrl,
       iframeAllowed,
+      meta: pickMeta(campaign),
     };
   });
+
+function pickMeta(c: Record<string, unknown>) {
+  return {
+    name: (c.name as string) ?? null,
+    link_title: (c.link_title as string) ?? null,
+    link_description: (c.link_description as string) ?? null,
+    preview_image_url: (c.preview_image_url as string) ?? null,
+    favicon_url: (c.favicon_url as string) ?? null,
+    og_title: (c.og_title as string) ?? null,
+    og_description: (c.og_description as string) ?? null,
+    og_image_url: (c.og_image_url as string) ?? null,
+    og_type: (c.og_type as string) ?? null,
+  };
+}

@@ -26,6 +26,7 @@ export type Database = {
           country_code: string | null
           device: string | null
           device_type: string | null
+          final_url: string | null
           id: string
           ip: string | null
           isp: string | null
@@ -52,6 +53,7 @@ export type Database = {
           country_code?: string | null
           device?: string | null
           device_type?: string | null
+          final_url?: string | null
           id?: string
           ip?: string | null
           isp?: string | null
@@ -78,6 +80,7 @@ export type Database = {
           country_code?: string | null
           device?: string | null
           device_type?: string | null
+          final_url?: string | null
           id?: string
           ip?: string | null
           isp?: string | null
@@ -105,31 +108,85 @@ export type Database = {
       }
       campaigns: {
         Row: {
+          category: string | null
           created_at: string
           created_by: string | null
           destination_url: string
+          favicon_url: string | null
           id: string
+          intent_checked_at: string | null
+          intent_report: Json | null
+          intent_score: number | null
+          link_description: string | null
+          link_title: string | null
           name: string
+          og_description: string | null
+          og_image_url: string | null
+          og_title: string | null
+          og_type: string | null
+          preview_image_url: string | null
           slug: string
+          status: Database["public"]["Enums"]["campaign_status"]
           updated_at: string
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
         }
         Insert: {
+          category?: string | null
           created_at?: string
           created_by?: string | null
           destination_url: string
+          favicon_url?: string | null
           id?: string
+          intent_checked_at?: string | null
+          intent_report?: Json | null
+          intent_score?: number | null
+          link_description?: string | null
+          link_title?: string | null
           name: string
+          og_description?: string | null
+          og_image_url?: string | null
+          og_title?: string | null
+          og_type?: string | null
+          preview_image_url?: string | null
           slug: string
+          status?: Database["public"]["Enums"]["campaign_status"]
           updated_at?: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
         }
         Update: {
+          category?: string | null
           created_at?: string
           created_by?: string | null
           destination_url?: string
+          favicon_url?: string | null
           id?: string
+          intent_checked_at?: string | null
+          intent_report?: Json | null
+          intent_score?: number | null
+          link_description?: string | null
+          link_title?: string | null
           name?: string
+          og_description?: string | null
+          og_image_url?: string | null
+          og_title?: string | null
+          og_type?: string | null
+          preview_image_url?: string | null
           slug?: string
+          status?: Database["public"]["Enums"]["campaign_status"]
           updated_at?: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
         }
         Relationships: []
       }
@@ -187,6 +244,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin"
+      campaign_status: "draft" | "active" | "paused" | "archived"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -315,6 +373,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin"],
+      campaign_status: ["draft", "active", "paused", "archived"],
     },
   },
 } as const

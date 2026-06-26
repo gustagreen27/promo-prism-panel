@@ -22,7 +22,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Pencil } from "lucide-react";
+import { IntentScoreBadge, StatusBadge } from "@/components/campaign-badges";
 
 export const Route = createFileRoute("/_authenticated/campaigns/$id")({
   head: () => ({ meta: [{ title: "Métricas da campanha" }] }),
@@ -83,14 +84,21 @@ function CampaignDetail() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <Button variant="ghost" size="sm" asChild>
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1 min-w-0">
+          <Button variant="ghost" size="sm" asChild className="-ml-2">
             <Link to="/">
               <ArrowLeft className="mr-1 h-4 w-4" /> Voltar
             </Link>
           </Button>
-          <h1 className="text-2xl font-semibold tracking-tight">{data.campaign.name}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-semibold tracking-tight">{data.campaign.name}</h1>
+            <StatusBadge status={data.campaign.status} />
+            <IntentScoreBadge score={data.campaign.intent_score} />
+            {data.campaign.category && (
+              <span className="text-xs text-muted-foreground">{data.campaign.category}</span>
+            )}
+          </div>
           <p className="text-sm text-muted-foreground break-all">
             <a href={`/${data.campaign.slug}`} target="_blank" rel="noreferrer" className="hover:underline">
               {publicUrl}
@@ -101,6 +109,11 @@ function CampaignDetail() {
             </a>
           </p>
         </div>
+        <Button variant="outline" size="sm" asChild>
+          <Link to="/campaigns/$id/edit" params={{ id: data.campaign.id }}>
+            <Pencil className="mr-1 h-4 w-4" /> Editar
+          </Link>
+        </Button>
       </div>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -153,10 +166,11 @@ function CampaignDetail() {
                 <TableHead>Quando</TableHead>
                 <TableHead>IP</TableHead>
                 <TableHead>Local</TableHead>
-                <TableHead>Provedor</TableHead>
+                <TableHead>Provedor / ASN</TableHead>
                 <TableHead>Dispositivo</TableHead>
                 <TableHead>Navegador</TableHead>
                 <TableHead>Origem</TableHead>
+                <TableHead>URL final</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -169,19 +183,29 @@ function CampaignDetail() {
                   <TableCell>
                     {[c.city, c.region, c.country].filter(Boolean).join(", ") || "—"}
                   </TableCell>
-                  <TableCell className="max-w-[200px] truncate">{c.isp ?? "—"}</TableCell>
+                  <TableCell className="max-w-[200px] truncate">
+                    {c.isp ?? "—"}
+                    {c.as_name ? <div className="text-xs text-muted-foreground truncate">{c.as_name}</div> : null}
+                  </TableCell>
                   <TableCell>
-                    {(c.device_type ?? "—") + (c.os ? ` · ${c.os}` : "")}
+                    {(c.device_type ?? "—") + (c.os ? ` · ${c.os}${c.os_version ? " " + c.os_version : ""}` : "")}
                   </TableCell>
                   <TableCell>
                     {(c.browser ?? "—") + (c.browser_version ? ` ${c.browser_version}` : "")}
                   </TableCell>
                   <TableCell className="max-w-[200px] truncate">{c.referer ?? "direto"}</TableCell>
+                  <TableCell className="max-w-[240px] truncate">
+                    {c.final_url ? (
+                      <a href={c.final_url} target="_blank" rel="noreferrer" className="hover:underline">
+                        {c.final_url}
+                      </a>
+                    ) : "—"}
+                  </TableCell>
                 </TableRow>
               ))}
               {data.clicks.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground">
                     Nenhum acesso registrado ainda.
                   </TableCell>
                 </TableRow>
