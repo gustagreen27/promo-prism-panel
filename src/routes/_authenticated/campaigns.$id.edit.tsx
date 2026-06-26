@@ -200,8 +200,27 @@ function EditCampaign() {
           <Field label="Nome da campanha" id="name">
             <Input id="name" value={form.name ?? ""} onChange={(e) => set("name", e.target.value)} />
           </Field>
-          <Field label="Slug (URL pública)" id="slug" hint={`Ex.: /${form.slug || "..."}`}>
-            <Input id="slug" value={form.slug ?? ""} onChange={(e) => set("slug", e.target.value)} />
+          <Field
+            label="Slug (URL pública)"
+            id="slug"
+            hint={
+              slugStatus.message
+                ? `${slugStatus.message} Ex.: /${form.slug || "..."}`
+                : `Apenas letras minúsculas, números e hífens. Ex.: /${form.slug || "..."}`
+            }
+            hintTone={
+              slugStatus.state === "ok" ? "ok"
+              : slugStatus.state === "checking" ? "muted"
+              : slugStatus.state === "idle" ? "muted"
+              : "error"
+            }
+          >
+            <Input
+              id="slug"
+              value={form.slug ?? ""}
+              onChange={(e) => set("slug", e.target.value.toLowerCase())}
+              aria-invalid={slugStatus.state === "invalid" || slugStatus.state === "taken"}
+            />
           </Field>
           <Field label="Categoria / intenção" id="category">
             <Select value={form.category || ""} onValueChange={(v) => set("category", v)}>
