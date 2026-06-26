@@ -181,22 +181,32 @@ function RedirectScreen({ meta, url }: { meta: Meta; url: string }) {
   const title = meta.og_title || meta.link_title || meta.name || "Continuar para o site";
   const description = meta.og_description || meta.link_description;
   const image = meta.og_image_url || meta.preview_image_url;
+  const body = meta.intermediate_text;
+  const ctaLabel = meta.cta_label || "Continuar para o site";
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
       <div className="w-full max-w-md overflow-hidden rounded-xl border bg-card shadow-sm">
         {image && (
           // eslint-disable-next-line jsx-a11y/alt-text
           <img src={image} alt="" className="aspect-[1.91/1] w-full object-cover" />
         )}
         <div className="space-y-3 p-6 text-center">
+          {meta.link_intent && (
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">
+              {meta.link_intent}
+            </div>
+          )}
           <h1 className="text-xl font-semibold">{title}</h1>
           {description && <p className="text-sm text-muted-foreground">{description}</p>}
+          {body && (
+            <p className="whitespace-pre-line text-sm text-foreground/90">{body}</p>
+          )}
           <a
             href={url}
             className="inline-flex h-11 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90"
           >
-            Continuar para o site
+            {ctaLabel}
           </a>
           <p className="text-xs text-muted-foreground">
             Redirecionando em {Math.max(0, secs)}s...
