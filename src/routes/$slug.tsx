@@ -1,4 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { useEffect, useRef } from "react";
 import { trackClick } from "@/lib/track.functions";
 
 export const Route = createFileRoute("/$slug")({
@@ -18,6 +19,49 @@ export const Route = createFileRoute("/$slug")({
 
 function CampaignPublicPage() {
   const data = Route.useLoaderData();
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+
+  // Client-side fallback: even when the server's HEAD/GET check passed,
+  // the actual frame load may still be blocked (UA-conditional headers,
+  // CSP frame-ancestors evaluated only in real frame context, network
+  // errors, etc.). If so, redirect the top window to the destination.
+  useEffect(() => {
+    if (data.status !== "iframe") return;
+    const url = data.url;
+    let done = false;
+    const fallback = () => {
+      if (done) return;
+      done = true;
+      window.location.replace(url);
+    };
+    const check = () => {
+      const iframe = iframeRef.current;
+      if (!iframe) return;
+      try {
+        const doc = iframe.contentDocument;
+        // Same-origin access succeeded → remote didn't load (browser kept
+        // about:blank because of X-Frame-Options / CSP). Redirect.
+        if (doc && (!doc.body || doc.body.children.length === 0)) {
+          fallback();
+        }
+      } catch {
+        // Cross-origin access denied = iframe actually loaded the remote.
+      }
+    };
+    const iframe = iframeRef.current;
+    const onLoad = () => setTimeout(check, 100);
+    iframe?.addEventListener("load", onLoad);
+    iframe?.addEventListener("error", fallback);
+    const t1 = setTimeout(check, 1500);
+    const t2 = setTimeout(check, 4000);
+    return () => {
+      done = true;
+      clearTimeout(t1);
+      clearTimeout(t2);
+      iframe?.removeEventListener("load", onLoad);
+      iframe?.removeEventListener("error", fallback);
+    };
+  }, [data]);
 
   if (data.status === "notfound") {
     return (
@@ -34,6 +78,7 @@ function CampaignPublicPage() {
 
   return (
     <iframe
+      ref={iframeRef}
       src={data.url}
       title="Campanha"
       className="fixed inset-0 h-screen w-screen border-0"
