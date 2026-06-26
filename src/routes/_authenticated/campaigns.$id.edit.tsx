@@ -23,8 +23,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IntentScoreBadge, StatusBadge } from "@/components/campaign-badges";
 import { RiskMeter, SocialPreviews } from "@/components/social-previews";
-import { ArrowLeft, Sparkles, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
+import { ArrowLeft, Sparkles, CheckCircle2, AlertTriangle, XCircle, Wand2, Eye } from "lucide-react";
 import { toast } from "sonner";
+import { applyIntentPreset, getIntentPreset, PRESET_TARGET_FIELDS } from "@/lib/intent-presets";
+import { validateCampaignForm, type FieldIssue } from "@/lib/campaign-validation";
 
 export const Route = createFileRoute("/_authenticated/campaigns/$id/edit")({
   head: () => ({ meta: [{ title: "Editar campanha" }] }),
@@ -128,6 +130,45 @@ function EditCampaign() {
   }, [data]);
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  // Auto-aplica preset da intenção apenas em campos ainda vazios.
+  const onIntentChange = (intent: string) => {
+    setForm((f) => {
+      const base = { ...f, link_intent: intent };
+      const { next, changed } = applyIntentPreset(base, intent, false);
+      if (changed.length) {
+        toast.info("Preset da intenção aplicado nos campos vazios.", {
+          description: `Campos preenchidos: ${changed.join(", ")}`,
+        });
+      }
+      return next;
+    });
+  };
+
+  // Reaplica o preset por cima dos valores atuais (sobrescreve).
+  const reapplyIntentPreset = () => {
+    const intent = (form.link_intent ?? "").trim();
+    if (!intent) {
+      toast.error("Escolha uma intenção antes de reaplicar.");
+      return;
+    }
+    if (!getIntentPreset(intent)) {
+      toast.error("Não há preset disponível para essa intenção.");
+      return;
+    }
+    const confirmed = window.confirm(
+      `Isso vai sobrescrever os campos ${PRESET_TARGET_FIELDS.join(", ")} com o preset da intenção "${intent}". Continuar?`,
+    );
+    if (!confirmed) return;
+    setForm((f) => applyIntentPreset(f, intent, true).next);
+    toast.success("Preset da intenção reaplicado.");
+  };
+
+  const validation = validateCampaignForm(form, form.status ?? "draft");
+  const firstErrorOf = (field: string): string | undefined =>
+    validation.errorsByField[field]?.[0]?.message;
+  const firstWarningOf = (field: string): string | undefined =>
+    validation.warningsByField[field]?.[0]?.message;
 
   const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
   const [slugStatus, setSlugStatus] = useState<
@@ -288,14 +329,26 @@ function EditCampaign() {
             <Field
               label="Intenção do link"
               id="link_intent"
-              hint="Define o tom da página intermediária e dos previews — escolha o que melhor reflete o que o usuário vai encontrar."
+              hint="Define o tom da página intermediária e dos previews. Ao escolher, campos vazios são preenchidos com um preset adequado."
             >
-              <Select value={form.link_intent || ""} onValueChange={(v) => set("link_intent", v)}>
-                <SelectTrigger id="link_intent"><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                <SelectContent>
-                  {LINK_INTENTS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select value={form.link_intent || ""} onValueChange={onIntentChange}>
+                  <SelectTrigger id="link_intent"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectContent>
+                    {LINK_INTENTS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  title="Reaplicar preset da intenção (sobrescreve título, descrição, texto intermediário, CTA e OG)"
+                  onClick={reapplyIntentPreset}
+                  disabled={!form.link_intent}
+                >
+                  <Wand2 className="h-4 w-4" />
+                </Button>
+              </div>
             </Field>
             <Field label="Categoria da página de destino" id="page_category">
               <Select value={form.page_category || ""} onValueChange={(v) => set("page_category", v)}>
@@ -306,7 +359,13 @@ function EditCampaign() {
               </Select>
             </Field>
           </div>
-          <Field label="Título do link" id="link_title" hint="Aparece como título da página wrapper e nos previews.">
+          <Field
+            label="Título do link"
+            id="link_title"
+            hint="Aparece como título da página wrapper e nos previews."
+            error={firstErrorOf("link_title")}
+            warning={firstWarningOf("link_title")}
+          >
             <Input id="link_title" value={form.link_title ?? ""} onChange={(e) => set("link_title", e.target.value)} />
           </Field>
           <Field label="Descrição do link" id="link_description">
@@ -316,6 +375,8 @@ function EditCampaign() {
             label="Texto principal da página intermediária"
             id="intermediate_text"
             hint="Mensagem exibida na página wrapper quando o destino não permitir iframe. Use para reforçar a intenção do link."
+            error={firstErrorOf("intermediate_text")}
+            warning={firstWarningOf("intermediate_text")}
           >
             <Textarea
               id="intermediate_text"
@@ -325,7 +386,13 @@ function EditCampaign() {
               placeholder="Ex.: Sua aula confirmada começa em instantes — clique para entrar."
             />
           </Field>
-          <Field label="Texto do botão de ação" id="cta_label" hint="Padrão: “Continuar para o site”.">
+          <Field
+            label="Texto do botão de ação"
+            id="cta_label"
+            hint="Padrão: “Continuar para o site”."
+            error={firstErrorOf("cta_label")}
+            warning={firstWarningOf("cta_label")}
+          >
             <Input
               id="cta_label"
               value={form.cta_label ?? ""}
@@ -336,7 +403,12 @@ function EditCampaign() {
         </TabsContent>
 
         <TabsContent value="urls" className="space-y-4 pt-4">
-          <Field label="URL final de destino" id="destination_url">
+          <Field
+            label="URL final de destino"
+            id="destination_url"
+            error={firstErrorOf("destination_url")}
+            warning={firstWarningOf("destination_url")}
+          >
             <Input id="destination_url" type="url" value={form.destination_url ?? ""} onChange={(e) => set("destination_url", e.target.value)} />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -454,12 +526,57 @@ function EditCampaign() {
         </TabsContent>
       </Tabs>
 
+      {validation.issues.length > 0 && (
+        <Card className={validation.hasBlockingErrors ? "border-rose-300" : "border-amber-300"}>
+          <CardHeader className="py-3">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              {validation.hasBlockingErrors ? (
+                <>
+                  <XCircle className="h-4 w-4 text-rose-600" />
+                  Resolva os campos obrigatórios antes de salvar
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  Avisos antes de publicar
+                </>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pb-3 pt-0">
+            <ul className="space-y-1 text-sm">
+              {validation.issues.map((i, idx) => (
+                <li
+                  key={`${i.field}-${idx}`}
+                  className={i.level === "error" ? "text-rose-600" : "text-amber-700 dark:text-amber-400"}
+                >
+                  <span className="font-medium">{i.field}:</span> {i.message}
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="sticky bottom-0 -mx-4 border-t bg-background/95 px-4 py-3 backdrop-blur">
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button variant="outline" asChild>
+            <Link to="/campaigns/$id/preview" params={{ id }}>
+              <Eye className="mr-1 h-4 w-4" /> Pré-visualizar
+            </Link>
+          </Button>
           <Button variant="outline" asChild>
             <Link to="/campaigns/$id" params={{ id }}>Ver métricas</Link>
           </Button>
-          <Button onClick={() => save.mutate()} disabled={save.isPending || slugBlocking}>
+          <Button
+            onClick={() => save.mutate()}
+            disabled={save.isPending || slugBlocking || validation.hasBlockingErrors}
+            title={
+              validation.hasBlockingErrors
+                ? "Resolva os erros listados acima antes de salvar."
+                : undefined
+            }
+          >
             {save.isPending ? "Salvando..." : "Salvar alterações"}
           </Button>
         </div>
@@ -473,12 +590,16 @@ function Field({
   id,
   hint,
   hintTone = "muted",
+  error,
+  warning,
   children,
 }: {
   label: string;
   id: string;
   hint?: string;
   hintTone?: "muted" | "ok" | "error";
+  error?: string;
+  warning?: string;
   children: React.ReactNode;
 }) {
   const toneClass =
@@ -489,7 +610,20 @@ function Field({
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
       {children}
+      {error && (
+        <p className="flex items-start gap-1 text-xs text-rose-600">
+          <XCircle className="mt-0.5 h-3 w-3 shrink-0" />
+          <span>{error}</span>
+        </p>
+      )}
+      {!error && warning && (
+        <p className="flex items-start gap-1 text-xs text-amber-600">
+          <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+          <span>{warning}</span>
+        </p>
+      )}
       {hint && <p className={`text-xs ${toneClass}`}>{hint}</p>}
     </div>
   );
 }
+
