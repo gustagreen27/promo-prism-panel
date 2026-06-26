@@ -12,6 +12,11 @@ type Meta = {
   og_description: string | null;
   og_image_url: string | null;
   og_type: string | null;
+  link_intent: string | null;
+  campaign_type: string | null;
+  page_category: string | null;
+  intermediate_text: string | null;
+  cta_label: string | null;
 };
 
 type LoaderData =
