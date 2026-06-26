@@ -173,17 +173,36 @@ function CampaignPublicPage() {
       data.campaignStatus === "draft" ? "ainda não publicada" :
       data.campaignStatus === "paused" ? "pausada" :
       data.campaignStatus === "archived" ? "encerrada" : "indisponível";
+    const m = data.meta;
+    const heading = m.link_title || m.name || `Campanha ${label}`;
+    const description = m.link_description || "Volte mais tarde ou contate o responsável.";
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <div className="max-w-md text-center">
-          <h1 className="text-3xl font-semibold">Campanha {label}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {data.meta.link_description ?? "Volte mais tarde ou contate o responsável."}
-          </p>
+      <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+        <div className="w-full max-w-md overflow-hidden rounded-xl border bg-card text-center shadow-sm">
+          {m.preview_image_url && (
+            // eslint-disable-next-line jsx-a11y/alt-text
+            <img src={m.preview_image_url} alt="" className="aspect-[1.91/1] w-full object-cover" />
+          )}
+          <div className="space-y-3 p-6">
+            {m.link_intent && (
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                {m.link_intent}
+              </div>
+            )}
+            <h1 className="text-2xl font-semibold">{heading}</h1>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              Campanha {label}
+            </p>
+            <p className="text-sm text-muted-foreground">{description}</p>
+            {m.page_category && (
+              <p className="text-xs text-muted-foreground">Categoria: {m.page_category}</p>
+            )}
+          </div>
         </div>
       </div>
     );
   }
+
 
   if (data.status === "redirect") {
     return <ImmediateRedirect url={data.url} />;
