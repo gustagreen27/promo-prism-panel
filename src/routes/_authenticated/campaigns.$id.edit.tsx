@@ -545,12 +545,16 @@ function Field({
   id,
   hint,
   hintTone = "muted",
+  error,
+  warning,
   children,
 }: {
   label: string;
   id: string;
   hint?: string;
   hintTone?: "muted" | "ok" | "error";
+  error?: string;
+  warning?: string;
   children: React.ReactNode;
 }) {
   const toneClass =
@@ -561,7 +565,20 @@ function Field({
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
       {children}
+      {error && (
+        <p className="flex items-start gap-1 text-xs text-rose-600">
+          <XCircle className="mt-0.5 h-3 w-3 shrink-0" />
+          <span>{error}</span>
+        </p>
+      )}
+      {!error && warning && (
+        <p className="flex items-start gap-1 text-xs text-amber-600">
+          <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+          <span>{warning}</span>
+        </p>
+      )}
       {hint && <p className={`text-xs ${toneClass}`}>{hint}</p>}
     </div>
   );
 }
+
