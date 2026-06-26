@@ -526,12 +526,57 @@ function EditCampaign() {
         </TabsContent>
       </Tabs>
 
+      {validation.issues.length > 0 && (
+        <Card className={validation.hasBlockingErrors ? "border-rose-300" : "border-amber-300"}>
+          <CardHeader className="py-3">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              {validation.hasBlockingErrors ? (
+                <>
+                  <XCircle className="h-4 w-4 text-rose-600" />
+                  Resolva os campos obrigatórios antes de salvar
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  Avisos antes de publicar
+                </>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pb-3 pt-0">
+            <ul className="space-y-1 text-sm">
+              {validation.issues.map((i, idx) => (
+                <li
+                  key={`${i.field}-${idx}`}
+                  className={i.level === "error" ? "text-rose-600" : "text-amber-700 dark:text-amber-400"}
+                >
+                  <span className="font-medium">{i.field}:</span> {i.message}
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="sticky bottom-0 -mx-4 border-t bg-background/95 px-4 py-3 backdrop-blur">
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button variant="outline" asChild>
+            <Link to="/campaigns/$id/preview" params={{ id }}>
+              <Eye className="mr-1 h-4 w-4" /> Pré-visualizar
+            </Link>
+          </Button>
           <Button variant="outline" asChild>
             <Link to="/campaigns/$id" params={{ id }}>Ver métricas</Link>
           </Button>
-          <Button onClick={() => save.mutate()} disabled={save.isPending || slugBlocking}>
+          <Button
+            onClick={() => save.mutate()}
+            disabled={save.isPending || slugBlocking || validation.hasBlockingErrors}
+            title={
+              validation.hasBlockingErrors
+                ? "Resolva os erros listados acima antes de salvar."
+                : undefined
+            }
+          >
             {save.isPending ? "Salvando..." : "Salvar alterações"}
           </Button>
         </div>
