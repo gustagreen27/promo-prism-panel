@@ -21,6 +21,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IntentScoreBadge, StatusBadge } from "@/components/campaign-badges";
+import { RiskMeter, SocialPreviews } from "@/components/social-previews";
 import { ArrowLeft, Sparkles, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -222,18 +223,29 @@ function EditCampaign() {
             </Field>
           </div>
 
-          {(form.preview_image_url || form.og_image_url) && (
-            <Card>
-              <CardHeader><CardTitle className="text-base">Pré-visualização</CardTitle></CardHeader>
-              <CardContent>
-                <img
-                  src={form.og_image_url || form.preview_image_url}
-                  alt="Preview"
-                  className="max-h-64 rounded border object-cover"
-                />
-              </CardContent>
-            </Card>
-          )}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Pré-visualização social</CardTitle>
+              <CardDescription>
+                Mudanças no preview podem demorar a aparecer em redes sociais por causa de cache —
+                forçe uma re-leitura no debugger do Facebook/LinkedIn se necessário.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SocialPreviews
+                meta={{
+                  link_title: form.link_title,
+                  link_description: form.link_description,
+                  og_title: form.og_title,
+                  og_description: form.og_description,
+                  og_image_url: form.og_image_url,
+                  preview_image_url: form.preview_image_url,
+                  favicon_url: form.favicon_url,
+                }}
+                publicUrl={publicUrl}
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="status" className="space-y-4 pt-4">
@@ -248,7 +260,7 @@ function EditCampaign() {
         </TabsContent>
 
         <TabsContent value="intent" className="space-y-4 pt-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-lg font-medium">Análise de intenção</h2>
               <p className="text-sm text-muted-foreground">
@@ -260,6 +272,12 @@ function EditCampaign() {
               {analyze.isPending ? "Analisando..." : report ? "Reexecutar análise" : "Analisar agora"}
             </Button>
           </div>
+
+          <Card>
+            <CardContent className="pt-6">
+              <RiskMeter score={report?.score ?? data.intent_score} />
+            </CardContent>
+          </Card>
 
           {!report && (
             <Card><CardContent className="py-6 text-sm text-muted-foreground">Nenhuma análise executada ainda.</CardContent></Card>
