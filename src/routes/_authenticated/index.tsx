@@ -106,7 +106,22 @@ function CampaignRow({
             </a>
           </CardDescription>
         </div>
-        <div className="flex shrink-0 gap-2">
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Button
+            variant={isActive ? "outline" : "default"}
+            size="sm"
+            onClick={async () => {
+              try {
+                await update({ data: { id: c.id, status: isActive ? "paused" : "active" } });
+                toast.success(isActive ? "Campanha pausada" : "Campanha publicada");
+                onChange();
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : "Falha ao atualizar status");
+              }
+            }}
+          >
+            {isActive ? (<><Pause className="mr-1 h-4 w-4" /> Pausar</>) : (<><Play className="mr-1 h-4 w-4" /> Publicar</>)}
+          </Button>
           <Button variant="outline" size="sm" asChild>
             <Link to="/campaigns/$id/edit" params={{ id: c.id }}>
               <Pencil className="mr-1 h-4 w-4" /> Editar
