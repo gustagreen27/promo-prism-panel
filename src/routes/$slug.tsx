@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { resolveCampaign, trackClick } from "@/lib/track.functions";
 
 type Meta = {
