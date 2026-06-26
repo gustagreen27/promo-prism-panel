@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import { applyIntentPreset, getIntentPreset, PRESET_TARGET_FIELDS } from "@/lib/intent-presets";
 import { validateCampaignForm, type FieldIssue } from "@/lib/campaign-validation";
 import { CAMPAIGN_TYPES, LINK_INTENTS, PAGE_CATEGORIES } from "@/lib/campaign-options";
+import { ImageUpload } from "@/components/image-upload";
 
 export const Route = createFileRoute("/_authenticated/campaigns/$id/edit")({
   head: () => ({ meta: [{ title: "Editar campanha" }] }),
@@ -387,11 +388,22 @@ function EditCampaign() {
 
         <TabsContent value="preview" className="space-y-4 pt-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Imagem de preview" id="preview_image_url" hint="URL pública (https)">
-              <Input id="preview_image_url" type="url" value={form.preview_image_url ?? ""} onChange={(e) => set("preview_image_url", e.target.value)} />
+            <Field label="Imagem de preview" id="preview_image_url" hint="PNG/JPG/WebP até 4MB ou cole uma URL">
+              <ImageUpload
+                value={form.preview_image_url}
+                onChange={(v) => set("preview_image_url", v)}
+                folder="preview"
+              />
             </Field>
-            <Field label="Favicon" id="favicon_url">
-              <Input id="favicon_url" type="url" value={form.favicon_url ?? ""} onChange={(e) => set("favicon_url", e.target.value)} />
+            <Field label="Favicon" id="favicon_url" hint="ICO/PNG/SVG até 1MB">
+              <ImageUpload
+                value={form.favicon_url}
+                onChange={(v) => set("favicon_url", v)}
+                folder="favicon"
+                shape="square"
+                maxMb={1}
+                accept="image/x-icon,image/png,image/svg+xml"
+              />
             </Field>
           </div>
           <Field label="og:title" id="og_title"><Input id="og_title" value={form.og_title ?? ""} onChange={(e) => set("og_title", e.target.value)} /></Field>
@@ -399,7 +411,13 @@ function EditCampaign() {
             <Textarea id="og_description" rows={3} value={form.og_description ?? ""} onChange={(e) => set("og_description", e.target.value)} />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="og:image" id="og_image_url"><Input id="og_image_url" type="url" value={form.og_image_url ?? ""} onChange={(e) => set("og_image_url", e.target.value)} /></Field>
+            <Field label="og:image" id="og_image_url" hint="Recomendado 1200x630">
+              <ImageUpload
+                value={form.og_image_url}
+                onChange={(v) => set("og_image_url", v)}
+                folder="og"
+              />
+            </Field>
             <Field label="og:type" id="og_type" hint="Padrão: website">
               <Input id="og_type" value={form.og_type ?? ""} onChange={(e) => set("og_type", e.target.value)} placeholder="website" />
             </Field>

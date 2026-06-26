@@ -14,6 +14,7 @@ import { Route as SlugRouteImport } from './routes/$slug'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedCampaignsIdRouteImport } from './routes/_authenticated/campaigns.$id'
+import { Route as ApiPublicCiSplatRouteImport } from './routes/api/public/ci.$'
 import { Route as AuthenticatedCampaignsIdPreviewRouteImport } from './routes/_authenticated/campaigns.$id.preview'
 import { Route as AuthenticatedCampaignsIdEditRouteImport } from './routes/_authenticated/campaigns.$id.edit'
 
@@ -42,6 +43,11 @@ const AuthenticatedCampaignsIdRoute =
     path: '/campaigns/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiPublicCiSplatRoute = ApiPublicCiSplatRouteImport.update({
+  id: '/api/public/ci/$',
+  path: '/api/public/ci/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedCampaignsIdPreviewRoute =
   AuthenticatedCampaignsIdPreviewRouteImport.update({
     id: '/preview',
@@ -62,6 +68,7 @@ export interface FileRoutesByFullPath {
   '/campaigns/$id': typeof AuthenticatedCampaignsIdRouteWithChildren
   '/campaigns/$id/edit': typeof AuthenticatedCampaignsIdEditRoute
   '/campaigns/$id/preview': typeof AuthenticatedCampaignsIdPreviewRoute
+  '/api/public/ci/$': typeof ApiPublicCiSplatRoute
 }
 export interface FileRoutesByTo {
   '/$slug': typeof SlugRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByTo {
   '/campaigns/$id': typeof AuthenticatedCampaignsIdRouteWithChildren
   '/campaigns/$id/edit': typeof AuthenticatedCampaignsIdEditRoute
   '/campaigns/$id/preview': typeof AuthenticatedCampaignsIdPreviewRoute
+  '/api/public/ci/$': typeof ApiPublicCiSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -80,6 +88,7 @@ export interface FileRoutesById {
   '/_authenticated/campaigns/$id': typeof AuthenticatedCampaignsIdRouteWithChildren
   '/_authenticated/campaigns/$id/edit': typeof AuthenticatedCampaignsIdEditRoute
   '/_authenticated/campaigns/$id/preview': typeof AuthenticatedCampaignsIdPreviewRoute
+  '/api/public/ci/$': typeof ApiPublicCiSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -90,6 +99,7 @@ export interface FileRouteTypes {
     | '/campaigns/$id'
     | '/campaigns/$id/edit'
     | '/campaigns/$id/preview'
+    | '/api/public/ci/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/$slug'
@@ -98,6 +108,7 @@ export interface FileRouteTypes {
     | '/campaigns/$id'
     | '/campaigns/$id/edit'
     | '/campaigns/$id/preview'
+    | '/api/public/ci/$'
   id:
     | '__root__'
     | '/_authenticated'
@@ -107,12 +118,14 @@ export interface FileRouteTypes {
     | '/_authenticated/campaigns/$id'
     | '/_authenticated/campaigns/$id/edit'
     | '/_authenticated/campaigns/$id/preview'
+    | '/api/public/ci/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   SlugRoute: typeof SlugRoute
   AuthRoute: typeof AuthRoute
+  ApiPublicCiSplatRoute: typeof ApiPublicCiSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -151,6 +164,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/campaigns/$id'
       preLoaderRoute: typeof AuthenticatedCampaignsIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/public/ci/$': {
+      id: '/api/public/ci/$'
+      path: '/api/public/ci/$'
+      fullPath: '/api/public/ci/$'
+      preLoaderRoute: typeof ApiPublicCiSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/campaigns/$id/preview': {
       id: '/_authenticated/campaigns/$id/preview'
@@ -202,6 +222,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   SlugRoute: SlugRoute,
   AuthRoute: AuthRoute,
+  ApiPublicCiSplatRoute: ApiPublicCiSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
