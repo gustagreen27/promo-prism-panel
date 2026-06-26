@@ -362,7 +362,7 @@ function EditCampaign() {
           <Button variant="outline" asChild>
             <Link to="/campaigns/$id" params={{ id }}>Ver métricas</Link>
           </Button>
-          <Button onClick={() => save.mutate()} disabled={save.isPending}>
+          <Button onClick={() => save.mutate()} disabled={save.isPending || slugBlocking}>
             {save.isPending ? "Salvando..." : "Salvar alterações"}
           </Button>
         </div>
