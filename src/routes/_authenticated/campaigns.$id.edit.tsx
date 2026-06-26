@@ -88,6 +88,33 @@ function EditCampaign() {
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
+  const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+  const [slugStatus, setSlugStatus] = useState<
+    { state: "idle" | "checking" | "ok" | "invalid" | "taken"; message?: string }
+  >({ state: "idle" });
+  useEffect(() => {
+    const current = (form.slug ?? "").trim();
+    if (!current) { setSlugStatus({ state: "invalid", message: "Informe um slug." }); return; }
+    if (!SLUG_RE.test(current)) {
+      setSlugStatus({ state: "invalid", message: "Use apenas letras minúsculas, números e hífens (kebab-case)." });
+      return;
+    }
+    if (current === (data?.slug ?? "")) { setSlugStatus({ state: "ok", message: "Slug atual." }); return; }
+    setSlugStatus({ state: "checking" });
+    const t = setTimeout(async () => {
+      try {
+        const r = await checkSlugFn({ data: { slug: current, excludeId: id } });
+        if (r.available) setSlugStatus({ state: "ok", message: "Disponível." });
+        else if (r.reason === "taken") setSlugStatus({ state: "taken", message: "Slug já está em uso." });
+        else setSlugStatus({ state: "invalid", message: "Formato inválido." });
+      } catch {
+        setSlugStatus({ state: "idle" });
+      }
+    }, 350);
+    return () => clearTimeout(t);
+  }, [form.slug, data?.slug, id, checkSlugFn]);
+  const slugBlocking = slugStatus.state === "invalid" || slugStatus.state === "taken" || slugStatus.state === "checking";
+
   const save = useMutation({
     mutationFn: () =>
       updateFn({
