@@ -154,6 +154,30 @@ function CampaignDetail() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Acessos por hora do dia</CardTitle>
+          <CardDescription>Soma de cliques agrupada por hora local do servidor.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-56">
+            {stats.total === 0 ? (
+              <p className="text-sm text-muted-foreground">Sem dados ainda.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats.hourly}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="hour" fontSize={11} interval={1} />
+                  <YAxis allowDecimals={false} fontSize={12} />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="hsl(var(--primary, 222 47% 11%))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 md:grid-cols-2">
         <Breakdown title="Países" rows={stats.countries} />
         <Breakdown title="Cidades" rows={stats.cities} />
