@@ -8,6 +8,8 @@ import {
   listCampaigns,
   updateCampaign,
 } from "@/lib/campaigns.functions";
+import { applyIntentPreset } from "@/lib/intent-presets";
+import { CAMPAIGN_TYPES, LINK_INTENTS, PAGE_CATEGORIES } from "@/lib/campaign-options";
 import { slugify } from "@/lib/slugify";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -199,8 +201,8 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
   const queryClient = useQueryClient();
   const router = useRouter();
   const mutation = useMutation({
-    mutationFn: (input: Parameters<typeof create>[0]["data"]) =>
-      create({ data: input }),
+    mutationFn: (input: Record<string, unknown>) =>
+      create({ data: input as never }),
     onSuccess: (created) => {
       toast.success("Campanha criada como rascunho");
       queryClient.invalidateQueries({ queryKey: ["campaigns"] });
