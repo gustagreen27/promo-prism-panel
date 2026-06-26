@@ -28,7 +28,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Copy, ExternalLink, Trash2, BarChart3 } from "lucide-react";
+import { Copy, ExternalLink, Trash2, BarChart3, Pencil } from "lucide-react";
+import { IntentScoreBadge, StatusBadge } from "@/components/campaign-badges";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({ meta: [{ title: "Campanhas — Painel" }] }),
@@ -86,21 +87,28 @@ function CampaignRow({
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-start justify-between space-y-0">
-        <div className="space-y-1">
-          <CardTitle className="text-lg">{c.name}</CardTitle>
+      <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-4">
+        <div className="space-y-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <CardTitle className="text-lg">{c.name}</CardTitle>
+            <StatusBadge status={c.status} />
+            <IntentScoreBadge score={c.intent_score} />
+            {c.category && (
+              <span className="text-xs text-muted-foreground">{c.category}</span>
+            )}
+          </div>
           <CardDescription className="break-all">
-            <a
-              href={`/${c.slug}`}
-              target="_blank"
-              rel="noreferrer"
-              className="hover:underline"
-            >
+            <a href={`/${c.slug}`} target="_blank" rel="noreferrer" className="hover:underline">
               {publicUrl}
             </a>
           </CardDescription>
         </div>
-        <div className="flex gap-2">
+        <div className="flex shrink-0 gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/campaigns/$id/edit" params={{ id: c.id }}>
+              <Pencil className="mr-1 h-4 w-4" /> Editar
+            </Link>
+          </Button>
           <Button variant="outline" size="sm" asChild>
             <Link to="/campaigns/$id" params={{ id: c.id }}>
               <BarChart3 className="mr-1 h-4 w-4" /> Métricas
@@ -168,16 +176,15 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
   const mutation = useMutation({
     mutationFn: (input: { name: string; slug?: string; destination_url: string }) =>
       create({ data: input }),
-    onSuccess: () => {
-      toast.success("Campanha criada");
+    onSuccess: (created) => {
+      toast.success("Campanha criada como rascunho");
       queryClient.invalidateQueries({ queryKey: ["campaigns"] });
       router.invalidate();
-      setName("");
-      setSlug("");
-      setDestination("");
-      setSlugTouched(false);
+      setName(""); setSlug(""); setDestination(""); setSlugTouched(false);
       setOpen(false);
       onCreated();
+      // navega direto pro editor para preencher os demais campos
+      router.navigate({ to: "/campaigns/$id/edit", params: { id: created.id } });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Falha ao criar"),
   });
@@ -191,7 +198,8 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
         <DialogHeader>
           <DialogTitle>Nova campanha</DialogTitle>
           <DialogDescription>
-            O slug gera a URL pública. Ex.: <code>/disparos-magistrar-dia-26</code>
+            Comece com nome, slug e destino. Você poderá preencher categoria, OG, UTMs e
+            rodar a análise de intenção em seguida.
           </DialogDescription>
         </DialogHeader>
         <form
@@ -208,9 +216,7 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
           <div className="space-y-2">
             <Label htmlFor="name">Nome</Label>
             <Input
-              id="name"
-              required
-              value={name}
+              id="name" required value={name}
               placeholder="Disparos Magistrar — Dia 26"
               onChange={(e) => {
                 setName(e.target.value);
@@ -221,26 +227,18 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
           <div className="space-y-2">
             <Label htmlFor="slug">Slug (URL)</Label>
             <Input
-              id="slug"
-              required
-              value={slug}
+              id="slug" required value={slug}
               placeholder="disparos-magistrar-dia-26"
-              onChange={(e) => {
-                setSlugTouched(true);
-                setSlug(slugify(e.target.value));
-              }}
+              onChange={(e) => { setSlugTouched(true); setSlug(slugify(e.target.value)); }}
             />
             <p className="text-xs text-muted-foreground">
               URL pública: <code>/{slug || "..."}</code> — definido por você; deve ser único.
             </p>
           </div>
-
           <div className="space-y-2">
             <Label htmlFor="dest">URL de destino</Label>
             <Input
-              id="dest"
-              type="url"
-              required
+              id="dest" type="url" required
               placeholder="https://exemplo.com/oferta"
               value={destination}
               onChange={(e) => setDestination(e.target.value)}
@@ -248,7 +246,7 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
           </div>
           <DialogFooter>
             <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? "Criando..." : "Criar campanha"}
+              {mutation.isPending ? "Criando..." : "Criar e configurar"}
             </Button>
           </DialogFooter>
         </form>
