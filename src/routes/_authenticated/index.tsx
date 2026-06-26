@@ -6,6 +6,7 @@ import {
   createCampaign,
   deleteCampaign,
   listCampaigns,
+  updateCampaign,
 } from "@/lib/campaigns.functions";
 import { slugify } from "@/lib/slugify";
 import { Button } from "@/components/ui/button";
