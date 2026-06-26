@@ -33,22 +33,6 @@ function AuthPage() {
     navigate({ to: "/" });
   }
 
-  async function handleSignup(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: window.location.origin },
-    });
-    setLoading(false);
-    if (error) {
-      setError(error.message);
-      return;
-    }
-    navigate({ to: "/" });
-  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
