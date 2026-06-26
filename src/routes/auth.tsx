@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -33,23 +32,6 @@ function AuthPage() {
     navigate({ to: "/" });
   }
 
-  async function handleSignup(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: window.location.origin },
-    });
-    setLoading(false);
-    if (error) {
-      setError(error.message);
-      return;
-    }
-    navigate({ to: "/" });
-  }
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
       <Card className="w-full max-w-md">
@@ -58,48 +40,20 @@ function AuthPage() {
           <CardDescription>Acesso restrito a administradores.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="signin">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Entrar</TabsTrigger>
-              <TabsTrigger value="signup">Cadastrar</TabsTrigger>
-            </TabsList>
-            <TabsContent value="signin">
-              <form onSubmit={handleLogin} className="space-y-4 pt-4">
-                <Field id="si-email" label="E-mail" type="email" value={email} onChange={setEmail} />
-                <Field
-                  id="si-password"
-                  label="Senha"
-                  type="password"
-                  value={password}
-                  onChange={setPassword}
-                />
-                {error && <p className="text-sm text-destructive">{error}</p>}
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Entrando..." : "Entrar"}
-                </Button>
-              </form>
-            </TabsContent>
-            <TabsContent value="signup">
-              <form onSubmit={handleSignup} className="space-y-4 pt-4">
-                <p className="text-xs text-muted-foreground">
-                  O primeiro cadastro vira administrador automaticamente. Demais cadastros
-                  precisam ser promovidos manualmente.
-                </p>
-                <Field id="su-email" label="E-mail" type="email" value={email} onChange={setEmail} />
-                <Field
-                  id="su-password"
-                  label="Senha"
-                  type="password"
-                  value={password}
-                  onChange={setPassword}
-                />
-                {error && <p className="text-sm text-destructive">{error}</p>}
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Criando..." : "Criar conta"}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <Field id="email" label="E-mail" type="email" value={email} onChange={setEmail} />
+            <Field
+              id="password"
+              label="Senha"
+              type="password"
+              value={password}
+              onChange={setPassword}
+            />
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Entrando..." : "Entrar"}
+            </Button>
+          </form>
           <div className="mt-6 text-center text-xs text-muted-foreground">
             <Link to="/">Voltar</Link>
           </div>
