@@ -268,19 +268,70 @@ function EditCampaign() {
               aria-invalid={slugStatus.state === "invalid" || slugStatus.state === "taken"}
             />
           </Field>
-          <Field label="Categoria / intenção" id="category">
-            <Select value={form.category || ""} onValueChange={(v) => set("category", v)}>
-              <SelectTrigger id="category"><SelectValue placeholder="Selecione..." /></SelectTrigger>
-              <SelectContent>
-                {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Categoria da campanha" id="category">
+              <Select value={form.category || ""} onValueChange={(v) => set("category", v)}>
+                <SelectTrigger id="category"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Tipo de campanha" id="campaign_type">
+              <Select value={form.campaign_type || ""} onValueChange={(v) => set("campaign_type", v)}>
+                <SelectTrigger id="campaign_type"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>
+                  {CAMPAIGN_TYPES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field
+              label="Intenção do link"
+              id="link_intent"
+              hint="Define o tom da página intermediária e dos previews — escolha o que melhor reflete o que o usuário vai encontrar."
+            >
+              <Select value={form.link_intent || ""} onValueChange={(v) => set("link_intent", v)}>
+                <SelectTrigger id="link_intent"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>
+                  {LINK_INTENTS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Categoria da página de destino" id="page_category">
+              <Select value={form.page_category || ""} onValueChange={(v) => set("page_category", v)}>
+                <SelectTrigger id="page_category"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>
+                  {PAGE_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
           <Field label="Título do link" id="link_title" hint="Aparece como título da página wrapper e nos previews.">
             <Input id="link_title" value={form.link_title ?? ""} onChange={(e) => set("link_title", e.target.value)} />
           </Field>
           <Field label="Descrição do link" id="link_description">
             <Textarea id="link_description" rows={3} value={form.link_description ?? ""} onChange={(e) => set("link_description", e.target.value)} />
+          </Field>
+          <Field
+            label="Texto principal da página intermediária"
+            id="intermediate_text"
+            hint="Mensagem exibida na página wrapper quando o destino não permitir iframe. Use para reforçar a intenção do link."
+          >
+            <Textarea
+              id="intermediate_text"
+              rows={4}
+              value={form.intermediate_text ?? ""}
+              onChange={(e) => set("intermediate_text", e.target.value)}
+              placeholder="Ex.: Sua aula confirmada começa em instantes — clique para entrar."
+            />
+          </Field>
+          <Field label="Texto do botão de ação" id="cta_label" hint="Padrão: “Continuar para o site”.">
+            <Input
+              id="cta_label"
+              value={form.cta_label ?? ""}
+              onChange={(e) => set("cta_label", e.target.value)}
+              placeholder="Entrar na aula"
+            />
           </Field>
         </TabsContent>
 
