@@ -65,22 +65,34 @@ export const createCampaign = createServerFn({ method: "POST" })
     });
     if (!isAdmin) throw new Error("Forbidden");
 
+    const userProvidedSlug = !!data.slug;
     const baseSlug = slugify(data.slug || data.name);
     if (!baseSlug) throw new Error("Slug inválido");
 
-    // ensure uniqueness
     let slug = baseSlug;
-    let i = 1;
-    while (true) {
+    if (userProvidedSlug) {
+      // Respect the slug exactly as the admin defined it; error on conflict.
       const { data: existing } = await supabaseAdmin
         .from("campaigns")
         .select("id")
         .eq("slug", slug)
         .maybeSingle();
-      if (!existing) break;
-      i += 1;
-      slug = `${baseSlug}-${i}`;
+      if (existing) throw new Error(`Slug "${slug}" já está em uso`);
+    } else {
+      // Auto-derived from name → make it unique by suffixing.
+      let i = 1;
+      while (true) {
+        const { data: existing } = await supabaseAdmin
+          .from("campaigns")
+          .select("id")
+          .eq("slug", slug)
+          .maybeSingle();
+        if (!existing) break;
+        i += 1;
+        slug = `${baseSlug}-${i}`;
+      }
     }
+
 
     const { data: created, error } = await supabaseAdmin
       .from("campaigns")
