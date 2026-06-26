@@ -14,16 +14,179 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      campaign_clicks: {
+        Row: {
+          as_name: string | null
+          browser: string | null
+          browser_version: string | null
+          campaign_id: string
+          city: string | null
+          clicked_at: string
+          country: string | null
+          country_code: string | null
+          device: string | null
+          device_type: string | null
+          id: string
+          ip: string | null
+          isp: string | null
+          language: string | null
+          lat: number | null
+          lon: number | null
+          org: string | null
+          os: string | null
+          os_version: string | null
+          referer: string | null
+          region: string | null
+          timezone: string | null
+          user_agent: string | null
+          zip: string | null
+        }
+        Insert: {
+          as_name?: string | null
+          browser?: string | null
+          browser_version?: string | null
+          campaign_id: string
+          city?: string | null
+          clicked_at?: string
+          country?: string | null
+          country_code?: string | null
+          device?: string | null
+          device_type?: string | null
+          id?: string
+          ip?: string | null
+          isp?: string | null
+          language?: string | null
+          lat?: number | null
+          lon?: number | null
+          org?: string | null
+          os?: string | null
+          os_version?: string | null
+          referer?: string | null
+          region?: string | null
+          timezone?: string | null
+          user_agent?: string | null
+          zip?: string | null
+        }
+        Update: {
+          as_name?: string | null
+          browser?: string | null
+          browser_version?: string | null
+          campaign_id?: string
+          city?: string | null
+          clicked_at?: string
+          country?: string | null
+          country_code?: string | null
+          device?: string | null
+          device_type?: string | null
+          id?: string
+          ip?: string | null
+          isp?: string | null
+          language?: string | null
+          lat?: number | null
+          lon?: number | null
+          org?: string | null
+          os?: string | null
+          os_version?: string | null
+          referer?: string | null
+          region?: string | null
+          timezone?: string | null
+          user_agent?: string | null
+          zip?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_clicks_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          destination_url: string
+          id: string
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          destination_url: string
+          id?: string
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          destination_url?: string
+          id?: string
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +313,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin"],
+    },
   },
 } as const
