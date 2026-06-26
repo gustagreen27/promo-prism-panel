@@ -1,4 +1,5 @@
-import { Globe } from "lucide-react";
+import { Globe, ImageOff } from "lucide-react";
+import { useEffect, useState } from "react";
 
 type Meta = {
   link_title?: string | null;
@@ -13,6 +14,55 @@ type Meta = {
 function pick(...vals: (string | null | undefined)[]) {
   return vals.find((v) => typeof v === "string" && v.trim().length > 0) ?? null;
 }
+
+function SafeImage({
+  src,
+  alt,
+  className,
+  placeholder,
+}: {
+  src: string | null;
+  alt: string;
+  className: string;
+  placeholder: React.ReactNode;
+}) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { setFailed(false); }, [src]);
+  if (!src || failed) {
+    return (
+      <div className={`${className} flex items-center justify-center gap-1.5 bg-muted text-xs text-muted-foreground`}>
+        <ImageOff className="h-4 w-4" />
+        <span>{placeholder}</span>
+      </div>
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      referrerPolicy="no-referrer"
+      loading="lazy"
+      onError={() => setFailed(true)}
+      className={className}
+    />
+  );
+}
+
+function SafeFavicon({ src }: { src: string | null }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { setFailed(false); }, [src]);
+  if (!src || failed) return <Globe className="h-3 w-3" />;
+  return (
+    <img
+      src={src}
+      alt=""
+      referrerPolicy="no-referrer"
+      onError={() => setFailed(true)}
+      className="h-3 w-3"
+    />
+  );
+}
+
 
 export function SocialPreviews({
   meta,
