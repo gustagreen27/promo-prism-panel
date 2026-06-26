@@ -329,14 +329,26 @@ function EditCampaign() {
             <Field
               label="Intenção do link"
               id="link_intent"
-              hint="Define o tom da página intermediária e dos previews — escolha o que melhor reflete o que o usuário vai encontrar."
+              hint="Define o tom da página intermediária e dos previews. Ao escolher, campos vazios são preenchidos com um preset adequado."
             >
-              <Select value={form.link_intent || ""} onValueChange={(v) => set("link_intent", v)}>
-                <SelectTrigger id="link_intent"><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                <SelectContent>
-                  {LINK_INTENTS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select value={form.link_intent || ""} onValueChange={onIntentChange}>
+                  <SelectTrigger id="link_intent"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectContent>
+                    {LINK_INTENTS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  title="Reaplicar preset da intenção (sobrescreve título, descrição, texto intermediário, CTA e OG)"
+                  onClick={reapplyIntentPreset}
+                  disabled={!form.link_intent}
+                >
+                  <Wand2 className="h-4 w-4" />
+                </Button>
+              </div>
             </Field>
             <Field label="Categoria da página de destino" id="page_category">
               <Select value={form.page_category || ""} onValueChange={(v) => set("page_category", v)}>
@@ -347,7 +359,13 @@ function EditCampaign() {
               </Select>
             </Field>
           </div>
-          <Field label="Título do link" id="link_title" hint="Aparece como título da página wrapper e nos previews.">
+          <Field
+            label="Título do link"
+            id="link_title"
+            hint="Aparece como título da página wrapper e nos previews."
+            error={firstErrorOf("link_title")}
+            warning={firstWarningOf("link_title")}
+          >
             <Input id="link_title" value={form.link_title ?? ""} onChange={(e) => set("link_title", e.target.value)} />
           </Field>
           <Field label="Descrição do link" id="link_description">
@@ -357,6 +375,8 @@ function EditCampaign() {
             label="Texto principal da página intermediária"
             id="intermediate_text"
             hint="Mensagem exibida na página wrapper quando o destino não permitir iframe. Use para reforçar a intenção do link."
+            error={firstErrorOf("intermediate_text")}
+            warning={firstWarningOf("intermediate_text")}
           >
             <Textarea
               id="intermediate_text"
@@ -366,7 +386,13 @@ function EditCampaign() {
               placeholder="Ex.: Sua aula confirmada começa em instantes — clique para entrar."
             />
           </Field>
-          <Field label="Texto do botão de ação" id="cta_label" hint="Padrão: “Continuar para o site”.">
+          <Field
+            label="Texto do botão de ação"
+            id="cta_label"
+            hint="Padrão: “Continuar para o site”."
+            error={firstErrorOf("cta_label")}
+            warning={firstWarningOf("cta_label")}
+          >
             <Input
               id="cta_label"
               value={form.cta_label ?? ""}
@@ -377,7 +403,12 @@ function EditCampaign() {
         </TabsContent>
 
         <TabsContent value="urls" className="space-y-4 pt-4">
-          <Field label="URL final de destino" id="destination_url">
+          <Field
+            label="URL final de destino"
+            id="destination_url"
+            error={firstErrorOf("destination_url")}
+            warning={firstWarningOf("destination_url")}
+          >
             <Input id="destination_url" type="url" value={form.destination_url ?? ""} onChange={(e) => set("destination_url", e.target.value)} />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
