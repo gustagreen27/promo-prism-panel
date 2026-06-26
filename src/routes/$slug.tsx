@@ -120,34 +120,46 @@ function CampaignPublicPage() {
     data.status === "iframe" || data.status === "redirect";
   useFireAndForgetTracking(data.status === "notfound" ? "" : data.slug, trackingEnabled);
 
-  // Client-side watchdog for iframe blocks not caught by server HEAD check
+  // Client-side watchdog for iframe blocks not caught by server HEAD check.
+  // Browsers que recusam a conexão (X-Frame-Options, CSP frame-ancestors,
+  // ERR_CONNECTION_REFUSED) frequentemente NÃO disparam o evento `load`,
+  // então usamos um timeout absoluto como gatilho principal do fallback.
   useEffect(() => {
     if (data.status !== "iframe") return;
     const url = data.url;
     let done = false;
+    let loaded = false;
     const fallback = () => {
       if (done) return;
       done = true;
       window.location.replace(url);
     };
-    const check = () => {
+    const checkBlank = () => {
       const iframe = iframeRef.current;
       if (!iframe) return;
       try {
         const doc = iframe.contentDocument;
         if (doc && (!doc.body || doc.body.children.length === 0)) fallback();
       } catch {
-        // cross-origin = loaded ok
+        // cross-origin acessível = carregou normalmente
       }
     };
     const iframe = iframeRef.current;
-    const onLoad = () => setTimeout(check, 100);
+    const onLoad = () => {
+      loaded = true;
+      setTimeout(checkBlank, 100);
+    };
     iframe?.addEventListener("load", onLoad);
     iframe?.addEventListener("error", fallback);
-    const t1 = setTimeout(check, 1500);
-    const t2 = setTimeout(check, 4000);
+    // Se o load nunca disparou em 3.5s, assumimos bloqueio e redirecionamos.
+    const tLoad = setTimeout(() => {
+      if (!loaded) fallback();
+    }, 3500);
+    const t1 = setTimeout(checkBlank, 1500);
+    const t2 = setTimeout(checkBlank, 4500);
     return () => {
       done = true;
+      clearTimeout(tLoad);
       clearTimeout(t1);
       clearTimeout(t2);
       iframe?.removeEventListener("load", onLoad);
