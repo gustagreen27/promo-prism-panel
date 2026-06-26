@@ -168,6 +168,37 @@ export const deleteCampaign = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const checkSlugAvailability = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ slug: z.string().trim().min(1).max(80), excludeId: z.string().uuid().optional() }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const normalized = slugify(data.slug);
+    if (!normalized) return { available: false as const, normalized, reason: "invalid" as const };
+    if (normalized !== data.slug) {
+      return { available: false as const, normalized, reason: "format" as const };
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    let q = supabaseAdmin.from("campaigns").select("id").eq("slug", normalized);
+    if (data.excludeId) q = q.neq("id", data.excludeId);
+    const { data: existing } = await q.maybeSingle();
+    if (existing) return { available: false as const, normalized, reason: "taken" as const };
+    return { available: true as const, normalized };
+  });
+
+const INTENT_INVALIDATING_FIELDS = [
+  "destination_url",
+  "link_title",
+  "link_description",
+  "og_title",
+  "og_description",
+  "og_image_url",
+  "preview_image_url",
+  "category",
+] as const;
+
 export const updateCampaign = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => updateSchema.parse(data))
@@ -188,6 +219,27 @@ export const updateCampaign = createServerFn({ method: "POST" })
       if (existing) throw new Error(`Slug "${newSlug}" já está em uso`);
       patch.slug = newSlug;
     }
+
+    // Mark intent analysis as stale if any signal it depends on changed.
+    const { data: current } = await supabaseAdmin
+      .from("campaigns")
+      .select("destination_url, link_title, link_description, og_title, og_description, og_image_url, preview_image_url, category")
+      .eq("id", id)
+      .maybeSingle();
+    if (current) {
+      const changed = INTENT_INVALIDATING_FIELDS.some((f) => {
+        if (!(f in patch)) return false;
+        const next = patch[f];
+        const prev = (current as Record<string, unknown>)[f];
+        return (next ?? null) !== (prev ?? null);
+      });
+      if (changed) {
+        patch.intent_score = null;
+        patch.intent_report = null;
+        patch.intent_checked_at = null;
+      }
+    }
+
     const { data: updated, error } = await supabaseAdmin
       .from("campaigns")
       .update(patch as never)

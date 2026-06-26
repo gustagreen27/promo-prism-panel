@@ -17,13 +17,13 @@ function pickIp(): string | null {
 
 async function lookupIp(ip: string) {
   const key = process.env.IP_API_KEY;
-  if (!key) return null;
   const fields =
     "status,country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,as,query";
+  const url = key
+    ? `https://pro.ip-api.com/json/${encodeURIComponent(ip)}?fields=${fields}&key=${key}`
+    : `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=${fields}`;
   try {
-    const res = await fetch(
-      `https://pro.ip-api.com/json/${encodeURIComponent(ip)}?fields=${fields}&key=${key}`,
-    );
+    const res = await fetch(url);
     if (!res.ok) return null;
     const j = (await res.json()) as Record<string, unknown>;
     if (j.status !== "success") return null;
@@ -33,7 +33,7 @@ async function lookupIp(ip: string) {
   }
 }
 
-async function canEmbedInIframe(url: string): Promise<boolean> {
+export async function canEmbedInIframe(url: string): Promise<boolean> {
   try {
     const res = await fetch(url, {
       method: "GET",
@@ -59,7 +59,7 @@ async function canEmbedInIframe(url: string): Promise<boolean> {
   }
 }
 
-function applyUtms(url: string, c: Record<string, unknown>) {
+export function applyUtms(url: string, c: Record<string, unknown>) {
   try {
     const u = new URL(url);
     const set = (k: string, v: unknown) => {
@@ -76,7 +76,26 @@ function applyUtms(url: string, c: Record<string, unknown>) {
   }
 }
 
-export const trackClick = createServerFn({ method: "POST" })
+function pickMeta(c: Record<string, unknown>) {
+  return {
+    name: (c.name as string) ?? null,
+    link_title: (c.link_title as string) ?? null,
+    link_description: (c.link_description as string) ?? null,
+    preview_image_url: (c.preview_image_url as string) ?? null,
+    favicon_url: (c.favicon_url as string) ?? null,
+    og_title: (c.og_title as string) ?? null,
+    og_description: (c.og_description as string) ?? null,
+    og_image_url: (c.og_image_url as string) ?? null,
+    og_type: (c.og_type as string) ?? null,
+  };
+}
+
+/**
+ * Fast resolver for the public `/$slug` route. Runs the iframe HEAD check
+ * (cheap) but does NOT call IP-API or insert the click log — that's deferred
+ * to `trackClick` fired in the background from the client.
+ */
+export const resolveCampaign = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => inputSchema.parse(data))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -89,7 +108,6 @@ export const trackClick = createServerFn({ method: "POST" })
     if (error || !campaign) {
       return { ok: false as const, notFound: true as const };
     }
-
     if (campaign.status && campaign.status !== "active") {
       return {
         ok: false as const,
@@ -100,7 +118,36 @@ export const trackClick = createServerFn({ method: "POST" })
     }
 
     const finalUrl = applyUtms(campaign.destination_url, campaign);
+    const iframeAllowed = await canEmbedInIframe(finalUrl);
 
+    return {
+      ok: true as const,
+      destination_url: finalUrl,
+      iframeAllowed,
+      meta: pickMeta(campaign),
+    };
+  });
+
+/**
+ * Fire-and-forget tracker called from the client after the wrapper renders.
+ * Captures the visitor IP from request headers (so it works even though the
+ * client triggers it) and writes the click row asynchronously.
+ */
+export const trackClick = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => inputSchema.parse(data))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: campaign } = await supabaseAdmin
+      .from("campaigns")
+      .select("id, destination_url, status, utm_source, utm_medium, utm_campaign, utm_term, utm_content")
+      .eq("slug", data.slug)
+      .maybeSingle();
+    if (!campaign || (campaign.status && campaign.status !== "active")) {
+      return { ok: false as const };
+    }
+
+    const finalUrl = applyUtms(campaign.destination_url, campaign as Record<string, unknown>);
     const ip = pickIp();
     const ua = getRequestHeader("user-agent") ?? null;
     const referer = getRequestHeader("referer") ?? null;
@@ -111,14 +158,8 @@ export const trackClick = createServerFn({ method: "POST" })
 
     let parsed: ReturnType<UAParser["getResult"]> | null = null;
     if (ua) {
-      try {
-        parsed = new UAParser(ua).getResult();
-      } catch {
-        parsed = null;
-      }
+      try { parsed = new UAParser(ua).getResult(); } catch { parsed = null; }
     }
-
-    const iframeAllowed = await canEmbedInIframe(finalUrl);
 
     await supabaseAdmin.from("campaign_clicks").insert({
       campaign_id: campaign.id,
@@ -146,24 +187,5 @@ export const trackClick = createServerFn({ method: "POST" })
       final_url: finalUrl,
     } as never);
 
-    return {
-      ok: true as const,
-      destination_url: finalUrl,
-      iframeAllowed,
-      meta: pickMeta(campaign),
-    };
+    return { ok: true as const };
   });
-
-function pickMeta(c: Record<string, unknown>) {
-  return {
-    name: (c.name as string) ?? null,
-    link_title: (c.link_title as string) ?? null,
-    link_description: (c.link_description as string) ?? null,
-    preview_image_url: (c.preview_image_url as string) ?? null,
-    favicon_url: (c.favicon_url as string) ?? null,
-    og_title: (c.og_title as string) ?? null,
-    og_description: (c.og_description as string) ?? null,
-    og_image_url: (c.og_image_url as string) ?? null,
-    og_type: (c.og_type as string) ?? null,
-  };
-}

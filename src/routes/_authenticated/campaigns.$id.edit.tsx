@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import {
   analyzeCampaignIntent,
+  checkSlugAvailability,
   getCampaign,
   updateCampaign,
 } from "@/lib/campaigns.functions";
@@ -53,6 +54,7 @@ function EditCampaign() {
   const getFn = useServerFn(getCampaign);
   const updateFn = useServerFn(updateCampaign);
   const analyzeFn = useServerFn(analyzeCampaignIntent);
+  const checkSlugFn = useServerFn(checkSlugAvailability);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["campaign", id],
@@ -85,6 +87,33 @@ function EditCampaign() {
   }, [data]);
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+  const [slugStatus, setSlugStatus] = useState<
+    { state: "idle" | "checking" | "ok" | "invalid" | "taken"; message?: string }
+  >({ state: "idle" });
+  useEffect(() => {
+    const current = (form.slug ?? "").trim();
+    if (!current) { setSlugStatus({ state: "invalid", message: "Informe um slug." }); return; }
+    if (!SLUG_RE.test(current)) {
+      setSlugStatus({ state: "invalid", message: "Use apenas letras minúsculas, números e hífens (kebab-case)." });
+      return;
+    }
+    if (current === (data?.slug ?? "")) { setSlugStatus({ state: "ok", message: "Slug atual." }); return; }
+    setSlugStatus({ state: "checking" });
+    const t = setTimeout(async () => {
+      try {
+        const r = await checkSlugFn({ data: { slug: current, excludeId: id } });
+        if (r.available) setSlugStatus({ state: "ok", message: "Disponível." });
+        else if (r.reason === "taken") setSlugStatus({ state: "taken", message: "Slug já está em uso." });
+        else setSlugStatus({ state: "invalid", message: "Formato inválido." });
+      } catch {
+        setSlugStatus({ state: "idle" });
+      }
+    }, 350);
+    return () => clearTimeout(t);
+  }, [form.slug, data?.slug, id, checkSlugFn]);
+  const slugBlocking = slugStatus.state === "invalid" || slugStatus.state === "taken" || slugStatus.state === "checking";
 
   const save = useMutation({
     mutationFn: () =>
@@ -171,8 +200,27 @@ function EditCampaign() {
           <Field label="Nome da campanha" id="name">
             <Input id="name" value={form.name ?? ""} onChange={(e) => set("name", e.target.value)} />
           </Field>
-          <Field label="Slug (URL pública)" id="slug" hint={`Ex.: /${form.slug || "..."}`}>
-            <Input id="slug" value={form.slug ?? ""} onChange={(e) => set("slug", e.target.value)} />
+          <Field
+            label="Slug (URL pública)"
+            id="slug"
+            hint={
+              slugStatus.message
+                ? `${slugStatus.message} Ex.: /${form.slug || "..."}`
+                : `Apenas letras minúsculas, números e hífens. Ex.: /${form.slug || "..."}`
+            }
+            hintTone={
+              slugStatus.state === "ok" ? "ok"
+              : slugStatus.state === "checking" ? "muted"
+              : slugStatus.state === "idle" ? "muted"
+              : "error"
+            }
+          >
+            <Input
+              id="slug"
+              value={form.slug ?? ""}
+              onChange={(e) => set("slug", e.target.value.toLowerCase())}
+              aria-invalid={slugStatus.state === "invalid" || slugStatus.state === "taken"}
+            />
           </Field>
           <Field label="Categoria / intenção" id="category">
             <Select value={form.category || ""} onValueChange={(v) => set("category", v)}>
@@ -314,7 +362,7 @@ function EditCampaign() {
           <Button variant="outline" asChild>
             <Link to="/campaigns/$id" params={{ id }}>Ver métricas</Link>
           </Button>
-          <Button onClick={() => save.mutate()} disabled={save.isPending}>
+          <Button onClick={() => save.mutate()} disabled={save.isPending || slugBlocking}>
             {save.isPending ? "Salvando..." : "Salvar alterações"}
           </Button>
         </div>
@@ -327,18 +375,24 @@ function Field({
   label,
   id,
   hint,
+  hintTone = "muted",
   children,
 }: {
   label: string;
   id: string;
   hint?: string;
+  hintTone?: "muted" | "ok" | "error";
   children: React.ReactNode;
 }) {
+  const toneClass =
+    hintTone === "ok" ? "text-emerald-600"
+    : hintTone === "error" ? "text-rose-600"
+    : "text-muted-foreground";
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
       {children}
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      {hint && <p className={`text-xs ${toneClass}`}>{hint}</p>}
     </div>
   );
 }
