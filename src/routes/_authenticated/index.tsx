@@ -219,7 +219,7 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="slug">Slug</Label>
+            <Label htmlFor="slug">Slug (URL)</Label>
             <Input
               id="slug"
               required
@@ -230,8 +230,11 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
                 setSlug(slugify(e.target.value));
               }}
             />
-            <p className="text-xs text-muted-foreground">URL: /{slug || "..."}</p>
+            <p className="text-xs text-muted-foreground">
+              URL pública: <code>/{slug || "..."}</code> — definido por você; deve ser único.
+            </p>
           </div>
+
           <div className="space-y-2">
             <Label htmlFor="dest">URL de destino</Label>
             <Input

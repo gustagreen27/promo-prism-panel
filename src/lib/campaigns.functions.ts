@@ -65,22 +65,34 @@ export const createCampaign = createServerFn({ method: "POST" })
     });
     if (!isAdmin) throw new Error("Forbidden");
 
+    const userProvidedSlug = !!data.slug;
     const baseSlug = slugify(data.slug || data.name);
     if (!baseSlug) throw new Error("Slug inválido");
 
-    // ensure uniqueness
     let slug = baseSlug;
-    let i = 1;
-    while (true) {
+    if (userProvidedSlug) {
+      // Respect the slug exactly as the admin defined it; error on conflict.
       const { data: existing } = await supabaseAdmin
         .from("campaigns")
         .select("id")
         .eq("slug", slug)
         .maybeSingle();
-      if (!existing) break;
-      i += 1;
-      slug = `${baseSlug}-${i}`;
+      if (existing) throw new Error(`Slug "${slug}" já está em uso`);
+    } else {
+      // Auto-derived from name → make it unique by suffixing.
+      let i = 1;
+      while (true) {
+        const { data: existing } = await supabaseAdmin
+          .from("campaigns")
+          .select("id")
+          .eq("slug", slug)
+          .maybeSingle();
+        if (!existing) break;
+        i += 1;
+        slug = `${baseSlug}-${i}`;
+      }
     }
+
 
     const { data: created, error } = await supabaseAdmin
       .from("campaigns")
@@ -118,6 +130,7 @@ export const updateCampaign = createServerFn({ method: "POST" })
       .object({
         id: z.string().uuid(),
         name: z.string().trim().min(1).max(120).optional(),
+        slug: z.string().trim().min(1).max(80).optional(),
         destination_url: z.string().trim().url().max(2048).optional(),
       })
       .parse(data),
@@ -129,7 +142,20 @@ export const updateCampaign = createServerFn({ method: "POST" })
       _role: "admin",
     });
     if (!isAdmin) throw new Error("Forbidden");
-    const { id, ...patch } = data;
+    const { id, slug: rawSlug, ...rest } = data;
+    const patch: { name?: string; destination_url?: string; slug?: string } = { ...rest };
+    if (rawSlug !== undefined) {
+      const newSlug = slugify(rawSlug);
+      if (!newSlug) throw new Error("Slug inválido");
+      const { data: existing } = await supabaseAdmin
+        .from("campaigns")
+        .select("id")
+        .eq("slug", newSlug)
+        .neq("id", id)
+        .maybeSingle();
+      if (existing) throw new Error(`Slug "${newSlug}" já está em uso`);
+      patch.slug = newSlug;
+    }
     const { data: updated, error } = await supabaseAdmin
       .from("campaigns")
       .update(patch)
@@ -139,6 +165,7 @@ export const updateCampaign = createServerFn({ method: "POST" })
     if (error) throw error;
     return updated;
   });
+
 
 export const getCampaignAnalytics = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
