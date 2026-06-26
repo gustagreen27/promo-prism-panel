@@ -29,7 +29,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Copy, ExternalLink, Trash2, BarChart3, Pencil } from "lucide-react";
+import { Copy, ExternalLink, Trash2, BarChart3, Pencil, Play, Pause } from "lucide-react";
 import { IntentScoreBadge, StatusBadge } from "@/components/campaign-badges";
 
 export const Route = createFileRoute("/_authenticated/")({
