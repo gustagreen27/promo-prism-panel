@@ -8,6 +8,8 @@ import {
   listCampaigns,
   updateCampaign,
 } from "@/lib/campaigns.functions";
+import { applyIntentPreset } from "@/lib/intent-presets";
+import { CAMPAIGN_TYPES, LINK_INTENTS, PAGE_CATEGORIES } from "@/lib/campaign-options";
 import { slugify } from "@/lib/slugify";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -187,37 +189,66 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
   const [slug, setSlug] = useState("");
   const [destination, setDestination] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
+  const [campaignType, setCampaignType] = useState<string>("");
+  const [linkIntent, setLinkIntent] = useState<string>("");
+  const [pageCategory, setPageCategory] = useState<string>("");
+  const [linkTitle, setLinkTitle] = useState("");
+  const [linkDescription, setLinkDescription] = useState("");
+  const [intermediateText, setIntermediateText] = useState("");
+  const [ctaLabel, setCtaLabel] = useState("");
 
   const create = useServerFn(createCampaign);
   const queryClient = useQueryClient();
   const router = useRouter();
   const mutation = useMutation({
-    mutationFn: (input: { name: string; slug?: string; destination_url: string }) =>
-      create({ data: input }),
+    mutationFn: (input: Record<string, unknown>) =>
+      create({ data: input as never }),
     onSuccess: (created) => {
       toast.success("Campanha criada como rascunho");
       queryClient.invalidateQueries({ queryKey: ["campaigns"] });
       router.invalidate();
       setName(""); setSlug(""); setDestination(""); setSlugTouched(false);
+      setCampaignType(""); setLinkIntent(""); setPageCategory("");
+      setLinkTitle(""); setLinkDescription(""); setIntermediateText(""); setCtaLabel("");
       setOpen(false);
       onCreated();
-      // navega direto pro editor para preencher os demais campos
       router.navigate({ to: "/campaigns/$id/edit", params: { id: created.id } });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Falha ao criar"),
   });
+
+  function onIntentChange(value: string) {
+    setLinkIntent(value);
+    const form = {
+      link_title: linkTitle,
+      link_description: linkDescription,
+      intermediate_text: intermediateText,
+      cta_label: ctaLabel,
+      og_type: "",
+      og_title: "",
+      og_description: "",
+      page_category: pageCategory,
+    };
+    const { next, changed } = applyIntentPreset(form, value, false);
+    if (changed.length === 0) return;
+    if (changed.includes("link_title")) setLinkTitle(next.link_title);
+    if (changed.includes("link_description")) setLinkDescription(next.link_description);
+    if (changed.includes("intermediate_text")) setIntermediateText(next.intermediate_text);
+    if (changed.includes("cta_label")) setCtaLabel(next.cta_label);
+    if (changed.includes("page_category")) setPageCategory(next.page_category);
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>Nova campanha</Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Nova campanha</DialogTitle>
           <DialogDescription>
-            Comece com nome, slug e destino. Você poderá preencher categoria, OG, UTMs e
-            rodar a análise de intenção em seguida.
+            Defina nome, slug, destino e a intenção do link. Os campos serão pré-preenchidos
+            conforme a intenção escolhida — você poderá ajustar tudo no editor.
           </DialogDescription>
         </DialogHeader>
         <form
@@ -227,41 +258,115 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
               name: name.trim(),
               slug: slug.trim() || undefined,
               destination_url: destination.trim(),
+              campaign_type: campaignType || undefined,
+              link_intent: linkIntent || undefined,
+              page_category: pageCategory || undefined,
+              link_title: linkTitle.trim() || undefined,
+              link_description: linkDescription.trim() || undefined,
+              intermediate_text: intermediateText.trim() || undefined,
+              cta_label: ctaLabel.trim() || undefined,
             });
           }}
           className="space-y-4"
         >
-          <div className="space-y-2">
-            <Label htmlFor="name">Nome</Label>
-            <Input
-              id="name" required value={name}
-              placeholder="Disparos Magistrar — Dia 26"
-              onChange={(e) => {
-                setName(e.target.value);
-                if (!slugTouched) setSlug(slugify(e.target.value));
-              }}
-            />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="name">Nome</Label>
+              <Input
+                id="name" required value={name}
+                placeholder="Disparos Magistrar — Dia 26"
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (!slugTouched) setSlug(slugify(e.target.value));
+                }}
+              />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="slug">Slug (URL)</Label>
+              <Input
+                id="slug" required value={slug}
+                placeholder="disparos-magistrar-dia-26"
+                onChange={(e) => { setSlugTouched(true); setSlug(slugify(e.target.value)); }}
+              />
+              <p className="text-xs text-muted-foreground">
+                URL pública: <code>/{slug || "..."}</code>
+              </p>
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="dest">URL de destino</Label>
+              <Input
+                id="dest" type="url" required
+                placeholder="https://exemplo.com/oferta"
+                value={destination}
+                onChange={(e) => setDestination(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="ctype">Tipo de campanha</Label>
+              <select
+                id="ctype"
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                value={campaignType}
+                onChange={(e) => setCampaignType(e.target.value)}
+              >
+                <option value="">—</option>
+                {CAMPAIGN_TYPES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="intent">Intenção do link</Label>
+              <select
+                id="intent"
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                value={linkIntent}
+                onChange={(e) => onIntentChange(e.target.value)}
+              >
+                <option value="">—</option>
+                {LINK_INTENTS.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="pcat">Categoria da página</Label>
+              <select
+                id="pcat"
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                value={pageCategory}
+                onChange={(e) => setPageCategory(e.target.value)}
+              >
+                <option value="">—</option>
+                {PAGE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="ltitle">Título do link</Label>
+              <Input id="ltitle" value={linkTitle} onChange={(e) => setLinkTitle(e.target.value)} />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="ldesc">Descrição do link</Label>
+              <textarea
+                id="ldesc" rows={2}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                value={linkDescription}
+                onChange={(e) => setLinkDescription(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="itext">Texto da página intermediária</Label>
+              <textarea
+                id="itext" rows={2}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                value={intermediateText}
+                onChange={(e) => setIntermediateText(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="cta">Texto do botão (CTA)</Label>
+              <Input id="cta" value={ctaLabel} onChange={(e) => setCtaLabel(e.target.value)} />
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="slug">Slug (URL)</Label>
-            <Input
-              id="slug" required value={slug}
-              placeholder="disparos-magistrar-dia-26"
-              onChange={(e) => { setSlugTouched(true); setSlug(slugify(e.target.value)); }}
-            />
-            <p className="text-xs text-muted-foreground">
-              URL pública: <code>/{slug || "..."}</code> — definido por você; deve ser único.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="dest">URL de destino</Label>
-            <Input
-              id="dest" type="url" required
-              placeholder="https://exemplo.com/oferta"
-              value={destination}
-              onChange={(e) => setDestination(e.target.value)}
-            />
-          </div>
+
           <DialogFooter>
             <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending ? "Criando..." : "Criar e configurar"}
@@ -272,3 +377,4 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
     </Dialog>
   );
 }
+
