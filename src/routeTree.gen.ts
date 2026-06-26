@@ -14,6 +14,7 @@ import { Route as SlugRouteImport } from './routes/$slug'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedCampaignsIdRouteImport } from './routes/_authenticated/campaigns.$id'
+import { Route as AuthenticatedCampaignsIdEditRouteImport } from './routes/_authenticated/campaigns.$id.edit'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -40,18 +41,26 @@ const AuthenticatedCampaignsIdRoute =
     path: '/campaigns/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedCampaignsIdEditRoute =
+  AuthenticatedCampaignsIdEditRouteImport.update({
+    id: '/edit',
+    path: '/edit',
+    getParentRoute: () => AuthenticatedCampaignsIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/$slug': typeof SlugRoute
   '/auth': typeof AuthRoute
-  '/campaigns/$id': typeof AuthenticatedCampaignsIdRoute
+  '/campaigns/$id': typeof AuthenticatedCampaignsIdRouteWithChildren
+  '/campaigns/$id/edit': typeof AuthenticatedCampaignsIdEditRoute
 }
 export interface FileRoutesByTo {
   '/$slug': typeof SlugRoute
   '/auth': typeof AuthRoute
   '/': typeof AuthenticatedIndexRoute
-  '/campaigns/$id': typeof AuthenticatedCampaignsIdRoute
+  '/campaigns/$id': typeof AuthenticatedCampaignsIdRouteWithChildren
+  '/campaigns/$id/edit': typeof AuthenticatedCampaignsIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -59,13 +68,14 @@ export interface FileRoutesById {
   '/$slug': typeof SlugRoute
   '/auth': typeof AuthRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
-  '/_authenticated/campaigns/$id': typeof AuthenticatedCampaignsIdRoute
+  '/_authenticated/campaigns/$id': typeof AuthenticatedCampaignsIdRouteWithChildren
+  '/_authenticated/campaigns/$id/edit': typeof AuthenticatedCampaignsIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/$slug' | '/auth' | '/campaigns/$id'
+  fullPaths: '/' | '/$slug' | '/auth' | '/campaigns/$id' | '/campaigns/$id/edit'
   fileRoutesByTo: FileRoutesByTo
-  to: '/$slug' | '/auth' | '/' | '/campaigns/$id'
+  to: '/$slug' | '/auth' | '/' | '/campaigns/$id' | '/campaigns/$id/edit'
   id:
     | '__root__'
     | '/_authenticated'
@@ -73,6 +83,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/'
     | '/_authenticated/campaigns/$id'
+    | '/_authenticated/campaigns/$id/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -118,17 +129,38 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCampaignsIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/campaigns/$id/edit': {
+      id: '/_authenticated/campaigns/$id/edit'
+      path: '/edit'
+      fullPath: '/campaigns/$id/edit'
+      preLoaderRoute: typeof AuthenticatedCampaignsIdEditRouteImport
+      parentRoute: typeof AuthenticatedCampaignsIdRoute
+    }
   }
 }
 
+interface AuthenticatedCampaignsIdRouteChildren {
+  AuthenticatedCampaignsIdEditRoute: typeof AuthenticatedCampaignsIdEditRoute
+}
+
+const AuthenticatedCampaignsIdRouteChildren: AuthenticatedCampaignsIdRouteChildren =
+  {
+    AuthenticatedCampaignsIdEditRoute: AuthenticatedCampaignsIdEditRoute,
+  }
+
+const AuthenticatedCampaignsIdRouteWithChildren =
+  AuthenticatedCampaignsIdRoute._addFileChildren(
+    AuthenticatedCampaignsIdRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
-  AuthenticatedCampaignsIdRoute: typeof AuthenticatedCampaignsIdRoute
+  AuthenticatedCampaignsIdRoute: typeof AuthenticatedCampaignsIdRouteWithChildren
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
-  AuthenticatedCampaignsIdRoute: AuthenticatedCampaignsIdRoute,
+  AuthenticatedCampaignsIdRoute: AuthenticatedCampaignsIdRouteWithChildren,
 }
 
 const AuthenticatedRouteRouteWithChildren =
