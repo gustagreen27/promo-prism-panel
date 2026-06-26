@@ -40,6 +40,42 @@ const CATEGORIES = [
   "Conteúdo",
   "Outro",
 ];
+const CAMPAIGN_TYPES = [
+  "Disparo em massa",
+  "Anúncio pago",
+  "Email marketing",
+  "Orgânico / social",
+  "Notificação interna",
+  "Parceria / afiliado",
+  "Outro",
+];
+const LINK_INTENTS = [
+  "Inscrição em evento",
+  "Confirmação de participação",
+  "Aula ao vivo",
+  "Conteúdo educacional",
+  "Página institucional",
+  "Atendimento",
+  "Suporte",
+  "Comunidade",
+  "Cadastro",
+  "Oferta",
+  "Upsell",
+  "Recuperação de lead",
+  "Página de aviso",
+  "Página de redirecionamento informativo",
+];
+const PAGE_CATEGORIES = [
+  "Landing page",
+  "Checkout",
+  "Formulário",
+  "Vídeo / live",
+  "Artigo / blog",
+  "Documento / PDF",
+  "Comunidade / grupo",
+  "Página de erro / aviso",
+  "Outro",
+];
 const STATUSES = [
   { value: "draft", label: "Rascunho" },
   { value: "active", label: "Ativa" },
