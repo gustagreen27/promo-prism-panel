@@ -143,7 +143,7 @@ export const updateCampaign = createServerFn({ method: "POST" })
     });
     if (!isAdmin) throw new Error("Forbidden");
     const { id, slug: rawSlug, ...rest } = data;
-    const patch: Record<string, unknown> = { ...rest };
+    const patch: { name?: string; destination_url?: string; slug?: string } = { ...rest };
     if (rawSlug !== undefined) {
       const newSlug = slugify(rawSlug);
       if (!newSlug) throw new Error("Slug inválido");
