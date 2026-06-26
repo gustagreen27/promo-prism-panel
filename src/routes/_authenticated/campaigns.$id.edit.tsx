@@ -375,18 +375,24 @@ function Field({
   label,
   id,
   hint,
+  hintTone = "muted",
   children,
 }: {
   label: string;
   id: string;
   hint?: string;
+  hintTone?: "muted" | "ok" | "error";
   children: React.ReactNode;
 }) {
+  const toneClass =
+    hintTone === "ok" ? "text-emerald-600"
+    : hintTone === "error" ? "text-rose-600"
+    : "text-muted-foreground";
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
       {children}
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      {hint && <p className={`text-xs ${toneClass}`}>{hint}</p>}
     </div>
   );
 }
