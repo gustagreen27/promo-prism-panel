@@ -19,8 +19,13 @@ const optUrl = (max = 2048) =>
 
 const campaignFields = {
   category: optStr(80),
+  campaign_type: optStr(80),
+  link_intent: optStr(80),
+  page_category: optStr(80),
   link_title: optStr(160),
   link_description: optStr(400),
+  intermediate_text: optStr(2000),
+  cta_label: optStr(80),
   preview_image_url: optUrl(),
   favicon_url: optUrl(),
   og_title: optStr(160),
