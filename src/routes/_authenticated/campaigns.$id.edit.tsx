@@ -27,6 +27,7 @@ import { ArrowLeft, Sparkles, CheckCircle2, AlertTriangle, XCircle, Wand2, Eye }
 import { toast } from "sonner";
 import { applyIntentPreset, getIntentPreset, PRESET_TARGET_FIELDS } from "@/lib/intent-presets";
 import { validateCampaignForm, type FieldIssue } from "@/lib/campaign-validation";
+import { CAMPAIGN_TYPES, LINK_INTENTS, PAGE_CATEGORIES } from "@/lib/campaign-options";
 
 export const Route = createFileRoute("/_authenticated/campaigns/$id/edit")({
   head: () => ({ meta: [{ title: "Editar campanha" }] }),
@@ -42,7 +43,6 @@ const CATEGORIES = [
   "Conteúdo",
   "Outro",
 ];
-import { CAMPAIGN_TYPES, LINK_INTENTS, PAGE_CATEGORIES } from "@/lib/campaign-options";
 const STATUSES = [
   { value: "draft", label: "Rascunho" },
   { value: "active", label: "Ativa" },
