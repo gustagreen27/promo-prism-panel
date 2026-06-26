@@ -54,6 +54,7 @@ function EditCampaign() {
   const getFn = useServerFn(getCampaign);
   const updateFn = useServerFn(updateCampaign);
   const analyzeFn = useServerFn(analyzeCampaignIntent);
+  const checkSlugFn = useServerFn(checkSlugAvailability);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["campaign", id],
