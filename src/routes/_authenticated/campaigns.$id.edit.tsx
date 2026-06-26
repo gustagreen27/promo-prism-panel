@@ -23,8 +23,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IntentScoreBadge, StatusBadge } from "@/components/campaign-badges";
 import { RiskMeter, SocialPreviews } from "@/components/social-previews";
-import { ArrowLeft, Sparkles, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
+import { ArrowLeft, Sparkles, CheckCircle2, AlertTriangle, XCircle, Wand2, Eye } from "lucide-react";
 import { toast } from "sonner";
+import { applyIntentPreset, getIntentPreset, PRESET_TARGET_FIELDS } from "@/lib/intent-presets";
+import { validateCampaignForm, type FieldIssue } from "@/lib/campaign-validation";
 
 export const Route = createFileRoute("/_authenticated/campaigns/$id/edit")({
   head: () => ({ meta: [{ title: "Editar campanha" }] }),

@@ -14,6 +14,7 @@ import { Route as SlugRouteImport } from './routes/$slug'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedCampaignsIdRouteImport } from './routes/_authenticated/campaigns.$id'
+import { Route as AuthenticatedCampaignsIdPreviewRouteImport } from './routes/_authenticated/campaigns.$id.preview'
 import { Route as AuthenticatedCampaignsIdEditRouteImport } from './routes/_authenticated/campaigns.$id.edit'
 
 const AuthRoute = AuthRouteImport.update({
@@ -41,6 +42,12 @@ const AuthenticatedCampaignsIdRoute =
     path: '/campaigns/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedCampaignsIdPreviewRoute =
+  AuthenticatedCampaignsIdPreviewRouteImport.update({
+    id: '/preview',
+    path: '/preview',
+    getParentRoute: () => AuthenticatedCampaignsIdRoute,
+  } as any)
 const AuthenticatedCampaignsIdEditRoute =
   AuthenticatedCampaignsIdEditRouteImport.update({
     id: '/edit',
@@ -54,6 +61,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/campaigns/$id': typeof AuthenticatedCampaignsIdRouteWithChildren
   '/campaigns/$id/edit': typeof AuthenticatedCampaignsIdEditRoute
+  '/campaigns/$id/preview': typeof AuthenticatedCampaignsIdPreviewRoute
 }
 export interface FileRoutesByTo {
   '/$slug': typeof SlugRoute
@@ -61,6 +69,7 @@ export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRoute
   '/campaigns/$id': typeof AuthenticatedCampaignsIdRouteWithChildren
   '/campaigns/$id/edit': typeof AuthenticatedCampaignsIdEditRoute
+  '/campaigns/$id/preview': typeof AuthenticatedCampaignsIdPreviewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -70,12 +79,25 @@ export interface FileRoutesById {
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/campaigns/$id': typeof AuthenticatedCampaignsIdRouteWithChildren
   '/_authenticated/campaigns/$id/edit': typeof AuthenticatedCampaignsIdEditRoute
+  '/_authenticated/campaigns/$id/preview': typeof AuthenticatedCampaignsIdPreviewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/$slug' | '/auth' | '/campaigns/$id' | '/campaigns/$id/edit'
+  fullPaths:
+    | '/'
+    | '/$slug'
+    | '/auth'
+    | '/campaigns/$id'
+    | '/campaigns/$id/edit'
+    | '/campaigns/$id/preview'
   fileRoutesByTo: FileRoutesByTo
-  to: '/$slug' | '/auth' | '/' | '/campaigns/$id' | '/campaigns/$id/edit'
+  to:
+    | '/$slug'
+    | '/auth'
+    | '/'
+    | '/campaigns/$id'
+    | '/campaigns/$id/edit'
+    | '/campaigns/$id/preview'
   id:
     | '__root__'
     | '/_authenticated'
@@ -84,6 +106,7 @@ export interface FileRouteTypes {
     | '/_authenticated/'
     | '/_authenticated/campaigns/$id'
     | '/_authenticated/campaigns/$id/edit'
+    | '/_authenticated/campaigns/$id/preview'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -129,6 +152,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCampaignsIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/campaigns/$id/preview': {
+      id: '/_authenticated/campaigns/$id/preview'
+      path: '/preview'
+      fullPath: '/campaigns/$id/preview'
+      preLoaderRoute: typeof AuthenticatedCampaignsIdPreviewRouteImport
+      parentRoute: typeof AuthenticatedCampaignsIdRoute
+    }
     '/_authenticated/campaigns/$id/edit': {
       id: '/_authenticated/campaigns/$id/edit'
       path: '/edit'
@@ -141,11 +171,13 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedCampaignsIdRouteChildren {
   AuthenticatedCampaignsIdEditRoute: typeof AuthenticatedCampaignsIdEditRoute
+  AuthenticatedCampaignsIdPreviewRoute: typeof AuthenticatedCampaignsIdPreviewRoute
 }
 
 const AuthenticatedCampaignsIdRouteChildren: AuthenticatedCampaignsIdRouteChildren =
   {
     AuthenticatedCampaignsIdEditRoute: AuthenticatedCampaignsIdEditRoute,
+    AuthenticatedCampaignsIdPreviewRoute: AuthenticatedCampaignsIdPreviewRoute,
   }
 
 const AuthenticatedCampaignsIdRouteWithChildren =
