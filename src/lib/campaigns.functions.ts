@@ -130,6 +130,7 @@ export const updateCampaign = createServerFn({ method: "POST" })
       .object({
         id: z.string().uuid(),
         name: z.string().trim().min(1).max(120).optional(),
+        slug: z.string().trim().min(1).max(80).optional(),
         destination_url: z.string().trim().url().max(2048).optional(),
       })
       .parse(data),
@@ -141,7 +142,20 @@ export const updateCampaign = createServerFn({ method: "POST" })
       _role: "admin",
     });
     if (!isAdmin) throw new Error("Forbidden");
-    const { id, ...patch } = data;
+    const { id, slug: rawSlug, ...rest } = data;
+    const patch: Record<string, unknown> = { ...rest };
+    if (rawSlug !== undefined) {
+      const newSlug = slugify(rawSlug);
+      if (!newSlug) throw new Error("Slug inválido");
+      const { data: existing } = await supabaseAdmin
+        .from("campaigns")
+        .select("id")
+        .eq("slug", newSlug)
+        .neq("id", id)
+        .maybeSingle();
+      if (existing) throw new Error(`Slug "${newSlug}" já está em uso`);
+      patch.slug = newSlug;
+    }
     const { data: updated, error } = await supabaseAdmin
       .from("campaigns")
       .update(patch)
@@ -151,6 +165,7 @@ export const updateCampaign = createServerFn({ method: "POST" })
     if (error) throw error;
     return updated;
   });
+
 
 export const getCampaignAnalytics = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
