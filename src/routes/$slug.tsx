@@ -45,23 +45,42 @@ function CampaignPublicPage() {
     };
   }, [slug, track]);
 
-  // Iframe load watchdog: if blank after a short window, fall back to redirect
+  // Iframe load watchdog: if blocked/blank, fall back to redirect
   useEffect(() => {
     if (state.status !== "iframe") return;
-    const t = setTimeout(() => {
+    let done = false;
+    const fallback = () => {
+      if (done) return;
+      done = true;
+      window.location.replace(state.url);
+    };
+    const check = () => {
       const iframe = iframeRef.current;
       if (!iframe) return;
       try {
-        // accessing contentDocument on cross-origin throws; that's fine — means it loaded
         const doc = iframe.contentDocument;
-        if (doc && doc.body && doc.body.children.length === 0) {
-          window.location.replace(state.url);
+        // If we can read the doc same-origin, it means the remote didn't load
+        // (browser kept about:blank due to X-Frame-Options/CSP) → redirect.
+        if (doc && (!doc.body || doc.body.children.length === 0)) {
+          fallback();
         }
       } catch {
-        // cross-origin = loaded; do nothing
+        // cross-origin access denied = iframe actually loaded the remote page
       }
-    }, 3500);
-    return () => clearTimeout(t);
+    };
+    const onLoad = () => setTimeout(check, 100);
+    const iframe = iframeRef.current;
+    iframe?.addEventListener("load", onLoad);
+    iframe?.addEventListener("error", fallback);
+    const t1 = setTimeout(check, 1500);
+    const t2 = setTimeout(check, 4000);
+    return () => {
+      done = true;
+      clearTimeout(t1);
+      clearTimeout(t2);
+      iframe?.removeEventListener("load", onLoad);
+      iframe?.removeEventListener("error", fallback);
+    };
   }, [state]);
 
   if (state.status === "loading" || state.status === "redirect") {
