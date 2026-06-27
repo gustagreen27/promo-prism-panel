@@ -29,7 +29,7 @@ function AuthPage() {
       setError(error.message);
       return;
     }
-    navigate({ to: "/" });
+    navigate({ to: "/admin" });
   }
 
   return (

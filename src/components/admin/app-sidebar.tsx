@@ -36,43 +36,43 @@ type NavItem = { title: string; to: string; icon: React.ComponentType<{ classNam
 const GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: "Visão Geral",
-    items: [{ title: "Dashboard", to: "/", icon: LayoutDashboard }],
+    items: [{ title: "Dashboard", to: "/admin", icon: LayoutDashboard }],
   },
   {
     label: "Financeiro",
     items: [
-      { title: "Faturamento", to: "/faturamento", icon: Wallet },
-      { title: "Custos", to: "/custos", icon: TrendingDown },
+      { title: "Faturamento", to: "/admin/faturamento", icon: Wallet },
+      { title: "Custos", to: "/admin/custos", icon: TrendingDown },
     ],
   },
   {
     label: "Operacional",
     items: [
-      { title: "Agenda", to: "/agenda", icon: Calendar },
-      { title: "Fechamento", to: "/fechamento", icon: ClipboardCheck },
-      { title: "Histórico", to: "/historico", icon: History },
-      { title: "Estoque de Msgs", to: "/estoque", icon: Boxes },
-      { title: "WhatsApp", to: "/whatsapp", icon: MessageSquare },
+      { title: "Agenda", to: "/admin/agenda", icon: Calendar },
+      { title: "Fechamento", to: "/admin/fechamento", icon: ClipboardCheck },
+      { title: "Histórico", to: "/admin/historico", icon: History },
+      { title: "Estoque de Msgs", to: "/admin/estoque", icon: Boxes },
+      { title: "WhatsApp", to: "/admin/whatsapp", icon: MessageSquare },
     ],
   },
   {
     label: "Cadastros",
     items: [
-      { title: "Clientes", to: "/clientes", icon: Users },
-      { title: "Projetos", to: "/projetos", icon: Briefcase },
+      { title: "Clientes", to: "/admin/clientes", icon: Users },
+      { title: "Projetos", to: "/admin/projetos", icon: Briefcase },
     ],
   },
   {
     label: "Ferramentas",
     items: [
-      { title: "Campanhas", to: "/campanhas", icon: Megaphone },
-      { title: "Upsell", to: "/upsell", icon: Sparkles },
-      { title: "Dashboard TV", to: "/tv", icon: Tv },
+      { title: "Campanhas", to: "/admin/campanhas", icon: Megaphone },
+      { title: "Upsell", to: "/admin/upsell", icon: Sparkles },
+      { title: "Dashboard TV", to: "/admin/tv", icon: Tv },
     ],
   },
   {
     label: "Sistema",
-    items: [{ title: "Configurações", to: "/configuracoes", icon: Settings }],
+    items: [{ title: "Configurações", to: "/admin/configuracoes", icon: Settings }],
   },
 ];
 
@@ -81,7 +81,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
 
   const isActive = (to: string) =>
-    to === "/" ? pathname === "/" : pathname === to || pathname.startsWith(to + "/");
+    to === "/admin" ? pathname === "/admin" : pathname === to || pathname.startsWith(to + "/");
 
   async function handleLogout() {
     await supabase.auth.signOut();
