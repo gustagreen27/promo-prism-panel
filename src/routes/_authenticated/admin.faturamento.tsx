@@ -18,6 +18,13 @@ import { formatBRL, formatDate } from "@/lib/format";
 import { listRevenues, createRevenue, updateRevenue, deleteRevenue } from "@/lib/revenues.functions";
 import { listClients } from "@/lib/clients.functions";
 import { listProjects } from "@/lib/projects.functions";
+import {
+  ParticipantsBadges,
+  ParticipantsSelect,
+  ParticipantsFilter,
+  matchesParticipants,
+  type Participant,
+} from "@/components/participants";
 
 export const Route = createFileRoute("/_authenticated/admin/faturamento")({
   head: () => ({ meta: [{ title: "Faturamento — Painel" }] }),
@@ -49,6 +56,7 @@ function Page() {
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Row | null>(null);
+  const [partFilter, setPartFilter] = useState<Participant[]>([]);
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["revenues"] });
   const saveMut = useMutation({
@@ -62,9 +70,10 @@ function Page() {
     onError: (e: any) => toast.error(e?.message ?? "Erro ao remover"),
   });
 
-  const total = data.reduce((s: number, r: Row) => s + Number(r.amount ?? 0), 0);
-  const paid = data.filter((r: Row) => r.status === "pago").reduce((s: number, r: Row) => s + Number(r.amount ?? 0), 0);
-  const pending = data.filter((r: Row) => r.status !== "pago" && r.status !== "cancelado")
+  const filtered = data.filter((r: Row) => matchesParticipants(r, partFilter));
+  const total = filtered.reduce((s: number, r: Row) => s + Number(r.amount ?? 0), 0);
+  const paid = filtered.filter((r: Row) => r.status === "pago").reduce((s: number, r: Row) => s + Number(r.amount ?? 0), 0);
+  const pending = filtered.filter((r: Row) => r.status !== "pago" && r.status !== "cancelado")
     .reduce((s: number, r: Row) => s + Number(r.amount ?? 0), 0);
 
   return (
@@ -94,10 +103,18 @@ function Page() {
         <Stat label="A receber" value={formatBRL(pending)} tone="amber" />
       </div>
 
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">Filtrar por sócio:</span>
+        <div className="w-56"><ParticipantsFilter value={partFilter} onChange={setPartFilter} /></div>
+        {partFilter.length > 0 && (
+          <Button variant="ghost" size="sm" onClick={() => setPartFilter([])}>Limpar</Button>
+        )}
+      </div>
+
       <div className="rounded-xl border bg-card">
         {isLoading ? (
           <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
-        ) : data.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <EmptyState title="Sem lançamentos" description="Crie o primeiro faturamento." />
         ) : (
           <Table>
@@ -105,6 +122,7 @@ function Page() {
               <TableRow>
                 <TableHead>Descrição</TableHead>
                 <TableHead>Cliente</TableHead>
+                <TableHead>Sócios</TableHead>
                 <TableHead>Vencimento</TableHead>
                 <TableHead>Valor</TableHead>
                 <TableHead>Status</TableHead>
@@ -112,10 +130,11 @@ function Page() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.map((r: Row) => (
+              {filtered.map((r: Row) => (
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">{r.description}</TableCell>
                   <TableCell>{r.client?.name ?? "—"}</TableCell>
+                  <TableCell><ParticipantsBadges value={r.participants} /></TableCell>
                   <TableCell>{formatDate(r.due_date)}</TableCell>
                   <TableCell>{formatBRL(r.amount)}</TableCell>
                   <TableCell>
@@ -157,7 +176,7 @@ function FormDialog({ editing, clients, projects, onSubmit, saving }: {
   const [form, setForm] = useState<any>(() => editing ?? {
     description: "", amount: "", status: "pendente",
     client_id: "", project_id: "", due_date: "", paid_date: "", issue_date: "",
-    payment_method: "", notes: "",
+    payment_method: "", notes: "", participants: [],
   });
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
   return (
@@ -216,6 +235,13 @@ function FormDialog({ editing, clients, projects, onSubmit, saving }: {
           <Input value={form.payment_method ?? ""} onChange={(e) => set("payment_method", e.target.value)} placeholder="PIX, boleto…" />
         </div>
         <div className="sm:col-span-2">
+          <ParticipantsSelect
+            value={(form.participants ?? []) as Participant[]}
+            onChange={(v) => set("participants", v)}
+            label="Sócios participantes"
+          />
+        </div>
+        <div className="sm:col-span-2">
           <Label>Notas</Label>
           <Textarea value={form.notes ?? ""} onChange={(e) => set("notes", e.target.value)} />
         </div>
@@ -224,6 +250,7 @@ function FormDialog({ editing, clients, projects, onSubmit, saving }: {
         <Button disabled={saving} onClick={() => onSubmit({
           ...form,
           amount: Number(form.amount || 0),
+          participants: form.participants ?? [],
         })}>Salvar</Button>
       </DialogFooter>
     </DialogContent>
