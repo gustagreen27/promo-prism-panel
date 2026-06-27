@@ -27,6 +27,7 @@ import {
 import { ArrowLeft, Printer, BarChart3 } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { PeriodFilter } from "@/components/admin/period-filter";
+import { ParticipantsFilter, matchesParticipants, type Participant } from "@/components/participants";
 import { PERIOD_OPTIONS, getPeriodRange, type PeriodKey } from "@/lib/period";
 import { fmtNum, fmtPct, formatBRDateTime } from "@/lib/report-utils";
 
