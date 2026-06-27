@@ -211,6 +211,7 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
       setName(""); setSlug(""); setDestination(""); setSlugTouched(false);
       setCampaignType(""); setLinkIntent(""); setPageCategory("");
       setLinkTitle(""); setLinkDescription(""); setIntermediateText(""); setCtaLabel("");
+      setOpenMode("smart");
       setOpen(false);
       onCreated();
       router.navigate({ to: "/campaigns/$id/edit", params: { id: created.id } });
