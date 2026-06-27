@@ -3,7 +3,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil } from "lucide-react";
+import { Plus, Trash2, Pencil, Download } from "lucide-react";
+import { toCSV, downloadCSV, participantsLabel } from "@/lib/csv";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
 import { Button } from "@/components/ui/button";
@@ -83,6 +84,21 @@ function Page() {
         {partFilter.length > 0 && (
           <Button variant="ghost" size="sm" onClick={() => setPartFilter([])}>Limpar</Button>
         )}
+        <div className="ml-auto">
+          <Button size="sm" variant="outline" disabled={filtered.length === 0} onClick={() => {
+            const csv = toCSV(filtered, [
+              { key: "description", label: "Descrição" },
+              { key: "category", label: "Categoria" },
+              { key: "supplier", label: "Fornecedor" },
+              { key: "participants", label: "Sócios", get: (r: any) => participantsLabel(r.participants) },
+              { key: "due_date", label: "Vencimento" },
+              { key: "paid_date", label: "Pagamento" },
+              { key: "amount", label: "Valor" },
+              { key: "status", label: "Status" },
+            ]);
+            downloadCSV(`custos-${partFilter.join("-") || "todos"}.csv`, csv);
+          }}><Download className="mr-2 h-4 w-4" />Exportar CSV</Button>
+        </div>
       </div>
 
       <div className="rounded-xl border bg-card">
