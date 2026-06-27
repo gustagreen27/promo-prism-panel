@@ -343,6 +343,23 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
             </div>
 
             <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="omode">Modo de abertura</Label>
+              <select
+                id="omode"
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                value={openMode}
+                onChange={(e) => setOpenMode(e.target.value)}
+              >
+                {OPEN_MODES.map((m) => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                {OPEN_MODES.find((m) => m.value === openMode)?.description}
+              </p>
+            </div>
+
+            <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="ltitle">Título do link</Label>
               <Input id="ltitle" value={linkTitle} onChange={(e) => setLinkTitle(e.target.value)} />
             </div>
