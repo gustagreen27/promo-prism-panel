@@ -31,6 +31,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { supabase } from "@/integrations/supabase/client";
+import logoAsset from "@/assets/disparos-fr-logo.png.asset.json";
 
 type NavItem = { title: string; to: string; icon: React.ComponentType<{ className?: string }> };
 
@@ -91,18 +92,20 @@ export function AppSidebar() {
   }
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-white/5">
-      <SidebarHeader className="border-b border-white/5 px-4 py-4">
+    <Sidebar collapsible="icon" className="border-r">
+      <SidebarHeader className="border-b px-4 py-4">
         <div className="flex items-center gap-2">
-          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-blue-500 to-violet-500 text-white shadow-lg shadow-blue-500/20">
-            <Sparkles className="h-4 w-4" />
-          </div>
-          <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-            <p className="truncate text-sm font-semibold tracking-tight">Painel SaaS</p>
-            <p className="truncate text-[10px] uppercase tracking-wider text-muted-foreground">
-              Gestão integrada
-            </p>
-          </div>
+          <img
+            src={logoAsset.url}
+            alt="Disparos FR"
+            className="h-8 w-auto object-contain group-data-[collapsible=icon]:hidden"
+          />
+          <img
+            src={logoAsset.url}
+            alt="Disparos FR"
+            className="hidden h-7 w-7 shrink-0 object-contain object-left group-data-[collapsible=icon]:block"
+            style={{ objectPosition: "left center" }}
+          />
         </div>
       </SidebarHeader>
 
