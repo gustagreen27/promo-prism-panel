@@ -17,7 +17,7 @@ type ReportRow = {
   created_at: string;
 };
 
-export const Route = createFileRoute("/_authenticated/admin/relatorios")({
+export const Route = createFileRoute("/_authenticated/admin/relatorios/")({
   head: () => ({ meta: [{ title: "Relatórios — Painel" }] }),
   component: ReportsPage,
 });
