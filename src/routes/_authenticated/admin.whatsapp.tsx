@@ -8,7 +8,7 @@ export const Route = createFileRoute("/_authenticated/admin/whatsapp")({
   component: () => (
     <>
       <PageHeader title="WhatsApp" description="Conexões e mensagens." />
-      <EmptyState icon={MessageSquare} title="Em construção" description="Em breve você poderá conectar e enviar mensagens." />
+      <EmptyState icon={<MessageSquare className="h-5 w-5" />} title="Em construção" description="Em breve você poderá conectar e enviar mensagens." />
     </>
   ),
 });

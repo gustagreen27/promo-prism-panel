@@ -8,7 +8,7 @@ export const Route = createFileRoute("/_authenticated/admin/clientes")({
   component: () => (
     <>
       <PageHeader title="Clientes" description="Cadastro de clientes." />
-      <EmptyState icon={Users} title="Em construção" description="Em breve você poderá cadastrar e gerenciar clientes." />
+      <EmptyState icon={<Users className="h-5 w-5" />} title="Em construção" description="Em breve você poderá cadastrar e gerenciar clientes." />
     </>
   ),
 });

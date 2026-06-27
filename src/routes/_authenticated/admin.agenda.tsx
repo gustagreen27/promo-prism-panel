@@ -8,7 +8,7 @@ export const Route = createFileRoute("/_authenticated/admin/agenda")({
   component: () => (
     <>
       <PageHeader title="Agenda" description="Eventos, reuniões e compromissos." />
-      <EmptyState icon={Calendar} title="Em construção" description="Em breve você poderá gerenciar a agenda por aqui." />
+      <EmptyState icon={<Calendar className="h-5 w-5" />} title="Em construção" description="Em breve você poderá gerenciar a agenda por aqui." />
     </>
   ),
 });

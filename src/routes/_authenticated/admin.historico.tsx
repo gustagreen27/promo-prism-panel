@@ -8,7 +8,7 @@ export const Route = createFileRoute("/_authenticated/admin/historico")({
   component: () => (
     <>
       <PageHeader title="Histórico" description="Linha do tempo de atividades." />
-      <EmptyState icon={History} title="Em construção" description="Em breve você poderá ver o histórico completo." />
+      <EmptyState icon={<History className="h-5 w-5" />} title="Em construção" description="Em breve você poderá ver o histórico completo." />
     </>
   ),
 });

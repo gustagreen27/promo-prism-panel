@@ -8,7 +8,7 @@ export const Route = createFileRoute("/_authenticated/admin/tv")({
   component: () => (
     <>
       <PageHeader title="Dashboard TV" description="Visão em tela cheia para exibição." />
-      <EmptyState icon={Tv} title="Em construção" description="Em breve você terá a visão TV otimizada." />
+      <EmptyState icon={<Tv className="h-5 w-5" />} title="Em construção" description="Em breve você terá a visão TV otimizada." />
     </>
   ),
 });

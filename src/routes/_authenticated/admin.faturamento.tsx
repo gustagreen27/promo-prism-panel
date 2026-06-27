@@ -8,7 +8,7 @@ export const Route = createFileRoute("/_authenticated/admin/faturamento")({
   component: () => (
     <>
       <PageHeader title="Faturamento" description="Receitas e recebimentos do período." />
-      <EmptyState icon={Wallet} title="Em construção" description="Em breve você poderá registrar e acompanhar faturamentos por aqui." />
+      <EmptyState icon={<Wallet className="h-5 w-5" />} title="Em construção" description="Em breve você poderá registrar e acompanhar faturamentos por aqui." />
     </>
   ),
 });

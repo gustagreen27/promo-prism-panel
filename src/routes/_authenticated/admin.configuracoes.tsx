@@ -8,7 +8,7 @@ export const Route = createFileRoute("/_authenticated/admin/configuracoes")({
   component: () => (
     <>
       <PageHeader title="Configurações" description="Preferências do sistema." />
-      <EmptyState icon={Settings} title="Em construção" description="Em breve você poderá ajustar metas, usuários e integrações." />
+      <EmptyState icon={<Settings className="h-5 w-5" />} title="Em construção" description="Em breve você poderá ajustar metas, usuários e integrações." />
     </>
   ),
 });

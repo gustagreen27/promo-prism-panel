@@ -8,7 +8,7 @@ export const Route = createFileRoute("/_authenticated/admin/estoque")({
   component: () => (
     <>
       <PageHeader title="Estoque de Mensagens" description="Saldo disponível para disparos." />
-      <EmptyState icon={Boxes} title="Em construção" description="Em breve você poderá gerenciar o estoque de mensagens." />
+      <EmptyState icon={<Boxes className="h-5 w-5" />} title="Em construção" description="Em breve você poderá gerenciar o estoque de mensagens." />
     </>
   ),
 });

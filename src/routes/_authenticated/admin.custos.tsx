@@ -8,7 +8,7 @@ export const Route = createFileRoute("/_authenticated/admin/custos")({
   component: () => (
     <>
       <PageHeader title="Custos" description="Despesas fixas e variáveis." />
-      <EmptyState icon={TrendingDown} title="Em construção" description="Em breve você poderá lançar e categorizar custos." />
+      <EmptyState icon={<TrendingDown className="h-5 w-5" />} title="Em construção" description="Em breve você poderá lançar e categorizar custos." />
     </>
   ),
 });

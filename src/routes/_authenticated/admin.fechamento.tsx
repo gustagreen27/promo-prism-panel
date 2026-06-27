@@ -8,7 +8,7 @@ export const Route = createFileRoute("/_authenticated/admin/fechamento")({
   component: () => (
     <>
       <PageHeader title="Fechamento" description="Fechamentos do período." />
-      <EmptyState icon={ClipboardCheck} title="Em construção" description="Em breve você poderá realizar e revisar fechamentos." />
+      <EmptyState icon={<ClipboardCheck className="h-5 w-5" />} title="Em construção" description="Em breve você poderá realizar e revisar fechamentos." />
     </>
   ),
 });

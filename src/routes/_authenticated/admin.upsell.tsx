@@ -8,7 +8,7 @@ export const Route = createFileRoute("/_authenticated/admin/upsell")({
   component: () => (
     <>
       <PageHeader title="Upsell" description="Campanhas de upsell." />
-      <EmptyState icon={Sparkles} title="Em construção" description="Em breve você poderá criar campanhas de upsell." />
+      <EmptyState icon={<Sparkles className="h-5 w-5" />} title="Em construção" description="Em breve você poderá criar campanhas de upsell." />
     </>
   ),
 });
