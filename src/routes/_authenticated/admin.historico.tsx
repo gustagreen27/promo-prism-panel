@@ -37,6 +37,42 @@ function Page() {
   const waFiltered = wa.filter((r: any) => matchesParticipants(r, partFilter));
   const linkFiltered = link.filter((r: any) => matchesParticipants(r, partFilter));
 
+  const suffix = partFilter.length === 0 ? "todos" : partFilter.join("-");
+  const exportWa = () => {
+    const csv = toCSV(waFiltered, [
+      { key: "created_at", label: "Data", get: (r) => new Date(r.created_at).toLocaleString("pt-BR") },
+      { key: "name", label: "Nome" },
+      { key: "participants", label: "Sócios", get: (r) => participantsLabel(r.participants) },
+      { key: "client", label: "Cliente", get: (r) => r.client?.name ?? "" },
+      { key: "sent_count", label: "Enviadas" },
+      { key: "delivered_count", label: "Entregues" },
+      { key: "read_count", label: "Lidas" },
+      { key: "status", label: "Status" },
+    ]);
+    downloadCSV(`disparos-whatsapp-${suffix}.csv`, csv);
+  };
+  const exportLinks = () => {
+    const csv = toCSV(linkFiltered, [
+      { key: "created_at", label: "Data", get: (r) => new Date(r.created_at).toLocaleString("pt-BR") },
+      { key: "name", label: "Nome" },
+      { key: "participants", label: "Sócios", get: (r) => participantsLabel(r.participants) },
+      { key: "slug", label: "Slug" },
+      { key: "total_clicks", label: "Cliques", get: (r) => r.total_clicks ?? 0 },
+      { key: "status", label: "Status" },
+    ]);
+    downloadCSV(`campanhas-link-${suffix}.csv`, csv);
+  };
+  const exportAudit = () => {
+    const csv = toCSV(activity, [
+      { key: "created_at", label: "Data", get: (r: any) => new Date(r.created_at).toLocaleString("pt-BR") },
+      { key: "module", label: "Módulo" },
+      { key: "action", label: "Ação" },
+      { key: "description", label: "Descrição" },
+      { key: "ip_address", label: "IP" },
+    ]);
+    downloadCSV(`auditoria.csv`, csv);
+  };
+
   return (
     <>
       <PageHeader title="Histórico" description="Auditoria de operações e disparos." />
@@ -56,7 +92,12 @@ function Page() {
           <TabsTrigger value="auditoria">Auditoria do painel</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="disparos" className="pt-4">
+        <TabsContent value="disparos" className="pt-4 space-y-2">
+          <div className="flex justify-end">
+            <Button size="sm" variant="outline" onClick={exportWa} disabled={waFiltered.length === 0}>
+              <Download className="mr-2 h-4 w-4" />Exportar CSV
+            </Button>
+          </div>
           <div className="rounded-xl border bg-card">
             {lW ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
               : waFiltered.length === 0 ? <EmptyState title="Sem disparos" />
@@ -84,6 +125,7 @@ function Page() {
                 </Table>}
           </div>
         </TabsContent>
+
 
         <TabsContent value="links" className="pt-4">
           <div className="rounded-xl border bg-card">
