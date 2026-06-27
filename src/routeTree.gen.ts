@@ -17,6 +17,7 @@ import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminWhatsappRouteImport } from './routes/_authenticated/admin.whatsapp'
 import { Route as AuthenticatedAdminUpsellRouteImport } from './routes/_authenticated/admin.upsell'
 import { Route as AuthenticatedAdminTvRouteImport } from './routes/_authenticated/admin.tv'
+import { Route as AuthenticatedAdminRelatoriosRouteImport } from './routes/_authenticated/admin.relatorios'
 import { Route as AuthenticatedAdminProjetosRouteImport } from './routes/_authenticated/admin.projetos'
 import { Route as AuthenticatedAdminHistoricoRouteImport } from './routes/_authenticated/admin.historico'
 import { Route as AuthenticatedAdminFechamentoRouteImport } from './routes/_authenticated/admin.fechamento'
@@ -28,6 +29,7 @@ import { Route as AuthenticatedAdminClientesRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminCampanhasRouteImport } from './routes/_authenticated/admin.campanhas'
 import { Route as AuthenticatedAdminAgendaRouteImport } from './routes/_authenticated/admin.agenda'
 import { Route as ApiPublicCiSplatRouteImport } from './routes/api/public/ci.$'
+import { Route as AuthenticatedAdminRelatoriosNewRouteImport } from './routes/_authenticated/admin.relatorios.new'
 import { Route as AuthenticatedAdminCampaignsIdRouteImport } from './routes/_authenticated/admin.campaigns.$id'
 import { Route as AuthenticatedAdminCampaignsIdPreviewRouteImport } from './routes/_authenticated/admin.campaigns.$id.preview'
 import { Route as AuthenticatedAdminCampaignsIdEditRouteImport } from './routes/_authenticated/admin.campaigns.$id.edit'
@@ -73,6 +75,12 @@ const AuthenticatedAdminTvRoute = AuthenticatedAdminTvRouteImport.update({
   path: '/admin/tv',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdminRelatoriosRoute =
+  AuthenticatedAdminRelatoriosRouteImport.update({
+    id: '/admin/relatorios',
+    path: '/admin/relatorios',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAdminProjetosRoute =
   AuthenticatedAdminProjetosRouteImport.update({
     id: '/admin/projetos',
@@ -138,6 +146,12 @@ const ApiPublicCiSplatRoute = ApiPublicCiSplatRouteImport.update({
   path: '/api/public/ci/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAdminRelatoriosNewRoute =
+  AuthenticatedAdminRelatoriosNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => AuthenticatedAdminRelatoriosRoute,
+  } as any)
 const AuthenticatedAdminCampaignsIdRoute =
   AuthenticatedAdminCampaignsIdRouteImport.update({
     id: '/admin/campaigns/$id',
@@ -171,11 +185,13 @@ export interface FileRoutesByFullPath {
   '/admin/fechamento': typeof AuthenticatedAdminFechamentoRoute
   '/admin/historico': typeof AuthenticatedAdminHistoricoRoute
   '/admin/projetos': typeof AuthenticatedAdminProjetosRoute
+  '/admin/relatorios': typeof AuthenticatedAdminRelatoriosRouteWithChildren
   '/admin/tv': typeof AuthenticatedAdminTvRoute
   '/admin/upsell': typeof AuthenticatedAdminUpsellRoute
   '/admin/whatsapp': typeof AuthenticatedAdminWhatsappRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
+  '/admin/relatorios/new': typeof AuthenticatedAdminRelatoriosNewRoute
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
   '/admin/campaigns/$id/edit': typeof AuthenticatedAdminCampaignsIdEditRoute
   '/admin/campaigns/$id/preview': typeof AuthenticatedAdminCampaignsIdPreviewRoute
@@ -194,11 +210,13 @@ export interface FileRoutesByTo {
   '/admin/fechamento': typeof AuthenticatedAdminFechamentoRoute
   '/admin/historico': typeof AuthenticatedAdminHistoricoRoute
   '/admin/projetos': typeof AuthenticatedAdminProjetosRoute
+  '/admin/relatorios': typeof AuthenticatedAdminRelatoriosRouteWithChildren
   '/admin/tv': typeof AuthenticatedAdminTvRoute
   '/admin/upsell': typeof AuthenticatedAdminUpsellRoute
   '/admin/whatsapp': typeof AuthenticatedAdminWhatsappRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
+  '/admin/relatorios/new': typeof AuthenticatedAdminRelatoriosNewRoute
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
   '/admin/campaigns/$id/edit': typeof AuthenticatedAdminCampaignsIdEditRoute
   '/admin/campaigns/$id/preview': typeof AuthenticatedAdminCampaignsIdPreviewRoute
@@ -219,11 +237,13 @@ export interface FileRoutesById {
   '/_authenticated/admin/fechamento': typeof AuthenticatedAdminFechamentoRoute
   '/_authenticated/admin/historico': typeof AuthenticatedAdminHistoricoRoute
   '/_authenticated/admin/projetos': typeof AuthenticatedAdminProjetosRoute
+  '/_authenticated/admin/relatorios': typeof AuthenticatedAdminRelatoriosRouteWithChildren
   '/_authenticated/admin/tv': typeof AuthenticatedAdminTvRoute
   '/_authenticated/admin/upsell': typeof AuthenticatedAdminUpsellRoute
   '/_authenticated/admin/whatsapp': typeof AuthenticatedAdminWhatsappRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
+  '/_authenticated/admin/relatorios/new': typeof AuthenticatedAdminRelatoriosNewRoute
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
   '/_authenticated/admin/campaigns/$id/edit': typeof AuthenticatedAdminCampaignsIdEditRoute
   '/_authenticated/admin/campaigns/$id/preview': typeof AuthenticatedAdminCampaignsIdPreviewRoute
@@ -244,11 +264,13 @@ export interface FileRouteTypes {
     | '/admin/fechamento'
     | '/admin/historico'
     | '/admin/projetos'
+    | '/admin/relatorios'
     | '/admin/tv'
     | '/admin/upsell'
     | '/admin/whatsapp'
     | '/admin/'
     | '/admin/campaigns/$id'
+    | '/admin/relatorios/new'
     | '/api/public/ci/$'
     | '/admin/campaigns/$id/edit'
     | '/admin/campaigns/$id/preview'
@@ -267,11 +289,13 @@ export interface FileRouteTypes {
     | '/admin/fechamento'
     | '/admin/historico'
     | '/admin/projetos'
+    | '/admin/relatorios'
     | '/admin/tv'
     | '/admin/upsell'
     | '/admin/whatsapp'
     | '/admin'
     | '/admin/campaigns/$id'
+    | '/admin/relatorios/new'
     | '/api/public/ci/$'
     | '/admin/campaigns/$id/edit'
     | '/admin/campaigns/$id/preview'
@@ -291,11 +315,13 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/fechamento'
     | '/_authenticated/admin/historico'
     | '/_authenticated/admin/projetos'
+    | '/_authenticated/admin/relatorios'
     | '/_authenticated/admin/tv'
     | '/_authenticated/admin/upsell'
     | '/_authenticated/admin/whatsapp'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/campaigns/$id'
+    | '/_authenticated/admin/relatorios/new'
     | '/api/public/ci/$'
     | '/_authenticated/admin/campaigns/$id/edit'
     | '/_authenticated/admin/campaigns/$id/preview'
@@ -364,6 +390,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/tv'
       fullPath: '/admin/tv'
       preLoaderRoute: typeof AuthenticatedAdminTvRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/relatorios': {
+      id: '/_authenticated/admin/relatorios'
+      path: '/admin/relatorios'
+      fullPath: '/admin/relatorios'
+      preLoaderRoute: typeof AuthenticatedAdminRelatoriosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/admin/projetos': {
@@ -443,6 +476,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCiSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/admin/relatorios/new': {
+      id: '/_authenticated/admin/relatorios/new'
+      path: '/new'
+      fullPath: '/admin/relatorios/new'
+      preLoaderRoute: typeof AuthenticatedAdminRelatoriosNewRouteImport
+      parentRoute: typeof AuthenticatedAdminRelatoriosRoute
+    }
     '/_authenticated/admin/campaigns/$id': {
       id: '/_authenticated/admin/campaigns/$id'
       path: '/admin/campaigns/$id'
@@ -466,6 +506,20 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AuthenticatedAdminRelatoriosRouteChildren {
+  AuthenticatedAdminRelatoriosNewRoute: typeof AuthenticatedAdminRelatoriosNewRoute
+}
+
+const AuthenticatedAdminRelatoriosRouteChildren: AuthenticatedAdminRelatoriosRouteChildren =
+  {
+    AuthenticatedAdminRelatoriosNewRoute: AuthenticatedAdminRelatoriosNewRoute,
+  }
+
+const AuthenticatedAdminRelatoriosRouteWithChildren =
+  AuthenticatedAdminRelatoriosRoute._addFileChildren(
+    AuthenticatedAdminRelatoriosRouteChildren,
+  )
 
 interface AuthenticatedAdminCampaignsIdRouteChildren {
   AuthenticatedAdminCampaignsIdEditRoute: typeof AuthenticatedAdminCampaignsIdEditRoute
@@ -497,6 +551,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminFechamentoRoute: typeof AuthenticatedAdminFechamentoRoute
   AuthenticatedAdminHistoricoRoute: typeof AuthenticatedAdminHistoricoRoute
   AuthenticatedAdminProjetosRoute: typeof AuthenticatedAdminProjetosRoute
+  AuthenticatedAdminRelatoriosRoute: typeof AuthenticatedAdminRelatoriosRouteWithChildren
   AuthenticatedAdminTvRoute: typeof AuthenticatedAdminTvRoute
   AuthenticatedAdminUpsellRoute: typeof AuthenticatedAdminUpsellRoute
   AuthenticatedAdminWhatsappRoute: typeof AuthenticatedAdminWhatsappRoute
@@ -516,6 +571,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminFechamentoRoute: AuthenticatedAdminFechamentoRoute,
   AuthenticatedAdminHistoricoRoute: AuthenticatedAdminHistoricoRoute,
   AuthenticatedAdminProjetosRoute: AuthenticatedAdminProjetosRoute,
+  AuthenticatedAdminRelatoriosRoute:
+    AuthenticatedAdminRelatoriosRouteWithChildren,
   AuthenticatedAdminTvRoute: AuthenticatedAdminTvRoute,
   AuthenticatedAdminUpsellRoute: AuthenticatedAdminUpsellRoute,
   AuthenticatedAdminWhatsappRoute: AuthenticatedAdminWhatsappRoute,

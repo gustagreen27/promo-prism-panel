@@ -16,6 +16,7 @@ import {
   LogOut,
   Printer,
   Megaphone,
+  FileText,
 } from "lucide-react";
 import {
   Sidebar,
@@ -50,6 +51,7 @@ const GROUPS: { label: string; items: NavItem[] }[] = [
     items: [
       { title: "Agenda", to: "/admin/agenda", icon: Calendar },
       { title: "Fechamento", to: "/admin/fechamento", icon: ClipboardCheck },
+      { title: "Relatórios", to: "/admin/relatorios", icon: FileText },
       { title: "Histórico", to: "/admin/historico", icon: History },
       { title: "Estoque de Msgs", to: "/admin/estoque", icon: Boxes },
       { title: "WhatsApp", to: "/admin/whatsapp", icon: MessageSquare },
