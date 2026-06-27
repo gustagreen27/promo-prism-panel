@@ -32,7 +32,7 @@ function AuthenticatedLayout() {
       <div className="flex min-h-screen w-full bg-background">
         <AppSidebar />
         <SidebarInset className="min-w-0 flex-1">
-          <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-white/5 bg-background/80 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-border bg-background/80 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="flex min-w-0 items-center gap-2">
               <SidebarTrigger />
               <div className="hidden text-xs text-muted-foreground sm:block">

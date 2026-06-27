@@ -35,8 +35,8 @@ const COLOR: Record<MetricColor, { ring: string; icon: string; text: string; glo
     glow: "shadow-[0_0_40px_-12px_rgba(139,92,246,0.35)]",
   },
   neutral: {
-    ring: "ring-white/10",
-    icon: "bg-white/5 text-muted-foreground",
+    ring: "ring-border",
+    icon: "bg-muted text-muted-foreground",
     text: "text-foreground",
     glow: "",
   },
@@ -56,7 +56,7 @@ export function MetricCard({ label, value, subtext, icon, color = "neutral", tre
   return (
     <div
       className={cn(
-        "group relative rounded-2xl border border-white/5 bg-card/60 p-5 ring-1 backdrop-blur transition-all hover:bg-card/80",
+        "group relative rounded-2xl border border-border bg-card/60 p-5 ring-1 backdrop-blur transition-all hover:bg-card/80",
         c.ring,
         c.glow,
       )}
