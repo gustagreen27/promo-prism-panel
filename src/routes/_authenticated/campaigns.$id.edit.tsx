@@ -192,6 +192,7 @@ function EditCampaign() {
           utm_term: form.utm_term || null,
           utm_content: form.utm_content || null,
           status: (form.status as "draft" | "active" | "paused" | "archived") || "draft",
+          open_mode: (form.open_mode as "smart" | "iframe" | "redirect" | "wrapper") || "smart",
         } as never,
       }),
     onSuccess: () => {
