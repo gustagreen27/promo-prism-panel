@@ -33,6 +33,13 @@ import {
 import { toast } from "sonner";
 import { Copy, ExternalLink, Trash2, BarChart3, Pencil, Play, Pause } from "lucide-react";
 import { IntentScoreBadge, StatusBadge } from "@/components/campaign-badges";
+import {
+  ParticipantsBadges,
+  ParticipantsSelect,
+  ParticipantsFilter,
+  matchesParticipants,
+  type Participant,
+} from "@/components/participants";
 
 export const Route = createFileRoute("/_authenticated/admin/campanhas")({
   head: () => ({ meta: [{ title: "Campanhas — Painel" }] }),
@@ -46,6 +53,9 @@ function CampaignsList() {
     queryFn: () => list(),
   });
 
+  const [partFilter, setPartFilter] = useState<Participant[]>([]);
+  const filtered = (data ?? []).filter((c: any) => matchesParticipants(c, partFilter));
+
   return (
     <div className="space-y-6">
       <div className="flex items-end justify-between">
@@ -58,17 +68,25 @@ function CampaignsList() {
         <NewCampaignDialog onCreated={() => refetch()} />
       </div>
 
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">Filtrar por sócio:</span>
+        <div className="w-56"><ParticipantsFilter value={partFilter} onChange={setPartFilter} /></div>
+        {partFilter.length > 0 && (
+          <Button variant="ghost" size="sm" onClick={() => setPartFilter([])}>Limpar</Button>
+        )}
+      </div>
+
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Carregando...</p>
-      ) : !data || data.length === 0 ? (
+      ) : !filtered || filtered.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            Nenhuma campanha ainda. Crie a primeira para gerar uma URL.
+            Nenhuma campanha encontrada.
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-4">
-          {data.map((c) => (
+          {filtered.map((c: any) => (
             <CampaignRow key={c.id} c={c} onChange={() => refetch()} />
           ))}
         </div>
