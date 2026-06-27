@@ -326,6 +326,30 @@ function EditCampaign() {
                 </SelectContent>
               </Select>
             </Field>
+            <Field
+              label="Modo de abertura"
+              id="open_mode"
+              hint={
+                OPEN_MODES.find((m) => m.value === (form.open_mode ?? "smart"))?.description
+              }
+            >
+              <Select
+                value={form.open_mode || "smart"}
+                onValueChange={(v) => set("open_mode", v)}
+              >
+                <SelectTrigger id="open_mode"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {OPEN_MODES.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <IframeCompatStatus
+                campaign={data as { iframe_compatible: boolean | null; iframe_checked_at: string | null }}
+                onRecheck={() => refetch()}
+                id={id}
+              />
+            </Field>
           </div>
           <Field
             label="Título do link"
