@@ -127,7 +127,12 @@ function Page() {
         </TabsContent>
 
 
-        <TabsContent value="links" className="pt-4">
+        <TabsContent value="links" className="pt-4 space-y-2">
+          <div className="flex justify-end">
+            <Button size="sm" variant="outline" onClick={exportLinks} disabled={linkFiltered.length === 0}>
+              <Download className="mr-2 h-4 w-4" />Exportar CSV
+            </Button>
+          </div>
           <div className="rounded-xl border bg-card">
             {lL ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
               : linkFiltered.length === 0 ? <EmptyState title="Sem campanhas" />
