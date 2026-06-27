@@ -30,6 +30,7 @@ import { Route as AuthenticatedAdminCampanhasRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminAgendaRouteImport } from './routes/_authenticated/admin.agenda'
 import { Route as ApiPublicCiSplatRouteImport } from './routes/api/public/ci.$'
 import { Route as AuthenticatedAdminRelatoriosNewRouteImport } from './routes/_authenticated/admin.relatorios.new'
+import { Route as AuthenticatedAdminRelatoriosAnalyticsRouteImport } from './routes/_authenticated/admin.relatorios.analytics'
 import { Route as AuthenticatedAdminRelatoriosIdRouteImport } from './routes/_authenticated/admin.relatorios.$id'
 import { Route as AuthenticatedAdminCampaignsIdRouteImport } from './routes/_authenticated/admin.campaigns.$id'
 import { Route as AuthenticatedAdminCampaignsIdPreviewRouteImport } from './routes/_authenticated/admin.campaigns.$id.preview'
@@ -153,6 +154,12 @@ const AuthenticatedAdminRelatoriosNewRoute =
     path: '/new',
     getParentRoute: () => AuthenticatedAdminRelatoriosRoute,
   } as any)
+const AuthenticatedAdminRelatoriosAnalyticsRoute =
+  AuthenticatedAdminRelatoriosAnalyticsRouteImport.update({
+    id: '/analytics',
+    path: '/analytics',
+    getParentRoute: () => AuthenticatedAdminRelatoriosRoute,
+  } as any)
 const AuthenticatedAdminRelatoriosIdRoute =
   AuthenticatedAdminRelatoriosIdRouteImport.update({
     id: '/$id',
@@ -199,6 +206,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
   '/admin/relatorios/$id': typeof AuthenticatedAdminRelatoriosIdRoute
+  '/admin/relatorios/analytics': typeof AuthenticatedAdminRelatoriosAnalyticsRoute
   '/admin/relatorios/new': typeof AuthenticatedAdminRelatoriosNewRoute
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
   '/admin/campaigns/$id/edit': typeof AuthenticatedAdminCampaignsIdEditRoute
@@ -225,6 +233,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
   '/admin/relatorios/$id': typeof AuthenticatedAdminRelatoriosIdRoute
+  '/admin/relatorios/analytics': typeof AuthenticatedAdminRelatoriosAnalyticsRoute
   '/admin/relatorios/new': typeof AuthenticatedAdminRelatoriosNewRoute
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
   '/admin/campaigns/$id/edit': typeof AuthenticatedAdminCampaignsIdEditRoute
@@ -253,6 +262,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
   '/_authenticated/admin/relatorios/$id': typeof AuthenticatedAdminRelatoriosIdRoute
+  '/_authenticated/admin/relatorios/analytics': typeof AuthenticatedAdminRelatoriosAnalyticsRoute
   '/_authenticated/admin/relatorios/new': typeof AuthenticatedAdminRelatoriosNewRoute
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
   '/_authenticated/admin/campaigns/$id/edit': typeof AuthenticatedAdminCampaignsIdEditRoute
@@ -281,6 +291,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/admin/campaigns/$id'
     | '/admin/relatorios/$id'
+    | '/admin/relatorios/analytics'
     | '/admin/relatorios/new'
     | '/api/public/ci/$'
     | '/admin/campaigns/$id/edit'
@@ -307,6 +318,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin/campaigns/$id'
     | '/admin/relatorios/$id'
+    | '/admin/relatorios/analytics'
     | '/admin/relatorios/new'
     | '/api/public/ci/$'
     | '/admin/campaigns/$id/edit'
@@ -334,6 +346,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/'
     | '/_authenticated/admin/campaigns/$id'
     | '/_authenticated/admin/relatorios/$id'
+    | '/_authenticated/admin/relatorios/analytics'
     | '/_authenticated/admin/relatorios/new'
     | '/api/public/ci/$'
     | '/_authenticated/admin/campaigns/$id/edit'
@@ -496,6 +509,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRelatoriosNewRouteImport
       parentRoute: typeof AuthenticatedAdminRelatoriosRoute
     }
+    '/_authenticated/admin/relatorios/analytics': {
+      id: '/_authenticated/admin/relatorios/analytics'
+      path: '/analytics'
+      fullPath: '/admin/relatorios/analytics'
+      preLoaderRoute: typeof AuthenticatedAdminRelatoriosAnalyticsRouteImport
+      parentRoute: typeof AuthenticatedAdminRelatoriosRoute
+    }
     '/_authenticated/admin/relatorios/$id': {
       id: '/_authenticated/admin/relatorios/$id'
       path: '/$id'
@@ -529,12 +549,15 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedAdminRelatoriosRouteChildren {
   AuthenticatedAdminRelatoriosIdRoute: typeof AuthenticatedAdminRelatoriosIdRoute
+  AuthenticatedAdminRelatoriosAnalyticsRoute: typeof AuthenticatedAdminRelatoriosAnalyticsRoute
   AuthenticatedAdminRelatoriosNewRoute: typeof AuthenticatedAdminRelatoriosNewRoute
 }
 
 const AuthenticatedAdminRelatoriosRouteChildren: AuthenticatedAdminRelatoriosRouteChildren =
   {
     AuthenticatedAdminRelatoriosIdRoute: AuthenticatedAdminRelatoriosIdRoute,
+    AuthenticatedAdminRelatoriosAnalyticsRoute:
+      AuthenticatedAdminRelatoriosAnalyticsRoute,
     AuthenticatedAdminRelatoriosNewRoute: AuthenticatedAdminRelatoriosNewRoute,
   }
 
