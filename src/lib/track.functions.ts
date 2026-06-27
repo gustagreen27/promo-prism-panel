@@ -7,6 +7,28 @@ const inputSchema = z.object({
   slug: z.string().trim().min(1).max(120),
 });
 
+const EVENT_TYPES = [
+  "page_view",
+  "iframe_loaded",
+  "iframe_blocked",
+  "redirect_started",
+  "redirect_completed",
+  "cta_clicked",
+  "utm_detected",
+  "duplicate_click",
+  "returning_visitor",
+  "bot_detected",
+] as const;
+type EventType = (typeof EVENT_TYPES)[number];
+
+const eventInputSchema = z.object({
+  slug: z.string().trim().min(1).max(120),
+  event_type: z.enum(EVENT_TYPES),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
+const BOT_RE = /bot|crawler|spider|crawling|facebookexternalhit|whatsapp|telegrambot|slackbot|discordbot|preview|fetch|monitor|pingdom|uptimerobot|headless/i;
+
 function pickIp(): string | null {
   const xff = getRequestHeader("x-forwarded-for");
   if (xff) return xff.split(",")[0]!.trim();
@@ -113,9 +135,9 @@ function pickMeta(c: Record<string, unknown>) {
 }
 
 /**
- * Fast resolver for the public `/$slug` route. Runs the iframe HEAD check
- * (cheap) but does NOT call IP-API or insert the click log — that's deferred
- * to `trackClick` fired in the background from the client.
+ * Fast resolver for the public `/$slug` route. Decide o modo de abertura
+ * (smart/iframe/redirect/wrapper) e devolve cache de iframe_compatible.
+ * NÃO chama IP-API nem grava clique — isso fica em `trackClick`.
  */
 export const resolveCampaign = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => inputSchema.parse(data))
@@ -140,11 +162,42 @@ export const resolveCampaign = createServerFn({ method: "POST" })
     }
 
     const finalUrl = applyUtms(campaign.destination_url, campaign);
-    const iframeAllowed = await canEmbedInIframe(finalUrl);
+    const mode = ((campaign as Record<string, unknown>).open_mode as string) || "smart";
+
+    // Para iframe/wrapper já sabemos o caminho. Para smart, usa o cache e,
+    // se ausente, faz HEAD agora e persiste.
+    let iframeAllowed = true;
+    if (mode === "redirect") {
+      iframeAllowed = false;
+    } else if (mode === "iframe") {
+      iframeAllowed = true;
+    } else if (mode === "wrapper") {
+      iframeAllowed = false; // wrapper não usa iframe
+    } else {
+      // smart
+      const cached = (campaign as Record<string, unknown>).iframe_compatible;
+      if (typeof cached === "boolean") {
+        iframeAllowed = cached;
+      } else {
+        iframeAllowed = await canEmbedInIframe(finalUrl);
+        try {
+          await supabaseAdmin
+            .from("campaigns")
+            .update({
+              iframe_compatible: iframeAllowed,
+              iframe_checked_at: new Date().toISOString(),
+            } as never)
+            .eq("id", campaign.id);
+        } catch {
+          /* ignore */
+        }
+      }
+    }
 
     return {
       ok: true as const,
       destination_url: finalUrl,
+      open_mode: mode as "smart" | "iframe" | "redirect" | "wrapper",
       iframeAllowed,
       meta: pickMeta(campaign),
     };
@@ -183,31 +236,121 @@ export const trackClick = createServerFn({ method: "POST" })
       try { parsed = new UAParser(ua).getResult(); } catch { parsed = null; }
     }
 
-    await supabaseAdmin.from("campaign_clicks").insert({
-      campaign_id: campaign.id,
-      ip,
-      country: (geo?.country as string) ?? null,
-      country_code: (geo?.countryCode as string) ?? null,
-      region: (geo?.regionName as string) ?? null,
-      city: (geo?.city as string) ?? null,
-      zip: (geo?.zip as string) ?? null,
-      lat: (geo?.lat as number) ?? null,
-      lon: (geo?.lon as number) ?? null,
-      timezone: (geo?.timezone as string) ?? null,
-      isp: (geo?.isp as string) ?? null,
-      org: (geo?.org as string) ?? null,
-      as_name: (geo?.as as string) ?? null,
-      device: parsed?.device?.model ?? parsed?.device?.vendor ?? null,
-      device_type: parsed?.device?.type ?? "desktop",
-      browser: parsed?.browser?.name ?? null,
-      browser_version: parsed?.browser?.version ?? null,
-      os: parsed?.os?.name ?? null,
-      os_version: parsed?.os?.version ?? null,
-      referer,
-      user_agent: ua,
-      language: lang,
-      final_url: finalUrl,
-    } as never);
+    const isBot = ua ? BOT_RE.test(ua) : false;
 
-    return { ok: true as const };
+    // Detecta clique duplicado / visitante recorrente nos últimos 30 dias.
+    let isReturning = false;
+    let isDuplicate = false;
+    if (ip) {
+      const sinceReturning = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const sinceDuplicate = new Date(Date.now() - 60 * 1000).toISOString();
+      const { data: prior } = await supabaseAdmin
+        .from("campaign_clicks")
+        .select("id, clicked_at")
+        .eq("campaign_id", campaign.id)
+        .eq("ip", ip)
+        .gte("clicked_at", sinceReturning)
+        .order("clicked_at", { ascending: false })
+        .limit(1);
+      if (prior && prior.length > 0) {
+        isReturning = true;
+        if ((prior[0]?.clicked_at ?? "") >= sinceDuplicate) isDuplicate = true;
+      }
+    }
+
+    const { data: inserted } = await supabaseAdmin
+      .from("campaign_clicks")
+      .insert({
+        campaign_id: campaign.id,
+        ip,
+        country: (geo?.country as string) ?? null,
+        country_code: (geo?.countryCode as string) ?? null,
+        region: (geo?.regionName as string) ?? null,
+        city: (geo?.city as string) ?? null,
+        zip: (geo?.zip as string) ?? null,
+        lat: (geo?.lat as number) ?? null,
+        lon: (geo?.lon as number) ?? null,
+        timezone: (geo?.timezone as string) ?? null,
+        isp: (geo?.isp as string) ?? null,
+        org: (geo?.org as string) ?? null,
+        as_name: (geo?.as as string) ?? null,
+        device: parsed?.device?.model ?? parsed?.device?.vendor ?? null,
+        device_type: parsed?.device?.type ?? "desktop",
+        browser: parsed?.browser?.name ?? null,
+        browser_version: parsed?.browser?.version ?? null,
+        os: parsed?.os?.name ?? null,
+        os_version: parsed?.os?.version ?? null,
+        referer,
+        user_agent: ua,
+        language: lang,
+        final_url: finalUrl,
+      } as never)
+      .select("id")
+      .maybeSingle();
+
+    const clickId = (inserted as { id?: string } | null)?.id ?? null;
+
+    // Eventos automáticos derivados do clique.
+    const autoEvents: { event_type: EventType; metadata: Record<string, unknown> }[] = [
+      { event_type: "page_view", metadata: { referer, language: lang } },
+    ];
+    const hasUtm = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"].some(
+      (k) => (campaign as Record<string, unknown>)[k],
+    );
+    if (hasUtm) {
+      autoEvents.push({
+        event_type: "utm_detected",
+        metadata: {
+          source: (campaign as Record<string, unknown>).utm_source,
+          medium: (campaign as Record<string, unknown>).utm_medium,
+          campaign: (campaign as Record<string, unknown>).utm_campaign,
+        },
+      });
+    }
+    if (isBot) autoEvents.push({ event_type: "bot_detected", metadata: { ua } });
+    if (isReturning) autoEvents.push({ event_type: "returning_visitor", metadata: {} });
+    if (isDuplicate) autoEvents.push({ event_type: "duplicate_click", metadata: {} });
+
+    try {
+      await supabaseAdmin.from("campaign_events").insert(
+        autoEvents.map((e) => ({
+          campaign_id: campaign.id,
+          click_id: clickId,
+          event_type: e.event_type,
+          metadata: e.metadata,
+        })) as never,
+      );
+    } catch {
+      /* ignore */
+    }
+
+    return { ok: true as const, click_id: clickId };
+  });
+
+/**
+ * Registra um evento granular emitido pelo cliente (ex.: iframe_loaded,
+ * iframe_blocked, redirect_started, cta_clicked). Não bloqueia o usuário.
+ */
+export const trackEvent = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => eventInputSchema.parse(data))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: campaign } = await supabaseAdmin
+      .from("campaigns")
+      .select("id, status")
+      .eq("slug", data.slug)
+      .maybeSingle();
+    if (!campaign || (campaign.status && campaign.status !== "active")) {
+      return { ok: false as const };
+    }
+    try {
+      await supabaseAdmin.from("campaign_events").insert({
+        campaign_id: campaign.id,
+        event_type: data.event_type,
+        metadata: data.metadata ?? {},
+      } as never);
+      return { ok: true as const };
+    } catch {
+      return { ok: false as const };
+    }
   });

@@ -1,6 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
-import { resolveCampaign, trackClick } from "@/lib/track.functions";
+import { resolveCampaign, trackClick, trackEvent } from "@/lib/track.functions";
+
+function emitEvent(slug: string, event_type: string, metadata?: Record<string, unknown>) {
+  if (!slug) return;
+  void trackEvent({ data: { slug, event_type: event_type as never, metadata } }).catch(() => {});
+}
 
 type Meta = {
   name: string | null;
@@ -19,11 +24,14 @@ type Meta = {
   cta_label: string | null;
 };
 
+type OpenMode = "smart" | "iframe" | "redirect" | "wrapper";
+
 type LoaderData =
   | { status: "notfound"; slug: string }
   | { status: "unavailable"; slug: string; meta: Meta; campaignStatus: string }
-  | { status: "iframe"; slug: string; meta: Meta; url: string }
-  | { status: "redirect"; slug: string; meta: Meta; url: string };
+  | { status: "iframe"; slug: string; meta: Meta; url: string; mode: OpenMode }
+  | { status: "redirect"; slug: string; meta: Meta; url: string; mode: OpenMode }
+  | { status: "wrapper"; slug: string; meta: Meta; url: string; mode: OpenMode };
 
 export const Route = createFileRoute("/$slug")({
   loader: async ({ params }): Promise<LoaderData> => {
@@ -39,10 +47,14 @@ export const Route = createFileRoute("/$slug")({
         campaignStatus: (res as { status: string }).status,
       };
     }
-    if (!res.iframeAllowed) {
-      return { status: "redirect", slug: params.slug, meta: res.meta, url: res.destination_url };
+    const mode = res.open_mode;
+    if (mode === "wrapper") {
+      return { status: "wrapper", slug: params.slug, meta: res.meta, url: res.destination_url, mode };
     }
-    return { status: "iframe", slug: params.slug, meta: res.meta, url: res.destination_url };
+    if (mode === "redirect" || !res.iframeAllowed) {
+      return { status: "redirect", slug: params.slug, meta: res.meta, url: res.destination_url, mode };
+    }
+    return { status: "iframe", slug: params.slug, meta: res.meta, url: res.destination_url, mode };
   },
   head: ({ params, loaderData }) => {
     if (!loaderData || loaderData.status === "notfound") {
@@ -117,7 +129,7 @@ function CampaignPublicPage() {
   const data = Route.useLoaderData();
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const trackingEnabled =
-    data.status === "iframe" || data.status === "redirect";
+    data.status === "iframe" || data.status === "redirect" || data.status === "wrapper";
   useFireAndForgetTracking(data.status === "notfound" ? "" : data.slug, trackingEnabled);
 
   // Client-side watchdog for iframe blocks not caught by server HEAD check.
@@ -127,11 +139,14 @@ function CampaignPublicPage() {
   useEffect(() => {
     if (data.status !== "iframe") return;
     const url = data.url;
+    const slug = data.slug;
     let done = false;
     let loaded = false;
-    const fallback = () => {
+    const fallback = (reason: string) => {
       if (done) return;
       done = true;
+      emitEvent(slug, "iframe_blocked", { reason });
+      emitEvent(slug, "redirect_started", { url, source: "iframe_fallback" });
       window.location.replace(url);
     };
     const checkBlank = () => {
@@ -139,7 +154,7 @@ function CampaignPublicPage() {
       if (!iframe) return;
       try {
         const doc = iframe.contentDocument;
-        if (doc && (!doc.body || doc.body.children.length === 0)) fallback();
+        if (doc && (!doc.body || doc.body.children.length === 0)) fallback("blank_body");
       } catch {
         // cross-origin acessível = carregou normalmente
       }
@@ -147,13 +162,13 @@ function CampaignPublicPage() {
     const iframe = iframeRef.current;
     const onLoad = () => {
       loaded = true;
+      emitEvent(slug, "iframe_loaded", { url });
       setTimeout(checkBlank, 100);
     };
     iframe?.addEventListener("load", onLoad);
-    iframe?.addEventListener("error", fallback);
-    // Se o load nunca disparou em 3.5s, assumimos bloqueio e redirecionamos.
+    iframe?.addEventListener("error", () => fallback("error_event"));
     const tLoad = setTimeout(() => {
-      if (!loaded) fallback();
+      if (!loaded) fallback("load_timeout");
     }, 3500);
     const t1 = setTimeout(checkBlank, 1500);
     const t2 = setTimeout(checkBlank, 4500);
@@ -163,7 +178,6 @@ function CampaignPublicPage() {
       clearTimeout(t1);
       clearTimeout(t2);
       iframe?.removeEventListener("load", onLoad);
-      iframe?.removeEventListener("error", fallback);
     };
   }, [data]);
 
@@ -217,7 +231,11 @@ function CampaignPublicPage() {
 
 
   if (data.status === "redirect") {
-    return <ImmediateRedirect url={data.url} />;
+    return <ImmediateRedirect url={data.url} slug={data.slug} />;
+  }
+
+  if (data.status === "wrapper") {
+    return <WrapperPage data={data} />;
   }
 
   return (
@@ -232,11 +250,51 @@ function CampaignPublicPage() {
   );
 }
 
-function ImmediateRedirect({ url }: { url: string }) {
+function WrapperPage({
+  data,
+}: {
+  data: Extract<LoaderData, { status: "wrapper" }>;
+}) {
+  const m = data.meta;
+  const heading = m.og_title || m.link_title || m.name || "Continuar";
+  const description = m.intermediate_text || m.link_description || m.og_description;
+  const cta = m.cta_label || "Continuar";
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+      <div className="w-full max-w-md overflow-hidden rounded-xl border bg-card text-center shadow-sm">
+        {m.preview_image_url && (
+          // eslint-disable-next-line jsx-a11y/alt-text
+          <img src={m.preview_image_url} alt="" className="aspect-[1.91/1] w-full object-cover" />
+        )}
+        <div className="space-y-4 p-6">
+          {m.link_intent && (
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">
+              {m.link_intent}
+            </div>
+          )}
+          <h1 className="text-2xl font-semibold">{heading}</h1>
+          {description && (
+            <p className="whitespace-pre-line text-sm text-muted-foreground">{description}</p>
+          )}
+          <a
+            href={data.url}
+            onClick={() => emitEvent(data.slug, "cta_clicked", { url: data.url })}
+            className="inline-flex h-11 w-full items-center justify-center rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground shadow hover:opacity-90"
+          >
+            {cta}
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ImmediateRedirect({ url, slug }: { url: string; slug: string }) {
   useEffect(() => {
+    emitEvent(slug, "redirect_started", { url, source: "direct" });
     window.location.replace(url);
-  }, [url]);
-  // SSR fallback: meta refresh garante redirecionamento mesmo sem JS.
+    emitEvent(slug, "redirect_completed", { url });
+  }, [url, slug]);
   return <meta httpEquiv="refresh" content={`0;url=${url}`} />;
 }
 

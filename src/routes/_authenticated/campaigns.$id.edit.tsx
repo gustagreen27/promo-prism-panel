@@ -6,6 +6,7 @@ import {
   analyzeCampaignIntent,
   checkSlugAvailability,
   getCampaign,
+  recheckIframeCompatibility,
   updateCampaign,
 } from "@/lib/campaigns.functions";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,7 @@ import { ArrowLeft, Sparkles, CheckCircle2, AlertTriangle, XCircle, Wand2, Eye }
 import { toast } from "sonner";
 import { applyIntentPreset, getIntentPreset, PRESET_TARGET_FIELDS } from "@/lib/intent-presets";
 import { validateCampaignForm, type FieldIssue } from "@/lib/campaign-validation";
-import { CAMPAIGN_TYPES, LINK_INTENTS, PAGE_CATEGORIES } from "@/lib/campaign-options";
+import { CAMPAIGN_TYPES, LINK_INTENTS, OPEN_MODES, PAGE_CATEGORIES } from "@/lib/campaign-options";
 import { ImageUpload } from "@/components/image-upload";
 
 export const Route = createFileRoute("/_authenticated/campaigns/$id/edit")({
@@ -92,6 +93,7 @@ function EditCampaign() {
       utm_term: data.utm_term ?? "",
       utm_content: data.utm_content ?? "",
       status: data.status ?? "draft",
+      open_mode: (data as Record<string, unknown>).open_mode as string ?? "smart",
     });
   }, [data]);
 
@@ -191,6 +193,7 @@ function EditCampaign() {
           utm_term: form.utm_term || null,
           utm_content: form.utm_content || null,
           status: (form.status as "draft" | "active" | "paused" | "archived") || "draft",
+          open_mode: (form.open_mode as "smart" | "iframe" | "redirect" | "wrapper") || "smart",
         } as never,
       }),
     onSuccess: () => {
@@ -323,6 +326,30 @@ function EditCampaign() {
                   {PAGE_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </Field>
+            <Field
+              label="Modo de abertura"
+              id="open_mode"
+              hint={
+                OPEN_MODES.find((m) => m.value === (form.open_mode ?? "smart"))?.description
+              }
+            >
+              <Select
+                value={form.open_mode || "smart"}
+                onValueChange={(v) => set("open_mode", v)}
+              >
+                <SelectTrigger id="open_mode"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {OPEN_MODES.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <IframeCompatStatus
+                campaign={data as { iframe_compatible: boolean | null; iframe_checked_at: string | null }}
+                onRecheck={() => refetch()}
+                id={id}
+              />
             </Field>
           </div>
           <Field
@@ -610,3 +637,56 @@ function Field({
   );
 }
 
+
+function IframeCompatStatus({
+  campaign,
+  id,
+  onRecheck,
+}: {
+  campaign: { iframe_compatible: boolean | null; iframe_checked_at: string | null } | null | undefined;
+  id: string;
+  onRecheck: () => void;
+}) {
+  const recheckFn = useServerFn(recheckIframeCompatibility);
+  const [busy, setBusy] = useState(false);
+  const compat = campaign?.iframe_compatible;
+  const checkedAt = campaign?.iframe_checked_at;
+  const statusText =
+    compat == null
+      ? "Ainda não verificado"
+      : compat
+        ? "Destino permite iframe"
+        : "Destino bloqueia iframe — modo inteligente vai redirecionar";
+  const tone =
+    compat == null ? "text-muted-foreground" : compat ? "text-emerald-600" : "text-amber-600";
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+      <span className={tone}>{statusText}</span>
+      {checkedAt && (
+        <span className="text-muted-foreground">
+          verificado em {new Date(checkedAt).toLocaleString()}
+        </span>
+      )}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          try {
+            await recheckFn({ data: { id } });
+            toast.success("Compatibilidade re-verificada");
+            onRecheck();
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Falha ao re-verificar");
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        {busy ? "Verificando..." : "Re-checar"}
+      </Button>
+    </div>
+  );
+}

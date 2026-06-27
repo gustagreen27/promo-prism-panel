@@ -9,7 +9,7 @@ import {
   updateCampaign,
 } from "@/lib/campaigns.functions";
 import { applyIntentPreset } from "@/lib/intent-presets";
-import { CAMPAIGN_TYPES, LINK_INTENTS, PAGE_CATEGORIES } from "@/lib/campaign-options";
+import { CAMPAIGN_TYPES, LINK_INTENTS, OPEN_MODES, PAGE_CATEGORIES } from "@/lib/campaign-options";
 import { slugify } from "@/lib/slugify";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -196,6 +196,7 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
   const [linkDescription, setLinkDescription] = useState("");
   const [intermediateText, setIntermediateText] = useState("");
   const [ctaLabel, setCtaLabel] = useState("");
+  const [openMode, setOpenMode] = useState<string>("smart");
 
   const create = useServerFn(createCampaign);
   const queryClient = useQueryClient();
@@ -210,6 +211,7 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
       setName(""); setSlug(""); setDestination(""); setSlugTouched(false);
       setCampaignType(""); setLinkIntent(""); setPageCategory("");
       setLinkTitle(""); setLinkDescription(""); setIntermediateText(""); setCtaLabel("");
+      setOpenMode("smart");
       setOpen(false);
       onCreated();
       router.navigate({ to: "/campaigns/$id/edit", params: { id: created.id } });
@@ -265,6 +267,7 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
               link_description: linkDescription.trim() || undefined,
               intermediate_text: intermediateText.trim() || undefined,
               cta_label: ctaLabel.trim() || undefined,
+              open_mode: openMode as "smart" | "iframe" | "redirect" | "wrapper",
             });
           }}
           className="space-y-4"
@@ -337,6 +340,23 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
                 <option value="">—</option>
                 {PAGE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
+            </div>
+
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="omode">Modo de abertura</Label>
+              <select
+                id="omode"
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                value={openMode}
+                onChange={(e) => setOpenMode(e.target.value)}
+              >
+                {OPEN_MODES.map((m) => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                {OPEN_MODES.find((m) => m.value === openMode)?.description}
+              </p>
             </div>
 
             <div className="space-y-2 sm:col-span-2">
