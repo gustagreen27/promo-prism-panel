@@ -89,7 +89,7 @@ function DashboardPage() {
 
       {/* Goal + secondary metrics */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2 border-white/5 bg-card/60">
+        <Card className="lg:col-span-2 border-border bg-card/60">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
               <CardTitle className="text-base font-semibold">Meta mensal</CardTitle>
@@ -116,7 +116,7 @@ function DashboardPage() {
                 <p className="text-xs text-muted-foreground">atingido</p>
               </div>
             </div>
-            <Progress value={goalPct} className="h-2 bg-white/5" />
+            <Progress value={goalPct} className="h-2 bg-muted" />
             {(data?.monthlyGoal ?? 0) === 0 && (
               <p className="text-xs text-muted-foreground">
                 Defina sua meta mensal em{" "}
@@ -129,7 +129,7 @@ function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-white/5 bg-card/60">
+        <Card className="border-border bg-card/60">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold">Taxa de entrega</CardTitle>
             <p className="text-xs text-muted-foreground">WhatsApp no período</p>
@@ -142,13 +142,13 @@ function DashboardPage() {
               </p>
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="rounded-md border border-white/5 bg-white/[0.02] px-3 py-2">
+              <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
                 <p className="text-muted-foreground">Entregues</p>
                 <p className="font-medium text-emerald-300">
                   {formatNumber(data?.delivered ?? 0)}
                 </p>
               </div>
-              <div className="rounded-md border border-white/5 bg-white/[0.02] px-3 py-2">
+              <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
                 <p className="text-muted-foreground">Falhas</p>
                 <p className="font-medium text-rose-300">{formatNumber(data?.failed ?? 0)}</p>
               </div>
@@ -159,7 +159,7 @@ function DashboardPage() {
 
       {/* Lower blocks */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card className="border-white/5 bg-card/60">
+        <Card className="border-border bg-card/60">
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <div>
               <CardTitle className="text-base font-semibold">Últimos Fechamentos</CardTitle>
@@ -217,7 +217,7 @@ function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-white/5 bg-card/60">
+        <Card className="border-border bg-card/60">
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <div>
               <CardTitle className="text-base font-semibold">Últimos Faturamentos</CardTitle>
@@ -277,9 +277,9 @@ function StatusPill({ status }: { status: string }) {
     pago: "bg-emerald-500/15 text-emerald-300 ring-emerald-500/30",
     pendente: "bg-amber-500/15 text-amber-300 ring-amber-500/30",
     atrasado: "bg-rose-500/15 text-rose-300 ring-rose-500/30",
-    cancelado: "bg-white/5 text-muted-foreground ring-white/10",
+    cancelado: "bg-muted text-muted-foreground ring-border",
   };
-  const cls = map[status.toLowerCase()] ?? "bg-white/5 text-muted-foreground ring-white/10";
+  const cls = map[status.toLowerCase()] ?? "bg-muted text-muted-foreground ring-border";
   return (
     <span
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ${cls}`}

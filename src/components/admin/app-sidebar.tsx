@@ -133,7 +133,7 @@ export function AppSidebar() {
         ))}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-white/5 p-2">
+      <SidebarFooter className="border-t border-border p-2">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton onClick={() => window.print()} tooltip="Imprimir / Exportar">
