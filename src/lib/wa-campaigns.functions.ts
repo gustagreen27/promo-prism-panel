@@ -16,6 +16,7 @@ const fields = {
   scheduled_at: z.union([z.string(), z.null()]).optional(),
   send_rate_per_min: z.union([z.number(), z.string(), z.null()]).transform((v) => (v == null || v === "" ? 30 : Number(v))).optional(),
   notes: z.string().max(2000).optional().nullable(),
+  participants: z.array(z.enum(["gustavo", "cayo"])).optional().default([]),
 };
 
 async function assertAdmin(ctx: { supabase: any; userId: string }) {

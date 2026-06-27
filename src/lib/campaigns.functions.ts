@@ -40,6 +40,7 @@ const campaignFields = {
   utm_content: optStr(120),
   status: statusEnum.optional(),
   open_mode: openModeEnum.optional(),
+  participants: z.array(z.enum(["gustavo", "cayo"])).optional().default([]),
 };
 
 const createSchema = z.object({
