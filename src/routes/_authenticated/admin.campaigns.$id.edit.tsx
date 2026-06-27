@@ -2,6 +2,7 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
+import { ParticipantsSelect, type Participant } from "@/components/participants";
 import {
   analyzeCampaignIntent,
   checkSlugAvailability,
