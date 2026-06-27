@@ -227,6 +227,10 @@ function CampaignPublicPage() {
     return <ImmediateRedirect url={data.url} />;
   }
 
+  if (data.status === "wrapper") {
+    return <WrapperPage data={data} />;
+  }
+
   return (
     <iframe
       ref={iframeRef}
@@ -236,6 +240,44 @@ function CampaignPublicPage() {
       allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
       referrerPolicy="no-referrer-when-downgrade"
     />
+  );
+}
+
+function WrapperPage({
+  data,
+}: {
+  data: Extract<LoaderData, { status: "wrapper" }>;
+}) {
+  const m = data.meta;
+  const heading = m.og_title || m.link_title || m.name || "Continuar";
+  const description = m.intermediate_text || m.link_description || m.og_description;
+  const cta = m.cta_label || "Continuar";
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+      <div className="w-full max-w-md overflow-hidden rounded-xl border bg-card text-center shadow-sm">
+        {m.preview_image_url && (
+          // eslint-disable-next-line jsx-a11y/alt-text
+          <img src={m.preview_image_url} alt="" className="aspect-[1.91/1] w-full object-cover" />
+        )}
+        <div className="space-y-4 p-6">
+          {m.link_intent && (
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">
+              {m.link_intent}
+            </div>
+          )}
+          <h1 className="text-2xl font-semibold">{heading}</h1>
+          {description && (
+            <p className="whitespace-pre-line text-sm text-muted-foreground">{description}</p>
+          )}
+          <a
+            href={data.url}
+            className="inline-flex h-11 w-full items-center justify-center rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground shadow hover:opacity-90"
+          >
+            {cta}
+          </a>
+        </div>
+      </div>
+    </div>
   );
 }
 
