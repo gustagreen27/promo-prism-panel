@@ -7,6 +7,28 @@ const inputSchema = z.object({
   slug: z.string().trim().min(1).max(120),
 });
 
+const EVENT_TYPES = [
+  "page_view",
+  "iframe_loaded",
+  "iframe_blocked",
+  "redirect_started",
+  "redirect_completed",
+  "cta_clicked",
+  "utm_detected",
+  "duplicate_click",
+  "returning_visitor",
+  "bot_detected",
+] as const;
+type EventType = (typeof EVENT_TYPES)[number];
+
+const eventInputSchema = z.object({
+  slug: z.string().trim().min(1).max(120),
+  event_type: z.enum(EVENT_TYPES),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
+const BOT_RE = /bot|crawler|spider|crawling|facebookexternalhit|whatsapp|telegrambot|slackbot|discordbot|preview|fetch|monitor|pingdom|uptimerobot|headless/i;
+
 function pickIp(): string | null {
   const xff = getRequestHeader("x-forwarded-for");
   if (xff) return xff.split(",")[0]!.trim();
