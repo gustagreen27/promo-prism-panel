@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { slugify } from "./slugify";
 
 const statusEnum = z.enum(["draft", "active", "paused", "archived"]);
+const openModeEnum = z.enum(["smart", "iframe", "redirect", "wrapper"]);
 
 const optStr = (max: number) =>
   z
@@ -38,6 +39,7 @@ const campaignFields = {
   utm_term: optStr(120),
   utm_content: optStr(120),
   status: statusEnum.optional(),
+  open_mode: openModeEnum.optional(),
 };
 
 const createSchema = z.object({
