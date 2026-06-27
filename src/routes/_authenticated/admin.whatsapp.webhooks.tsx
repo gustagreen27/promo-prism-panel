@@ -6,7 +6,7 @@ import { listNumbers } from "@/lib/whatsapp-numbers.functions";
 import { Button } from "@/components/ui/button";
 import { Copy } from "lucide-react";
 import { toast } from "sonner";
-import { project_urls } from "@/integrations/supabase/types"; // not used, fallback below
+
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp/webhooks")({
   head: () => ({ meta: [{ title: "Webhooks WhatsApp" }] }),

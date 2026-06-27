@@ -31,6 +31,12 @@ import { Route as AuthenticatedAdminRelatoriosIndexRouteImport } from './routes/
 import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp/webhook'
 import { Route as ApiPublicWhatsappQueueTickRouteImport } from './routes/api/public/whatsapp/queue-tick'
 import { Route as ApiPublicCiSplatRouteImport } from './routes/api/public/ci.$'
+import { Route as AuthenticatedAdminWhatsappWebhooksRouteImport } from './routes/_authenticated/admin.whatsapp.webhooks'
+import { Route as AuthenticatedAdminWhatsappTemplatesRouteImport } from './routes/_authenticated/admin.whatsapp.templates'
+import { Route as AuthenticatedAdminWhatsappQualidadeRouteImport } from './routes/_authenticated/admin.whatsapp.qualidade'
+import { Route as AuthenticatedAdminWhatsappNumerosRouteImport } from './routes/_authenticated/admin.whatsapp.numeros'
+import { Route as AuthenticatedAdminWhatsappLogsRouteImport } from './routes/_authenticated/admin.whatsapp.logs'
+import { Route as AuthenticatedAdminWhatsappInboxRouteImport } from './routes/_authenticated/admin.whatsapp.inbox'
 import { Route as AuthenticatedAdminRelatoriosNewRouteImport } from './routes/_authenticated/admin.relatorios.new'
 import { Route as AuthenticatedAdminRelatoriosAnalyticsRouteImport } from './routes/_authenticated/admin.relatorios.analytics'
 import { Route as AuthenticatedAdminRelatoriosIdRouteImport } from './routes/_authenticated/admin.relatorios.$id'
@@ -162,6 +168,42 @@ const ApiPublicCiSplatRoute = ApiPublicCiSplatRouteImport.update({
   path: '/api/public/ci/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAdminWhatsappWebhooksRoute =
+  AuthenticatedAdminWhatsappWebhooksRouteImport.update({
+    id: '/webhooks',
+    path: '/webhooks',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
+const AuthenticatedAdminWhatsappTemplatesRoute =
+  AuthenticatedAdminWhatsappTemplatesRouteImport.update({
+    id: '/templates',
+    path: '/templates',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
+const AuthenticatedAdminWhatsappQualidadeRoute =
+  AuthenticatedAdminWhatsappQualidadeRouteImport.update({
+    id: '/qualidade',
+    path: '/qualidade',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
+const AuthenticatedAdminWhatsappNumerosRoute =
+  AuthenticatedAdminWhatsappNumerosRouteImport.update({
+    id: '/numeros',
+    path: '/numeros',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
+const AuthenticatedAdminWhatsappLogsRoute =
+  AuthenticatedAdminWhatsappLogsRouteImport.update({
+    id: '/logs',
+    path: '/logs',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
+const AuthenticatedAdminWhatsappInboxRoute =
+  AuthenticatedAdminWhatsappInboxRouteImport.update({
+    id: '/inbox',
+    path: '/inbox',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
 const AuthenticatedAdminRelatoriosNewRoute =
   AuthenticatedAdminRelatoriosNewRouteImport.update({
     id: '/admin/relatorios/new',
@@ -215,12 +257,18 @@ export interface FileRoutesByFullPath {
   '/admin/projetos': typeof AuthenticatedAdminProjetosRoute
   '/admin/tv': typeof AuthenticatedAdminTvRoute
   '/admin/upsell': typeof AuthenticatedAdminUpsellRoute
-  '/admin/whatsapp': typeof AuthenticatedAdminWhatsappRoute
+  '/admin/whatsapp': typeof AuthenticatedAdminWhatsappRouteWithChildren
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
   '/admin/relatorios/$id': typeof AuthenticatedAdminRelatoriosIdRoute
   '/admin/relatorios/analytics': typeof AuthenticatedAdminRelatoriosAnalyticsRoute
   '/admin/relatorios/new': typeof AuthenticatedAdminRelatoriosNewRoute
+  '/admin/whatsapp/inbox': typeof AuthenticatedAdminWhatsappInboxRoute
+  '/admin/whatsapp/logs': typeof AuthenticatedAdminWhatsappLogsRoute
+  '/admin/whatsapp/numeros': typeof AuthenticatedAdminWhatsappNumerosRoute
+  '/admin/whatsapp/qualidade': typeof AuthenticatedAdminWhatsappQualidadeRoute
+  '/admin/whatsapp/templates': typeof AuthenticatedAdminWhatsappTemplatesRoute
+  '/admin/whatsapp/webhooks': typeof AuthenticatedAdminWhatsappWebhooksRoute
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
   '/api/public/whatsapp/queue-tick': typeof ApiPublicWhatsappQueueTickRoute
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
@@ -244,12 +292,18 @@ export interface FileRoutesByTo {
   '/admin/projetos': typeof AuthenticatedAdminProjetosRoute
   '/admin/tv': typeof AuthenticatedAdminTvRoute
   '/admin/upsell': typeof AuthenticatedAdminUpsellRoute
-  '/admin/whatsapp': typeof AuthenticatedAdminWhatsappRoute
+  '/admin/whatsapp': typeof AuthenticatedAdminWhatsappRouteWithChildren
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
   '/admin/relatorios/$id': typeof AuthenticatedAdminRelatoriosIdRoute
   '/admin/relatorios/analytics': typeof AuthenticatedAdminRelatoriosAnalyticsRoute
   '/admin/relatorios/new': typeof AuthenticatedAdminRelatoriosNewRoute
+  '/admin/whatsapp/inbox': typeof AuthenticatedAdminWhatsappInboxRoute
+  '/admin/whatsapp/logs': typeof AuthenticatedAdminWhatsappLogsRoute
+  '/admin/whatsapp/numeros': typeof AuthenticatedAdminWhatsappNumerosRoute
+  '/admin/whatsapp/qualidade': typeof AuthenticatedAdminWhatsappQualidadeRoute
+  '/admin/whatsapp/templates': typeof AuthenticatedAdminWhatsappTemplatesRoute
+  '/admin/whatsapp/webhooks': typeof AuthenticatedAdminWhatsappWebhooksRoute
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
   '/api/public/whatsapp/queue-tick': typeof ApiPublicWhatsappQueueTickRoute
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
@@ -275,12 +329,18 @@ export interface FileRoutesById {
   '/_authenticated/admin/projetos': typeof AuthenticatedAdminProjetosRoute
   '/_authenticated/admin/tv': typeof AuthenticatedAdminTvRoute
   '/_authenticated/admin/upsell': typeof AuthenticatedAdminUpsellRoute
-  '/_authenticated/admin/whatsapp': typeof AuthenticatedAdminWhatsappRoute
+  '/_authenticated/admin/whatsapp': typeof AuthenticatedAdminWhatsappRouteWithChildren
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
   '/_authenticated/admin/relatorios/$id': typeof AuthenticatedAdminRelatoriosIdRoute
   '/_authenticated/admin/relatorios/analytics': typeof AuthenticatedAdminRelatoriosAnalyticsRoute
   '/_authenticated/admin/relatorios/new': typeof AuthenticatedAdminRelatoriosNewRoute
+  '/_authenticated/admin/whatsapp/inbox': typeof AuthenticatedAdminWhatsappInboxRoute
+  '/_authenticated/admin/whatsapp/logs': typeof AuthenticatedAdminWhatsappLogsRoute
+  '/_authenticated/admin/whatsapp/numeros': typeof AuthenticatedAdminWhatsappNumerosRoute
+  '/_authenticated/admin/whatsapp/qualidade': typeof AuthenticatedAdminWhatsappQualidadeRoute
+  '/_authenticated/admin/whatsapp/templates': typeof AuthenticatedAdminWhatsappTemplatesRoute
+  '/_authenticated/admin/whatsapp/webhooks': typeof AuthenticatedAdminWhatsappWebhooksRoute
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
   '/api/public/whatsapp/queue-tick': typeof ApiPublicWhatsappQueueTickRoute
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
@@ -312,6 +372,12 @@ export interface FileRouteTypes {
     | '/admin/relatorios/$id'
     | '/admin/relatorios/analytics'
     | '/admin/relatorios/new'
+    | '/admin/whatsapp/inbox'
+    | '/admin/whatsapp/logs'
+    | '/admin/whatsapp/numeros'
+    | '/admin/whatsapp/qualidade'
+    | '/admin/whatsapp/templates'
+    | '/admin/whatsapp/webhooks'
     | '/api/public/ci/$'
     | '/api/public/whatsapp/queue-tick'
     | '/api/public/whatsapp/webhook'
@@ -341,6 +407,12 @@ export interface FileRouteTypes {
     | '/admin/relatorios/$id'
     | '/admin/relatorios/analytics'
     | '/admin/relatorios/new'
+    | '/admin/whatsapp/inbox'
+    | '/admin/whatsapp/logs'
+    | '/admin/whatsapp/numeros'
+    | '/admin/whatsapp/qualidade'
+    | '/admin/whatsapp/templates'
+    | '/admin/whatsapp/webhooks'
     | '/api/public/ci/$'
     | '/api/public/whatsapp/queue-tick'
     | '/api/public/whatsapp/webhook'
@@ -371,6 +443,12 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/relatorios/$id'
     | '/_authenticated/admin/relatorios/analytics'
     | '/_authenticated/admin/relatorios/new'
+    | '/_authenticated/admin/whatsapp/inbox'
+    | '/_authenticated/admin/whatsapp/logs'
+    | '/_authenticated/admin/whatsapp/numeros'
+    | '/_authenticated/admin/whatsapp/qualidade'
+    | '/_authenticated/admin/whatsapp/templates'
+    | '/_authenticated/admin/whatsapp/webhooks'
     | '/api/public/ci/$'
     | '/api/public/whatsapp/queue-tick'
     | '/api/public/whatsapp/webhook'
@@ -544,6 +622,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCiSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/admin/whatsapp/webhooks': {
+      id: '/_authenticated/admin/whatsapp/webhooks'
+      path: '/webhooks'
+      fullPath: '/admin/whatsapp/webhooks'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappWebhooksRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
+    '/_authenticated/admin/whatsapp/templates': {
+      id: '/_authenticated/admin/whatsapp/templates'
+      path: '/templates'
+      fullPath: '/admin/whatsapp/templates'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappTemplatesRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
+    '/_authenticated/admin/whatsapp/qualidade': {
+      id: '/_authenticated/admin/whatsapp/qualidade'
+      path: '/qualidade'
+      fullPath: '/admin/whatsapp/qualidade'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappQualidadeRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
+    '/_authenticated/admin/whatsapp/numeros': {
+      id: '/_authenticated/admin/whatsapp/numeros'
+      path: '/numeros'
+      fullPath: '/admin/whatsapp/numeros'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappNumerosRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
+    '/_authenticated/admin/whatsapp/logs': {
+      id: '/_authenticated/admin/whatsapp/logs'
+      path: '/logs'
+      fullPath: '/admin/whatsapp/logs'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappLogsRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
+    '/_authenticated/admin/whatsapp/inbox': {
+      id: '/_authenticated/admin/whatsapp/inbox'
+      path: '/inbox'
+      fullPath: '/admin/whatsapp/inbox'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappInboxRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
     '/_authenticated/admin/relatorios/new': {
       id: '/_authenticated/admin/relatorios/new'
       path: '/admin/relatorios/new'
@@ -589,6 +709,34 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedAdminWhatsappRouteChildren {
+  AuthenticatedAdminWhatsappInboxRoute: typeof AuthenticatedAdminWhatsappInboxRoute
+  AuthenticatedAdminWhatsappLogsRoute: typeof AuthenticatedAdminWhatsappLogsRoute
+  AuthenticatedAdminWhatsappNumerosRoute: typeof AuthenticatedAdminWhatsappNumerosRoute
+  AuthenticatedAdminWhatsappQualidadeRoute: typeof AuthenticatedAdminWhatsappQualidadeRoute
+  AuthenticatedAdminWhatsappTemplatesRoute: typeof AuthenticatedAdminWhatsappTemplatesRoute
+  AuthenticatedAdminWhatsappWebhooksRoute: typeof AuthenticatedAdminWhatsappWebhooksRoute
+}
+
+const AuthenticatedAdminWhatsappRouteChildren: AuthenticatedAdminWhatsappRouteChildren =
+  {
+    AuthenticatedAdminWhatsappInboxRoute: AuthenticatedAdminWhatsappInboxRoute,
+    AuthenticatedAdminWhatsappLogsRoute: AuthenticatedAdminWhatsappLogsRoute,
+    AuthenticatedAdminWhatsappNumerosRoute:
+      AuthenticatedAdminWhatsappNumerosRoute,
+    AuthenticatedAdminWhatsappQualidadeRoute:
+      AuthenticatedAdminWhatsappQualidadeRoute,
+    AuthenticatedAdminWhatsappTemplatesRoute:
+      AuthenticatedAdminWhatsappTemplatesRoute,
+    AuthenticatedAdminWhatsappWebhooksRoute:
+      AuthenticatedAdminWhatsappWebhooksRoute,
+  }
+
+const AuthenticatedAdminWhatsappRouteWithChildren =
+  AuthenticatedAdminWhatsappRoute._addFileChildren(
+    AuthenticatedAdminWhatsappRouteChildren,
+  )
+
 interface AuthenticatedAdminCampaignsIdRouteChildren {
   AuthenticatedAdminCampaignsIdEditRoute: typeof AuthenticatedAdminCampaignsIdEditRoute
   AuthenticatedAdminCampaignsIdPreviewRoute: typeof AuthenticatedAdminCampaignsIdPreviewRoute
@@ -621,7 +769,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminProjetosRoute: typeof AuthenticatedAdminProjetosRoute
   AuthenticatedAdminTvRoute: typeof AuthenticatedAdminTvRoute
   AuthenticatedAdminUpsellRoute: typeof AuthenticatedAdminUpsellRoute
-  AuthenticatedAdminWhatsappRoute: typeof AuthenticatedAdminWhatsappRoute
+  AuthenticatedAdminWhatsappRoute: typeof AuthenticatedAdminWhatsappRouteWithChildren
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedAdminCampaignsIdRoute: typeof AuthenticatedAdminCampaignsIdRouteWithChildren
   AuthenticatedAdminRelatoriosIdRoute: typeof AuthenticatedAdminRelatoriosIdRoute
@@ -644,7 +792,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminProjetosRoute: AuthenticatedAdminProjetosRoute,
   AuthenticatedAdminTvRoute: AuthenticatedAdminTvRoute,
   AuthenticatedAdminUpsellRoute: AuthenticatedAdminUpsellRoute,
-  AuthenticatedAdminWhatsappRoute: AuthenticatedAdminWhatsappRoute,
+  AuthenticatedAdminWhatsappRoute: AuthenticatedAdminWhatsappRouteWithChildren,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedAdminCampaignsIdRoute:
     AuthenticatedAdminCampaignsIdRouteWithChildren,
