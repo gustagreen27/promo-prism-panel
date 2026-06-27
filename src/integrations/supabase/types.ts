@@ -116,6 +116,8 @@ export type Database = {
           destination_url: string
           favicon_url: string | null
           id: string
+          iframe_checked_at: string | null
+          iframe_compatible: boolean | null
           intent_checked_at: string | null
           intent_report: Json | null
           intent_score: number | null
@@ -128,6 +130,7 @@ export type Database = {
           og_image_url: string | null
           og_title: string | null
           og_type: string | null
+          open_mode: string
           page_category: string | null
           preview_image_url: string | null
           slug: string
@@ -148,6 +151,8 @@ export type Database = {
           destination_url: string
           favicon_url?: string | null
           id?: string
+          iframe_checked_at?: string | null
+          iframe_compatible?: boolean | null
           intent_checked_at?: string | null
           intent_report?: Json | null
           intent_score?: number | null
@@ -160,6 +165,7 @@ export type Database = {
           og_image_url?: string | null
           og_title?: string | null
           og_type?: string | null
+          open_mode?: string
           page_category?: string | null
           preview_image_url?: string | null
           slug: string
@@ -180,6 +186,8 @@ export type Database = {
           destination_url?: string
           favicon_url?: string | null
           id?: string
+          iframe_checked_at?: string | null
+          iframe_compatible?: boolean | null
           intent_checked_at?: string | null
           intent_report?: Json | null
           intent_score?: number | null
@@ -192,6 +200,7 @@ export type Database = {
           og_image_url?: string | null
           og_title?: string | null
           og_type?: string | null
+          open_mode?: string
           page_category?: string | null
           preview_image_url?: string | null
           slug?: string
