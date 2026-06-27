@@ -278,6 +278,7 @@ function WrapperPage({
           )}
           <a
             href={data.url}
+            onClick={() => emitEvent(data.slug, "cta_clicked", { url: data.url })}
             className="inline-flex h-11 w-full items-center justify-center rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground shadow hover:opacity-90"
           >
             {cta}
