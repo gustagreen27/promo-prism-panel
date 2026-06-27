@@ -14,6 +14,93 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          action: string | null
+          created_at: string
+          description: string | null
+          id: string
+          ip_address: string | null
+          module: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          ip_address?: string | null
+          module?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          ip_address?: string | null
+          module?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      calendar_events: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          description: string | null
+          end_time: string | null
+          event_type: string | null
+          id: string
+          project_id: string | null
+          start_time: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          end_time?: string | null
+          event_type?: string | null
+          id?: string
+          project_id?: string | null
+          start_time: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          end_time?: string | null
+          event_type?: string | null
+          id?: string
+          project_id?: string | null
+          start_time?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_events_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_events_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_clicks: {
         Row: {
           as_name: string | null
@@ -256,6 +343,207 @@ export type Database = {
         }
         Relationships: []
       }
+      clients: {
+        Row: {
+          address: string | null
+          city: string | null
+          created_at: string
+          document: string | null
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          state: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          document?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          state?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          document?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          state?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      closings: {
+        Row: {
+          closed_at: string | null
+          cost_per_message: number | null
+          created_at: string
+          delivered_messages: number | null
+          failed_messages: number | null
+          id: string
+          margin: number | null
+          month: number
+          net_profit: number | null
+          status: string
+          total_cost: number | null
+          total_messages: number | null
+          total_revenue: number | null
+          year: number
+        }
+        Insert: {
+          closed_at?: string | null
+          cost_per_message?: number | null
+          created_at?: string
+          delivered_messages?: number | null
+          failed_messages?: number | null
+          id?: string
+          margin?: number | null
+          month: number
+          net_profit?: number | null
+          status?: string
+          total_cost?: number | null
+          total_messages?: number | null
+          total_revenue?: number | null
+          year: number
+        }
+        Update: {
+          closed_at?: string | null
+          cost_per_message?: number | null
+          created_at?: string
+          delivered_messages?: number | null
+          failed_messages?: number | null
+          id?: string
+          margin?: number | null
+          month?: number
+          net_profit?: number | null
+          status?: string
+          total_cost?: number | null
+          total_messages?: number | null
+          total_revenue?: number | null
+          year?: number
+        }
+        Relationships: []
+      }
+      costs: {
+        Row: {
+          amount: number
+          attachment_url: string | null
+          category: string | null
+          client_id: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          is_recurring: boolean
+          notes: string | null
+          paid_date: string | null
+          project_id: string | null
+          recurrence_type: string | null
+          status: string
+          supplier: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          attachment_url?: string | null
+          category?: string | null
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_recurring?: boolean
+          notes?: string | null
+          paid_date?: string | null
+          project_id?: string | null
+          recurrence_type?: string | null
+          status?: string
+          supplier?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          attachment_url?: string | null
+          category?: string | null
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_recurring?: boolean
+          notes?: string | null
+          paid_date?: string | null
+          project_id?: string | null
+          recurrence_type?: string | null
+          status?: string
+          supplier?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "costs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "costs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_stock: {
+        Row: {
+          amount: number | null
+          created_at: string
+          id: string
+          notes: string | null
+          quantity: number
+          source: string | null
+          supplier: string | null
+          type: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          quantity?: number
+          source?: string | null
+          supplier?: string | null
+          type: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          quantity?: number
+          source?: string | null
+          supplier?: string | null
+          type?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -273,6 +561,219 @@ export type Database = {
           id?: string
         }
         Relationships: []
+      }
+      projects: {
+        Row: {
+          client_id: string | null
+          contract_value: number | null
+          created_at: string
+          description: string | null
+          end_date: string | null
+          estimated_cost: number | null
+          id: string
+          name: string
+          notes: string | null
+          responsible: string | null
+          start_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          contract_value?: number | null
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          estimated_cost?: number | null
+          id?: string
+          name: string
+          notes?: string | null
+          responsible?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          contract_value?: number | null
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          estimated_cost?: number | null
+          id?: string
+          name?: string
+          notes?: string | null
+          responsible?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      revenues: {
+        Row: {
+          amount: number
+          attachment_url: string | null
+          client_id: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          issue_date: string | null
+          notes: string | null
+          paid_date: string | null
+          payment_method: string | null
+          project_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          attachment_url?: string | null
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          issue_date?: string | null
+          notes?: string | null
+          paid_date?: string | null
+          payment_method?: string | null
+          project_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          attachment_url?: string | null
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          issue_date?: string | null
+          notes?: string | null
+          paid_date?: string | null
+          payment_method?: string | null
+          project_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "revenues_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "revenues_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      settings: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          updated_at?: string
+          value?: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
+      upsell_campaigns: {
+        Row: {
+          campaign_id: string | null
+          clicks: number | null
+          client_id: string | null
+          conversions: number | null
+          created_at: string
+          id: string
+          name: string
+          project_id: string | null
+          revenue: number | null
+          status: string
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          clicks?: number | null
+          client_id?: string | null
+          conversions?: number | null
+          created_at?: string
+          id?: string
+          name: string
+          project_id?: string | null
+          revenue?: number | null
+          status?: string
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          campaign_id?: string | null
+          clicks?: number | null
+          client_id?: string | null
+          conversions?: number | null
+          created_at?: string
+          id?: string
+          name?: string
+          project_id?: string | null
+          revenue?: number | null
+          status?: string
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "upsell_campaigns_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "upsell_campaigns_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "upsell_campaigns_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -294,6 +795,99 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      whatsapp_connections: {
+        Row: {
+          api_key: string | null
+          created_at: string
+          id: string
+          name: string
+          phone: string | null
+          provider: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          api_key?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          phone?: string | null
+          provider?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          api_key?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          provider?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      whatsapp_messages: {
+        Row: {
+          client_id: string | null
+          cost: number | null
+          created_at: string
+          delivered_at: string | null
+          error_message: string | null
+          id: string
+          phone: string | null
+          project_id: string | null
+          read_at: string | null
+          sent_at: string | null
+          status: string
+          template_name: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          cost?: number | null
+          created_at?: string
+          delivered_at?: string | null
+          error_message?: string | null
+          id?: string
+          phone?: string | null
+          project_id?: string | null
+          read_at?: string | null
+          sent_at?: string | null
+          status?: string
+          template_name?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          cost?: number | null
+          created_at?: string
+          delivered_at?: string | null
+          error_message?: string | null
+          id?: string
+          phone?: string | null
+          project_id?: string | null
+          read_at?: string | null
+          sent_at?: string | null
+          status?: string
+          template_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_messages_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_messages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
