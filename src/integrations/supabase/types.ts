@@ -618,6 +618,45 @@ export type Database = {
           },
         ]
       }
+      reports: {
+        Row: {
+          campaigns: Json
+          client_name: string
+          created_at: string
+          final_value: number | null
+          id: string
+          project: string | null
+          reference: string | null
+          report_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          campaigns?: Json
+          client_name: string
+          created_at?: string
+          final_value?: number | null
+          id?: string
+          project?: string | null
+          reference?: string | null
+          report_date: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          campaigns?: Json
+          client_name?: string
+          created_at?: string
+          final_value?: number | null
+          id?: string
+          project?: string | null
+          reference?: string | null
+          report_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       revenues: {
         Row: {
           amount: number
