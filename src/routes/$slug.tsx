@@ -139,11 +139,14 @@ function CampaignPublicPage() {
   useEffect(() => {
     if (data.status !== "iframe") return;
     const url = data.url;
+    const slug = data.slug;
     let done = false;
     let loaded = false;
-    const fallback = () => {
+    const fallback = (reason: string) => {
       if (done) return;
       done = true;
+      emitEvent(slug, "iframe_blocked", { reason });
+      emitEvent(slug, "redirect_started", { url, source: "iframe_fallback" });
       window.location.replace(url);
     };
     const checkBlank = () => {
@@ -151,7 +154,7 @@ function CampaignPublicPage() {
       if (!iframe) return;
       try {
         const doc = iframe.contentDocument;
-        if (doc && (!doc.body || doc.body.children.length === 0)) fallback();
+        if (doc && (!doc.body || doc.body.children.length === 0)) fallback("blank_body");
       } catch {
         // cross-origin acessível = carregou normalmente
       }
@@ -159,13 +162,13 @@ function CampaignPublicPage() {
     const iframe = iframeRef.current;
     const onLoad = () => {
       loaded = true;
+      emitEvent(slug, "iframe_loaded", { url });
       setTimeout(checkBlank, 100);
     };
     iframe?.addEventListener("load", onLoad);
-    iframe?.addEventListener("error", fallback);
-    // Se o load nunca disparou em 3.5s, assumimos bloqueio e redirecionamos.
+    iframe?.addEventListener("error", () => fallback("error_event"));
     const tLoad = setTimeout(() => {
-      if (!loaded) fallback();
+      if (!loaded) fallback("load_timeout");
     }, 3500);
     const t1 = setTimeout(checkBlank, 1500);
     const t2 = setTimeout(checkBlank, 4500);
@@ -175,7 +178,6 @@ function CampaignPublicPage() {
       clearTimeout(t1);
       clearTimeout(t2);
       iframe?.removeEventListener("load", onLoad);
-      iframe?.removeEventListener("error", fallback);
     };
   }, [data]);
 
