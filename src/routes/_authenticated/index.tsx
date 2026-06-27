@@ -9,7 +9,7 @@ import {
   updateCampaign,
 } from "@/lib/campaigns.functions";
 import { applyIntentPreset } from "@/lib/intent-presets";
-import { CAMPAIGN_TYPES, LINK_INTENTS, PAGE_CATEGORIES } from "@/lib/campaign-options";
+import { CAMPAIGN_TYPES, LINK_INTENTS, OPEN_MODES, PAGE_CATEGORIES } from "@/lib/campaign-options";
 import { slugify } from "@/lib/slugify";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
