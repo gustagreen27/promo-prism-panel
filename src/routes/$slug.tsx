@@ -19,11 +19,14 @@ type Meta = {
   cta_label: string | null;
 };
 
+type OpenMode = "smart" | "iframe" | "redirect" | "wrapper";
+
 type LoaderData =
   | { status: "notfound"; slug: string }
   | { status: "unavailable"; slug: string; meta: Meta; campaignStatus: string }
-  | { status: "iframe"; slug: string; meta: Meta; url: string }
-  | { status: "redirect"; slug: string; meta: Meta; url: string };
+  | { status: "iframe"; slug: string; meta: Meta; url: string; mode: OpenMode }
+  | { status: "redirect"; slug: string; meta: Meta; url: string; mode: OpenMode }
+  | { status: "wrapper"; slug: string; meta: Meta; url: string; mode: OpenMode };
 
 export const Route = createFileRoute("/$slug")({
   loader: async ({ params }): Promise<LoaderData> => {
@@ -39,10 +42,14 @@ export const Route = createFileRoute("/$slug")({
         campaignStatus: (res as { status: string }).status,
       };
     }
-    if (!res.iframeAllowed) {
-      return { status: "redirect", slug: params.slug, meta: res.meta, url: res.destination_url };
+    const mode = res.open_mode;
+    if (mode === "wrapper") {
+      return { status: "wrapper", slug: params.slug, meta: res.meta, url: res.destination_url, mode };
     }
-    return { status: "iframe", slug: params.slug, meta: res.meta, url: res.destination_url };
+    if (mode === "redirect" || !res.iframeAllowed) {
+      return { status: "redirect", slug: params.slug, meta: res.meta, url: res.destination_url, mode };
+    }
+    return { status: "iframe", slug: params.slug, meta: res.meta, url: res.destination_url, mode };
   },
   head: ({ params, loaderData }) => {
     if (!loaderData || loaderData.status === "notfound") {
