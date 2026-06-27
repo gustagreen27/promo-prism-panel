@@ -10,6 +10,7 @@ const optDate = z.union([z.string().trim().min(1), z.literal(""), z.null()])
 const optUuid = z.union([z.string().uuid(), z.literal(""), z.null()])
   .transform((v) => (v ? (v as string) : null)).optional();
 const num = z.union([z.number(), z.string()]).transform((v) => Number(v));
+const participants = z.array(z.enum(["gustavo", "cayo"])).optional().default([]);
 
 const fields = {
   client_id: optUuid,
@@ -24,6 +25,7 @@ const fields = {
   is_recurring: z.boolean().optional(),
   recurrence_type: optStr(40),
   notes: optStr(2000),
+  participants,
 };
 const createSchema = z.object(fields);
 const updateSchema = z.object({ id: z.string().uuid(), ...fields });

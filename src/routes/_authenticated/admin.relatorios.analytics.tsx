@@ -27,6 +27,7 @@ import {
 import { ArrowLeft, Printer, BarChart3 } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { PeriodFilter } from "@/components/admin/period-filter";
+import { ParticipantsFilter, matchesParticipants, type Participant } from "@/components/participants";
 import { PERIOD_OPTIONS, getPeriodRange, type PeriodKey } from "@/lib/period";
 import { fmtNum, fmtPct, formatBRDateTime } from "@/lib/report-utils";
 
@@ -46,6 +47,7 @@ function AnalyticsPage() {
   const [period, setPeriod] = useState<PeriodKey>("last_30");
   const [campaignId, setCampaignId] = useState<string>("all");
   const [metric, setMetric] = useState<MetricType>("all");
+  const [partFilter, setPartFilter] = useState<Participant[]>([]);
 
   const { start: from, end: to } = getPeriodRange(period);
 
@@ -54,15 +56,20 @@ function AnalyticsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("campaigns")
-        .select("id, name, slug")
+        .select("id, name, slug, participants")
         .order("name");
       if (error) throw error;
       return data ?? [];
     },
   });
 
+  const allowedCampaignIds = useMemo(() => {
+    if (partFilter.length === 0) return null;
+    return new Set((campaigns ?? []).filter((c: any) => matchesParticipants(c, partFilter)).map((c) => c.id));
+  }, [campaigns, partFilter]);
+
   const { data: clicks, isLoading } = useQuery({
-    queryKey: ["analytics-clicks", period, campaignId],
+    queryKey: ["analytics-clicks", period, campaignId, partFilter.join(",")],
     queryFn: async () => {
       let q = supabase
         .from("campaign_clicks")
@@ -74,7 +81,8 @@ function AnalyticsPage() {
       if (campaignId !== "all") q = q.eq("campaign_id", campaignId);
       const { data, error } = await q;
       if (error) throw error;
-      return data ?? [];
+      const list = data ?? [];
+      return allowedCampaignIds ? list.filter((r) => allowedCampaignIds.has(r.campaign_id)) : list;
     },
   });
 
@@ -144,7 +152,7 @@ function AnalyticsPage() {
         />
 
         <Card className="p-4 mt-4">
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-4">
             <div className="space-y-1">
               <Label className="text-xs">Período</Label>
               <PeriodFilter value={period} onChange={setPeriod} />
@@ -172,6 +180,10 @@ function AnalyticsPage() {
                   <SelectItem value="ctr">CTR</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Sócio responsável</Label>
+              <ParticipantsFilter value={partFilter} onChange={setPartFilter} />
             </div>
           </div>
         </Card>

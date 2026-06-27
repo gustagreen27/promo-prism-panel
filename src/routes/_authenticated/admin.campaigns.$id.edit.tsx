@@ -2,6 +2,7 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
+import { ParticipantsSelect, type Participant } from "@/components/participants";
 import {
   analyzeCampaignIntent,
   checkSlugAvailability,
@@ -67,6 +68,7 @@ function EditCampaign() {
   });
 
   const [form, setForm] = useState<Record<string, string>>({});
+  const [participants, setParticipants] = useState<Participant[]>([]);
   useEffect(() => {
     if (!data) return;
     setForm({
@@ -95,6 +97,7 @@ function EditCampaign() {
       status: data.status ?? "draft",
       open_mode: (data as Record<string, unknown>).open_mode as string ?? "smart",
     });
+    setParticipants(((data as any).participants ?? []) as Participant[]);
   }, [data]);
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -194,6 +197,7 @@ function EditCampaign() {
           utm_content: form.utm_content || null,
           status: (form.status as "draft" | "active" | "paused" | "archived") || "draft",
           open_mode: (form.open_mode as "smart" | "iframe" | "redirect" | "wrapper") || "smart",
+          participants,
         } as never,
       }),
     onSuccess: () => {
@@ -393,6 +397,11 @@ function EditCampaign() {
               placeholder="Entrar na aula"
             />
           </Field>
+          <ParticipantsSelect
+            value={participants}
+            onChange={setParticipants}
+            label="Sócios responsáveis pela campanha"
+          />
         </TabsContent>
 
         <TabsContent value="urls" className="space-y-4 pt-4">
