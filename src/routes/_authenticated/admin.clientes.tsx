@@ -47,7 +47,7 @@ function Page() {
       <PageHeader title="Clientes" description="Cadastro de clientes." actions={
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
           <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Novo cliente</Button></DialogTrigger>
-          <FormDialog editing={editing} onSubmit={(p) => saveMut.mutate(p)} saving={saveMut.isPending} />
+          <FormDialog editing={editing} onSubmit={(p: any) => saveMut.mutate(p)} saving={saveMut.isPending} />
         </Dialog>
       } />
       <div className="rounded-xl border bg-card">

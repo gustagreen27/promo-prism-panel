@@ -59,7 +59,7 @@ function Page() {
       <PageHeader title="Custos" description="Despesas e fornecedores." actions={
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
           <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Novo custo</Button></DialogTrigger>
-          <FormDialog editing={editing} clients={clients} projects={projects} onSubmit={(p) => saveMut.mutate(p)} saving={saveMut.isPending} />
+          <FormDialog editing={editing} clients={clients} projects={projects} onSubmit={(p: any) => saveMut.mutate(p)} saving={saveMut.isPending} />
         </Dialog>
       } />
 

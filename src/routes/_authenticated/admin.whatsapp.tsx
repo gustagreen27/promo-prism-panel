@@ -50,7 +50,7 @@ function Page() {
       <PageHeader title="WhatsApp" description="Conexões e histórico de mensagens." actions={
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
           <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Nova conexão</Button></DialogTrigger>
-          <FormDialog editing={editing} onSubmit={(p) => saveMut.mutate(p)} saving={saveMut.isPending} />
+          <FormDialog editing={editing} onSubmit={(p: any) => saveMut.mutate(p)} saving={saveMut.isPending} />
         </Dialog>
       } />
       <Tabs defaultValue="connections">

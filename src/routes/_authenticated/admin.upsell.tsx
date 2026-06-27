@@ -56,7 +56,7 @@ function Page() {
       <PageHeader title="Upsell" description="Campanhas de upsell e conversão." actions={
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
           <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Nova campanha</Button></DialogTrigger>
-          <FormDialog editing={editing} clients={clients} projects={projects} onSubmit={(p) => saveMut.mutate(p)} saving={saveMut.isPending} />
+          <FormDialog editing={editing} clients={clients} projects={projects} onSubmit={(p: any) => saveMut.mutate(p)} saving={saveMut.isPending} />
         </Dialog>
       } />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

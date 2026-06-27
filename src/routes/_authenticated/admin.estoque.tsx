@@ -48,7 +48,7 @@ function Page() {
       <PageHeader title="Estoque de Mensagens" description="Saldo de envios disponíveis." actions={
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Novo lançamento</Button></DialogTrigger>
-          <FormDialog onSubmit={(p) => saveMut.mutate(p)} saving={saveMut.isPending} />
+          <FormDialog onSubmit={(p: any) => saveMut.mutate(p)} saving={saveMut.isPending} />
         </Dialog>
       } />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
