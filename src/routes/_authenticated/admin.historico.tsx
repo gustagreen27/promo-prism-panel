@@ -158,7 +158,12 @@ function Page() {
           </div>
         </TabsContent>
 
-        <TabsContent value="auditoria" className="pt-4">
+        <TabsContent value="auditoria" className="pt-4 space-y-2">
+          <div className="flex justify-end">
+            <Button size="sm" variant="outline" onClick={exportAudit} disabled={activity.length === 0}>
+              <Download className="mr-2 h-4 w-4" />Exportar CSV
+            </Button>
+          </div>
           <div className="rounded-xl border bg-card">
             {lA ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
               : activity.length === 0 ? <EmptyState title="Sem registros" />
