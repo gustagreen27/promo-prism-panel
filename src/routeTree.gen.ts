@@ -12,12 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as SlugRouteImport } from './routes/$slug'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
-import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
-import { Route as AuthenticatedCampanhasRouteImport } from './routes/_authenticated/campanhas'
-import { Route as AuthenticatedCampaignsIdRouteImport } from './routes/_authenticated/campaigns.$id'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as AuthenticatedAdminCampanhasRouteImport } from './routes/_authenticated/admin.campanhas'
 import { Route as ApiPublicCiSplatRouteImport } from './routes/api/public/ci.$'
-import { Route as AuthenticatedCampaignsIdPreviewRouteImport } from './routes/_authenticated/campaigns.$id.preview'
-import { Route as AuthenticatedCampaignsIdEditRouteImport } from './routes/_authenticated/campaigns.$id.edit'
+import { Route as AuthenticatedAdminCampaignsIdRouteImport } from './routes/_authenticated/admin.campaigns.$id'
+import { Route as AuthenticatedAdminCampaignsIdPreviewRouteImport } from './routes/_authenticated/admin.campaigns.$id.preview'
+import { Route as AuthenticatedAdminCampaignsIdEditRouteImport } from './routes/_authenticated/admin.campaigns.$id.edit'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -33,20 +33,15 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedCampanhasRoute = AuthenticatedCampanhasRouteImport.update({
-  id: '/campanhas',
-  path: '/campanhas',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedCampaignsIdRoute =
-  AuthenticatedCampaignsIdRouteImport.update({
-    id: '/campaigns/$id',
-    path: '/campaigns/$id',
+const AuthenticatedAdminCampanhasRoute =
+  AuthenticatedAdminCampanhasRouteImport.update({
+    id: '/admin/campanhas',
+    path: '/admin/campanhas',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const ApiPublicCiSplatRoute = ApiPublicCiSplatRouteImport.update({
@@ -54,50 +49,58 @@ const ApiPublicCiSplatRoute = ApiPublicCiSplatRouteImport.update({
   path: '/api/public/ci/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedCampaignsIdPreviewRoute =
-  AuthenticatedCampaignsIdPreviewRouteImport.update({
+const AuthenticatedAdminCampaignsIdRoute =
+  AuthenticatedAdminCampaignsIdRouteImport.update({
+    id: '/admin/campaigns/$id',
+    path: '/admin/campaigns/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminCampaignsIdPreviewRoute =
+  AuthenticatedAdminCampaignsIdPreviewRouteImport.update({
     id: '/preview',
     path: '/preview',
-    getParentRoute: () => AuthenticatedCampaignsIdRoute,
+    getParentRoute: () => AuthenticatedAdminCampaignsIdRoute,
   } as any)
-const AuthenticatedCampaignsIdEditRoute =
-  AuthenticatedCampaignsIdEditRouteImport.update({
+const AuthenticatedAdminCampaignsIdEditRoute =
+  AuthenticatedAdminCampaignsIdEditRouteImport.update({
     id: '/edit',
     path: '/edit',
-    getParentRoute: () => AuthenticatedCampaignsIdRoute,
+    getParentRoute: () => AuthenticatedAdminCampaignsIdRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof AuthenticatedIndexRoute
+  '/': typeof AuthenticatedRouteRouteWithChildren
   '/$slug': typeof SlugRoute
   '/auth': typeof AuthRoute
-  '/campanhas': typeof AuthenticatedCampanhasRoute
-  '/campaigns/$id': typeof AuthenticatedCampaignsIdRouteWithChildren
-  '/campaigns/$id/edit': typeof AuthenticatedCampaignsIdEditRoute
-  '/campaigns/$id/preview': typeof AuthenticatedCampaignsIdPreviewRoute
+  '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
+  '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
+  '/admin/campaigns/$id/edit': typeof AuthenticatedAdminCampaignsIdEditRoute
+  '/admin/campaigns/$id/preview': typeof AuthenticatedAdminCampaignsIdPreviewRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof AuthenticatedRouteRouteWithChildren
   '/$slug': typeof SlugRoute
   '/auth': typeof AuthRoute
-  '/campanhas': typeof AuthenticatedCampanhasRoute
-  '/': typeof AuthenticatedIndexRoute
-  '/campaigns/$id': typeof AuthenticatedCampaignsIdRouteWithChildren
-  '/campaigns/$id/edit': typeof AuthenticatedCampaignsIdEditRoute
-  '/campaigns/$id/preview': typeof AuthenticatedCampaignsIdPreviewRoute
+  '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
+  '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
+  '/admin/campaigns/$id/edit': typeof AuthenticatedAdminCampaignsIdEditRoute
+  '/admin/campaigns/$id/preview': typeof AuthenticatedAdminCampaignsIdPreviewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/$slug': typeof SlugRoute
   '/auth': typeof AuthRoute
-  '/_authenticated/campanhas': typeof AuthenticatedCampanhasRoute
-  '/_authenticated/': typeof AuthenticatedIndexRoute
-  '/_authenticated/campaigns/$id': typeof AuthenticatedCampaignsIdRouteWithChildren
-  '/_authenticated/campaigns/$id/edit': typeof AuthenticatedCampaignsIdEditRoute
-  '/_authenticated/campaigns/$id/preview': typeof AuthenticatedCampaignsIdPreviewRoute
+  '/_authenticated/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/_authenticated/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
+  '/_authenticated/admin/campaigns/$id/edit': typeof AuthenticatedAdminCampaignsIdEditRoute
+  '/_authenticated/admin/campaigns/$id/preview': typeof AuthenticatedAdminCampaignsIdPreviewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -105,32 +108,34 @@ export interface FileRouteTypes {
     | '/'
     | '/$slug'
     | '/auth'
-    | '/campanhas'
-    | '/campaigns/$id'
-    | '/campaigns/$id/edit'
-    | '/campaigns/$id/preview'
+    | '/admin/campanhas'
+    | '/admin/'
+    | '/admin/campaigns/$id'
     | '/api/public/ci/$'
+    | '/admin/campaigns/$id/edit'
+    | '/admin/campaigns/$id/preview'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/'
     | '/$slug'
     | '/auth'
-    | '/campanhas'
-    | '/'
-    | '/campaigns/$id'
-    | '/campaigns/$id/edit'
-    | '/campaigns/$id/preview'
+    | '/admin/campanhas'
+    | '/admin'
+    | '/admin/campaigns/$id'
     | '/api/public/ci/$'
+    | '/admin/campaigns/$id/edit'
+    | '/admin/campaigns/$id/preview'
   id:
     | '__root__'
     | '/_authenticated'
     | '/$slug'
     | '/auth'
-    | '/_authenticated/campanhas'
-    | '/_authenticated/'
-    | '/_authenticated/campaigns/$id'
-    | '/_authenticated/campaigns/$id/edit'
-    | '/_authenticated/campaigns/$id/preview'
+    | '/_authenticated/admin/campanhas'
+    | '/_authenticated/admin/'
+    | '/_authenticated/admin/campaigns/$id'
     | '/api/public/ci/$'
+    | '/_authenticated/admin/campaigns/$id/edit'
+    | '/_authenticated/admin/campaigns/$id/preview'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -163,25 +168,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/': {
-      id: '/_authenticated/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof AuthenticatedIndexRouteImport
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/campanhas': {
-      id: '/_authenticated/campanhas'
-      path: '/campanhas'
-      fullPath: '/campanhas'
-      preLoaderRoute: typeof AuthenticatedCampanhasRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/campaigns/$id': {
-      id: '/_authenticated/campaigns/$id'
-      path: '/campaigns/$id'
-      fullPath: '/campaigns/$id'
-      preLoaderRoute: typeof AuthenticatedCampaignsIdRouteImport
+    '/_authenticated/admin/campanhas': {
+      id: '/_authenticated/admin/campanhas'
+      path: '/admin/campanhas'
+      fullPath: '/admin/campanhas'
+      preLoaderRoute: typeof AuthenticatedAdminCampanhasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/api/public/ci/$': {
@@ -191,49 +189,59 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCiSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/campaigns/$id/preview': {
-      id: '/_authenticated/campaigns/$id/preview'
+    '/_authenticated/admin/campaigns/$id': {
+      id: '/_authenticated/admin/campaigns/$id'
+      path: '/admin/campaigns/$id'
+      fullPath: '/admin/campaigns/$id'
+      preLoaderRoute: typeof AuthenticatedAdminCampaignsIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/campaigns/$id/preview': {
+      id: '/_authenticated/admin/campaigns/$id/preview'
       path: '/preview'
-      fullPath: '/campaigns/$id/preview'
-      preLoaderRoute: typeof AuthenticatedCampaignsIdPreviewRouteImport
-      parentRoute: typeof AuthenticatedCampaignsIdRoute
+      fullPath: '/admin/campaigns/$id/preview'
+      preLoaderRoute: typeof AuthenticatedAdminCampaignsIdPreviewRouteImport
+      parentRoute: typeof AuthenticatedAdminCampaignsIdRoute
     }
-    '/_authenticated/campaigns/$id/edit': {
-      id: '/_authenticated/campaigns/$id/edit'
+    '/_authenticated/admin/campaigns/$id/edit': {
+      id: '/_authenticated/admin/campaigns/$id/edit'
       path: '/edit'
-      fullPath: '/campaigns/$id/edit'
-      preLoaderRoute: typeof AuthenticatedCampaignsIdEditRouteImport
-      parentRoute: typeof AuthenticatedCampaignsIdRoute
+      fullPath: '/admin/campaigns/$id/edit'
+      preLoaderRoute: typeof AuthenticatedAdminCampaignsIdEditRouteImport
+      parentRoute: typeof AuthenticatedAdminCampaignsIdRoute
     }
   }
 }
 
-interface AuthenticatedCampaignsIdRouteChildren {
-  AuthenticatedCampaignsIdEditRoute: typeof AuthenticatedCampaignsIdEditRoute
-  AuthenticatedCampaignsIdPreviewRoute: typeof AuthenticatedCampaignsIdPreviewRoute
+interface AuthenticatedAdminCampaignsIdRouteChildren {
+  AuthenticatedAdminCampaignsIdEditRoute: typeof AuthenticatedAdminCampaignsIdEditRoute
+  AuthenticatedAdminCampaignsIdPreviewRoute: typeof AuthenticatedAdminCampaignsIdPreviewRoute
 }
 
-const AuthenticatedCampaignsIdRouteChildren: AuthenticatedCampaignsIdRouteChildren =
+const AuthenticatedAdminCampaignsIdRouteChildren: AuthenticatedAdminCampaignsIdRouteChildren =
   {
-    AuthenticatedCampaignsIdEditRoute: AuthenticatedCampaignsIdEditRoute,
-    AuthenticatedCampaignsIdPreviewRoute: AuthenticatedCampaignsIdPreviewRoute,
+    AuthenticatedAdminCampaignsIdEditRoute:
+      AuthenticatedAdminCampaignsIdEditRoute,
+    AuthenticatedAdminCampaignsIdPreviewRoute:
+      AuthenticatedAdminCampaignsIdPreviewRoute,
   }
 
-const AuthenticatedCampaignsIdRouteWithChildren =
-  AuthenticatedCampaignsIdRoute._addFileChildren(
-    AuthenticatedCampaignsIdRouteChildren,
+const AuthenticatedAdminCampaignsIdRouteWithChildren =
+  AuthenticatedAdminCampaignsIdRoute._addFileChildren(
+    AuthenticatedAdminCampaignsIdRouteChildren,
   )
 
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedCampanhasRoute: typeof AuthenticatedCampanhasRoute
-  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
-  AuthenticatedCampaignsIdRoute: typeof AuthenticatedCampaignsIdRouteWithChildren
+  AuthenticatedAdminCampanhasRoute: typeof AuthenticatedAdminCampanhasRoute
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+  AuthenticatedAdminCampaignsIdRoute: typeof AuthenticatedAdminCampaignsIdRouteWithChildren
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedCampanhasRoute: AuthenticatedCampanhasRoute,
-  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
-  AuthenticatedCampaignsIdRoute: AuthenticatedCampaignsIdRouteWithChildren,
+  AuthenticatedAdminCampanhasRoute: AuthenticatedAdminCampanhasRoute,
+  AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+  AuthenticatedAdminCampaignsIdRoute:
+    AuthenticatedAdminCampaignsIdRouteWithChildren,
 }
 
 const AuthenticatedRouteRouteWithChildren =

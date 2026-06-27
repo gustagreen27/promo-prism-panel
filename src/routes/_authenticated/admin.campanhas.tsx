@@ -34,7 +34,7 @@ import { toast } from "sonner";
 import { Copy, ExternalLink, Trash2, BarChart3, Pencil, Play, Pause } from "lucide-react";
 import { IntentScoreBadge, StatusBadge } from "@/components/campaign-badges";
 
-export const Route = createFileRoute("/_authenticated/campanhas")({
+export const Route = createFileRoute("/_authenticated/admin/campanhas")({
   head: () => ({ meta: [{ title: "Campanhas — Painel" }] }),
   component: CampaignsList,
 });

@@ -31,7 +31,7 @@ import { validateCampaignForm, type FieldIssue } from "@/lib/campaign-validation
 import { CAMPAIGN_TYPES, LINK_INTENTS, OPEN_MODES, PAGE_CATEGORIES } from "@/lib/campaign-options";
 import { ImageUpload } from "@/components/image-upload";
 
-export const Route = createFileRoute("/_authenticated/campaigns/$id/edit")({
+export const Route = createFileRoute("/_authenticated/admin/campaigns/$id/edit")({
   head: () => ({ meta: [{ title: "Editar campanha" }] }),
   component: EditCampaign,
 });

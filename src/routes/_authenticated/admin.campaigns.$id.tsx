@@ -25,7 +25,7 @@ import {
 import { ArrowLeft, Pencil } from "lucide-react";
 import { IntentScoreBadge, StatusBadge } from "@/components/campaign-badges";
 
-export const Route = createFileRoute("/_authenticated/campaigns/$id")({
+export const Route = createFileRoute("/_authenticated/admin/campaigns/$id")({
   head: () => ({ meta: [{ title: "Métricas da campanha" }] }),
   component: CampaignDetail,
 });

@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, ExternalLink, MonitorSmartphone, Smartphone } from "lucide-react";
 
-export const Route = createFileRoute("/_authenticated/campaigns/$id/preview")({
+export const Route = createFileRoute("/_authenticated/admin/campaigns/$id/preview")({
   head: () => ({ meta: [{ title: "Pré-visualizar campanha" }] }),
   component: PreviewCampaign,
 });

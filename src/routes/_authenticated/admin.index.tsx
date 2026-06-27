@@ -23,7 +23,7 @@ import { getDashboardSummary } from "@/lib/dashboard.functions";
 import { getPeriodRange, type PeriodKey } from "@/lib/period";
 import { formatBRL, formatDate, formatNumber, formatPercent } from "@/lib/format";
 
-export const Route = createFileRoute("/_authenticated/")({
+export const Route = createFileRoute("/_authenticated/admin/")({
   head: () => ({ meta: [{ title: "Dashboard — Painel" }] }),
   component: DashboardPage,
 });
