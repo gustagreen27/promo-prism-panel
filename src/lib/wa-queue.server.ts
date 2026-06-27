@@ -12,6 +12,10 @@ export async function processCampaignTick(campaignId: string, batchSize = 25): P
     .single();
   if (!camp) return { processed: 0, done: true };
   if (camp.status !== "running") return { processed: 0, done: true };
+  if (!camp.connection_id || !camp.template_id) {
+    await supabaseAdmin.from("wa_campaigns").update({ status: "error" }).eq("id", campaignId);
+    return { processed: 0, done: true };
+  }
 
   const { data: conn } = await supabaseAdmin
     .from("whatsapp_connections")
@@ -85,7 +89,7 @@ export async function processCampaignTick(campaignId: string, batchSize = 25): P
       to: r.phone.replace(/\D/g, ""),
       templateName: tpl.name,
       languageCode: tpl.language || "pt_BR",
-      variables: r.variables || {},
+      variables: (r.variables as Record<string, string> | null) || {},
       headerType: tpl.header_type,
       headerValue: tpl.header_text,
     });
@@ -117,7 +121,7 @@ export async function processCampaignTick(campaignId: string, batchSize = 25): P
   }
 
   // Update counters
-  await supabaseAdmin.rpc("set_updated_at" as any).catch(() => {});
+  // counters refresh follows
   const { data: counts } = await supabaseAdmin
     .from("campaign_recipients")
     .select("status")

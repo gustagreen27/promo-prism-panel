@@ -123,7 +123,7 @@ export const syncTemplates = createServerFn({ method: "POST" })
           name: t.name,
           language: t.language,
           category: t.category,
-          status: statusMap[t.status] || "pending",
+          status: (statusMap[t.status] || "pending") as "approved" | "pending" | "rejected" | "paused" | "disabled",
           header_type: header?.format?.toLowerCase() ?? null,
           header_text: header?.text ?? null,
           body: body?.text ?? "",
