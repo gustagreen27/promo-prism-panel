@@ -43,11 +43,11 @@ function dayKey(iso: string) {
 
 function AnalyticsPage() {
   const navigate = useNavigate();
-  const [period, setPeriod] = useState<PeriodKey>("last30");
+  const [period, setPeriod] = useState<PeriodKey>("last_30");
   const [campaignId, setCampaignId] = useState<string>("all");
   const [metric, setMetric] = useState<MetricType>("all");
 
-  const { from, to } = rangeFor(period);
+  const { start: from, end: to } = getPeriodRange(period);
 
   const { data: campaigns } = useQuery({
     queryKey: ["analytics-campaigns"],
