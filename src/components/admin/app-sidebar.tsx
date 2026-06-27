@@ -15,6 +15,7 @@ import {
   Settings,
   LogOut,
   Printer,
+  Megaphone,
 } from "lucide-react";
 import {
   Sidebar,
@@ -64,6 +65,7 @@ const GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: "Ferramentas",
     items: [
+      { title: "Campanhas", to: "/campanhas", icon: Megaphone },
       { title: "Upsell", to: "/upsell", icon: Sparkles },
       { title: "Dashboard TV", to: "/tv", icon: Tv },
     ],
