@@ -27,7 +27,7 @@ import {
 import { ArrowLeft, Printer, BarChart3 } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { PeriodFilter } from "@/components/admin/period-filter";
-import { PERIOD_OPTIONS, type PeriodKey } from "@/lib/period";
+import { PERIOD_OPTIONS, getPeriodRange, type PeriodKey } from "@/lib/period";
 import { fmtNum, fmtPct, formatBRDateTime } from "@/lib/report-utils";
 
 type MetricType = "all" | "clicks" | "unique" | "ctr";
@@ -36,12 +36,6 @@ export const Route = createFileRoute("/_authenticated/admin/relatorios/analytics
   head: () => ({ meta: [{ title: "Analytics de campanhas — Painel" }] }),
   component: AnalyticsPage,
 });
-
-function rangeFor(key: PeriodKey): { from: Date; to: Date } {
-  const opt = PERIOD_OPTIONS.find((o) => o.key === key) ?? PERIOD_OPTIONS[0];
-  const range = opt.range();
-  return { from: range.from ?? new Date(0), to: range.to ?? new Date() };
-}
 
 function dayKey(iso: string) {
   return iso.slice(0, 10);
