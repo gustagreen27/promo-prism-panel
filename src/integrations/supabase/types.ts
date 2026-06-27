@@ -336,6 +336,7 @@ export type Database = {
           og_type: string | null
           open_mode: string
           page_category: string | null
+          participants: Database["public"]["Enums"]["partner_participant"][]
           preview_image_url: string | null
           slug: string
           status: Database["public"]["Enums"]["campaign_status"]
@@ -371,6 +372,7 @@ export type Database = {
           og_type?: string | null
           open_mode?: string
           page_category?: string | null
+          participants?: Database["public"]["Enums"]["partner_participant"][]
           preview_image_url?: string | null
           slug: string
           status?: Database["public"]["Enums"]["campaign_status"]
@@ -406,6 +408,7 @@ export type Database = {
           og_type?: string | null
           open_mode?: string
           page_category?: string | null
+          participants?: Database["public"]["Enums"]["partner_participant"][]
           preview_image_url?: string | null
           slug?: string
           status?: Database["public"]["Enums"]["campaign_status"]
@@ -474,6 +477,7 @@ export type Database = {
           margin: number | null
           month: number
           net_profit: number | null
+          participants: Database["public"]["Enums"]["partner_participant"][]
           status: string
           total_cost: number | null
           total_messages: number | null
@@ -490,6 +494,7 @@ export type Database = {
           margin?: number | null
           month: number
           net_profit?: number | null
+          participants?: Database["public"]["Enums"]["partner_participant"][]
           status?: string
           total_cost?: number | null
           total_messages?: number | null
@@ -506,6 +511,7 @@ export type Database = {
           margin?: number | null
           month?: number
           net_profit?: number | null
+          participants?: Database["public"]["Enums"]["partner_participant"][]
           status?: string
           total_cost?: number | null
           total_messages?: number | null
@@ -739,6 +745,7 @@ export type Database = {
           is_recurring: boolean
           notes: string | null
           paid_date: string | null
+          participants: Database["public"]["Enums"]["partner_participant"][]
           project_id: string | null
           recurrence_type: string | null
           status: string
@@ -757,6 +764,7 @@ export type Database = {
           is_recurring?: boolean
           notes?: string | null
           paid_date?: string | null
+          participants?: Database["public"]["Enums"]["partner_participant"][]
           project_id?: string | null
           recurrence_type?: string | null
           status?: string
@@ -775,6 +783,7 @@ export type Database = {
           is_recurring?: boolean
           notes?: string | null
           paid_date?: string | null
+          participants?: Database["public"]["Enums"]["partner_participant"][]
           project_id?: string | null
           recurrence_type?: string | null
           status?: string
@@ -1069,6 +1078,7 @@ export type Database = {
           issue_date: string | null
           notes: string | null
           paid_date: string | null
+          participants: Database["public"]["Enums"]["partner_participant"][]
           payment_method: string | null
           project_id: string | null
           status: string
@@ -1085,6 +1095,7 @@ export type Database = {
           issue_date?: string | null
           notes?: string | null
           paid_date?: string | null
+          participants?: Database["public"]["Enums"]["partner_participant"][]
           payment_method?: string | null
           project_id?: string | null
           status?: string
@@ -1101,6 +1112,7 @@ export type Database = {
           issue_date?: string | null
           notes?: string | null
           paid_date?: string | null
+          participants?: Database["public"]["Enums"]["partner_participant"][]
           payment_method?: string | null
           project_id?: string | null
           status?: string
@@ -1250,6 +1262,7 @@ export type Database = {
           list_id: string | null
           name: string
           notes: string | null
+          participants: Database["public"]["Enums"]["partner_participant"][]
           project_id: string | null
           read_count: number
           replied_count: number
@@ -1278,6 +1291,7 @@ export type Database = {
           list_id?: string | null
           name: string
           notes?: string | null
+          participants?: Database["public"]["Enums"]["partner_participant"][]
           project_id?: string | null
           read_count?: number
           replied_count?: number
@@ -1306,6 +1320,7 @@ export type Database = {
           list_id?: string | null
           name?: string
           notes?: string | null
+          participants?: Database["public"]["Enums"]["partner_participant"][]
           project_id?: string | null
           read_count?: number
           replied_count?: number
@@ -1704,6 +1719,7 @@ export type Database = {
         | "returning_visitor"
         | "bot_detected"
       campaign_status: "draft" | "active" | "paused" | "archived"
+      partner_participant: "gustavo" | "cayo"
       wa_campaign_status:
         | "draft"
         | "scheduled"
@@ -1869,6 +1885,7 @@ export const Constants = {
         "bot_detected",
       ],
       campaign_status: ["draft", "active", "paused", "archived"],
+      partner_participant: ["gustavo", "cayo"],
       wa_campaign_status: [
         "draft",
         "scheduled",
