@@ -246,15 +246,15 @@ export const trackClick = createServerFn({ method: "POST" })
       const sinceDuplicate = new Date(Date.now() - 60 * 1000).toISOString();
       const { data: prior } = await supabaseAdmin
         .from("campaign_clicks")
-        .select("id, created_at")
+        .select("id, clicked_at")
         .eq("campaign_id", campaign.id)
         .eq("ip", ip)
-        .gte("created_at", sinceReturning)
-        .order("created_at", { ascending: false })
+        .gte("clicked_at", sinceReturning)
+        .order("clicked_at", { ascending: false })
         .limit(1);
       if (prior && prior.length > 0) {
         isReturning = true;
-        if ((prior[0]?.created_at ?? "") >= sinceDuplicate) isDuplicate = true;
+        if ((prior[0]?.clicked_at ?? "") >= sinceDuplicate) isDuplicate = true;
       }
     }
 
