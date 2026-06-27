@@ -196,6 +196,7 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
   const [linkDescription, setLinkDescription] = useState("");
   const [intermediateText, setIntermediateText] = useState("");
   const [ctaLabel, setCtaLabel] = useState("");
+  const [openMode, setOpenMode] = useState<string>("smart");
 
   const create = useServerFn(createCampaign);
   const queryClient = useQueryClient();
