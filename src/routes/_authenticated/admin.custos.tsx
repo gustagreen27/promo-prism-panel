@@ -19,6 +19,13 @@ import { formatBRL, formatDate } from "@/lib/format";
 import { listCosts, createCost, updateCost, deleteCost } from "@/lib/costs.functions";
 import { listClients } from "@/lib/clients.functions";
 import { listProjects } from "@/lib/projects.functions";
+import {
+  ParticipantsBadges,
+  ParticipantsSelect,
+  ParticipantsFilter,
+  matchesParticipants,
+  type Participant,
+} from "@/components/participants";
 
 export const Route = createFileRoute("/_authenticated/admin/custos")({
   head: () => ({ meta: [{ title: "Custos — Painel" }] }),
@@ -41,6 +48,7 @@ function Page() {
   const { data: projects = [] } = useQuery({ queryKey: ["projects"], queryFn: () => projectsFn() });
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
+  const [partFilter, setPartFilter] = useState<Participant[]>([]);
   const refresh = () => qc.invalidateQueries({ queryKey: ["costs"] });
   const saveMut = useMutation({
     mutationFn: async (p: any) => (editing ? update({ data: { id: editing.id, ...p } }) : create({ data: p })),
@@ -52,7 +60,8 @@ function Page() {
     onSuccess: () => { toast.success("Removido"); refresh(); },
   });
 
-  const total = data.reduce((s: number, r: any) => s + Number(r.amount ?? 0), 0);
+  const filtered = data.filter((r: any) => matchesParticipants(r, partFilter));
+  const total = filtered.reduce((s: number, r: any) => s + Number(r.amount ?? 0), 0);
 
   return (
     <>
@@ -68,23 +77,33 @@ function Page() {
         <p className="mt-1 text-2xl font-semibold text-rose-600 dark:text-rose-400">{formatBRL(total)}</p>
       </div>
 
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">Filtrar por sócio:</span>
+        <div className="w-56"><ParticipantsFilter value={partFilter} onChange={setPartFilter} /></div>
+        {partFilter.length > 0 && (
+          <Button variant="ghost" size="sm" onClick={() => setPartFilter([])}>Limpar</Button>
+        )}
+      </div>
+
       <div className="rounded-xl border bg-card">
         {isLoading ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
-          : data.length === 0 ? <EmptyState title="Sem custos" />
+          : filtered.length === 0 ? <EmptyState title="Sem custos" />
           : <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Descrição</TableHead><TableHead>Categoria</TableHead>
-                <TableHead>Fornecedor</TableHead><TableHead>Vencimento</TableHead>
+                <TableHead>Fornecedor</TableHead><TableHead>Sócios</TableHead>
+                <TableHead>Vencimento</TableHead>
                 <TableHead>Valor</TableHead><TableHead>Status</TableHead><TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.map((r: any) => (
+              {filtered.map((r: any) => (
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">{r.description}</TableCell>
                   <TableCell><Badge variant="outline">{r.category}</Badge></TableCell>
                   <TableCell>{r.supplier ?? "—"}</TableCell>
+                  <TableCell><ParticipantsBadges value={r.participants} /></TableCell>
                   <TableCell>{formatDate(r.due_date)}</TableCell>
                   <TableCell>{formatBRL(r.amount)}</TableCell>
                   <TableCell><Badge variant="secondary">{r.status}</Badge></TableCell>
@@ -105,7 +124,7 @@ function FormDialog({ editing, clients, projects, onSubmit, saving }: any) {
   const [form, setForm] = useState<any>(() => editing ?? {
     description: "", category: "mensagens", supplier: "", amount: "",
     status: "pendente", client_id: "", project_id: "", due_date: "", paid_date: "",
-    is_recurring: false, recurrence_type: "", notes: "",
+    is_recurring: false, recurrence_type: "", notes: "", participants: [],
   });
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
   return (
@@ -141,11 +160,18 @@ function FormDialog({ editing, clients, projects, onSubmit, saving }: any) {
         </div>
         <div><Label>Vencimento</Label><Input type="date" value={form.due_date ?? ""} onChange={(e) => set("due_date", e.target.value)} /></div>
         <div><Label>Pagamento</Label><Input type="date" value={form.paid_date ?? ""} onChange={(e) => set("paid_date", e.target.value)} /></div>
+        <div className="sm:col-span-2">
+          <ParticipantsSelect
+            value={(form.participants ?? []) as Participant[]}
+            onChange={(v) => set("participants", v)}
+            label="Sócios participantes"
+          />
+        </div>
         <div className="flex items-center gap-2"><Switch checked={!!form.is_recurring} onCheckedChange={(v) => set("is_recurring", v)} /><Label>Recorrente</Label></div>
         {form.is_recurring && <div><Label>Recorrência</Label><Input placeholder="mensal, anual…" value={form.recurrence_type ?? ""} onChange={(e) => set("recurrence_type", e.target.value)} /></div>}
         <div className="sm:col-span-2"><Label>Notas</Label><Textarea value={form.notes ?? ""} onChange={(e) => set("notes", e.target.value)} /></div>
       </div>
-      <DialogFooter><Button disabled={saving} onClick={() => onSubmit({ ...form, amount: Number(form.amount || 0) })}>Salvar</Button></DialogFooter>
+      <DialogFooter><Button disabled={saving} onClick={() => onSubmit({ ...form, amount: Number(form.amount || 0), participants: form.participants ?? [] })}>Salvar</Button></DialogFooter>
     </DialogContent>
   );
 }
