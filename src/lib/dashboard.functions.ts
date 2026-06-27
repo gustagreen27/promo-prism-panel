@@ -78,7 +78,7 @@ export const getDashboardSummary = createServerFn({ method: "POST" })
       .select("value")
       .eq("key", "monthly_goal")
       .maybeSingle();
-    const monthlyGoal = Number(goalSetting?.value?.amount ?? 0) || 0;
+    const monthlyGoal = Number((goalSetting?.value as { amount?: number } | null)?.amount ?? 0) || 0;
 
     // This month revenue (for goal progress)
     const now = new Date();
