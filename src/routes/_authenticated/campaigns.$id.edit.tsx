@@ -637,3 +637,56 @@ function Field({
   );
 }
 
+
+function IframeCompatStatus({
+  campaign,
+  id,
+  onRecheck,
+}: {
+  campaign: { iframe_compatible: boolean | null; iframe_checked_at: string | null } | null | undefined;
+  id: string;
+  onRecheck: () => void;
+}) {
+  const recheckFn = useServerFn(recheckIframeCompatibility);
+  const [busy, setBusy] = useState(false);
+  const compat = campaign?.iframe_compatible;
+  const checkedAt = campaign?.iframe_checked_at;
+  const statusText =
+    compat == null
+      ? "Ainda não verificado"
+      : compat
+        ? "Destino permite iframe"
+        : "Destino bloqueia iframe — modo inteligente vai redirecionar";
+  const tone =
+    compat == null ? "text-muted-foreground" : compat ? "text-emerald-600" : "text-amber-600";
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+      <span className={tone}>{statusText}</span>
+      {checkedAt && (
+        <span className="text-muted-foreground">
+          verificado em {new Date(checkedAt).toLocaleString()}
+        </span>
+      )}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          try {
+            await recheckFn({ data: { id } });
+            toast.success("Compatibilidade re-verificada");
+            onRecheck();
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Falha ao re-verificar");
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        {busy ? "Verificando..." : "Re-checar"}
+      </Button>
+    </div>
+  );
+}
