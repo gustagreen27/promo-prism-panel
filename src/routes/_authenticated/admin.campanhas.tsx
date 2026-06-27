@@ -407,6 +407,13 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
               <Label htmlFor="cta">Texto do botão (CTA)</Label>
               <Input id="cta" value={ctaLabel} onChange={(e) => setCtaLabel(e.target.value)} />
             </div>
+            <div className="sm:col-span-2">
+              <ParticipantsSelect
+                value={participants}
+                onChange={setParticipants}
+                label="Sócios responsáveis pela campanha"
+              />
+            </div>
           </div>
 
           <DialogFooter>
