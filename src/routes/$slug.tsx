@@ -289,11 +289,12 @@ function WrapperPage({
   );
 }
 
-function ImmediateRedirect({ url }: { url: string }) {
+function ImmediateRedirect({ url, slug }: { url: string; slug: string }) {
   useEffect(() => {
+    emitEvent(slug, "redirect_started", { url, source: "direct" });
     window.location.replace(url);
-  }, [url]);
-  // SSR fallback: meta refresh garante redirecionamento mesmo sem JS.
+    emitEvent(slug, "redirect_completed", { url });
+  }, [url, slug]);
   return <meta httpEquiv="refresh" content={`0;url=${url}`} />;
 }
 
