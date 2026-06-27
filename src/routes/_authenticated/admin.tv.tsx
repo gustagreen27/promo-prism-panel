@@ -17,10 +17,10 @@ export const Route = createFileRoute("/_authenticated/admin/tv")({
 
 function Page() {
   const fn = useServerFn(getDashboardSummary);
-  const { start, end } = getPeriodRange("month");
+  const { start, end } = getPeriodRange("this_month");
   const { data, refetch } = useQuery({
     queryKey: ["dash-tv"],
-    queryFn: () => fn({ data: { start, end } }),
+    queryFn: () => fn({ data: { start: start.toISOString(), end: end.toISOString() } }),
     refetchInterval: 30000,
   });
 
