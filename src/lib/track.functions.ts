@@ -113,9 +113,9 @@ function pickMeta(c: Record<string, unknown>) {
 }
 
 /**
- * Fast resolver for the public `/$slug` route. Runs the iframe HEAD check
- * (cheap) but does NOT call IP-API or insert the click log — that's deferred
- * to `trackClick` fired in the background from the client.
+ * Fast resolver for the public `/$slug` route. Decide o modo de abertura
+ * (smart/iframe/redirect/wrapper) e devolve cache de iframe_compatible.
+ * NÃO chama IP-API nem grava clique — isso fica em `trackClick`.
  */
 export const resolveCampaign = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => inputSchema.parse(data))
@@ -140,11 +140,42 @@ export const resolveCampaign = createServerFn({ method: "POST" })
     }
 
     const finalUrl = applyUtms(campaign.destination_url, campaign);
-    const iframeAllowed = await canEmbedInIframe(finalUrl);
+    const mode = ((campaign as Record<string, unknown>).open_mode as string) || "smart";
+
+    // Para iframe/wrapper já sabemos o caminho. Para smart, usa o cache e,
+    // se ausente, faz HEAD agora e persiste.
+    let iframeAllowed = true;
+    if (mode === "redirect") {
+      iframeAllowed = false;
+    } else if (mode === "iframe") {
+      iframeAllowed = true;
+    } else if (mode === "wrapper") {
+      iframeAllowed = false; // wrapper não usa iframe
+    } else {
+      // smart
+      const cached = (campaign as Record<string, unknown>).iframe_compatible;
+      if (typeof cached === "boolean") {
+        iframeAllowed = cached;
+      } else {
+        iframeAllowed = await canEmbedInIframe(finalUrl);
+        try {
+          await supabaseAdmin
+            .from("campaigns")
+            .update({
+              iframe_compatible: iframeAllowed,
+              iframe_checked_at: new Date().toISOString(),
+            } as never)
+            .eq("id", campaign.id);
+        } catch {
+          /* ignore */
+        }
+      }
+    }
 
     return {
       ok: true as const,
       destination_url: finalUrl,
+      open_mode: mode as "smart" | "iframe" | "redirect" | "wrapper",
       iframeAllowed,
       meta: pickMeta(campaign),
     };
