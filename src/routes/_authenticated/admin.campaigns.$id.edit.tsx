@@ -397,6 +397,11 @@ function EditCampaign() {
               placeholder="Entrar na aula"
             />
           </Field>
+          <ParticipantsSelect
+            value={participants}
+            onChange={setParticipants}
+            label="Sócios responsáveis pela campanha"
+          />
         </TabsContent>
 
         <TabsContent value="urls" className="space-y-4 pt-4">
