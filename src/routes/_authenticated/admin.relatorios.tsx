@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, FileText } from "lucide-react";
+import { Plus, FileText, BarChart3 } from "lucide-react";
 import { computeTotals, fmtBRL, fmtNum, formatBRDate, type Campaign } from "@/lib/report-utils";
 import { PageHeader } from "@/components/admin/page-header";
 
@@ -41,9 +41,14 @@ function ReportsPage() {
         title="Relatórios de fechamento"
         description="Histórico completo de disparos por cliente."
         actions={
-          <Button asChild>
-            <Link to="/admin/relatorios/new"><Plus className="size-4" /> Novo relatório</Link>
-          </Button>
+          <>
+            <Button asChild variant="outline">
+              <Link to="/admin/relatorios/analytics"><BarChart3 className="size-4" /> Analytics</Link>
+            </Button>
+            <Button asChild>
+              <Link to="/admin/relatorios/new"><Plus className="size-4" /> Novo relatório</Link>
+            </Button>
+          </>
         }
       />
 
