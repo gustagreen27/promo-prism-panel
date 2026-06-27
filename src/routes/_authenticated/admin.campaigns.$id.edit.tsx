@@ -227,7 +227,7 @@ function EditCampaign() {
     <div className="space-y-6">
       <div>
         <Button variant="ghost" size="sm" asChild className="-ml-2">
-          <Link to="/">
+          <Link to="/admin">
             <ArrowLeft className="mr-1 h-4 w-4" /> Voltar
           </Link>
         </Button>
@@ -571,12 +571,12 @@ function EditCampaign() {
       <div className="sticky bottom-0 -mx-4 border-t bg-background/95 px-4 py-3 backdrop-blur">
         <div className="flex flex-wrap justify-end gap-2">
           <Button variant="outline" asChild>
-            <Link to="/campaigns/$id/preview" params={{ id }}>
+            <Link to="/admin/campaigns/$id/preview" params={{ id }}>
               <Eye className="mr-1 h-4 w-4" /> Pré-visualizar
             </Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link to="/campaigns/$id" params={{ id }}>Ver métricas</Link>
+            <Link to="/admin/campaigns/$id" params={{ id }}>Ver métricas</Link>
           </Button>
           <Button
             onClick={() => save.mutate()}

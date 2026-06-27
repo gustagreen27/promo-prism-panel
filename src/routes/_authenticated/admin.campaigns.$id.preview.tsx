@@ -58,7 +58,7 @@ function PreviewCampaign() {
     <div className="space-y-4">
       <div>
         <Button variant="ghost" size="sm" asChild className="-ml-2">
-          <Link to="/campaigns/$id/edit" params={{ id }}>
+          <Link to="/admin/campaigns/$id/edit" params={{ id }}>
             <ArrowLeft className="mr-1 h-4 w-4" /> Voltar para edição
           </Link>
         </Button>

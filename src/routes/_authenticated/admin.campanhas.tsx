@@ -125,12 +125,12 @@ function CampaignRow({
             {isActive ? (<><Pause className="mr-1 h-4 w-4" /> Pausar</>) : (<><Play className="mr-1 h-4 w-4" /> Publicar</>)}
           </Button>
           <Button variant="outline" size="sm" asChild>
-            <Link to="/campaigns/$id/edit" params={{ id: c.id }}>
+            <Link to="/admin/campaigns/$id/edit" params={{ id: c.id }}>
               <Pencil className="mr-1 h-4 w-4" /> Editar
             </Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
-            <Link to="/campaigns/$id" params={{ id: c.id }}>
+            <Link to="/admin/campaigns/$id" params={{ id: c.id }}>
               <BarChart3 className="mr-1 h-4 w-4" /> Métricas
             </Link>
           </Button>
@@ -214,7 +214,7 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
       setOpenMode("smart");
       setOpen(false);
       onCreated();
-      router.navigate({ to: "/campaigns/$id/edit", params: { id: created.id } });
+      router.navigate({ to: "/admin/campaigns/$id/edit", params: { id: created.id } });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Falha ao criar"),
   });

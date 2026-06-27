@@ -120,7 +120,7 @@ function DashboardPage() {
             {(data?.monthlyGoal ?? 0) === 0 && (
               <p className="text-xs text-muted-foreground">
                 Defina sua meta mensal em{" "}
-                <Link to="/configuracoes" className="underline hover:text-foreground">
+                <Link to="/admin/configuracoes" className="underline hover:text-foreground">
                   Configurações
                 </Link>
                 .
@@ -166,7 +166,7 @@ function DashboardPage() {
               <p className="text-xs text-muted-foreground">Resumos mensais salvos</p>
             </div>
             <Button asChild variant="ghost" size="sm" className="text-xs">
-              <Link to="/fechamento">
+              <Link to="/admin/fechamento">
                 Ver tudo <ArrowUpRight className="ml-1 h-3 w-3" />
               </Link>
             </Button>
@@ -224,7 +224,7 @@ function DashboardPage() {
               <p className="text-xs text-muted-foreground">Receitas recentes registradas</p>
             </div>
             <Button asChild variant="ghost" size="sm" className="text-xs">
-              <Link to="/faturamento">
+              <Link to="/admin/faturamento">
                 Ver tudo <ArrowUpRight className="ml-1 h-3 w-3" />
               </Link>
             </Button>
