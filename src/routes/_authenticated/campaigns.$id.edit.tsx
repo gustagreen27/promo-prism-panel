@@ -6,6 +6,7 @@ import {
   analyzeCampaignIntent,
   checkSlugAvailability,
   getCampaign,
+  recheckIframeCompatibility,
   updateCampaign,
 } from "@/lib/campaigns.functions";
 import { Button } from "@/components/ui/button";
