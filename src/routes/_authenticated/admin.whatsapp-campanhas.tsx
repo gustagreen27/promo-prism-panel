@@ -20,6 +20,13 @@ import { listNumbers } from "@/lib/whatsapp-numbers.functions";
 import { listTemplates } from "@/lib/whatsapp-templates.functions";
 import { listLists } from "@/lib/contact-lists.functions";
 import { formatDate } from "@/lib/format";
+import {
+  ParticipantsBadges,
+  ParticipantsSelect,
+  ParticipantsFilter,
+  matchesParticipants,
+  type Participant,
+} from "@/components/participants";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp-campanhas")({
   head: () => ({ meta: [{ title: "Campanhas WhatsApp" }] }),
@@ -57,6 +64,7 @@ function Page() {
   const { data: lists = [] } = useQuery({ queryKey: ["lists"], queryFn: () => listsFn() });
 
   const [open, setOpen] = useState(false);
+  const [partFilter, setPartFilter] = useState<Participant[]>([]);
   const refresh = () => qc.invalidateQueries({ queryKey: ["wa-campaigns"] });
 
   const saveMut = useMutation({
@@ -90,20 +98,28 @@ function Page() {
           </Dialog>
         }
       />
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">Filtrar por sócio:</span>
+        <div className="w-56"><ParticipantsFilter value={partFilter} onChange={setPartFilter} /></div>
+        {partFilter.length > 0 && (
+          <Button variant="ghost" size="sm" onClick={() => setPartFilter([])}>Limpar</Button>
+        )}
+      </div>
       <div className="rounded-xl border bg-card">
         {isLoading ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
         : rows.length === 0 ? <EmptyState title="Sem campanhas WhatsApp" description="Crie uma nova campanha para iniciar disparos." />
         : <Table>
           <TableHeader><TableRow>
-            <TableHead>Nome</TableHead><TableHead>Cliente</TableHead><TableHead>Template</TableHead>
+            <TableHead>Nome</TableHead><TableHead>Cliente</TableHead><TableHead>Sócios</TableHead><TableHead>Template</TableHead>
             <TableHead>Destinatários</TableHead><TableHead>Enviadas</TableHead>
             <TableHead>Entregues</TableHead><TableHead>Lidas</TableHead><TableHead>Status</TableHead><TableHead />
           </TableRow></TableHeader>
           <TableBody>
-            {rows.map((r: any) => (
+            {rows.filter((r: any) => matchesParticipants(r, partFilter)).map((r: any) => (
               <TableRow key={r.id}>
                 <TableCell className="font-medium">{r.name}</TableCell>
                 <TableCell>{r.client?.name ?? "—"}</TableCell>
+                <TableCell><ParticipantsBadges value={r.participants} /></TableCell>
                 <TableCell>{r.template?.name ?? "—"}</TableCell>
                 <TableCell>{r.total_recipients}</TableCell>
                 <TableCell>{r.sent_count}</TableCell>
@@ -138,7 +154,7 @@ function Page() {
 function CreateDialog({ clients, projects, numbers, templates, lists, onSubmit, saving }: any) {
   const [form, setForm] = useState<any>({
     name: "", client_id: "", project_id: "", connection_id: "", template_id: "", list_id: "",
-    template_variables: {}, send_rate_per_min: 30, notes: "",
+    template_variables: {}, send_rate_per_min: 30, notes: "", participants: [],
   });
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
   const template = templates.find((t: any) => t.id === form.template_id);
@@ -203,8 +219,15 @@ function CreateDialog({ clients, projects, numbers, templates, lists, onSubmit, 
         )}
 
         <div><Label>Velocidade (msg/min)</Label><Input type="number" value={form.send_rate_per_min} onChange={(e) => set("send_rate_per_min", Number(e.target.value))} /></div>
+        <div className="sm:col-span-2">
+          <ParticipantsSelect
+            value={(form.participants ?? []) as Participant[]}
+            onChange={(v) => set("participants", v)}
+            label="Sócios responsáveis pelo disparo"
+          />
+        </div>
       </div>
-      <DialogFooter><Button disabled={saving || !form.name || !form.connection_id || !form.template_id || !form.list_id} onClick={() => onSubmit(form)}>Criar como rascunho</Button></DialogFooter>
+      <DialogFooter><Button disabled={saving || !form.name || !form.connection_id || !form.template_id || !form.list_id} onClick={() => onSubmit({ ...form, participants: form.participants ?? [] })}>Criar como rascunho</Button></DialogFooter>
     </DialogContent>
   );
 }
