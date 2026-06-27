@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as SlugRouteImport } from './routes/$slug'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedCampanhasRouteImport } from './routes/_authenticated/campanhas'
 import { Route as AuthenticatedCampaignsIdRouteImport } from './routes/_authenticated/campaigns.$id'
 import { Route as ApiPublicCiSplatRouteImport } from './routes/api/public/ci.$'
 import { Route as AuthenticatedCampaignsIdPreviewRouteImport } from './routes/_authenticated/campaigns.$id.preview'
@@ -35,6 +36,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCampanhasRoute = AuthenticatedCampanhasRouteImport.update({
+  id: '/campanhas',
+  path: '/campanhas',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedCampaignsIdRoute =
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/$slug': typeof SlugRoute
   '/auth': typeof AuthRoute
+  '/campanhas': typeof AuthenticatedCampanhasRoute
   '/campaigns/$id': typeof AuthenticatedCampaignsIdRouteWithChildren
   '/campaigns/$id/edit': typeof AuthenticatedCampaignsIdEditRoute
   '/campaigns/$id/preview': typeof AuthenticatedCampaignsIdPreviewRoute
@@ -73,6 +80,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/$slug': typeof SlugRoute
   '/auth': typeof AuthRoute
+  '/campanhas': typeof AuthenticatedCampanhasRoute
   '/': typeof AuthenticatedIndexRoute
   '/campaigns/$id': typeof AuthenticatedCampaignsIdRouteWithChildren
   '/campaigns/$id/edit': typeof AuthenticatedCampaignsIdEditRoute
@@ -84,6 +92,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/$slug': typeof SlugRoute
   '/auth': typeof AuthRoute
+  '/_authenticated/campanhas': typeof AuthenticatedCampanhasRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/campaigns/$id': typeof AuthenticatedCampaignsIdRouteWithChildren
   '/_authenticated/campaigns/$id/edit': typeof AuthenticatedCampaignsIdEditRoute
@@ -96,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$slug'
     | '/auth'
+    | '/campanhas'
     | '/campaigns/$id'
     | '/campaigns/$id/edit'
     | '/campaigns/$id/preview'
@@ -104,6 +114,7 @@ export interface FileRouteTypes {
   to:
     | '/$slug'
     | '/auth'
+    | '/campanhas'
     | '/'
     | '/campaigns/$id'
     | '/campaigns/$id/edit'
@@ -114,6 +125,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/$slug'
     | '/auth'
+    | '/_authenticated/campanhas'
     | '/_authenticated/'
     | '/_authenticated/campaigns/$id'
     | '/_authenticated/campaigns/$id/edit'
@@ -156,6 +168,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/campanhas': {
+      id: '/_authenticated/campanhas'
+      path: '/campanhas'
+      fullPath: '/campanhas'
+      preLoaderRoute: typeof AuthenticatedCampanhasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/campaigns/$id': {
@@ -206,11 +225,13 @@ const AuthenticatedCampaignsIdRouteWithChildren =
   )
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedCampanhasRoute: typeof AuthenticatedCampanhasRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedCampaignsIdRoute: typeof AuthenticatedCampaignsIdRouteWithChildren
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedCampanhasRoute: AuthenticatedCampanhasRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedCampaignsIdRoute: AuthenticatedCampaignsIdRouteWithChildren,
 }
