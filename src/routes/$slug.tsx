@@ -124,7 +124,7 @@ function CampaignPublicPage() {
   const data = Route.useLoaderData();
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const trackingEnabled =
-    data.status === "iframe" || data.status === "redirect";
+    data.status === "iframe" || data.status === "redirect" || data.status === "wrapper";
   useFireAndForgetTracking(data.status === "notfound" ? "" : data.slug, trackingEnabled);
 
   // Client-side watchdog for iframe blocks not caught by server HEAD check.
