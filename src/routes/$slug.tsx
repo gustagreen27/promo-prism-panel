@@ -231,7 +231,7 @@ function CampaignPublicPage() {
 
 
   if (data.status === "redirect") {
-    return <ImmediateRedirect url={data.url} />;
+    return <ImmediateRedirect url={data.url} slug={data.slug} />;
   }
 
   if (data.status === "wrapper") {
