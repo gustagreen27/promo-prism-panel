@@ -235,6 +235,81 @@ export type Database = {
           },
         ]
       }
+      campaign_recipients: {
+        Row: {
+          attempt: number
+          campaign_id: string
+          contact_id: string | null
+          created_at: string
+          delivered_at: string | null
+          error_code: string | null
+          failed_at: string | null
+          failed_reason: string | null
+          id: string
+          meta_message_id: string | null
+          phone: string
+          read_at: string | null
+          replied_at: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["wa_recipient_status"]
+          updated_at: string
+          variables: Json
+        }
+        Insert: {
+          attempt?: number
+          campaign_id: string
+          contact_id?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          error_code?: string | null
+          failed_at?: string | null
+          failed_reason?: string | null
+          id?: string
+          meta_message_id?: string | null
+          phone: string
+          read_at?: string | null
+          replied_at?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["wa_recipient_status"]
+          updated_at?: string
+          variables?: Json
+        }
+        Update: {
+          attempt?: number
+          campaign_id?: string
+          contact_id?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          error_code?: string | null
+          failed_at?: string | null
+          failed_reason?: string | null
+          id?: string
+          meta_message_id?: string | null
+          phone?: string
+          read_at?: string | null
+          replied_at?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["wa_recipient_status"]
+          updated_at?: string
+          variables?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_recipients_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "wa_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_recipients_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
           campaign_type: string | null
@@ -439,6 +514,218 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_list_items: {
+        Row: {
+          added_at: string
+          contact_id: string
+          list_id: string
+        }
+        Insert: {
+          added_at?: string
+          contact_id: string
+          list_id: string
+        }
+        Update: {
+          added_at?: string
+          contact_id?: string
+          list_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_list_items_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_list_items_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "contact_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_lists: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          project_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          project_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          project_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_lists_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_lists_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_tag_assignments: {
+        Row: {
+          contact_id: string
+          tag_id: string
+        }
+        Insert: {
+          contact_id: string
+          tag_id: string
+        }
+        Update: {
+          contact_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_tag_assignments_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_tag_assignments_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "contact_tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_tags: {
+        Row: {
+          client_id: string | null
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          client_id?: string | null
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          client_id?: string | null
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_tags_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contacts: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          email: string | null
+          id: string
+          invalid: boolean
+          last_interaction_at: string | null
+          metadata: Json
+          name: string | null
+          opt_in: boolean
+          opt_in_at: string | null
+          opt_out: boolean
+          opt_out_at: string | null
+          phone: string
+          project_id: string | null
+          source: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          invalid?: boolean
+          last_interaction_at?: string | null
+          metadata?: Json
+          name?: string | null
+          opt_in?: boolean
+          opt_in_at?: string | null
+          opt_out?: boolean
+          opt_out_at?: string | null
+          phone: string
+          project_id?: string | null
+          source?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          invalid?: boolean
+          last_interaction_at?: string | null
+          metadata?: Json
+          name?: string | null
+          opt_in?: boolean
+          opt_in_at?: string | null
+          opt_out?: boolean
+          opt_out_at?: string | null
+          phone?: string
+          project_id?: string | null
+          source?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contacts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contacts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       costs: {
         Row: {
           amount: number
@@ -511,38 +798,151 @@ export type Database = {
           },
         ]
       }
+      import_jobs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          duplicated: number
+          filename: string | null
+          id: string
+          invalid: number
+          report: Json
+          status: string
+          total: number
+          valid: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          duplicated?: number
+          filename?: string | null
+          id?: string
+          invalid?: number
+          report?: Json
+          status?: string
+          total?: number
+          valid?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          duplicated?: number
+          filename?: string | null
+          id?: string
+          invalid?: number
+          report?: Json
+          status?: string
+          total?: number
+          valid?: number
+        }
+        Relationships: []
+      }
       message_stock: {
         Row: {
           amount: number | null
+          client_id: string | null
           created_at: string
+          expires_at: string | null
           id: string
           notes: string | null
+          project_id: string | null
+          purchased_at: string | null
           quantity: number
+          quantity_used: number
           source: string | null
+          status: string
           supplier: string | null
           type: string
+          unit_cost: number | null
+          unit_price: number | null
+          updated_at: string
         }
         Insert: {
           amount?: number | null
+          client_id?: string | null
           created_at?: string
+          expires_at?: string | null
           id?: string
           notes?: string | null
+          project_id?: string | null
+          purchased_at?: string | null
           quantity?: number
+          quantity_used?: number
           source?: string | null
+          status?: string
           supplier?: string | null
           type: string
+          unit_cost?: number | null
+          unit_price?: number | null
+          updated_at?: string
         }
         Update: {
           amount?: number | null
+          client_id?: string | null
           created_at?: string
+          expires_at?: string | null
           id?: string
           notes?: string | null
+          project_id?: string | null
+          purchased_at?: string | null
           quantity?: number
+          quantity_used?: number
           source?: string | null
+          status?: string
           supplier?: string | null
           type?: string
+          unit_cost?: number | null
+          unit_price?: number | null
+          updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "message_stock_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_stock_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      opt_outs: {
+        Row: {
+          client_id: string | null
+          id: string
+          opted_out_at: string
+          phone: string
+          reason: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          id?: string
+          opted_out_at?: string
+          phone: string
+          reason?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          id?: string
+          opted_out_at?: string
+          phone?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opt_outs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -835,38 +1235,276 @@ export type Database = {
         }
         Relationships: []
       }
-      whatsapp_connections: {
+      wa_campaigns: {
         Row: {
-          api_key: string | null
+          client_id: string | null
+          connection_id: string | null
           created_at: string
+          created_by: string | null
+          delivered_count: number
+          estimated_cost: number
+          failed_count: number
+          finished_at: string | null
           id: string
+          linked_revenue_id: string | null
+          list_id: string | null
           name: string
-          phone: string | null
-          provider: string | null
-          status: string
+          notes: string | null
+          project_id: string | null
+          read_count: number
+          replied_count: number
+          scheduled_at: string | null
+          send_rate_per_min: number
+          sent_count: number
+          started_at: string | null
+          status: Database["public"]["Enums"]["wa_campaign_status"]
+          tag_filters: string[] | null
+          template_id: string | null
+          template_variables: Json
+          total_recipients: number
           updated_at: string
         }
         Insert: {
-          api_key?: string | null
+          client_id?: string | null
+          connection_id?: string | null
           created_at?: string
+          created_by?: string | null
+          delivered_count?: number
+          estimated_cost?: number
+          failed_count?: number
+          finished_at?: string | null
           id?: string
+          linked_revenue_id?: string | null
+          list_id?: string | null
           name: string
-          phone?: string | null
-          provider?: string | null
-          status?: string
+          notes?: string | null
+          project_id?: string | null
+          read_count?: number
+          replied_count?: number
+          scheduled_at?: string | null
+          send_rate_per_min?: number
+          sent_count?: number
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["wa_campaign_status"]
+          tag_filters?: string[] | null
+          template_id?: string | null
+          template_variables?: Json
+          total_recipients?: number
           updated_at?: string
         }
         Update: {
-          api_key?: string | null
+          client_id?: string | null
+          connection_id?: string | null
           created_at?: string
+          created_by?: string | null
+          delivered_count?: number
+          estimated_cost?: number
+          failed_count?: number
+          finished_at?: string | null
+          id?: string
+          linked_revenue_id?: string | null
+          list_id?: string | null
+          name?: string
+          notes?: string | null
+          project_id?: string | null
+          read_count?: number
+          replied_count?: number
+          scheduled_at?: string | null
+          send_rate_per_min?: number
+          sent_count?: number
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["wa_campaign_status"]
+          tag_filters?: string[] | null
+          template_id?: string | null
+          template_variables?: Json
+          total_recipients?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wa_campaigns_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_campaigns_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_campaigns_linked_revenue_id_fkey"
+            columns: ["linked_revenue_id"]
+            isOneToOne: false
+            referencedRelation: "revenues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_campaigns_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "contact_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_campaigns_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_campaigns_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_connections: {
+        Row: {
+          access_token: string | null
+          api_key: string | null
+          business_id: string | null
+          client_id: string | null
+          created_at: string
+          daily_limit: number | null
+          display_phone: string | null
+          graph_api_version: string | null
+          id: string
+          name: string
+          phone: string | null
+          phone_number_id: string | null
+          project_id: string | null
+          provider: string | null
+          quality_rating: string | null
+          status: string
+          updated_at: string
+          verify_token: string | null
+          waba_id: string | null
+          webhook_url: string | null
+        }
+        Insert: {
+          access_token?: string | null
+          api_key?: string | null
+          business_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          daily_limit?: number | null
+          display_phone?: string | null
+          graph_api_version?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          phone_number_id?: string | null
+          project_id?: string | null
+          provider?: string | null
+          quality_rating?: string | null
+          status?: string
+          updated_at?: string
+          verify_token?: string | null
+          waba_id?: string | null
+          webhook_url?: string | null
+        }
+        Update: {
+          access_token?: string | null
+          api_key?: string | null
+          business_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          daily_limit?: number | null
+          display_phone?: string | null
+          graph_api_version?: string | null
           id?: string
           name?: string
           phone?: string | null
+          phone_number_id?: string | null
+          project_id?: string | null
           provider?: string | null
+          quality_rating?: string | null
           status?: string
           updated_at?: string
+          verify_token?: string | null
+          waba_id?: string | null
+          webhook_url?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_connections_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_connections_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_inbox: {
+        Row: {
+          body: string | null
+          connection_id: string | null
+          contact_id: string | null
+          direction: string
+          id: string
+          message_type: string | null
+          meta_message_id: string | null
+          phone: string
+          raw: Json | null
+          received_at: string
+          status: string | null
+        }
+        Insert: {
+          body?: string | null
+          connection_id?: string | null
+          contact_id?: string | null
+          direction?: string
+          id?: string
+          message_type?: string | null
+          meta_message_id?: string | null
+          phone: string
+          raw?: Json | null
+          received_at?: string
+          status?: string | null
+        }
+        Update: {
+          body?: string | null
+          connection_id?: string | null
+          contact_id?: string | null
+          direction?: string
+          id?: string
+          message_type?: string | null
+          meta_message_id?: string | null
+          phone?: string
+          raw?: Json | null
+          received_at?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_inbox_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_inbox_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       whatsapp_messages: {
         Row: {
@@ -928,6 +1566,109 @@ export type Database = {
           },
         ]
       }
+      whatsapp_templates: {
+        Row: {
+          body: string
+          buttons: Json
+          category: string | null
+          connection_id: string | null
+          created_at: string
+          footer: string | null
+          header_text: string | null
+          header_type: string | null
+          id: string
+          language: string
+          meta_template_id: string | null
+          name: string
+          raw: Json | null
+          status: Database["public"]["Enums"]["wa_template_status"]
+          updated_at: string
+          variables: Json
+        }
+        Insert: {
+          body?: string
+          buttons?: Json
+          category?: string | null
+          connection_id?: string | null
+          created_at?: string
+          footer?: string | null
+          header_text?: string | null
+          header_type?: string | null
+          id?: string
+          language?: string
+          meta_template_id?: string | null
+          name: string
+          raw?: Json | null
+          status?: Database["public"]["Enums"]["wa_template_status"]
+          updated_at?: string
+          variables?: Json
+        }
+        Update: {
+          body?: string
+          buttons?: Json
+          category?: string | null
+          connection_id?: string | null
+          created_at?: string
+          footer?: string | null
+          header_text?: string | null
+          header_type?: string | null
+          id?: string
+          language?: string
+          meta_template_id?: string | null
+          name?: string
+          raw?: Json | null
+          status?: Database["public"]["Enums"]["wa_template_status"]
+          updated_at?: string
+          variables?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_templates_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_webhook_logs: {
+        Row: {
+          connection_id: string | null
+          created_at: string
+          error: string | null
+          event_type: string | null
+          id: string
+          payload: Json
+          processed: boolean
+        }
+        Insert: {
+          connection_id?: string | null
+          created_at?: string
+          error?: string | null
+          event_type?: string | null
+          id?: string
+          payload: Json
+          processed?: boolean
+        }
+        Update: {
+          connection_id?: string | null
+          created_at?: string
+          error?: string | null
+          event_type?: string | null
+          id?: string
+          payload?: Json
+          processed?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_webhook_logs_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -938,6 +1679,14 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      wa_available_stock: {
+        Args: { _client_id: string; _project_id: string }
+        Returns: number
+      }
+      wa_consume_stock: {
+        Args: { _client_id: string; _project_id: string; _qty: number }
         Returns: boolean
       }
     }
@@ -955,6 +1704,30 @@ export type Database = {
         | "returning_visitor"
         | "bot_detected"
       campaign_status: "draft" | "active" | "paused" | "archived"
+      wa_campaign_status:
+        | "draft"
+        | "scheduled"
+        | "running"
+        | "paused"
+        | "completed"
+        | "cancelled"
+        | "error"
+      wa_recipient_status:
+        | "pending"
+        | "processing"
+        | "sent"
+        | "delivered"
+        | "read"
+        | "replied"
+        | "failed"
+        | "cancelled"
+        | "opt_out"
+      wa_template_status:
+        | "approved"
+        | "pending"
+        | "rejected"
+        | "paused"
+        | "disabled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1096,6 +1869,33 @@ export const Constants = {
         "bot_detected",
       ],
       campaign_status: ["draft", "active", "paused", "archived"],
+      wa_campaign_status: [
+        "draft",
+        "scheduled",
+        "running",
+        "paused",
+        "completed",
+        "cancelled",
+        "error",
+      ],
+      wa_recipient_status: [
+        "pending",
+        "processing",
+        "sent",
+        "delivered",
+        "read",
+        "replied",
+        "failed",
+        "cancelled",
+        "opt_out",
+      ],
+      wa_template_status: [
+        "approved",
+        "pending",
+        "rejected",
+        "paused",
+        "disabled",
+      ],
     },
   },
 } as const

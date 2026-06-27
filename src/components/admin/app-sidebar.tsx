@@ -55,7 +55,17 @@ const GROUPS: { label: string; items: NavItem[] }[] = [
       { title: "Relatórios", to: "/admin/relatorios", icon: FileText },
       { title: "Histórico", to: "/admin/historico", icon: History },
       { title: "Estoque de Msgs", to: "/admin/estoque", icon: Boxes },
-      { title: "WhatsApp", to: "/admin/whatsapp", icon: MessageSquare },
+    ],
+  },
+  {
+    label: "WhatsApp Cloud",
+    items: [
+      { title: "Números", to: "/admin/whatsapp/numeros", icon: MessageSquare },
+      { title: "Templates", to: "/admin/whatsapp/templates", icon: FileText },
+      { title: "Webhooks", to: "/admin/whatsapp/webhooks", icon: Settings },
+      { title: "Qualidade", to: "/admin/whatsapp/qualidade", icon: Sparkles },
+      { title: "Inbox", to: "/admin/whatsapp/inbox", icon: MessageSquare },
+      { title: "Logs", to: "/admin/whatsapp/logs", icon: History },
     ],
   },
   {
@@ -63,12 +73,15 @@ const GROUPS: { label: string; items: NavItem[] }[] = [
     items: [
       { title: "Clientes", to: "/admin/clientes", icon: Users },
       { title: "Projetos", to: "/admin/projetos", icon: Briefcase },
+      { title: "Contatos", to: "/admin/contatos", icon: Users },
+      { title: "Listas", to: "/admin/contatos/listas", icon: Users },
     ],
   },
   {
-    label: "Ferramentas",
+    label: "Campanhas",
     items: [
-      { title: "Campanhas", to: "/admin/campanhas", icon: Megaphone },
+      { title: "Campanhas Link", to: "/admin/campanhas", icon: Megaphone },
+      { title: "Campanhas WhatsApp", to: "/admin/whatsapp-campanhas", icon: MessageSquare },
       { title: "Upsell", to: "/admin/upsell", icon: Sparkles },
       { title: "Dashboard TV", to: "/admin/tv", icon: Tv },
     ],
