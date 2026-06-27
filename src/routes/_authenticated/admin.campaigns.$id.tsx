@@ -25,7 +25,7 @@ import {
 import { ArrowLeft, Pencil } from "lucide-react";
 import { IntentScoreBadge, StatusBadge } from "@/components/campaign-badges";
 
-export const Route = createFileRoute("/_authenticated/campaigns/$id")({
+export const Route = createFileRoute("/_authenticated/admin/campaigns/$id")({
   head: () => ({ meta: [{ title: "Métricas da campanha" }] }),
   component: CampaignDetail,
 });
@@ -94,7 +94,7 @@ function CampaignDetail() {
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1 min-w-0">
           <Button variant="ghost" size="sm" asChild className="-ml-2">
-            <Link to="/">
+            <Link to="/admin">
               <ArrowLeft className="mr-1 h-4 w-4" /> Voltar
             </Link>
           </Button>
@@ -117,7 +117,7 @@ function CampaignDetail() {
           </p>
         </div>
         <Button variant="outline" size="sm" asChild>
-          <Link to="/campaigns/$id/edit" params={{ id: data.campaign.id }}>
+          <Link to="/admin/campaigns/$id/edit" params={{ id: data.campaign.id }}>
             <Pencil className="mr-1 h-4 w-4" /> Editar
           </Link>
         </Button>
