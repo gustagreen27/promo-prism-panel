@@ -92,6 +92,7 @@ function EditCampaign() {
       utm_term: data.utm_term ?? "",
       utm_content: data.utm_content ?? "",
       status: data.status ?? "draft",
+      open_mode: (data as Record<string, unknown>).open_mode as string ?? "smart",
     });
   }, [data]);
 
