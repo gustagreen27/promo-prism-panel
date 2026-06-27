@@ -267,6 +267,7 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
               link_description: linkDescription.trim() || undefined,
               intermediate_text: intermediateText.trim() || undefined,
               cta_label: ctaLabel.trim() || undefined,
+              open_mode: openMode as "smart" | "iframe" | "redirect" | "wrapper",
             });
           }}
           className="space-y-4"
