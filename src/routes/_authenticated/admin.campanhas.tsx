@@ -116,6 +116,7 @@ function CampaignRow({
             <CardTitle className="text-lg">{c.name}</CardTitle>
             <StatusBadge status={c.status} />
             <IntentScoreBadge score={c.intent_score} />
+            <ParticipantsBadges value={(c as any).participants} empty="" />
             {c.category && (
               <span className="text-xs text-muted-foreground">{c.category}</span>
             )}
@@ -215,6 +216,7 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
   const [intermediateText, setIntermediateText] = useState("");
   const [ctaLabel, setCtaLabel] = useState("");
   const [openMode, setOpenMode] = useState<string>("smart");
+  const [participants, setParticipants] = useState<Participant[]>([]);
 
   const create = useServerFn(createCampaign);
   const queryClient = useQueryClient();
@@ -230,6 +232,7 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
       setCampaignType(""); setLinkIntent(""); setPageCategory("");
       setLinkTitle(""); setLinkDescription(""); setIntermediateText(""); setCtaLabel("");
       setOpenMode("smart");
+      setParticipants([]);
       setOpen(false);
       onCreated();
       router.navigate({ to: "/admin/campaigns/$id/edit", params: { id: created.id } });
@@ -286,6 +289,7 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
               intermediate_text: intermediateText.trim() || undefined,
               cta_label: ctaLabel.trim() || undefined,
               open_mode: openMode as "smart" | "iframe" | "redirect" | "wrapper",
+              participants,
             });
           }}
           className="space-y-4"
