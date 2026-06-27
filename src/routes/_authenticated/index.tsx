@@ -1,400 +1,290 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
-  createCampaign,
-  deleteCampaign,
-  listCampaigns,
-  updateCampaign,
-} from "@/lib/campaigns.functions";
-import { applyIntentPreset } from "@/lib/intent-presets";
-import { CAMPAIGN_TYPES, LINK_INTENTS, OPEN_MODES, PAGE_CATEGORIES } from "@/lib/campaign-options";
-import { slugify } from "@/lib/slugify";
+  Wallet,
+  TrendingDown,
+  TrendingUp,
+  MessageSquare,
+  Percent,
+  Target,
+  ArrowUpRight,
+} from "lucide-react";
+import { PageHeader } from "@/components/admin/page-header";
+import { PeriodFilter } from "@/components/admin/period-filter";
+import { MetricCard } from "@/components/admin/metric-card";
+import { EmptyState } from "@/components/admin/empty-state";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { toast } from "sonner";
-import { Copy, ExternalLink, Trash2, BarChart3, Pencil, Play, Pause } from "lucide-react";
-import { IntentScoreBadge, StatusBadge } from "@/components/campaign-badges";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { getDashboardSummary } from "@/lib/dashboard.functions";
+import { getPeriodRange, type PeriodKey } from "@/lib/period";
+import { formatBRL, formatDate, formatNumber, formatPercent } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/")({
-  head: () => ({ meta: [{ title: "Campanhas — Painel" }] }),
-  component: CampaignsList,
+  head: () => ({ meta: [{ title: "Dashboard — Painel" }] }),
+  component: DashboardPage,
 });
 
-function CampaignsList() {
-  const list = useServerFn(listCampaigns);
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ["campaigns"],
-    queryFn: () => list(),
+function DashboardPage() {
+  const [period, setPeriod] = useState<PeriodKey>("this_month");
+  const range = useMemo(() => getPeriodRange(period), [period]);
+  const fetcher = useServerFn(getDashboardSummary);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["dashboard-summary", period, range.start.toISOString(), range.end.toISOString()],
+    queryFn: () =>
+      fetcher({ data: { start: range.start.toISOString(), end: range.end.toISOString() } }),
   });
+
+  const goalPct = Math.max(0, Math.min(100, data?.goalProgress ?? 0));
 
   return (
     <div className="space-y-6">
-      <div className="flex items-end justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Campanhas</h1>
-          <p className="text-sm text-muted-foreground">
-            Crie campanhas, gere URLs e acompanhe acessos.
-          </p>
-        </div>
-        <NewCampaignDialog onCreated={() => refetch()} />
+      <PageHeader
+        title="Dashboard"
+        description={`Visão geral — ${range.label.toLowerCase()}`}
+        actions={<PeriodFilter value={period} onChange={setPeriod} />}
+      />
+
+      {/* Metric cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Faturamento"
+          value={isLoading ? "—" : formatBRL(data?.totalRevenue ?? 0)}
+          subtext="Recebido no período"
+          color="green"
+          icon={<Wallet className="h-5 w-5" />}
+        />
+        <MetricCard
+          label="Custos"
+          value={isLoading ? "—" : formatBRL(data?.totalCost ?? 0)}
+          subtext="Despesas no período"
+          color="red"
+          icon={<TrendingDown className="h-5 w-5" />}
+        />
+        <MetricCard
+          label="Lucro"
+          value={isLoading ? "—" : formatBRL(data?.profit ?? 0)}
+          subtext={
+            data?.margin != null ? `Margem ${formatPercent(data.margin)}` : "Sem faturamento"
+          }
+          color={(data?.profit ?? 0) >= 0 ? "blue" : "amber"}
+          icon={<TrendingUp className="h-5 w-5" />}
+        />
+        <MetricCard
+          label="Mensagens"
+          value={isLoading ? "—" : formatNumber(data?.totalMessages ?? 0)}
+          subtext={
+            data?.deliveryRate != null
+              ? `Entrega ${formatPercent(data.deliveryRate)}`
+              : "Sem envios"
+          }
+          color="purple"
+          icon={<MessageSquare className="h-5 w-5" />}
+        />
       </div>
 
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground">Carregando...</p>
-      ) : !data || data.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            Nenhuma campanha ainda. Crie a primeira para gerar uma URL.
+      {/* Goal + secondary metrics */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2 border-white/5 bg-card/60">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <CardTitle className="text-base font-semibold">Meta mensal</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Progresso de faturamento do mês atual
+              </p>
+            </div>
+            <Target className="h-5 w-5 text-emerald-400" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-baseline justify-between gap-4">
+              <div>
+                <p className="text-2xl font-semibold tracking-tight text-emerald-300">
+                  {formatBRL(data?.monthRevenue ?? 0)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  de {formatBRL(data?.monthlyGoal ?? 0)}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-semibold tracking-tight">
+                  {formatPercent(goalPct, 0)}
+                </p>
+                <p className="text-xs text-muted-foreground">atingido</p>
+              </div>
+            </div>
+            <Progress value={goalPct} className="h-2 bg-white/5" />
+            {(data?.monthlyGoal ?? 0) === 0 && (
+              <p className="text-xs text-muted-foreground">
+                Defina sua meta mensal em{" "}
+                <Link to="/configuracoes" className="underline hover:text-foreground">
+                  Configurações
+                </Link>
+                .
+              </p>
+            )}
           </CardContent>
         </Card>
-      ) : (
-        <div className="grid gap-4">
-          {data.map((c) => (
-            <CampaignRow key={c.id} c={c} onChange={() => refetch()} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
-function CampaignRow({
-  c,
-  onChange,
-}: {
-  c: Awaited<ReturnType<typeof listCampaigns>>[number];
-  onChange: () => void;
-}) {
-  const del = useServerFn(deleteCampaign);
-  const update = useServerFn(updateCampaign);
-  const isActive = c.status === "active";
-  const publicUrl =
-    typeof window !== "undefined" ? `${window.location.origin}/${c.slug}` : `/${c.slug}`;
-
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-4">
-        <div className="space-y-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <CardTitle className="text-lg">{c.name}</CardTitle>
-            <StatusBadge status={c.status} />
-            <IntentScoreBadge score={c.intent_score} />
-            {c.category && (
-              <span className="text-xs text-muted-foreground">{c.category}</span>
-            )}
-          </div>
-          <CardDescription className="break-all">
-            <a href={`/${c.slug}`} target="_blank" rel="noreferrer" className="hover:underline">
-              {publicUrl}
-            </a>
-          </CardDescription>
-        </div>
-        <div className="flex shrink-0 flex-wrap gap-2">
-          <Button
-            variant={isActive ? "outline" : "default"}
-            size="sm"
-            onClick={async () => {
-              try {
-                await update({ data: { id: c.id, status: isActive ? "paused" : "active" } });
-                toast.success(isActive ? "Campanha pausada" : "Campanha publicada");
-                onChange();
-              } catch (e) {
-                toast.error(e instanceof Error ? e.message : "Falha ao atualizar status");
-              }
-            }}
-          >
-            {isActive ? (<><Pause className="mr-1 h-4 w-4" /> Pausar</>) : (<><Play className="mr-1 h-4 w-4" /> Publicar</>)}
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/campaigns/$id/edit" params={{ id: c.id }}>
-              <Pencil className="mr-1 h-4 w-4" /> Editar
-            </Link>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/campaigns/$id" params={{ id: c.id }}>
-              <BarChart3 className="mr-1 h-4 w-4" /> Métricas
-            </Link>
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => {
-              void navigator.clipboard.writeText(publicUrl);
-              toast.success("URL copiada");
-            }}
-            title="Copiar URL"
-          >
-            <Copy className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon" asChild title="Abrir destino">
-            <a href={c.destination_url} target="_blank" rel="noreferrer">
-              <ExternalLink className="h-4 w-4" />
-            </a>
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            title="Excluir"
-            onClick={async () => {
-              if (!confirm(`Excluir "${c.name}"? Os cliques também serão removidos.`)) return;
-              await del({ data: { id: c.id } });
-              toast.success("Campanha excluída");
-              onChange();
-            }}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="grid grid-cols-3 gap-4 text-sm">
-        <Stat label="Cliques totais" value={c.total_clicks} />
-        <Stat label="Cliques únicos (IP)" value={c.unique_clicks} />
-        <Stat label="Destino" value={c.destination_url} truncate />
-      </CardContent>
-    </Card>
-  );
-}
-
-function Stat({ label, value, truncate }: { label: string; value: string | number; truncate?: boolean }) {
-  return (
-    <div className="rounded-md border bg-muted/30 px-3 py-2">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className={`font-medium ${truncate ? "truncate" : ""}`}>{value}</div>
-    </div>
-  );
-}
-
-function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
-  const [destination, setDestination] = useState("");
-  const [slugTouched, setSlugTouched] = useState(false);
-  const [campaignType, setCampaignType] = useState<string>("");
-  const [linkIntent, setLinkIntent] = useState<string>("");
-  const [pageCategory, setPageCategory] = useState<string>("");
-  const [linkTitle, setLinkTitle] = useState("");
-  const [linkDescription, setLinkDescription] = useState("");
-  const [intermediateText, setIntermediateText] = useState("");
-  const [ctaLabel, setCtaLabel] = useState("");
-  const [openMode, setOpenMode] = useState<string>("smart");
-
-  const create = useServerFn(createCampaign);
-  const queryClient = useQueryClient();
-  const router = useRouter();
-  const mutation = useMutation({
-    mutationFn: (input: Record<string, unknown>) =>
-      create({ data: input as never }),
-    onSuccess: (created) => {
-      toast.success("Campanha criada como rascunho");
-      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
-      router.invalidate();
-      setName(""); setSlug(""); setDestination(""); setSlugTouched(false);
-      setCampaignType(""); setLinkIntent(""); setPageCategory("");
-      setLinkTitle(""); setLinkDescription(""); setIntermediateText(""); setCtaLabel("");
-      setOpenMode("smart");
-      setOpen(false);
-      onCreated();
-      router.navigate({ to: "/campaigns/$id/edit", params: { id: created.id } });
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Falha ao criar"),
-  });
-
-  function onIntentChange(value: string) {
-    setLinkIntent(value);
-    const form = {
-      link_title: linkTitle,
-      link_description: linkDescription,
-      intermediate_text: intermediateText,
-      cta_label: ctaLabel,
-      og_type: "",
-      og_title: "",
-      og_description: "",
-      page_category: pageCategory,
-    };
-    const { next, changed } = applyIntentPreset(form, value, false);
-    if (changed.length === 0) return;
-    if (changed.includes("link_title")) setLinkTitle(next.link_title);
-    if (changed.includes("link_description")) setLinkDescription(next.link_description);
-    if (changed.includes("intermediate_text")) setIntermediateText(next.intermediate_text);
-    if (changed.includes("cta_label")) setCtaLabel(next.cta_label);
-    if (changed.includes("page_category")) setPageCategory(next.page_category);
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>Nova campanha</Button>
-      </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Nova campanha</DialogTitle>
-          <DialogDescription>
-            Defina nome, slug, destino e a intenção do link. Os campos serão pré-preenchidos
-            conforme a intenção escolhida — você poderá ajustar tudo no editor.
-          </DialogDescription>
-        </DialogHeader>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            mutation.mutate({
-              name: name.trim(),
-              slug: slug.trim() || undefined,
-              destination_url: destination.trim(),
-              campaign_type: campaignType || undefined,
-              link_intent: linkIntent || undefined,
-              page_category: pageCategory || undefined,
-              link_title: linkTitle.trim() || undefined,
-              link_description: linkDescription.trim() || undefined,
-              intermediate_text: intermediateText.trim() || undefined,
-              cta_label: ctaLabel.trim() || undefined,
-              open_mode: openMode as "smart" | "iframe" | "redirect" | "wrapper",
-            });
-          }}
-          className="space-y-4"
-        >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="name">Nome</Label>
-              <Input
-                id="name" required value={name}
-                placeholder="Disparos Magistrar — Dia 26"
-                onChange={(e) => {
-                  setName(e.target.value);
-                  if (!slugTouched) setSlug(slugify(e.target.value));
-                }}
-              />
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="slug">Slug (URL)</Label>
-              <Input
-                id="slug" required value={slug}
-                placeholder="disparos-magistrar-dia-26"
-                onChange={(e) => { setSlugTouched(true); setSlug(slugify(e.target.value)); }}
-              />
-              <p className="text-xs text-muted-foreground">
-                URL pública: <code>/{slug || "..."}</code>
+        <Card className="border-white/5 bg-card/60">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold">Taxa de entrega</CardTitle>
+            <p className="text-xs text-muted-foreground">WhatsApp no período</p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center gap-3">
+              <Percent className="h-5 w-5 text-violet-400" />
+              <p className="text-3xl font-semibold tracking-tight text-violet-300">
+                {data?.deliveryRate != null ? formatPercent(data.deliveryRate, 1) : "—"}
               </p>
             </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="dest">URL de destino</Label>
-              <Input
-                id="dest" type="url" required
-                placeholder="https://exemplo.com/oferta"
-                value={destination}
-                onChange={(e) => setDestination(e.target.value)}
-              />
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="rounded-md border border-white/5 bg-white/[0.02] px-3 py-2">
+                <p className="text-muted-foreground">Entregues</p>
+                <p className="font-medium text-emerald-300">
+                  {formatNumber(data?.delivered ?? 0)}
+                </p>
+              </div>
+              <div className="rounded-md border border-white/5 bg-white/[0.02] px-3 py-2">
+                <p className="text-muted-foreground">Falhas</p>
+                <p className="font-medium text-rose-300">{formatNumber(data?.failed ?? 0)}</p>
+              </div>
             </div>
+          </CardContent>
+        </Card>
+      </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="ctype">Tipo de campanha</Label>
-              <select
-                id="ctype"
-                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                value={campaignType}
-                onChange={(e) => setCampaignType(e.target.value)}
-              >
-                <option value="">—</option>
-                {CAMPAIGN_TYPES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
+      {/* Lower blocks */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card className="border-white/5 bg-card/60">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle className="text-base font-semibold">Últimos Fechamentos</CardTitle>
+              <p className="text-xs text-muted-foreground">Resumos mensais salvos</p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="intent">Intenção do link</Label>
-              <select
-                id="intent"
-                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                value={linkIntent}
-                onChange={(e) => onIntentChange(e.target.value)}
-              >
-                <option value="">—</option>
-                {LINK_INTENTS.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="pcat">Categoria da página</Label>
-              <select
-                id="pcat"
-                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                value={pageCategory}
-                onChange={(e) => setPageCategory(e.target.value)}
-              >
-                <option value="">—</option>
-                {PAGE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="omode">Modo de abertura</Label>
-              <select
-                id="omode"
-                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                value={openMode}
-                onChange={(e) => setOpenMode(e.target.value)}
-              >
-                {OPEN_MODES.map((m) => (
-                  <option key={m.value} value={m.value}>{m.label}</option>
-                ))}
-              </select>
-              <p className="text-xs text-muted-foreground">
-                {OPEN_MODES.find((m) => m.value === openMode)?.description}
-              </p>
-            </div>
-
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="ltitle">Título do link</Label>
-              <Input id="ltitle" value={linkTitle} onChange={(e) => setLinkTitle(e.target.value)} />
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="ldesc">Descrição do link</Label>
-              <textarea
-                id="ldesc" rows={2}
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                value={linkDescription}
-                onChange={(e) => setLinkDescription(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="itext">Texto da página intermediária</Label>
-              <textarea
-                id="itext" rows={2}
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                value={intermediateText}
-                onChange={(e) => setIntermediateText(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="cta">Texto do botão (CTA)</Label>
-              <Input id="cta" value={ctaLabel} onChange={(e) => setCtaLabel(e.target.value)} />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? "Criando..." : "Criar e configurar"}
+            <Button asChild variant="ghost" size="sm" className="text-xs">
+              <Link to="/fechamento">
+                Ver tudo <ArrowUpRight className="ml-1 h-3 w-3" />
+              </Link>
             </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+          </CardHeader>
+          <CardContent>
+            {(data?.lastClosings?.length ?? 0) === 0 ? (
+              <EmptyState
+                title="Sem fechamentos"
+                description="Crie o primeiro fechamento mensal para acompanhar a evolução."
+              />
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Período</TableHead>
+                    <TableHead className="text-right">Receita</TableHead>
+                    <TableHead className="text-right">Custo</TableHead>
+                    <TableHead className="text-right">Lucro</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data!.lastClosings.map((c: any) => {
+                    const profit = Number(c.profit ?? Number(c.revenue ?? 0) - Number(c.cost ?? 0));
+                    return (
+                      <TableRow key={c.id}>
+                        <TableCell className="font-medium">
+                          {String(c.month).padStart(2, "0")}/{c.year}
+                        </TableCell>
+                        <TableCell className="text-right text-emerald-300">
+                          {formatBRL(c.revenue ?? 0)}
+                        </TableCell>
+                        <TableCell className="text-right text-rose-300">
+                          {formatBRL(c.cost ?? 0)}
+                        </TableCell>
+                        <TableCell
+                          className={`text-right font-medium ${
+                            profit >= 0 ? "text-blue-300" : "text-amber-300"
+                          }`}
+                        >
+                          {formatBRL(profit)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-white/5 bg-card/60">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle className="text-base font-semibold">Últimos Faturamentos</CardTitle>
+              <p className="text-xs text-muted-foreground">Receitas recentes registradas</p>
+            </div>
+            <Button asChild variant="ghost" size="sm" className="text-xs">
+              <Link to="/faturamento">
+                Ver tudo <ArrowUpRight className="ml-1 h-3 w-3" />
+              </Link>
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {(data?.lastRevenues?.length ?? 0) === 0 ? (
+              <EmptyState
+                title="Sem faturamentos"
+                description="Lance sua primeira receita no módulo Faturamento."
+              />
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Data</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data!.lastRevenues.map((r: any) => (
+                    <TableRow key={r.id}>
+                      <TableCell className="max-w-[180px] truncate font-medium">
+                        {r.client?.name ?? r.project?.name ?? "—"}
+                      </TableCell>
+                      <TableCell>
+                        <StatusPill status={String(r.status ?? "—")} />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatDate(r.paid_date ?? r.due_date ?? r.created_at)}
+                      </TableCell>
+                      <TableCell className="text-right font-medium text-emerald-300">
+                        {formatBRL(r.amount ?? 0)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }
 
+function StatusPill({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    pago: "bg-emerald-500/15 text-emerald-300 ring-emerald-500/30",
+    pendente: "bg-amber-500/15 text-amber-300 ring-amber-500/30",
+    atrasado: "bg-rose-500/15 text-rose-300 ring-rose-500/30",
+    cancelado: "bg-white/5 text-muted-foreground ring-white/10",
+  };
+  const cls = map[status.toLowerCase()] ?? "bg-white/5 text-muted-foreground ring-white/10";
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ${cls}`}
+    >
+      {status}
+    </span>
+  );
+}
