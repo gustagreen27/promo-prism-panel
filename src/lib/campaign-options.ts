@@ -45,3 +45,28 @@ export const PAGE_CATEGORIES = [
   "Página de erro / aviso",
   "Outro",
 ];
+
+export const OPEN_MODES = [
+  {
+    value: "smart",
+    label: "Inteligente",
+    description: "Tenta iframe; se o destino bloquear, redireciona automaticamente.",
+  },
+  {
+    value: "iframe",
+    label: "Iframe fullscreen",
+    description: "Sempre carrega o destino em iframe ocupando 100% da tela.",
+  },
+  {
+    value: "redirect",
+    label: "Redirecionamento direto",
+    description: "Envia o visitante imediatamente para a URL final, sem iframe.",
+  },
+  {
+    value: "wrapper",
+    label: "Página com CTA",
+    description: "Mostra uma página intermediária com título, descrição e botão.",
+  },
+] as const;
+
+export type OpenMode = (typeof OPEN_MODES)[number]["value"];
