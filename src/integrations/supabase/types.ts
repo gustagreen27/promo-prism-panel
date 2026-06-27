@@ -106,6 +106,48 @@ export type Database = {
           },
         ]
       }
+      campaign_events: {
+        Row: {
+          campaign_id: string
+          click_id: string | null
+          created_at: string
+          event_type: Database["public"]["Enums"]["campaign_event_type"]
+          id: string
+          metadata: Json
+        }
+        Insert: {
+          campaign_id: string
+          click_id?: string | null
+          created_at?: string
+          event_type: Database["public"]["Enums"]["campaign_event_type"]
+          id?: string
+          metadata?: Json
+        }
+        Update: {
+          campaign_id?: string
+          click_id?: string | null
+          created_at?: string
+          event_type?: Database["public"]["Enums"]["campaign_event_type"]
+          id?: string
+          metadata?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_events_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_events_click_id_fkey"
+            columns: ["click_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_clicks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
           campaign_type: string | null
@@ -268,6 +310,17 @@ export type Database = {
     }
     Enums: {
       app_role: "admin"
+      campaign_event_type:
+        | "page_view"
+        | "iframe_loaded"
+        | "iframe_blocked"
+        | "redirect_started"
+        | "redirect_completed"
+        | "cta_clicked"
+        | "utm_detected"
+        | "duplicate_click"
+        | "returning_visitor"
+        | "bot_detected"
       campaign_status: "draft" | "active" | "paused" | "archived"
     }
     CompositeTypes: {
@@ -397,6 +450,18 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin"],
+      campaign_event_type: [
+        "page_view",
+        "iframe_loaded",
+        "iframe_blocked",
+        "redirect_started",
+        "redirect_completed",
+        "cta_clicked",
+        "utm_detected",
+        "duplicate_click",
+        "returning_visitor",
+        "bot_detected",
+      ],
       campaign_status: ["draft", "active", "paused", "archived"],
     },
   },
