@@ -259,7 +259,53 @@ export const updateCampaign = createServerFn({ method: "POST" })
       .select()
       .single();
     if (error) throw error;
+
+    // Re-checa iframe compat se a URL de destino mudou.
+    if (
+      current &&
+      typeof patch.destination_url === "string" &&
+      patch.destination_url !== (current as Record<string, unknown>).destination_url
+    ) {
+      try {
+        const { canEmbedInIframe } = await import("./track.functions");
+        const compat = await canEmbedInIframe(patch.destination_url);
+        await supabaseAdmin
+          .from("campaigns")
+          .update({
+            iframe_compatible: compat,
+            iframe_checked_at: new Date().toISOString(),
+          } as never)
+          .eq("id", id);
+      } catch {
+        // best effort — não bloqueia o update
+      }
+    }
+
     return updated;
+  });
+
+export const recheckIframeCompatibility = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await assertAdmin(context);
+    const { data: c, error } = await supabaseAdmin
+      .from("campaigns")
+      .select("id, destination_url")
+      .eq("id", data.id)
+      .single();
+    if (error || !c) throw error ?? new Error("Campanha não encontrada");
+    const { canEmbedInIframe } = await import("./track.functions");
+    const compat = await canEmbedInIframe(c.destination_url);
+    await supabaseAdmin
+      .from("campaigns")
+      .update({
+        iframe_compatible: compat,
+        iframe_checked_at: new Date().toISOString(),
+      } as never)
+      .eq("id", c.id);
+    return { iframe_compatible: compat, iframe_checked_at: new Date().toISOString() };
   });
 
 export const getCampaignAnalytics = createServerFn({ method: "GET" })
