@@ -3,7 +3,15 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Send, Upload, Loader2, Play, X } from "lucide-react";
+import { Send, Upload, Loader2, Play, X, FileSpreadsheet } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { PageHeader } from "@/components/admin/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,6 +86,46 @@ function parseRecipients(raw: string): string[] {
   return out;
 }
 
+function detectDelimiter(sample: string): string {
+  const counts: Record<string, number> = { ",": 0, ";": 0, "\t": 0, "|": 0 };
+  for (const ch of sample) if (ch in counts) counts[ch]++;
+  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0] || ",";
+}
+
+function parseCSV(text: string): { headers: string[]; rows: string[][] } {
+  const clean = text.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").trim();
+  if (!clean) return { headers: [], rows: [] };
+  const firstLine = clean.split("\n", 1)[0];
+  const delim = detectDelimiter(firstLine);
+  const rows: string[][] = [];
+  let cur: string[] = [];
+  let field = "";
+  let inQ = false;
+  for (let i = 0; i < clean.length; i++) {
+    const c = clean[i];
+    if (inQ) {
+      if (c === '"') {
+        if (clean[i + 1] === '"') { field += '"'; i++; } else { inQ = false; }
+      } else field += c;
+    } else {
+      if (c === '"') inQ = true;
+      else if (c === delim) { cur.push(field); field = ""; }
+      else if (c === "\n") { cur.push(field); rows.push(cur); cur = []; field = ""; }
+      else field += c;
+    }
+  }
+  cur.push(field);
+  rows.push(cur);
+  const headers = (rows.shift() ?? []).map((h) => h.trim());
+  return { headers, rows };
+}
+
+function guessPhoneColumn(headers: string[]): number {
+  const re = /(phone|telefone|celular|whats|mobile|numero|número|contact)/i;
+  const idx = headers.findIndex((h) => re.test(h));
+  return idx >= 0 ? idx : 0;
+}
+
 type RowState = {
   phone: string;
   status: "pending" | "sending" | "sent" | "failed";
@@ -131,6 +179,76 @@ function Page() {
 
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+
+  const csvInputRef = useRef<HTMLInputElement>(null);
+  const [csvOpen, setCsvOpen] = useState(false);
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  const [csvRows, setCsvRows] = useState<string[][]>([]);
+  const [csvCol, setCsvCol] = useState<string>("0");
+  const [csvName, setCsvName] = useState<string>("");
+  const [dragOver, setDragOver] = useState(false);
+
+  async function handleCsvFile(file: File) {
+    const name = file.name.toLowerCase();
+    if (!/\.(csv|tsv|txt)$/.test(name) && !file.type.includes("csv") && !file.type.includes("text")) {
+      toast.error("Envie um arquivo .csv, .tsv ou .txt");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Arquivo muito grande (máx. 10 MB)");
+      return;
+    }
+    try {
+      const text = await file.text();
+      const { headers, rows } = parseCSV(text);
+      if (rows.length === 0) {
+        toast.error("Arquivo vazio ou sem linhas de dados");
+        return;
+      }
+      // If single column and no phone-ish header, import directly
+      if (headers.length <= 1) {
+        const phones = rows.map((r) => r[0] ?? "").filter(Boolean);
+        appendPhones(phones);
+        toast.success(`${phones.length} linha(s) importadas`);
+        return;
+      }
+      setCsvHeaders(headers);
+      setCsvRows(rows);
+      setCsvCol(String(guessPhoneColumn(headers)));
+      setCsvName(file.name);
+      setCsvOpen(true);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao ler CSV");
+    }
+  }
+
+  function appendPhones(raw: string[]) {
+    const existing = new Set(parseRecipients(form.recipientsRaw));
+    const add: string[] = [];
+    for (const r of raw) {
+      const p = normalizePhone(r);
+      if (p.length >= 8 && !existing.has(p)) {
+        existing.add(p);
+        add.push(p);
+      }
+    }
+    if (add.length === 0) return;
+    const prefix = form.recipientsRaw && !form.recipientsRaw.endsWith("\n") ? "\n" : "";
+    set("recipientsRaw", form.recipientsRaw + prefix + add.join("\n"));
+  }
+
+  function confirmCsvImport() {
+    const idx = parseInt(csvCol, 10);
+    const values = csvRows.map((r) => r[idx] ?? "").filter(Boolean);
+    const before = parseRecipients(form.recipientsRaw).length;
+    appendPhones(values);
+    setCsvOpen(false);
+    // recompute
+    setTimeout(() => {
+      const after = parseRecipients(form.recipientsRaw).length;
+      toast.success(`${Math.max(after - before, values.length)} número(s) adicionados`);
+    }, 0);
+  }
 
   async function handleUpload(file: File) {
     if (!file.type.startsWith("image/")) {
@@ -245,18 +363,58 @@ function Page() {
           </div>
 
           <div className="space-y-2 md:col-span-2">
-            <Label>Destinatários (E.164 sem +, um por linha ou separados por vírgula)</Label>
-            <Textarea
-              rows={5}
-              className="font-mono text-xs"
-              value={form.recipientsRaw}
-              onChange={(e) => set("recipientsRaw", e.target.value)}
-              placeholder={"5562984817929\n5511999998888\n..."}
-            />
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <Label>Destinatários (E.164 sem +, um por linha ou separados por vírgula)</Label>
+              <div className="flex gap-2">
+                <input
+                  ref={csvInputRef}
+                  type="file"
+                  accept=".csv,.tsv,.txt,text/csv,text/plain"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleCsvFile(f);
+                    e.target.value = "";
+                  }}
+                />
+                <Button type="button" size="sm" variant="outline" onClick={() => csvInputRef.current?.click()}>
+                  <FileSpreadsheet className="h-4 w-4 mr-2" /> Importar CSV
+                </Button>
+                {form.recipientsRaw && (
+                  <Button type="button" size="sm" variant="ghost" onClick={() => set("recipientsRaw", "")}>
+                    Limpar
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                const f = e.dataTransfer.files?.[0];
+                if (f) handleCsvFile(f);
+              }}
+              onPaste={(e) => {
+                const f = e.clipboardData.files?.[0];
+                if (f) { e.preventDefault(); handleCsvFile(f); }
+              }}
+              className={`rounded-md border-2 border-dashed transition-colors ${dragOver ? "border-primary bg-primary/5" : "border-transparent"}`}
+            >
+              <Textarea
+                rows={5}
+                className="font-mono text-xs"
+                value={form.recipientsRaw}
+                onChange={(e) => set("recipientsRaw", e.target.value)}
+                placeholder={"5562984817929\n5511999998888\n...\n\nDica: arraste um CSV aqui ou clique em Importar CSV"}
+              />
+            </div>
             <p className="text-xs text-muted-foreground">
-              {recipients.length} número(s) válidos detectados.
+              {recipients.length} número(s) válidos detectados. Cole texto, arraste um CSV ou use o botão acima.
             </p>
           </div>
+
 
           <div className="space-y-2 md:col-span-2">
             <Label>Imagem do cabeçalho</Label>
@@ -355,6 +513,63 @@ function Page() {
           </div>
         )}
       </div>
+
+      <Dialog open={csvOpen} onOpenChange={setCsvOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Importar CSV</DialogTitle>
+            <DialogDescription>
+              {csvName} · {csvRows.length} linha(s). Escolha a coluna com o telefone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>Coluna do telefone</Label>
+              <Select value={csvCol} onValueChange={setCsvCol}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {csvHeaders.map((h, i) => (
+                    <SelectItem key={i} value={String(i)}>{h || `Coluna ${i + 1}`}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="rounded-md border max-h-64 overflow-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/50 sticky top-0">
+                  <tr>
+                    {csvHeaders.map((h, i) => (
+                      <th key={i} className={`px-2 py-1.5 text-left font-medium ${String(i) === csvCol ? "bg-primary/10 text-primary" : ""}`}>
+                        {h || `Col ${i + 1}`}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {csvRows.slice(0, 8).map((r, ri) => (
+                    <tr key={ri} className="border-t">
+                      {csvHeaders.map((_, ci) => (
+                        <td key={ci} className={`px-2 py-1 font-mono ${String(ci) === csvCol ? "bg-primary/5 text-primary font-semibold" : ""}`}>
+                          {r[ci] ?? ""}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {csvRows.length > 8 && (
+                <div className="px-2 py-1 text-xs text-muted-foreground border-t">
+                  + {csvRows.length - 8} linha(s)…
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCsvOpen(false)}>Cancelar</Button>
+            <Button onClick={confirmCsvImport}>Importar {csvRows.length} número(s)</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
