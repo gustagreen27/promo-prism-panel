@@ -17,6 +17,7 @@ import {
   Printer,
   Megaphone,
   FileText,
+  Send,
 } from "lucide-react";
 import {
   Sidebar,
@@ -66,6 +67,7 @@ const GROUPS: { label: string; items: NavItem[] }[] = [
       { title: "Qualidade", to: "/admin/whatsapp/qualidade", icon: Sparkles },
       { title: "Inbox", to: "/admin/whatsapp/inbox", icon: MessageSquare },
       { title: "Logs", to: "/admin/whatsapp/logs", icon: History },
+      { title: "Testar frgc_01", to: "/admin/whatsapp/teste-frgc01", icon: Send },
     ],
   },
   {
