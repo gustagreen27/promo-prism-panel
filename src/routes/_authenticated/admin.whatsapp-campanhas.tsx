@@ -86,6 +86,46 @@ function parseRecipients(raw: string): string[] {
   return out;
 }
 
+function detectDelimiter(sample: string): string {
+  const counts: Record<string, number> = { ",": 0, ";": 0, "\t": 0, "|": 0 };
+  for (const ch of sample) if (ch in counts) counts[ch]++;
+  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0] || ",";
+}
+
+function parseCSV(text: string): { headers: string[]; rows: string[][] } {
+  const clean = text.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").trim();
+  if (!clean) return { headers: [], rows: [] };
+  const firstLine = clean.split("\n", 1)[0];
+  const delim = detectDelimiter(firstLine);
+  const rows: string[][] = [];
+  let cur: string[] = [];
+  let field = "";
+  let inQ = false;
+  for (let i = 0; i < clean.length; i++) {
+    const c = clean[i];
+    if (inQ) {
+      if (c === '"') {
+        if (clean[i + 1] === '"') { field += '"'; i++; } else { inQ = false; }
+      } else field += c;
+    } else {
+      if (c === '"') inQ = true;
+      else if (c === delim) { cur.push(field); field = ""; }
+      else if (c === "\n") { cur.push(field); rows.push(cur); cur = []; field = ""; }
+      else field += c;
+    }
+  }
+  cur.push(field);
+  rows.push(cur);
+  const headers = (rows.shift() ?? []).map((h) => h.trim());
+  return { headers, rows };
+}
+
+function guessPhoneColumn(headers: string[]): number {
+  const re = /(phone|telefone|celular|whats|mobile|numero|número|contact)/i;
+  const idx = headers.findIndex((h) => re.test(h));
+  return idx >= 0 ? idx : 0;
+}
+
 type RowState = {
   phone: string;
   status: "pending" | "sending" | "sent" | "failed";
