@@ -162,8 +162,48 @@ function Page() {
           </div>
 
           <div className="space-y-2 md:col-span-2">
-            <Label>URL da imagem do cabeçalho</Label>
-            <Input value={form.imageUrl} onChange={(e) => set("imageUrl", e.target.value)} />
+            <Label>Imagem do cabeçalho</Label>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                value={form.imageUrl}
+                onChange={(e) => set("imageUrl", e.target.value)}
+                placeholder="Cole uma URL pública ou envie um arquivo"
+              />
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleUpload(f);
+                  e.target.value = "";
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                disabled={uploading}
+                onClick={() => fileRef.current?.click()}
+              >
+                {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                {uploading ? "Enviando…" : "Upload"}
+              </Button>
+            </div>
+            {form.imageUrl && (
+              <img
+                src={form.imageUrl}
+                alt="Preview do cabeçalho"
+                className="mt-2 max-h-40 rounded-md border object-contain bg-muted"
+              />
+            )}
+          </div>
+
+          <div className="space-y-2 md:col-span-2 rounded-md border bg-muted/30 p-3">
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Corpo</div>
+            <div className="text-sm whitespace-pre-line leading-relaxed">
+              {`Olá ${form.nomeCliente || "{{1}}"}!\n\nInformamos que ${form.informacaoPrincipal || "{{2}}"}.\n\n${form.mensagemComplementar || "{{3}}"}.\n\nPara ${form.textoAcao || "{{4}}"}, clique no botão logo abaixo 👇`}
+            </div>
           </div>
 
           <div className="space-y-2">
