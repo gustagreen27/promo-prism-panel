@@ -64,6 +64,7 @@ function Page() {
   const upsertFn = useServerFn(upsertSetting);
   const sendFn = useServerFn(sendTestTemplate);
   const templatesFn = useServerFn(listWabaTemplates);
+  const testConnFn = useServerFn(testWhatsappConnection);
   const qc = useQueryClient();
 
   const { data: rows = [], isLoading } = useQuery({ queryKey: ["settings"], queryFn: () => listFn() });
