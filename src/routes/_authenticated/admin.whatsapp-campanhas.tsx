@@ -58,7 +58,14 @@ function Page() {
   const qc = useQueryClient();
   const nav = useNavigate();
 
-  const { data: rows = [], isLoading } = useQuery({ queryKey: ["wa-campaigns"], queryFn: () => listFn() });
+  const { data: rows = [], isLoading } = useQuery({
+    queryKey: ["wa-campaigns"],
+    queryFn: () => listFn(),
+    refetchInterval: (q) => {
+      const list = (q.state.data as any[]) ?? [];
+      return list.some((r) => r.status === "running") ? 3000 : false;
+    },
+  });
   const { data: clients = [] } = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
   const { data: projects = [] } = useQuery({ queryKey: ["projects"], queryFn: () => projectsFn() });
   const { data: numbers = [] } = useQuery({ queryKey: ["wa-numbers"], queryFn: () => numbersFn() });
