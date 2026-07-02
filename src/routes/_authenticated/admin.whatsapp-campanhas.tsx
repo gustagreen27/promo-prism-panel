@@ -363,18 +363,58 @@ function Page() {
           </div>
 
           <div className="space-y-2 md:col-span-2">
-            <Label>Destinatários (E.164 sem +, um por linha ou separados por vírgula)</Label>
-            <Textarea
-              rows={5}
-              className="font-mono text-xs"
-              value={form.recipientsRaw}
-              onChange={(e) => set("recipientsRaw", e.target.value)}
-              placeholder={"5562984817929\n5511999998888\n..."}
-            />
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <Label>Destinatários (E.164 sem +, um por linha ou separados por vírgula)</Label>
+              <div className="flex gap-2">
+                <input
+                  ref={csvInputRef}
+                  type="file"
+                  accept=".csv,.tsv,.txt,text/csv,text/plain"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleCsvFile(f);
+                    e.target.value = "";
+                  }}
+                />
+                <Button type="button" size="sm" variant="outline" onClick={() => csvInputRef.current?.click()}>
+                  <FileSpreadsheet className="h-4 w-4 mr-2" /> Importar CSV
+                </Button>
+                {form.recipientsRaw && (
+                  <Button type="button" size="sm" variant="ghost" onClick={() => set("recipientsRaw", "")}>
+                    Limpar
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                const f = e.dataTransfer.files?.[0];
+                if (f) handleCsvFile(f);
+              }}
+              onPaste={(e) => {
+                const f = e.clipboardData.files?.[0];
+                if (f) { e.preventDefault(); handleCsvFile(f); }
+              }}
+              className={`rounded-md border-2 border-dashed transition-colors ${dragOver ? "border-primary bg-primary/5" : "border-transparent"}`}
+            >
+              <Textarea
+                rows={5}
+                className="font-mono text-xs"
+                value={form.recipientsRaw}
+                onChange={(e) => set("recipientsRaw", e.target.value)}
+                placeholder={"5562984817929\n5511999998888\n...\n\nDica: arraste um CSV aqui ou clique em Importar CSV"}
+              />
+            </div>
             <p className="text-xs text-muted-foreground">
-              {recipients.length} número(s) válidos detectados.
+              {recipients.length} número(s) válidos detectados. Cole texto, arraste um CSV ou use o botão acima.
             </p>
           </div>
+
 
           <div className="space-y-2 md:col-span-2">
             <Label>Imagem do cabeçalho</Label>
