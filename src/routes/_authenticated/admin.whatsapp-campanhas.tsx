@@ -78,8 +78,21 @@ function Page() {
   const refresh = () => qc.invalidateQueries({ queryKey: ["wa-campaigns"] });
 
   const saveMut = useMutation({
-    mutationFn: (p: any) => create({ data: p }),
-    onSuccess: () => { toast.success("Campanha criada"); setOpen(false); refresh(); },
+    mutationFn: async (p: any) => {
+      const row = await create({ data: p });
+      try {
+        const r = await build({ data: { id: row.id } });
+        return { row, built: r };
+      } catch (e) {
+        return { row, built: null, buildError: e };
+      }
+    },
+    onSuccess: (r: any) => {
+      if (r.built) toast.success(`Campanha criada · ${r.built.total} destinatário(s) na fila`);
+      else toast.success("Campanha criada (fila não gerada, clique em Gerar fila)");
+      setOpen(false);
+      refresh();
+    },
     onError: (e: any) => toast.error(e?.message ?? "Erro"),
   });
   const delMut = useMutation({ mutationFn: (id: string) => remove({ data: { id } }), onSuccess: () => { toast.success("Removida"); refresh(); } });
