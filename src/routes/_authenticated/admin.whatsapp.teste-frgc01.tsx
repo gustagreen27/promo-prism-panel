@@ -157,6 +157,15 @@ function Page() {
                 <div className="mt-1">Status: {result.status}</div>
                 <div className="text-muted-foreground text-xs mt-1 break-all">meta_message_id: {result.metaMessageId}</div>
                 <div className="text-muted-foreground text-xs">log_id: {result.logId}</div>
+                <div className="mt-3 border-t pt-2">
+                  <div className="text-xs font-medium mb-1">Status ao vivo (webhook Meta):</div>
+                  <StatusBadge status={liveStatus?.message_status ?? result.status} />
+                  {liveStatus?.failed_reason && (
+                    <div className="text-xs text-destructive mt-1">
+                      {liveStatus.failed_reason} {liveStatus.error_code ? `(${liveStatus.error_code})` : ""}
+                    </div>
+                  )}
+                </div>
               </>
             ) : (
               <>
