@@ -42,12 +42,24 @@ const EMPTY: Form = {
 function Page() {
   const listFn = useServerFn(listConnections);
   const sendFn = useServerFn(sendFrgc01);
+  const statusFn = useServerFn(getMessageLogStatus);
   const [form, setForm] = useState<Form>(EMPTY);
   const [result, setResult] = useState<SendFrgc01Response | null>(null);
 
   const { data: connections = [] } = useQuery({
     queryKey: ["whatsapp-connections"],
     queryFn: () => listFn(),
+  });
+
+  const logId = result?.ok ? result.logId : result?.ok === false ? result.logId : undefined;
+  const { data: liveStatus } = useQuery({
+    queryKey: ["message-log-status", logId],
+    queryFn: () => statusFn({ data: { logId: logId! } }),
+    enabled: !!logId,
+    refetchInterval: (q) => {
+      const s = (q.state.data as any)?.message_status;
+      return s === "read" || s === "failed" ? false : 2500;
+    },
   });
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
