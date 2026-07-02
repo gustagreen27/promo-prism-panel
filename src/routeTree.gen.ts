@@ -39,6 +39,7 @@ import { Route as AuthenticatedAdminWhatsappQualidadeRouteImport } from './route
 import { Route as AuthenticatedAdminWhatsappNumerosRouteImport } from './routes/_authenticated/admin.whatsapp.numeros'
 import { Route as AuthenticatedAdminWhatsappLogsRouteImport } from './routes/_authenticated/admin.whatsapp.logs'
 import { Route as AuthenticatedAdminWhatsappInboxRouteImport } from './routes/_authenticated/admin.whatsapp.inbox'
+import { Route as AuthenticatedAdminWhatsappConfiguracoesRouteImport } from './routes/_authenticated/admin.whatsapp.configuracoes'
 import { Route as AuthenticatedAdminWhatsappCampanhasIdRouteImport } from './routes/_authenticated/admin.whatsapp-campanhas.$id'
 import { Route as AuthenticatedAdminRelatoriosNewRouteImport } from './routes/_authenticated/admin.relatorios.new'
 import { Route as AuthenticatedAdminRelatoriosAnalyticsRouteImport } from './routes/_authenticated/admin.relatorios.analytics'
@@ -220,6 +221,12 @@ const AuthenticatedAdminWhatsappInboxRoute =
     path: '/inbox',
     getParentRoute: () => AuthenticatedAdminWhatsappRoute,
   } as any)
+const AuthenticatedAdminWhatsappConfiguracoesRoute =
+  AuthenticatedAdminWhatsappConfiguracoesRouteImport.update({
+    id: '/configuracoes',
+    path: '/configuracoes',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
 const AuthenticatedAdminWhatsappCampanhasIdRoute =
   AuthenticatedAdminWhatsappCampanhasIdRouteImport.update({
     id: '/$id',
@@ -295,6 +302,7 @@ export interface FileRoutesByFullPath {
   '/admin/relatorios/analytics': typeof AuthenticatedAdminRelatoriosAnalyticsRoute
   '/admin/relatorios/new': typeof AuthenticatedAdminRelatoriosNewRoute
   '/admin/whatsapp-campanhas/$id': typeof AuthenticatedAdminWhatsappCampanhasIdRoute
+  '/admin/whatsapp/configuracoes': typeof AuthenticatedAdminWhatsappConfiguracoesRoute
   '/admin/whatsapp/inbox': typeof AuthenticatedAdminWhatsappInboxRoute
   '/admin/whatsapp/logs': typeof AuthenticatedAdminWhatsappLogsRoute
   '/admin/whatsapp/numeros': typeof AuthenticatedAdminWhatsappNumerosRoute
@@ -334,6 +342,7 @@ export interface FileRoutesByTo {
   '/admin/relatorios/analytics': typeof AuthenticatedAdminRelatoriosAnalyticsRoute
   '/admin/relatorios/new': typeof AuthenticatedAdminRelatoriosNewRoute
   '/admin/whatsapp-campanhas/$id': typeof AuthenticatedAdminWhatsappCampanhasIdRoute
+  '/admin/whatsapp/configuracoes': typeof AuthenticatedAdminWhatsappConfiguracoesRoute
   '/admin/whatsapp/inbox': typeof AuthenticatedAdminWhatsappInboxRoute
   '/admin/whatsapp/logs': typeof AuthenticatedAdminWhatsappLogsRoute
   '/admin/whatsapp/numeros': typeof AuthenticatedAdminWhatsappNumerosRoute
@@ -375,6 +384,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/relatorios/analytics': typeof AuthenticatedAdminRelatoriosAnalyticsRoute
   '/_authenticated/admin/relatorios/new': typeof AuthenticatedAdminRelatoriosNewRoute
   '/_authenticated/admin/whatsapp-campanhas/$id': typeof AuthenticatedAdminWhatsappCampanhasIdRoute
+  '/_authenticated/admin/whatsapp/configuracoes': typeof AuthenticatedAdminWhatsappConfiguracoesRoute
   '/_authenticated/admin/whatsapp/inbox': typeof AuthenticatedAdminWhatsappInboxRoute
   '/_authenticated/admin/whatsapp/logs': typeof AuthenticatedAdminWhatsappLogsRoute
   '/_authenticated/admin/whatsapp/numeros': typeof AuthenticatedAdminWhatsappNumerosRoute
@@ -416,6 +426,7 @@ export interface FileRouteTypes {
     | '/admin/relatorios/analytics'
     | '/admin/relatorios/new'
     | '/admin/whatsapp-campanhas/$id'
+    | '/admin/whatsapp/configuracoes'
     | '/admin/whatsapp/inbox'
     | '/admin/whatsapp/logs'
     | '/admin/whatsapp/numeros'
@@ -455,6 +466,7 @@ export interface FileRouteTypes {
     | '/admin/relatorios/analytics'
     | '/admin/relatorios/new'
     | '/admin/whatsapp-campanhas/$id'
+    | '/admin/whatsapp/configuracoes'
     | '/admin/whatsapp/inbox'
     | '/admin/whatsapp/logs'
     | '/admin/whatsapp/numeros'
@@ -495,6 +507,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/relatorios/analytics'
     | '/_authenticated/admin/relatorios/new'
     | '/_authenticated/admin/whatsapp-campanhas/$id'
+    | '/_authenticated/admin/whatsapp/configuracoes'
     | '/_authenticated/admin/whatsapp/inbox'
     | '/_authenticated/admin/whatsapp/logs'
     | '/_authenticated/admin/whatsapp/numeros'
@@ -730,6 +743,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminWhatsappInboxRouteImport
       parentRoute: typeof AuthenticatedAdminWhatsappRoute
     }
+    '/_authenticated/admin/whatsapp/configuracoes': {
+      id: '/_authenticated/admin/whatsapp/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/admin/whatsapp/configuracoes'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappConfiguracoesRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
     '/_authenticated/admin/whatsapp-campanhas/$id': {
       id: '/_authenticated/admin/whatsapp-campanhas/$id'
       path: '/$id'
@@ -805,6 +825,7 @@ const AuthenticatedAdminContatosRouteWithChildren =
   )
 
 interface AuthenticatedAdminWhatsappRouteChildren {
+  AuthenticatedAdminWhatsappConfiguracoesRoute: typeof AuthenticatedAdminWhatsappConfiguracoesRoute
   AuthenticatedAdminWhatsappInboxRoute: typeof AuthenticatedAdminWhatsappInboxRoute
   AuthenticatedAdminWhatsappLogsRoute: typeof AuthenticatedAdminWhatsappLogsRoute
   AuthenticatedAdminWhatsappNumerosRoute: typeof AuthenticatedAdminWhatsappNumerosRoute
@@ -815,6 +836,8 @@ interface AuthenticatedAdminWhatsappRouteChildren {
 
 const AuthenticatedAdminWhatsappRouteChildren: AuthenticatedAdminWhatsappRouteChildren =
   {
+    AuthenticatedAdminWhatsappConfiguracoesRoute:
+      AuthenticatedAdminWhatsappConfiguracoesRoute,
     AuthenticatedAdminWhatsappInboxRoute: AuthenticatedAdminWhatsappInboxRoute,
     AuthenticatedAdminWhatsappLogsRoute: AuthenticatedAdminWhatsappLogsRoute,
     AuthenticatedAdminWhatsappNumerosRoute:
@@ -933,13 +956,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

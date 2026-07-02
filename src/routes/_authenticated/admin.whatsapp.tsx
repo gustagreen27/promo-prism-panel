@@ -7,6 +7,7 @@ export const Route = createFileRoute("/_authenticated/admin/whatsapp")({
 });
 
 const TABS = [
+  { to: "/admin/whatsapp/configuracoes", label: "Configurações" },
   { to: "/admin/whatsapp/numeros", label: "Números" },
   { to: "/admin/whatsapp/templates", label: "Templates" },
   { to: "/admin/whatsapp/webhooks", label: "Webhooks" },
