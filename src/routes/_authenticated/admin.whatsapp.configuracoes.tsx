@@ -124,20 +124,23 @@ function Page() {
   useEffect(() => {
     if (selected?.language) setLanguage(selected.language);
   }, [selected]);
-  const bodyComp = selected?.components.find((c) => c.type?.toUpperCase() === "BODY");
+  const bodyComp = useMemo(
+    () => selected?.components.find((c) => c.type?.toUpperCase() === "BODY"),
+    [selected],
+  );
   const bodyVars = countVars(bodyComp?.text);
-  const dynBtn = findDynamicUrlButton(selected);
+  const dynBtn = useMemo(() => findDynamicUrlButton(selected), [selected]);
+  const hasDynBtn = !!dynBtn;
 
   useEffect(() => {
     if (!selected) return;
     setParams((prev) => {
-      const next = [...prev];
-      next.length = bodyVars;
-      for (let i = 0; i < bodyVars; i++) next[i] = next[i] ?? "";
+      const next = new Array(bodyVars);
+      for (let i = 0; i < bodyVars; i++) next[i] = prev[i] ?? "";
       return next;
     });
-    if (!dynBtn) setButtonParam("");
-  }, [selected, bodyVars, dynBtn]);
+    if (!hasDynBtn) setButtonParam("");
+  }, [selected, bodyVars, hasDynBtn]);
 
   const sendMut = useMutation({
     mutationFn: async () =>
