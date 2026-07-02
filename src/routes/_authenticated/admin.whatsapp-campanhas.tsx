@@ -1,239 +1,159 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Eye, Play, Pause, X, RefreshCw, Upload, ClipboardPaste, ListPlus, Send, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Send, Upload, Loader2, Play, X } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
-import { EmptyState } from "@/components/admin/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { listWaCampaigns, createWaCampaign, deleteWaCampaign, buildRecipients, startWaCampaign, pauseWaCampaign, cancelWaCampaign } from "@/lib/wa-campaigns.functions";
-import { listClients } from "@/lib/clients.functions";
-import { listProjects } from "@/lib/projects.functions";
-import { listNumbers } from "@/lib/whatsapp-numbers.functions";
-import { listTemplates } from "@/lib/whatsapp-templates.functions";
-import { listLists, createList, importPhonesToList } from "@/lib/contact-lists.functions";
-import { formatDate } from "@/lib/format";
-import {
-  ParticipantsBadges,
-  ParticipantsSelect,
-  ParticipantsFilter,
-  matchesParticipants,
-  type Participant,
-} from "@/components/participants";
+import { supabase } from "@/integrations/supabase/client";
+import { listConnections } from "@/lib/whatsapp.functions";
+import { sendFrgc01, getMessageLogStatus, type SendFrgc01Response } from "@/lib/wa-frgc01.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp-campanhas")({
-  head: () => ({ meta: [{ title: "Campanhas WhatsApp" }] }),
+  head: () => ({ meta: [{ title: "Campanhas WhatsApp (frgc_01)" }] }),
   component: Page,
 });
 
-const STATUS_COLOR: Record<string, any> = {
-  draft: "secondary", scheduled: "outline", running: "default",
-  paused: "secondary", completed: "default", cancelled: "destructive", error: "destructive",
+type Form = {
+  connectionId: string;
+  recipientsRaw: string;
+  imageUrl: string;
+  nomeCliente: string;
+  informacaoPrincipal: string;
+  mensagemComplementar: string;
+  textoAcao: string;
+  urlParametro: string;
 };
 
-function Page() {
-  const listFn = useServerFn(listWaCampaigns);
-  const create = useServerFn(createWaCampaign);
-  const remove = useServerFn(deleteWaCampaign);
-  const build = useServerFn(buildRecipients);
-  const start = useServerFn(startWaCampaign);
-  const pause = useServerFn(pauseWaCampaign);
-  const cancel = useServerFn(cancelWaCampaign);
+const EMPTY: Form = {
+  connectionId: "",
+  recipientsRaw: "",
+  imageUrl: "https://metodovidacursos.com.br/og-cover.jpg",
+  nomeCliente: "",
+  informacaoPrincipal: "",
+  mensagemComplementar: "",
+  textoAcao: "",
+  urlParametro: "",
+};
 
-  const clientsFn = useServerFn(listClients);
-  const projectsFn = useServerFn(listProjects);
-  const numbersFn = useServerFn(listNumbers);
-  const templatesFn = useServerFn(listTemplates);
-  const listsFn = useServerFn(listLists);
+const STATUS_STYLES: Record<string, string> = {
+  pending: "bg-muted text-muted-foreground border-border",
+  sending: "bg-amber-500/15 text-amber-700 border-amber-500/40",
+  accepted: "bg-blue-500/15 text-blue-700 border-blue-500/40",
+  sent: "bg-cyan-500/15 text-cyan-700 border-cyan-500/40",
+  delivered: "bg-emerald-500/15 text-emerald-700 border-emerald-500/40",
+  read: "bg-violet-500/15 text-violet-700 border-violet-500/40",
+  failed: "bg-red-500/15 text-red-700 border-red-500/40",
+};
 
-  const qc = useQueryClient();
-  const nav = useNavigate();
-
-  const { data: rows = [], isLoading } = useQuery({
-    queryKey: ["wa-campaigns"],
-    queryFn: () => listFn(),
-    refetchInterval: (q) => {
-      const list = (q.state.data as any[]) ?? [];
-      return list.some((r) => r.status === "running") ? 3000 : false;
-    },
-  });
-  const { data: clients = [] } = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
-  const { data: projects = [] } = useQuery({ queryKey: ["projects"], queryFn: () => projectsFn() });
-  const { data: numbers = [] } = useQuery({ queryKey: ["wa-numbers"], queryFn: () => numbersFn() });
-  const { data: templates = [] } = useQuery({ queryKey: ["wa-templates"], queryFn: () => templatesFn() });
-  const { data: lists = [] } = useQuery({ queryKey: ["lists"], queryFn: () => listsFn() });
-
-  const [open, setOpen] = useState(false);
-  const [partFilter, setPartFilter] = useState<Participant[]>([]);
-  const refresh = () => qc.invalidateQueries({ queryKey: ["wa-campaigns"] });
-
-  const saveMut = useMutation({
-    mutationFn: async (p: any) => {
-      const row = await create({ data: p });
-      try {
-        const r = await build({ data: { id: row.id } });
-        return { row, built: r };
-      } catch (e) {
-        return { row, built: null, buildError: e };
-      }
-    },
-    onSuccess: (r: any) => {
-      if (r.built) toast.success(`Campanha criada · ${r.built.total} destinatário(s) na fila`);
-      else toast.success("Campanha criada (fila não gerada, clique em Gerar fila)");
-      setOpen(false);
-      refresh();
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Erro"),
-  });
-  const delMut = useMutation({ mutationFn: (id: string) => remove({ data: { id } }), onSuccess: () => { toast.success("Removida"); refresh(); } });
-  const buildMut = useMutation({
-    mutationFn: (id: string) => build({ data: { id } }),
-    onSuccess: (r: any) => { toast.success(`Fila gerada: ${r.total} destinatários`); refresh(); },
-    onError: (e: any) => toast.error(e?.message ?? "Erro"),
-  });
-  const startMut = useMutation({
-    mutationFn: (id: string) => start({ data: { id } }),
-    onSuccess: () => { toast.success("Campanha iniciada"); refresh(); },
-    onError: (e: any) => toast.error(e?.message ?? "Erro"),
-  });
-  const pauseMut = useMutation({ mutationFn: (id: string) => pause({ data: { id } }), onSuccess: () => { toast.success("Pausada"); refresh(); } });
-  const cancelMut = useMutation({ mutationFn: (id: string) => cancel({ data: { id } }), onSuccess: () => { toast.success("Cancelada"); refresh(); } });
-
+function StatusBadge({ status }: { status?: string | null }) {
+  const s = status ?? "pending";
+  const cls = STATUS_STYLES[s] ?? STATUS_STYLES.pending;
   return (
-    <>
-      <PageHeader
-        title="Campanhas WhatsApp"
-        description="Disparos oficiais via Cloud API da Meta."
-        actions={
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Nova campanha</Button></DialogTrigger>
-            <CreateDialog clients={clients} projects={projects} numbers={numbers} templates={templates} lists={lists} onSubmit={(p: any) => saveMut.mutate(p)} saving={saveMut.isPending} onListsChanged={() => qc.invalidateQueries({ queryKey: ["lists"] })} />
-          </Dialog>
-        }
-      />
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground">Filtrar por sócio:</span>
-        <div className="w-56"><ParticipantsFilter value={partFilter} onChange={setPartFilter} /></div>
-        {partFilter.length > 0 && (
-          <Button variant="ghost" size="sm" onClick={() => setPartFilter([])}>Limpar</Button>
-        )}
-      </div>
-      <div className="rounded-xl border bg-card">
-        {isLoading ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
-        : rows.length === 0 ? <EmptyState title="Sem campanhas WhatsApp" description="Crie uma nova campanha para iniciar disparos." />
-        : <Table>
-          <TableHeader><TableRow>
-            <TableHead>Nome</TableHead><TableHead>Cliente</TableHead><TableHead>Sócios</TableHead><TableHead>Template</TableHead>
-            <TableHead>Destinatários</TableHead><TableHead>Enviadas</TableHead>
-            <TableHead>Entregues</TableHead><TableHead>Lidas</TableHead><TableHead>Status</TableHead><TableHead />
-          </TableRow></TableHeader>
-          <TableBody>
-            {rows.filter((r: any) => matchesParticipants(r, partFilter)).map((r: any) => (
-              <TableRow key={r.id}>
-                <TableCell className="font-medium">{r.name}</TableCell>
-                <TableCell>{r.client?.name ?? "—"}</TableCell>
-                <TableCell><ParticipantsBadges value={r.participants} /></TableCell>
-                <TableCell>{r.template?.name ?? "—"}</TableCell>
-                <TableCell>{r.total_recipients}</TableCell>
-                <TableCell>{r.sent_count}</TableCell>
-                <TableCell>{r.delivered_count}</TableCell>
-                <TableCell>{r.read_count}</TableCell>
-                <TableCell><Badge variant={STATUS_COLOR[r.status] ?? "secondary"}>{r.status}</Badge></TableCell>
-                <TableCell className="text-right">
-                  {(r.status === "draft" || r.status === "paused") && (
-                    <Button size="icon" variant="ghost" title="Gerar fila" onClick={() => buildMut.mutate(r.id)}><RefreshCw className="h-4 w-4" /></Button>
-                  )}
-                  {(r.status === "draft" || r.status === "paused") && (
-                    <Button size="icon" variant="ghost" title="Iniciar" onClick={() => confirm(`Iniciar disparo para ${r.total_recipients} destinatários?`) && startMut.mutate(r.id)}><Play className="h-4 w-4" /></Button>
-                  )}
-                  {r.status === "running" && (
-                    <Button size="icon" variant="ghost" title="Pausar" onClick={() => pauseMut.mutate(r.id)}><Pause className="h-4 w-4" /></Button>
-                  )}
-                  {(r.status === "running" || r.status === "paused" || r.status === "scheduled") && (
-                    <Button size="icon" variant="ghost" title="Cancelar" onClick={() => confirm("Cancelar campanha?") && cancelMut.mutate(r.id)}><X className="h-4 w-4" /></Button>
-                  )}
-                  <Button size="icon" variant="ghost" onClick={() => nav({ to: "/admin/whatsapp-campanhas/$id", params: { id: r.id } })}><Eye className="h-4 w-4" /></Button>
-                  <Button size="icon" variant="ghost" onClick={() => confirm("Remover?") && delMut.mutate(r.id)}><Trash2 className="h-4 w-4" /></Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>}
-      </div>
-    </>
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${cls}`}>
+      {s}
+    </span>
   );
 }
 
-function CreateDialog({ clients, projects, numbers, templates, lists, onSubmit, saving, onListsChanged }: any) {
-  const [form, setForm] = useState<any>({
-    name: "", client_id: "", project_id: "", connection_id: "", template_id: "", list_id: "",
-    template_variables: {} as Record<string, string>,
-    send_rate_per_min: 30, notes: "", participants: [],
+function normalizePhone(v: string): string {
+  return v.replace(/\D/g, "");
+}
+
+function parseRecipients(raw: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const part of raw.split(/[\s,;]+/)) {
+    const p = normalizePhone(part);
+    if (p.length >= 8 && !seen.has(p)) {
+      seen.add(p);
+      out.push(p);
+    }
+  }
+  return out;
+}
+
+type RowState = {
+  phone: string;
+  status: "pending" | "sending" | "sent" | "failed";
+  logId?: string;
+  metaMessageId?: string;
+  error?: string;
+};
+
+function RecipientRow({ row }: { row: RowState }) {
+  const statusFn = useServerFn(getMessageLogStatus);
+  const { data: live } = useQuery({
+    queryKey: ["message-log-status", row.logId],
+    queryFn: () => statusFn({ data: { logId: row.logId! } }),
+    enabled: !!row.logId,
+    refetchInterval: (q) => {
+      const s = (q.state.data as any)?.message_status;
+      return s === "read" || s === "failed" ? false : 2500;
+    },
   });
-  const [importOpen, setImportOpen] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const status = live?.message_status ?? row.status;
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-md border bg-card px-3 py-2 text-sm">
+      <div className="font-mono">{row.phone}</div>
+      <div className="flex items-center gap-2">
+        {row.error && <span className="text-xs text-destructive truncate max-w-[240px]" title={row.error}>{row.error}</span>}
+        {live?.failed_reason && !row.error && (
+          <span className="text-xs text-destructive truncate max-w-[240px]" title={live.failed_reason}>{live.failed_reason}</span>
+        )}
+        <StatusBadge status={status} />
+      </div>
+    </div>
+  );
+}
+
+function Page() {
+  const listFn = useServerFn(listConnections);
+  const sendFn = useServerFn(sendFrgc01);
+  const [form, setForm] = useState<Form>(EMPTY);
+  const [rows, setRows] = useState<RowState[]>([]);
+  const [sending, setSending] = useState(false);
+  const cancelRef = useRef(false);
+
+  const { data: connections = [] } = useQuery({
+    queryKey: ["whatsapp-connections"],
+    queryFn: () => listFn(),
+  });
+
+  const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
+
+  const recipients = useMemo(() => parseRecipients(form.recipientsRaw), [form.recipientsRaw]);
+
   const fileRef = useRef<HTMLInputElement>(null);
-  const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
-  const setVar = (k: string, v: string) =>
-    setForm((f: any) => ({ ...f, template_variables: { ...f.template_variables, [k]: v } }));
-
-  const template = templates.find((t: any) => t.id === form.template_id);
-  const varsList: string[] = Array.isArray(template?.variables) ? template.variables : [];
-  const headerType = (template?.header_type ?? "").toLowerCase();
-  const supportsMedia = headerType === "image" || headerType === "video" || headerType === "document";
-  const hasDynamicButton = Array.isArray(template?.buttons) &&
-    template.buttons.some((b: any) => (b?.type ?? "").toUpperCase() === "URL" && (b?.url ?? "").includes("{{"));
-
-  const headerImage = form.template_variables?._header_image_url ?? "";
-  const buttonParam = form.template_variables?._button_url_param ?? "";
-
-  const createListFn = useServerFn(createList);
-  const importFn = useServerFn(importPhonesToList);
-
-  const importMut = useMutation({
-    mutationFn: async (p: { listName: string; rows: { phone: string; name?: string | null }[]; source: string }) => {
-      const list = await createListFn({
-        data: {
-          name: p.listName,
-          description: `Criada via campanha "${form.name || "sem nome"}"`,
-          client_id: form.client_id || null,
-          project_id: form.project_id || null,
-        },
-      });
-      const res = await importFn({ data: { list_id: list.id, rows: p.rows, source: p.source } });
-      return { list, ...res };
-    },
-    onSuccess: (r: any) => {
-      toast.success(`Lista "${r.list.name}" criada · ${r.added} leads vinculados${r.invalid ? ` · ${r.invalid} inválidos` : ""}`);
-      set("list_id", r.list.id);
-      setImportOpen(false);
-      onListsChanged?.();
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Falha ao importar leads"),
-  });
+  const [uploading, setUploading] = useState(false);
 
   async function handleUpload(file: File) {
-    if (!file.type.startsWith("image/")) { toast.error("Selecione uma imagem (JPG, PNG, WEBP)"); return; }
-    if (file.size > 5 * 1024 * 1024) { toast.error("Imagem muito grande (máx. 5 MB)"); return; }
+    if (!file.type.startsWith("image/")) {
+      toast.error("Selecione um arquivo de imagem (JPG, PNG, WEBP)");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Imagem muito grande (máx. 5 MB — recomendação Meta)");
+      return;
+    }
     setUploading(true);
     try {
       const ext = file.name.split(".").pop() || "jpg";
       const path = `campanhas/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("campaign-images").upload(path, file, { contentType: file.type, upsert: false });
+      const { error: upErr } = await supabase.storage
+        .from("campaign-images")
+        .upload(path, file, { contentType: file.type, upsert: false });
       if (upErr) throw upErr;
-      const { data: signed, error: sErr } = await supabase.storage.from("campaign-images").createSignedUrl(path, 60 * 60 * 24 * 30);
+      const { data: signed, error: sErr } = await supabase.storage
+        .from("campaign-images")
+        .createSignedUrl(path, 60 * 60 * 24 * 30); // 30 days
       if (sErr || !signed?.signedUrl) throw sErr ?? new Error("Falha ao gerar URL");
-      setVar("_header_image_url", signed.signedUrl);
+      set("imageUrl", signed.signedUrl);
       toast.success("Imagem enviada");
     } catch (e: any) {
       toast.error(e?.message ?? "Falha no upload");
@@ -242,90 +162,108 @@ function CreateDialog({ clients, projects, numbers, templates, lists, onSubmit, 
     }
   }
 
-  const bodyPreview = template?.body
-    ? String(template.body).replace(/\{\{(\d+)\}\}/g, (_: string, k: string) => form.template_variables?.[k] || `{{${k}}}`)
-    : "";
+  const canSubmit =
+    !!form.connectionId &&
+    recipients.length > 0 &&
+    !!form.imageUrl &&
+    !!form.nomeCliente &&
+    !!form.informacaoPrincipal &&
+    !!form.mensagemComplementar &&
+    !!form.textoAcao &&
+    !!form.urlParametro;
 
-  const canSubmit = form.name && form.connection_id && form.template_id && form.list_id
-    && (!supportsMedia || headerImage)
-    && (!hasDynamicButton || buttonParam)
-    && varsList.every((k) => (form.template_variables?.[k] ?? "").length > 0);
+  async function handleSend() {
+    if (!canSubmit || sending) return;
+    cancelRef.current = false;
+    setSending(true);
+    const initial: RowState[] = recipients.map((p) => ({ phone: p, status: "pending" }));
+    setRows(initial);
+    let okCount = 0;
+    let failCount = 0;
+    for (let i = 0; i < recipients.length; i++) {
+      if (cancelRef.current) break;
+      const phone = recipients[i];
+      setRows((rs) => rs.map((r) => (r.phone === phone ? { ...r, status: "sending" } : r)));
+      try {
+        const res: SendFrgc01Response = await sendFn({
+          data: {
+            connectionId: form.connectionId,
+            to: phone,
+            imageUrl: form.imageUrl,
+            nomeCliente: form.nomeCliente,
+            informacaoPrincipal: form.informacaoPrincipal,
+            mensagemComplementar: form.mensagemComplementar,
+            textoAcao: form.textoAcao,
+            urlParametro: form.urlParametro,
+          },
+        });
+        if (res.ok) {
+          okCount++;
+          setRows((rs) => rs.map((r) => (r.phone === phone
+            ? { ...r, status: "sent", logId: res.logId, metaMessageId: res.metaMessageId }
+            : r)));
+        } else {
+          failCount++;
+          setRows((rs) => rs.map((r) => (r.phone === phone
+            ? { ...r, status: "failed", logId: res.logId, error: res.error }
+            : r)));
+        }
+      } catch (e: any) {
+        failCount++;
+        setRows((rs) => rs.map((r) => (r.phone === phone
+          ? { ...r, status: "failed", error: e?.message ?? "Falha ao enviar" }
+          : r)));
+      }
+      // small delay to avoid hammering Meta
+      if (i < recipients.length - 1) await new Promise((r) => setTimeout(r, 300));
+    }
+    setSending(false);
+    toast[failCount === 0 ? "success" : "message"](`Envio concluído · ${okCount} ok · ${failCount} falha(s)`);
+  }
 
   return (
-    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-      <DialogHeader><DialogTitle>Nova campanha WhatsApp</DialogTitle></DialogHeader>
+    <div className="space-y-6">
+      <PageHeader
+        title="Campanhas WhatsApp (frgc_01)"
+        description="Disparo oficial em lote via WhatsApp Cloud API — mesmo formato do teste, com múltiplos destinatários."
+      />
 
-      <div className="space-y-5">
-        {/* Bloco 1: identificação */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <Label>Nome da campanha *</Label>
-            <Input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Ex.: Reengajamento Setembro" />
-          </div>
-          <div>
-            <Label>Cliente</Label>
-            <Select value={form.client_id} onValueChange={(v) => set("client_id", v)}>
-              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-              <SelectContent>{clients.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Projeto</Label>
-            <Select value={form.project_id} onValueChange={(v) => set("project_id", v)}>
-              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-              <SelectContent>{projects.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Bloco 2: conexão + template + destinatários (igual ao teste-frgc01) */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div>
-            <Label>Conexão WhatsApp *</Label>
-            <Select value={form.connection_id} onValueChange={(v) => set("connection_id", v)}>
+      <div className="rounded-lg border bg-card p-5 space-y-4 max-w-3xl">
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2 md:col-span-2">
+            <Label>Conexão WhatsApp</Label>
+            <Select value={form.connectionId} onValueChange={(v) => set("connectionId", v)}>
               <SelectTrigger><SelectValue placeholder="Escolha o número" /></SelectTrigger>
               <SelectContent>
-                {numbers.map((n: any) => (
-                  <SelectItem key={n.id} value={n.id}>
-                    {n.name} {n.display_phone ? `(${n.display_phone})` : ""}
+                {connections.map((c: any) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name} {c.display_phone ? `(${c.display_phone})` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label>Template aprovado *</Label>
-            <Select value={form.template_id} onValueChange={(v) => set("template_id", v)}>
-              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-              <SelectContent>
-                {templates.filter((t: any) => t.status === "approved").map((t: any) => (
-                  <SelectItem key={t.id} value={t.id}>{t.name} ({t.language})</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="sm:col-span-2">
-            <div className="flex items-center justify-between">
-              <Label>Lista de contatos * (destinatários)</Label>
-              <Button type="button" variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-                <ListPlus className="mr-1.5 h-3.5 w-3.5" />Importar leads
-              </Button>
-            </div>
-            <Select value={form.list_id} onValueChange={(v) => set("list_id", v)}>
-              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-              <SelectContent>{lists.map((l: any) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-        </div>
 
-        {/* Bloco 3: mídia do cabeçalho (aparece se o template tem header de mídia) */}
-        {supportsMedia && (
-          <div className="space-y-2">
-            <Label>Imagem do cabeçalho *</Label>
+          <div className="space-y-2 md:col-span-2">
+            <Label>Destinatários (E.164 sem +, um por linha ou separados por vírgula)</Label>
+            <Textarea
+              rows={5}
+              className="font-mono text-xs"
+              value={form.recipientsRaw}
+              onChange={(e) => set("recipientsRaw", e.target.value)}
+              placeholder={"5562984817929\n5511999998888\n..."}
+            />
+            <p className="text-xs text-muted-foreground">
+              {recipients.length} número(s) válidos detectados.
+            </p>
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <Label>Imagem do cabeçalho</Label>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Input
-                value={headerImage}
-                onChange={(e) => setVar("_header_image_url", e.target.value)}
+                value={form.imageUrl}
+                onChange={(e) => set("imageUrl", e.target.value)}
                 placeholder="Cole uma URL pública ou envie um arquivo"
               />
               <input
@@ -333,190 +271,90 @@ function CreateDialog({ clients, projects, numbers, templates, lists, onSubmit, 
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
                 className="hidden"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); e.target.value = ""; }}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleUpload(f);
+                  e.target.value = "";
+                }}
               />
-              <Button type="button" variant="outline" disabled={uploading} onClick={() => fileRef.current?.click()}>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={uploading}
+                onClick={() => fileRef.current?.click()}
+              >
                 {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
                 {uploading ? "Enviando…" : "Upload"}
               </Button>
             </div>
-            {headerImage && (
-              <img src={headerImage} alt="Preview" className="mt-1 max-h-40 rounded-md border object-contain bg-muted" />
+            {form.imageUrl && (
+              <img
+                src={form.imageUrl}
+                alt="Preview do cabeçalho"
+                className="mt-2 max-h-40 rounded-md border object-contain bg-muted"
+              />
             )}
           </div>
-        )}
 
-        {/* Bloco 4: variáveis do body */}
-        {varsList.length > 0 && (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {varsList.map((k) => (
-              <div key={k} className={varsList.length === 1 ? "sm:col-span-2" : ""}>
-                <Label>{`{{${k}}}`}</Label>
-                <Input
-                  value={form.template_variables?.[k] ?? ""}
-                  onChange={(e) => setVar(k, e.target.value)}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Bloco 5: preview do corpo */}
-        {bodyPreview && (
-          <div className="rounded-md border bg-muted/30 p-3">
-            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Corpo</div>
-            <div className="text-sm whitespace-pre-line leading-relaxed">{bodyPreview}</div>
-          </div>
-        )}
-
-        {/* Bloco 6: parâmetro do botão dinâmico */}
-        {hasDynamicButton && (
-          <div>
-            <Label>Parâmetro do botão URL *</Label>
-            <Input
-              value={buttonParam}
-              onChange={(e) => setVar("_button_url_param", e.target.value)}
-              placeholder="Ex.: confirmar/abc123"
-            />
-            <p className="mt-1 text-xs text-muted-foreground">Substitui o placeholder <code>{"{{1}}"}</code> na URL do botão.</p>
-          </div>
-        )}
-
-        {/* Bloco 7: ritmo + participantes */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div>
-            <Label>Velocidade (msg/min)</Label>
-            <Input type="number" value={form.send_rate_per_min} onChange={(e) => set("send_rate_per_min", Number(e.target.value))} />
-          </div>
-          <div className="sm:col-span-2">
-            <ParticipantsSelect
-              value={(form.participants ?? []) as Participant[]}
-              onChange={(v) => set("participants", v)}
-              label="Sócios responsáveis pelo disparo"
-            />
-          </div>
-        </div>
-      </div>
-
-      <DialogFooter>
-        <Button disabled={saving || !canSubmit} onClick={() => onSubmit({ ...form, participants: form.participants ?? [] })}>
-          <Send className="mr-2 h-4 w-4" />Criar como rascunho
-        </Button>
-      </DialogFooter>
-
-      <Dialog open={importOpen} onOpenChange={setImportOpen}>
-        <QuickImportDialog
-          defaultName={form.name ? `${form.name} — leads` : `Leads ${new Date().toLocaleDateString("pt-BR")}`}
-          saving={importMut.isPending}
-          onSubmit={(listName, rows, source) => importMut.mutate({ listName, rows, source })}
-        />
-      </Dialog>
-    </DialogContent>
-  );
-}
-
-
-
-type ImportRow = { phone: string; name?: string | null };
-
-function QuickImportDialog({
-  defaultName,
-  saving,
-  onSubmit,
-}: {
-  defaultName: string;
-  saving: boolean;
-  onSubmit: (listName: string, rows: ImportRow[], source: string) => void;
-}) {
-  const [listName, setListName] = useState(defaultName);
-  const [tab, setTab] = useState("paste");
-  const [paste, setPaste] = useState("");
-  const [csvRows, setCsvRows] = useState<ImportRow[] | null>(null);
-  const [csvName, setCsvName] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  const pasteRows: ImportRow[] = useMemo(() => {
-    if (!paste.trim()) return [];
-    return paste
-      .split(/[\n;,]/)
-      .map((v) => v.trim())
-      .filter(Boolean)
-      .map((phone) => ({ phone }));
-  }, [paste]);
-
-  const handleFile = async (file: File) => {
-    const text = await file.text();
-    const lines = text.split(/\r?\n/).filter((l) => l.trim().length);
-    if (!lines.length) { setCsvRows([]); return; }
-    const headerLine = lines[0];
-    const hasHeader = /phone|telefone|celular|nome|name|email/i.test(headerLine);
-    const sep = headerLine.includes(";") ? ";" : ",";
-    const headers = hasHeader
-      ? headerLine.split(sep).map((h) => h.trim().toLowerCase())
-      : ["phone", "name"];
-    const dataLines = hasHeader ? lines.slice(1) : lines;
-    const rows: ImportRow[] = dataLines.map((line) => {
-      const cols = line.split(sep).map((c) => c.trim().replace(/^"|"$/g, ""));
-      const obj: any = {};
-      headers.forEach((h, i) => { obj[h] = cols[i] ?? ""; });
-      return {
-        phone: obj.phone || obj.telefone || obj.celular || cols[0] || "",
-        name: obj.name || obj.nome || null,
-      };
-    }).filter((r) => r.phone);
-    setCsvRows(rows);
-    setCsvName(file.name);
-  };
-
-  const activeRows = tab === "paste" ? pasteRows : (csvRows ?? []);
-
-  return (
-    <DialogContent className="max-w-xl">
-      <DialogHeader><DialogTitle>Importar leads para esta campanha</DialogTitle></DialogHeader>
-      <div className="space-y-3">
-        <div>
-          <Label>Nome da nova lista *</Label>
-          <Input value={listName} onChange={(e) => setListName(e.target.value)} />
-        </div>
-        <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="paste"><ClipboardPaste className="mr-2 h-4 w-4" />Colar telefones</TabsTrigger>
-            <TabsTrigger value="csv"><Upload className="mr-2 h-4 w-4" />CSV</TabsTrigger>
-          </TabsList>
-          <TabsContent value="paste">
-            <Textarea
-              rows={10}
-              className="font-mono text-xs"
-              placeholder={"5562984817929\n5511999998888\n..."}
-              value={paste}
-              onChange={(e) => setPaste(e.target.value)}
-            />
-            <p className="mt-1 text-xs text-muted-foreground">{pasteRows.length} número(s) detectado(s).</p>
-          </TabsContent>
-          <TabsContent value="csv">
-            <div
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) handleFile(f); }}
-              className="rounded-lg border-2 border-dashed p-6 text-center"
-            >
-              <Upload className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
-              <p className="mb-2 text-sm">Arraste um CSV ou</p>
-              <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>Selecionar arquivo</Button>
-              <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
-              <p className="mt-3 text-xs text-muted-foreground">Colunas: <code>phone/telefone/celular</code>, <code>name/nome</code>.</p>
+          <div className="space-y-2 md:col-span-2 rounded-md border bg-muted/30 p-3">
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Corpo</div>
+            <div className="text-sm whitespace-pre-line leading-relaxed">
+              {`Olá ${form.nomeCliente || "{{1}}"}!\n\nInformamos que ${form.informacaoPrincipal || "{{2}}"}.\n\n${form.mensagemComplementar || "{{3}}"}.\n\nPara ${form.textoAcao || "{{4}}"}, clique no botão logo abaixo 👇`}
             </div>
-            {csvRows && <div className="mt-2 rounded-md border bg-muted/40 p-2 text-xs"><strong>{csvName}</strong> · {csvRows.length} linha(s).</div>}
-          </TabsContent>
-        </Tabs>
+          </div>
+
+          <div className="space-y-2">
+            <Label>{"{{1}} Nome do cliente"}</Label>
+            <Input value={form.nomeCliente} onChange={(e) => set("nomeCliente", e.target.value)} />
+          </div>
+
+          <div className="space-y-2">
+            <Label>{"{{2}} Informação principal"}</Label>
+            <Input value={form.informacaoPrincipal} onChange={(e) => set("informacaoPrincipal", e.target.value)} />
+          </div>
+
+          <div className="space-y-2">
+            <Label>{"{{3}} Mensagem complementar"}</Label>
+            <Input value={form.mensagemComplementar} onChange={(e) => set("mensagemComplementar", e.target.value)} />
+          </div>
+
+          <div className="space-y-2">
+            <Label>{"{{4}} Texto de ação"}</Label>
+            <Input value={form.textoAcao} onChange={(e) => set("textoAcao", e.target.value)} />
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <Label>Parâmetro do botão (path após metodovidacursos.com.br/)</Label>
+            <Input value={form.urlParametro} onChange={(e) => set("urlParametro", e.target.value)} placeholder="confirmar/abc123" />
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Button disabled={!canSubmit || sending} onClick={handleSend}>
+            {sending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
+            {sending ? `Enviando… (${rows.filter((r) => r.status === "sent" || r.status === "failed").length}/${rows.length})` : `Disparar para ${recipients.length} destinatário(s)`}
+          </Button>
+          {sending && (
+            <Button variant="outline" onClick={() => { cancelRef.current = true; }}>
+              <X className="h-4 w-4 mr-2" /> Cancelar
+            </Button>
+          )}
+          {rows.length > 0 && !sending && (
+            <Button variant="ghost" onClick={() => setRows([])}>Limpar resultados</Button>
+          )}
+        </div>
+
+        {rows.length > 0 && (
+          <div className="space-y-2 pt-2">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Status por destinatário
+            </div>
+            <div className="space-y-1.5">
+              {rows.map((r) => <RecipientRow key={r.phone} row={r} />)}
+            </div>
+          </div>
+        )}
       </div>
-      <DialogFooter>
-        <Button
-          disabled={saving || !listName || activeRows.length === 0}
-          onClick={() => onSubmit(listName, activeRows, tab === "csv" ? "csv" : "paste")}
-        >
-          {saving ? "Importando…" : `Criar lista e importar ${activeRows.length}`}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
+    </div>
   );
 }
