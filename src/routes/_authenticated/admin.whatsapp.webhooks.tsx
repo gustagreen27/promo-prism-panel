@@ -36,11 +36,15 @@ export const Route = createFileRoute("/_authenticated/admin/whatsapp/webhooks")(
 
 function Page() {
   const numbersFn = useServerFn(listNumbers);
+  const updateNumberFn = useServerFn(updateNumber);
   const listFn = useServerFn(listSettings);
   const upsertFn = useServerFn(upsertSetting);
   const qc = useQueryClient();
 
-  const { data: rows = [] } = useQuery({ queryKey: ["wa-numbers"], queryFn: () => numbersFn() });
+  const { data: rows = [], isLoading: numbersLoading } = useQuery({
+    queryKey: ["wa-numbers"],
+    queryFn: () => numbersFn(),
+  });
   const { data: settings = [], isLoading } = useQuery({ queryKey: ["settings"], queryFn: () => listFn() });
 
   const defaultUrl = useMemo(() => {
@@ -54,6 +58,7 @@ function Page() {
     graph_api_version: "v21.0",
     events: ["messages", "message_template_status_update"],
   });
+  const [visibleTokens, setVisibleTokens] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const row = settings.find((r: any) => r.key === KEY);
@@ -94,6 +99,26 @@ function Page() {
     const token = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
     set("verify_token", token);
   };
+
+  const regenerateConnectionToken = (id: string) => {
+    const bytes = new Uint8Array(24);
+    crypto.getRandomValues(bytes);
+    const token = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+    return token;
+  };
+
+  const updateTokenMut = useMutation({
+    mutationFn: async ({ id, token }: { id: string; token: string }) => {
+      await updateNumberFn({ data: { id, verify_token: token } });
+      return { id, token };
+    },
+    onSuccess: ({ token }) => {
+      toast.success("Token de verificação regenerado");
+      qc.invalidateQueries({ queryKey: ["wa-numbers"] });
+      copy(token);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao regenerar token"),
+  });
 
   return (
     <>
