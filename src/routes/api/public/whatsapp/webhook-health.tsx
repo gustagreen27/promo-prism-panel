@@ -136,6 +136,8 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook-health")({
             ok: true,
             stage: "overview",
             webhook_url: `${url.origin}/api/public/whatsapp/webhook`,
+            has_global_verify_token: Boolean(globalToken),
+            global_verify_token_length: globalToken?.length ?? 0,
             connections_total: total,
             connections_with_token: withToken,
             connections: (conns ?? []).map((c) => ({
