@@ -22,13 +22,31 @@ async function loadCreds(ctx: { supabase: any }) {
   return creds;
 }
 
-type CheckResult = {
+export type CheckResult = {
   name: string;
   ok: boolean;
   detail: string;
   hint?: string;
   raw?: any;
 };
+
+export type WabaTemplate = {
+  name: string;
+  status: string;
+  language: string;
+  category: string;
+  parameter_format?: "POSITIONAL" | "NAMED";
+  components: Array<any>;
+};
+
+export type ListWabaTemplatesResult = {
+  templates: WabaTemplate[];
+  error?: CheckResult;
+};
+
+export type SendTestTemplateResult =
+  | { ok: true; message_id: string | null; response: any }
+  | { ok: false; error: string; hint?: string; raw?: any };
 
 function explainMetaError(err: any): { detail: string; hint: string } {
   const code = err?.code;
@@ -155,25 +173,48 @@ export const listWabaTemplates = createServerFn({ method: "GET" })
     await assertAdmin(context);
     const creds = await loadCreds(context);
     if (!creds.waba_id || !creds.access_token) {
-      throw new Error("Cadastre WABA ID e Access Token em Configurações.");
+      return {
+        templates: [],
+        error: {
+          name: "Listar templates",
+          ok: false,
+          detail: "Cadastre WABA ID e Access Token em Configurações.",
+          hint: "Preencha os campos acima e clique em Salvar credenciais.",
+        },
+      } satisfies ListWabaTemplatesResult;
     }
     const version = "v25.0";
     const url = `https://graph.facebook.com/${version}/${creds.waba_id}/message_templates?limit=200&fields=name,status,language,category,components,parameter_format`;
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${creds.access_token}` },
-    });
-    const json: any = await res.json();
-    if (!res.ok) {
-      throw new Error(json?.error?.message ?? `HTTP ${res.status}`);
+    try {
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${creds.access_token}` },
+      });
+      const json: any = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const ex = explainMetaError(json?.error ?? { message: `HTTP ${res.status}` });
+        return {
+          templates: [],
+          error: {
+            name: "Listar templates",
+            ok: false,
+            detail: ex.detail,
+            hint: ex.hint,
+            raw: json,
+          },
+        } satisfies ListWabaTemplatesResult;
+      }
+      return { templates: (json?.data ?? []) as WabaTemplate[] } satisfies ListWabaTemplatesResult;
+    } catch (e: any) {
+      return {
+        templates: [],
+        error: {
+          name: "Listar templates",
+          ok: false,
+          detail: e?.message ?? "Falha ao conectar com a API da Meta.",
+          hint: "Verifique sua conexão e tente novamente. Se persistir, rode Testar conexão para ver cada etapa.",
+        },
+      } satisfies ListWabaTemplatesResult;
     }
-    return (json?.data ?? []) as Array<{
-      name: string;
-      status: string;
-      language: string;
-      category: string;
-      parameter_format?: "POSITIONAL" | "NAMED";
-      components: Array<any>;
-    }>;
   });
 
 export const sendTestTemplate = createServerFn({ method: "POST" })
@@ -195,7 +236,11 @@ export const sendTestTemplate = createServerFn({ method: "POST" })
     await assertAdmin(context);
     const creds = await loadCreds(context);
     if (!creds.phone_number_id || !creds.access_token) {
-      throw new Error("Cadastre Phone Number ID e Access Token em Configurações.");
+      return {
+        ok: false,
+        error: "Cadastre Phone Number ID e Access Token em Configurações.",
+        hint: "Preencha os campos acima e clique em Salvar credenciais.",
+      } satisfies SendTestTemplateResult;
     }
 
     const components: any[] = [];
@@ -226,24 +271,32 @@ export const sendTestTemplate = createServerFn({ method: "POST" })
       },
     };
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${creds.access_token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
-    const text = await res.text();
-    let json: any;
     try {
-      json = JSON.parse(text);
-    } catch {
-      json = { raw: text };
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${creds.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+      const text = await res.text();
+      let json: any;
+      try {
+        json = JSON.parse(text);
+      } catch {
+        json = { raw: text };
+      }
+      if (!res.ok) {
+        const ex = explainMetaError(json?.error ?? { message: `HTTP ${res.status}` });
+        return { ok: false, error: ex.detail, hint: ex.hint, raw: json } satisfies SendTestTemplateResult;
+      }
+      return { ok: true, message_id: json?.messages?.[0]?.id ?? null, response: json } satisfies SendTestTemplateResult;
+    } catch (e: any) {
+      return {
+        ok: false,
+        error: e?.message ?? "Falha ao conectar com a API da Meta.",
+        hint: "Verifique a conexão e tente novamente.",
+      } satisfies SendTestTemplateResult;
     }
-    if (!res.ok) {
-      const msg = json?.error?.message ?? `HTTP ${res.status}`;
-      throw new Error(msg);
-    }
-    return { ok: true, message_id: json?.messages?.[0]?.id ?? null, response: json };
   });
