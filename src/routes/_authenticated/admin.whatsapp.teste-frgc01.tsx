@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { listConnections } from "@/lib/whatsapp.functions";
-import { sendFrgc01, type SendFrgc01Response } from "@/lib/wa-frgc01.functions";
+import { sendFrgc01, getMessageLogStatus, type SendFrgc01Response } from "@/lib/wa-frgc01.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp/teste-frgc01")({
   head: () => ({ meta: [{ title: "Testar template frgc_01" }] }),
