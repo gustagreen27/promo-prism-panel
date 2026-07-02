@@ -139,6 +139,16 @@ export const importPhonesToList = createServerFn({ method: "POST" })
       .from("contacts")
       .upsert(toUpsert, { onConflict: "phone,client_id" as any, ignoreDuplicates: true });
 
+    // Ensure imported phones are opted-in (fixes existing contacts stuck at opt_in=false/opt_out=true)
+    {
+      let uq = context.supabase
+        .from("contacts")
+        .update({ opt_in: true, opt_out: false, opt_in_at: new Date().toISOString() })
+        .in("phone", normalized.map((n) => n.phone));
+      uq = list?.client_id ? uq.eq("client_id", list.client_id) : uq.is("client_id", null);
+      await uq;
+    }
+
     // fetch resulting contact ids for those phones (scoped to list's client_id)
     let q = context.supabase.from("contacts").select("id,phone").in("phone", normalized.map((n) => n.phone));
     q = list?.client_id ? q.eq("client_id", list.client_id) : q.is("client_id", null);
