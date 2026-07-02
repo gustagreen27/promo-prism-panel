@@ -1,11 +1,11 @@
 {
-  "version": 1,
   "asset_id": "cb6dc770-576d-45eb-8fe2-c3f88c42e44e",
-  "project_id": "7ab5bd9b-6708-45d5-aac2-6105c07f9fee",
-  "url": "/__l5e/assets-v1/cb6dc770-576d-45eb-8fe2-c3f88c42e44e/disparos-fr-logo.png",
-  "r2_key": "a/v1/7ab5bd9b-6708-45d5-aac2-6105c07f9fee/cb6dc770-576d-45eb-8fe2-c3f88c42e44e/disparos-fr-logo.png",
-  "original_filename": "disparos-fr-logo.png",
-  "size": 189028,
   "content_type": "image/png",
-  "created_at": "2026-06-27T18:26:47Z"
+  "created_at": "2026-06-27T18:26:47Z",
+  "original_filename": "disparos-fr-logo.png",
+  "project_id": "9c7682d6-edcd-4388-a36c-36249d4d6ab8",
+  "r2_key": "a/v1/9c7682d6-edcd-4388-a36c-36249d4d6ab8/cb6dc770-576d-45eb-8fe2-c3f88c42e44e/disparos-fr-logo.png",
+  "size": 189028,
+  "url": "/__l5e/assets-v1/cb6dc770-576d-45eb-8fe2-c3f88c42e44e/disparos-fr-logo.png",
+  "version": 1
 }
