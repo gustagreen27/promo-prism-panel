@@ -3,7 +3,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Eye, Play, Pause, X, RefreshCw, Upload, ClipboardPaste, ListPlus } from "lucide-react";
+import { Plus, Trash2, Eye, Play, Pause, X, RefreshCw, Upload, ClipboardPaste, ListPlus, Send, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
 import { Button } from "@/components/ui/button";
@@ -58,7 +59,14 @@ function Page() {
   const qc = useQueryClient();
   const nav = useNavigate();
 
-  const { data: rows = [], isLoading } = useQuery({ queryKey: ["wa-campaigns"], queryFn: () => listFn() });
+  const { data: rows = [], isLoading } = useQuery({
+    queryKey: ["wa-campaigns"],
+    queryFn: () => listFn(),
+    refetchInterval: (q) => {
+      const list = (q.state.data as any[]) ?? [];
+      return list.some((r) => r.status === "running") ? 3000 : false;
+    },
+  });
   const { data: clients = [] } = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
   const { data: projects = [] } = useQuery({ queryKey: ["projects"], queryFn: () => projectsFn() });
   const { data: numbers = [] } = useQuery({ queryKey: ["wa-numbers"], queryFn: () => numbersFn() });
@@ -156,12 +164,25 @@ function Page() {
 function CreateDialog({ clients, projects, numbers, templates, lists, onSubmit, saving, onListsChanged }: any) {
   const [form, setForm] = useState<any>({
     name: "", client_id: "", project_id: "", connection_id: "", template_id: "", list_id: "",
-    template_variables: {}, send_rate_per_min: 30, notes: "", participants: [],
+    template_variables: {} as Record<string, string>,
+    send_rate_per_min: 30, notes: "", participants: [],
   });
   const [importOpen, setImportOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
+  const setVar = (k: string, v: string) =>
+    setForm((f: any) => ({ ...f, template_variables: { ...f.template_variables, [k]: v } }));
+
   const template = templates.find((t: any) => t.id === form.template_id);
   const varsList: string[] = Array.isArray(template?.variables) ? template.variables : [];
+  const headerType = (template?.header_type ?? "").toLowerCase();
+  const supportsMedia = headerType === "image" || headerType === "video" || headerType === "document";
+  const hasDynamicButton = Array.isArray(template?.buttons) &&
+    template.buttons.some((b: any) => (b?.type ?? "").toUpperCase() === "URL" && (b?.url ?? "").includes("{{"));
+
+  const headerImage = form.template_variables?._header_image_url ?? "";
+  const buttonParam = form.template_variables?._button_url_param ?? "";
 
   const createListFn = useServerFn(createList);
   const importFn = useServerFn(importPhonesToList);
@@ -188,83 +209,187 @@ function CreateDialog({ clients, projects, numbers, templates, lists, onSubmit, 
     onError: (e: any) => toast.error(e?.message ?? "Falha ao importar leads"),
   });
 
+  async function handleUpload(file: File) {
+    if (!file.type.startsWith("image/")) { toast.error("Selecione uma imagem (JPG, PNG, WEBP)"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("Imagem muito grande (máx. 5 MB)"); return; }
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `campanhas/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("campaign-images").upload(path, file, { contentType: file.type, upsert: false });
+      if (upErr) throw upErr;
+      const { data: signed, error: sErr } = await supabase.storage.from("campaign-images").createSignedUrl(path, 60 * 60 * 24 * 30);
+      if (sErr || !signed?.signedUrl) throw sErr ?? new Error("Falha ao gerar URL");
+      setVar("_header_image_url", signed.signedUrl);
+      toast.success("Imagem enviada");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha no upload");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  const bodyPreview = template?.body
+    ? String(template.body).replace(/\{\{(\d+)\}\}/g, (_: string, k: string) => form.template_variables?.[k] || `{{${k}}}`)
+    : "";
+
+  const canSubmit = form.name && form.connection_id && form.template_id && form.list_id
+    && (!supportsMedia || headerImage)
+    && (!hasDynamicButton || buttonParam)
+    && varsList.every((k) => (form.template_variables?.[k] ?? "").length > 0);
+
   return (
-    <DialogContent className="max-w-2xl">
+    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
       <DialogHeader><DialogTitle>Nova campanha WhatsApp</DialogTitle></DialogHeader>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="sm:col-span-2"><Label>Nome *</Label><Input value={form.name} onChange={(e) => set("name", e.target.value)} /></div>
-        <div><Label>Cliente</Label>
-          <Select value={form.client_id} onValueChange={(v) => set("client_id", v)}>
-            <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-            <SelectContent>{clients.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-        <div><Label>Projeto</Label>
-          <Select value={form.project_id} onValueChange={(v) => set("project_id", v)}>
-            <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-            <SelectContent>{projects.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-        <div><Label>Número remetente *</Label>
-          <Select value={form.connection_id} onValueChange={(v) => set("connection_id", v)}>
-            <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-            <SelectContent>{numbers.map((n: any) => <SelectItem key={n.id} value={n.id}>{n.name}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-        <div><Label>Template aprovado *</Label>
-          <Select value={form.template_id} onValueChange={(v) => set("template_id", v)}>
-            <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-            <SelectContent>{templates.filter((t: any) => t.status === "approved").map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name} ({t.language})</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-        <div className="sm:col-span-2">
-          <div className="flex items-center justify-between">
-            <Label>Lista de contatos *</Label>
-            <Button type="button" variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-              <ListPlus className="mr-1.5 h-3.5 w-3.5" />Importar leads
-            </Button>
+
+      <div className="space-y-5">
+        {/* Bloco 1: identificação */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <Label>Nome da campanha *</Label>
+            <Input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Ex.: Reengajamento Setembro" />
           </div>
-          <Select value={form.list_id} onValueChange={(v) => set("list_id", v)}>
-            <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-            <SelectContent>{lists.map((l: any) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent>
-          </Select>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Escolha uma lista existente ou clique em <strong>Importar leads</strong> para colar/enviar os telefones agora — uma nova lista será criada automaticamente.
-          </p>
+          <div>
+            <Label>Cliente</Label>
+            <Select value={form.client_id} onValueChange={(v) => set("client_id", v)}>
+              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+              <SelectContent>{clients.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Projeto</Label>
+            <Select value={form.project_id} onValueChange={(v) => set("project_id", v)}>
+              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+              <SelectContent>{projects.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
         </div>
 
+        {/* Bloco 2: conexão + template + destinatários (igual ao teste-frgc01) */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <Label>Conexão WhatsApp *</Label>
+            <Select value={form.connection_id} onValueChange={(v) => set("connection_id", v)}>
+              <SelectTrigger><SelectValue placeholder="Escolha o número" /></SelectTrigger>
+              <SelectContent>
+                {numbers.map((n: any) => (
+                  <SelectItem key={n.id} value={n.id}>
+                    {n.name} {n.display_phone ? `(${n.display_phone})` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Template aprovado *</Label>
+            <Select value={form.template_id} onValueChange={(v) => set("template_id", v)}>
+              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+              <SelectContent>
+                {templates.filter((t: any) => t.status === "approved").map((t: any) => (
+                  <SelectItem key={t.id} value={t.id}>{t.name} ({t.language})</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="sm:col-span-2">
+            <div className="flex items-center justify-between">
+              <Label>Lista de contatos * (destinatários)</Label>
+              <Button type="button" variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+                <ListPlus className="mr-1.5 h-3.5 w-3.5" />Importar leads
+              </Button>
+            </div>
+            <Select value={form.list_id} onValueChange={(v) => set("list_id", v)}>
+              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+              <SelectContent>{lists.map((l: any) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Bloco 3: mídia do cabeçalho (aparece se o template tem header de mídia) */}
+        {supportsMedia && (
+          <div className="space-y-2">
+            <Label>Imagem do cabeçalho *</Label>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                value={headerImage}
+                onChange={(e) => setVar("_header_image_url", e.target.value)}
+                placeholder="Cole uma URL pública ou envie um arquivo"
+              />
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); e.target.value = ""; }}
+              />
+              <Button type="button" variant="outline" disabled={uploading} onClick={() => fileRef.current?.click()}>
+                {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                {uploading ? "Enviando…" : "Upload"}
+              </Button>
+            </div>
+            {headerImage && (
+              <img src={headerImage} alt="Preview" className="mt-1 max-h-40 rounded-md border object-contain bg-muted" />
+            )}
+          </div>
+        )}
+
+        {/* Bloco 4: variáveis do body */}
         {varsList.length > 0 && (
-          <div className="sm:col-span-2 space-y-2 rounded border bg-muted/40 p-3">
-            <div className="text-xs font-medium uppercase text-muted-foreground">Variáveis do template</div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {varsList.map((k) => (
-              <div key={k} className="flex items-center gap-2">
-                <Label className="w-12 text-xs">{`{{${k}}}`}</Label>
+              <div key={k} className={varsList.length === 1 ? "sm:col-span-2" : ""}>
+                <Label>{`{{${k}}}`}</Label>
                 <Input
                   value={form.template_variables?.[k] ?? ""}
-                  onChange={(e) => set("template_variables", { ...form.template_variables, [k]: e.target.value })}
+                  onChange={(e) => setVar(k, e.target.value)}
                 />
               </div>
             ))}
           </div>
         )}
 
-        {template?.body && (
-          <div className="sm:col-span-2 rounded border bg-muted p-3 text-sm whitespace-pre-wrap">
-            <div className="text-xs font-medium uppercase text-muted-foreground mb-1">Preview</div>
-            {String(template.body).replace(/\{\{(\d+)\}\}/g, (_: string, k: string) => form.template_variables?.[k] || `{{${k}}}`)}
+        {/* Bloco 5: preview do corpo */}
+        {bodyPreview && (
+          <div className="rounded-md border bg-muted/30 p-3">
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Corpo</div>
+            <div className="text-sm whitespace-pre-line leading-relaxed">{bodyPreview}</div>
           </div>
         )}
 
-        <div><Label>Velocidade (msg/min)</Label><Input type="number" value={form.send_rate_per_min} onChange={(e) => set("send_rate_per_min", Number(e.target.value))} /></div>
-        <div className="sm:col-span-2">
-          <ParticipantsSelect
-            value={(form.participants ?? []) as Participant[]}
-            onChange={(v) => set("participants", v)}
-            label="Sócios responsáveis pelo disparo"
-          />
+        {/* Bloco 6: parâmetro do botão dinâmico */}
+        {hasDynamicButton && (
+          <div>
+            <Label>Parâmetro do botão URL *</Label>
+            <Input
+              value={buttonParam}
+              onChange={(e) => setVar("_button_url_param", e.target.value)}
+              placeholder="Ex.: confirmar/abc123"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">Substitui o placeholder <code>{"{{1}}"}</code> na URL do botão.</p>
+          </div>
+        )}
+
+        {/* Bloco 7: ritmo + participantes */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <Label>Velocidade (msg/min)</Label>
+            <Input type="number" value={form.send_rate_per_min} onChange={(e) => set("send_rate_per_min", Number(e.target.value))} />
+          </div>
+          <div className="sm:col-span-2">
+            <ParticipantsSelect
+              value={(form.participants ?? []) as Participant[]}
+              onChange={(v) => set("participants", v)}
+              label="Sócios responsáveis pelo disparo"
+            />
+          </div>
         </div>
       </div>
-      <DialogFooter><Button disabled={saving || !form.name || !form.connection_id || !form.template_id || !form.list_id} onClick={() => onSubmit({ ...form, participants: form.participants ?? [] })}>Criar como rascunho</Button></DialogFooter>
+
+      <DialogFooter>
+        <Button disabled={saving || !canSubmit} onClick={() => onSubmit({ ...form, participants: form.participants ?? [] })}>
+          <Send className="mr-2 h-4 w-4" />Criar como rascunho
+        </Button>
+      </DialogFooter>
 
       <Dialog open={importOpen} onOpenChange={setImportOpen}>
         <QuickImportDialog
@@ -276,6 +401,8 @@ function CreateDialog({ clients, projects, numbers, templates, lists, onSubmit, 
     </DialogContent>
   );
 }
+
+
 
 type ImportRow = { phone: string; name?: string | null };
 

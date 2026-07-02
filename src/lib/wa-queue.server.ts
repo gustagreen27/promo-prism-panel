@@ -82,6 +82,17 @@ export async function processCampaignTick(campaignId: string, batchSize = 25): P
       continue;
     }
 
+    const campVars = (camp.template_variables as Record<string, string> | null) || {};
+    const recVars = (r.variables as Record<string, string> | null) || {};
+    const mergedVars = { ...campVars, ...recVars };
+    const headerImageOverride = mergedVars._header_image_url || null;
+    const buttonUrlParam = mergedVars._button_url_param || null;
+    const buttonIndexRaw = mergedVars._button_index;
+    const buttonIndex = buttonIndexRaw != null ? Number(buttonIndexRaw) : 0;
+
+    const resolvedHeaderType = headerImageOverride ? "image" : tpl.header_type;
+    const resolvedHeaderValue = headerImageOverride ?? tpl.header_text;
+
     const result = await sendTemplateMessage({
       phoneNumberId: conn.phone_number_id!,
       accessToken: conn.access_token!,
@@ -89,9 +100,11 @@ export async function processCampaignTick(campaignId: string, batchSize = 25): P
       to: r.phone.replace(/\D/g, ""),
       templateName: tpl.name,
       languageCode: tpl.language || "pt_BR",
-      variables: (r.variables as Record<string, string> | null) || {},
-      headerType: tpl.header_type,
-      headerValue: tpl.header_text,
+      variables: mergedVars,
+      headerType: resolvedHeaderType,
+      headerValue: resolvedHeaderValue,
+      buttonUrlParam,
+      buttonIndex,
     });
 
     if (result.ok) {

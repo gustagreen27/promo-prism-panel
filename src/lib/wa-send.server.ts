@@ -9,9 +9,11 @@ export type WaSendInput = {
   to: string; // E.164 without +
   templateName: string;
   languageCode: string;
-  variables?: Record<string, string>; // {{1}}, {{2}} -> by name "1","2"
+  variables?: Record<string, string>; // {{1}}, {{2}} -> by name "1","2" (keys starting with "_" are treated as meta)
   headerType?: string | null;
   headerValue?: string | null; // image/document url or text
+  buttonUrlParam?: string | null;
+  buttonIndex?: number;
 };
 
 export type WaSendResult =
@@ -20,7 +22,10 @@ export type WaSendResult =
 
 function buildBodyComponents(variables?: Record<string, string>) {
   if (!variables) return [];
-  const keys = Object.keys(variables).sort((a, b) => Number(a) - Number(b));
+  // Ignore reserved meta keys (e.g. _header_image_url) and non-numeric keys.
+  const keys = Object.keys(variables)
+    .filter((k) => /^\d+$/.test(k))
+    .sort((a, b) => Number(a) - Number(b));
   if (!keys.length) return [];
   return [
     {
@@ -43,6 +48,16 @@ function buildHeaderComponent(headerType?: string | null, value?: string | null)
   return [];
 }
 
+function buildButtonComponents(urlParam?: string | null, index = 0) {
+  if (!urlParam) return [];
+  return [{
+    type: "button",
+    sub_type: "url",
+    index: String(index),
+    parameters: [{ type: "text", text: urlParam }],
+  }];
+}
+
 export async function sendTemplateMessage(input: WaSendInput): Promise<WaSendResult> {
   const ver = input.graphVersion || "v21.0";
   const url = `https://graph.facebook.com/${ver}/${input.phoneNumberId}/messages`;
@@ -56,6 +71,7 @@ export async function sendTemplateMessage(input: WaSendInput): Promise<WaSendRes
       components: [
         ...buildHeaderComponent(input.headerType, input.headerValue),
         ...buildBodyComponents(input.variables),
+        ...buildButtonComponents(input.buttonUrlParam, input.buttonIndex ?? 0),
       ],
     },
   };
