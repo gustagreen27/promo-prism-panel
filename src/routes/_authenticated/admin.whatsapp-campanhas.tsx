@@ -1,14 +1,16 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Eye, Play, Pause, X, RefreshCw } from "lucide-react";
+import { Plus, Trash2, Eye, Play, Pause, X, RefreshCw, Upload, ClipboardPaste, ListPlus } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -18,7 +20,7 @@ import { listClients } from "@/lib/clients.functions";
 import { listProjects } from "@/lib/projects.functions";
 import { listNumbers } from "@/lib/whatsapp-numbers.functions";
 import { listTemplates } from "@/lib/whatsapp-templates.functions";
-import { listLists } from "@/lib/contact-lists.functions";
+import { listLists, createList, importPhonesToList } from "@/lib/contact-lists.functions";
 import { formatDate } from "@/lib/format";
 import {
   ParticipantsBadges,
