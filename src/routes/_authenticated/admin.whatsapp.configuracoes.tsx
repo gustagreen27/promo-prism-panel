@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { listSettings, upsertSetting } from "@/lib/settings.functions";
-import { sendTestTemplate, listWabaTemplates } from "@/lib/whatsapp-test.functions";
+import { sendTestTemplate, listWabaTemplates, testWhatsappConnection } from "@/lib/whatsapp-test.functions";
 
 const KEY = "whatsapp_credentials";
 
