@@ -14,6 +14,7 @@ const TABS = [
   { to: "/admin/whatsapp/qualidade", label: "Qualidade & Limites" },
   { to: "/admin/whatsapp/inbox", label: "Inbox" },
   { to: "/admin/whatsapp/logs", label: "Logs" },
+  { to: "/admin/whatsapp/teste-frgc01", label: "Testar frgc_01" },
 ];
 
 function Layout() {
