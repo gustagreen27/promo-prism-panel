@@ -180,11 +180,52 @@ function Page() {
               <Label>Access Token</Label>
               <Input type="password" value={form.access_token} onChange={(e) => set("access_token", e.target.value)} />
             </div>
-            <div className="sm:col-span-2 flex justify-end">
+            <div className="sm:col-span-2 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                disabled={testMut.isPending}
+                onClick={() => testMut.mutate()}
+              >
+                {testMut.isPending ? "Testando…" : "Testar conexão"}
+              </Button>
               <Button disabled={saveMut.isPending} onClick={() => saveMut.mutate()}>
                 {saveMut.isPending ? "Salvando…" : "Salvar credenciais"}
               </Button>
             </div>
+          </div>
+        )}
+
+        {checks && (
+          <div className="mt-6 space-y-2">
+            <div className="text-sm font-semibold">Resultado do teste</div>
+            {checks.map((c, i) => (
+              <div
+                key={i}
+                className={`rounded-md border p-3 text-sm ${
+                  c.ok ? "border-emerald-500/40 bg-emerald-500/5" : "border-destructive/40 bg-destructive/5"
+                }`}
+              >
+                <div className="flex items-center gap-2 font-medium">
+                  <span>{c.ok ? "✓" : "✗"}</span>
+                  <span>{c.name}</span>
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground whitespace-pre-wrap break-words">{c.detail}</div>
+                {c.hint && (
+                  <div className="mt-1 text-xs">
+                    <span className="font-semibold">Como resolver: </span>
+                    {c.hint}
+                  </div>
+                )}
+                {c.raw && (
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-xs text-muted-foreground">Resposta bruta da Meta</summary>
+                    <pre className="mt-1 max-h-48 overflow-auto rounded bg-muted p-2 text-[10px]">
+{JSON.stringify(c.raw, null, 2)}
+                    </pre>
+                  </details>
+                )}
+              </div>
+            ))}
           </div>
         )}
       </div>
