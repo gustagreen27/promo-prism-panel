@@ -180,6 +180,76 @@ function Page() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
+  const csvInputRef = useRef<HTMLInputElement>(null);
+  const [csvOpen, setCsvOpen] = useState(false);
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  const [csvRows, setCsvRows] = useState<string[][]>([]);
+  const [csvCol, setCsvCol] = useState<string>("0");
+  const [csvName, setCsvName] = useState<string>("");
+  const [dragOver, setDragOver] = useState(false);
+
+  async function handleCsvFile(file: File) {
+    const name = file.name.toLowerCase();
+    if (!/\.(csv|tsv|txt)$/.test(name) && !file.type.includes("csv") && !file.type.includes("text")) {
+      toast.error("Envie um arquivo .csv, .tsv ou .txt");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Arquivo muito grande (máx. 10 MB)");
+      return;
+    }
+    try {
+      const text = await file.text();
+      const { headers, rows } = parseCSV(text);
+      if (rows.length === 0) {
+        toast.error("Arquivo vazio ou sem linhas de dados");
+        return;
+      }
+      // If single column and no phone-ish header, import directly
+      if (headers.length <= 1) {
+        const phones = rows.map((r) => r[0] ?? "").filter(Boolean);
+        appendPhones(phones);
+        toast.success(`${phones.length} linha(s) importadas`);
+        return;
+      }
+      setCsvHeaders(headers);
+      setCsvRows(rows);
+      setCsvCol(String(guessPhoneColumn(headers)));
+      setCsvName(file.name);
+      setCsvOpen(true);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao ler CSV");
+    }
+  }
+
+  function appendPhones(raw: string[]) {
+    const existing = new Set(parseRecipients(form.recipientsRaw));
+    const add: string[] = [];
+    for (const r of raw) {
+      const p = normalizePhone(r);
+      if (p.length >= 8 && !existing.has(p)) {
+        existing.add(p);
+        add.push(p);
+      }
+    }
+    if (add.length === 0) return;
+    const prefix = form.recipientsRaw && !form.recipientsRaw.endsWith("\n") ? "\n" : "";
+    set("recipientsRaw", form.recipientsRaw + prefix + add.join("\n"));
+  }
+
+  function confirmCsvImport() {
+    const idx = parseInt(csvCol, 10);
+    const values = csvRows.map((r) => r[idx] ?? "").filter(Boolean);
+    const before = parseRecipients(form.recipientsRaw).length;
+    appendPhones(values);
+    setCsvOpen(false);
+    // recompute
+    setTimeout(() => {
+      const after = parseRecipients(form.recipientsRaw).length;
+      toast.success(`${Math.max(after - before, values.length)} número(s) adicionados`);
+    }, 0);
+  }
+
   async function handleUpload(file: File) {
     if (!file.type.startsWith("image/")) {
       toast.error("Selecione um arquivo de imagem (JPG, PNG, WEBP)");
