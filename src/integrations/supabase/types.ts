@@ -846,6 +846,88 @@ export type Database = {
         }
         Relationships: []
       }
+      message_logs: {
+        Row: {
+          campaign_id: string | null
+          connection_id: string | null
+          created_at: string
+          error_code: string | null
+          failed_reason: string | null
+          http_status: number | null
+          id: string
+          language_code: string | null
+          message_status: string | null
+          meta_message_id: string | null
+          recipient_id: string | null
+          request_payload: Json | null
+          response_payload: Json | null
+          sent_at: string | null
+          template_name: string | null
+          to_phone: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          connection_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          failed_reason?: string | null
+          http_status?: number | null
+          id?: string
+          language_code?: string | null
+          message_status?: string | null
+          meta_message_id?: string | null
+          recipient_id?: string | null
+          request_payload?: Json | null
+          response_payload?: Json | null
+          sent_at?: string | null
+          template_name?: string | null
+          to_phone: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string | null
+          connection_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          failed_reason?: string | null
+          http_status?: number | null
+          id?: string
+          language_code?: string | null
+          message_status?: string | null
+          meta_message_id?: string | null
+          recipient_id?: string | null
+          request_payload?: Json | null
+          response_payload?: Json | null
+          sent_at?: string | null
+          template_name?: string | null
+          to_phone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_logs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "wa_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_logs_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_logs_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_recipients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_stock: {
         Row: {
           amount: number | null

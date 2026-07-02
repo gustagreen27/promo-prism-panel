@@ -99,3 +99,96 @@ export async function syncTemplatesFromMeta(opts: {
   if (!res.ok) throw new Error(json?.error?.message ?? `HTTP ${res.status}`);
   return (json?.data ?? []) as any[];
 }
+
+// ---------------------------------------------------------------------------
+// Template específico frgc_01 (Disparos FR)
+// Header: imagem | Body: 4 variáveis | Botão URL com 1 parâmetro
+// ---------------------------------------------------------------------------
+
+export type SendFrgc01Input = {
+  phoneNumberId: string;
+  accessToken: string;
+  graphVersion?: string;
+  to: string;
+  imageUrl: string;
+  nomeCliente: string;
+  informacaoPrincipal: string;
+  mensagemComplementar: string;
+  textoAcao: string;
+  urlParametro: string;
+};
+
+export type SendFrgc01Result =
+  | { ok: true; metaMessageId: string; status: string; requestPayload: any; raw: any; httpStatus: number }
+  | { ok: false; error: string; code?: string; requestPayload: any; raw?: any; httpStatus?: number };
+
+export function buildFrgc01Payload(input: SendFrgc01Input) {
+  return {
+    messaging_product: "whatsapp",
+    to: input.to,
+    type: "template",
+    template: {
+      name: "frgc_01",
+      language: { code: "en" },
+      components: [
+        {
+          type: "header",
+          parameters: [{ type: "image", image: { link: input.imageUrl } }],
+        },
+        {
+          type: "body",
+          parameters: [
+            { type: "text", text: input.nomeCliente },
+            { type: "text", text: input.informacaoPrincipal },
+            { type: "text", text: input.mensagemComplementar },
+            { type: "text", text: input.textoAcao },
+          ],
+        },
+        {
+          type: "button",
+          sub_type: "url",
+          index: "0",
+          parameters: [{ type: "text", text: input.urlParametro }],
+        },
+      ],
+    },
+  };
+}
+
+export async function sendWhatsAppTemplateFrgc01(input: SendFrgc01Input): Promise<SendFrgc01Result> {
+  const ver = input.graphVersion || "v25.0";
+  const url = `https://graph.facebook.com/${ver}/${input.phoneNumberId}/messages`;
+  const payload = buildFrgc01Payload(input);
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${input.accessToken}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const json: any = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = json?.error;
+      return {
+        ok: false,
+        error: err?.message ?? `HTTP ${res.status}`,
+        code: err?.code ? String(err.code) : String(res.status),
+        requestPayload: payload,
+        raw: json,
+        httpStatus: res.status,
+      };
+    }
+    const id = json?.messages?.[0]?.id;
+    const status = json?.messages?.[0]?.message_status ?? "accepted";
+    if (!id) {
+      return { ok: false, error: "No message id returned", requestPayload: payload, raw: json, httpStatus: res.status };
+    }
+    return { ok: true, metaMessageId: id, status, requestPayload: payload, raw: json, httpStatus: res.status };
+  } catch (e: any) {
+    return { ok: false, error: e?.message ?? "Network error", requestPayload: payload };
+  }
+}
+
