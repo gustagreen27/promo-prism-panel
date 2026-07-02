@@ -12,14 +12,37 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
         const token = url.searchParams.get("hub.verify_token");
         const challenge = url.searchParams.get("hub.challenge");
         if (mode !== "subscribe" || !token) return new Response("forbidden", { status: 403 });
+
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { data } = await supabaseAdmin
+
+        // 1) Token global salvo em settings.whatsapp_webhook.verify_token
+        const { data: setting } = await supabaseAdmin
+          .from("settings")
+          .select("value")
+          .eq("key", "whatsapp_webhook")
+          .maybeSingle();
+        const globalToken = (setting?.value as { verify_token?: string } | null)?.verify_token;
+        if (globalToken && globalToken === token) {
+          return new Response(challenge ?? "", {
+            status: 200,
+            headers: { "content-type": "text/plain; charset=utf-8" },
+          });
+        }
+
+        // 2) Token por conexão em whatsapp_connections.verify_token
+        const { data: conns } = await supabaseAdmin
           .from("whatsapp_connections")
           .select("id")
           .eq("verify_token", token)
           .limit(1);
-        if (!data || data.length === 0) return new Response("invalid token", { status: 403 });
-        return new Response(challenge ?? "", { status: 200 });
+        if (conns && conns.length > 0) {
+          return new Response(challenge ?? "", {
+            status: 200,
+            headers: { "content-type": "text/plain; charset=utf-8" },
+          });
+        }
+
+        return new Response("invalid token", { status: 403 });
       },
       POST: async ({ request }) => {
         const text = await request.text();
