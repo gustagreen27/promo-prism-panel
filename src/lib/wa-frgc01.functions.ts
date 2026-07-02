@@ -73,7 +73,7 @@ export const sendFrgc01 = createServerFn({ method: "POST" })
 
     const result = await sendWhatsAppTemplateFrgc01({
       phoneNumberId: conn.phone_number_id,
-      accessToken: conn.access_token,
+      accessToken: accessToken,
       graphVersion: conn.graph_api_version || "v25.0",
       to,
       imageUrl: data.imageUrl,
