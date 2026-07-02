@@ -17,6 +17,7 @@ import {
   Printer,
   Megaphone,
   FileText,
+  Send,
 } from "lucide-react";
 import {
   Sidebar,
