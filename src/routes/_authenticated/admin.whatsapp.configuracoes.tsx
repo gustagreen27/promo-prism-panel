@@ -93,6 +93,19 @@ function Page() {
     enabled: credsReady,
   });
 
+  type CheckResult = { name: string; ok: boolean; detail: string; hint?: string; raw?: any };
+  const [checks, setChecks] = useState<CheckResult[] | null>(null);
+  const testMut = useMutation({
+    mutationFn: async () => (await testConnFn()) as { results: CheckResult[] },
+    onSuccess: (r) => {
+      setChecks(r.results);
+      const failed = r.results.filter((x) => !x.ok).length;
+      if (failed === 0) toast.success("Conexão OK — todos os checks passaram");
+      else toast.error(`${failed} check(s) falharam — veja os detalhes abaixo`);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao testar conexão"),
+  });
+
   const [testTo, setTestTo] = useState("5562984817929");
   const [templateName, setTemplateName] = useState("frgc_01");
   const [language, setLanguage] = useState("pt_BR");
