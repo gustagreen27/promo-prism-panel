@@ -39,6 +39,24 @@ const EMPTY: Form = {
   urlParametro: "",
 };
 
+const STATUS_STYLES: Record<string, string> = {
+  accepted: "bg-blue-500/15 text-blue-700 border-blue-500/40",
+  sent: "bg-cyan-500/15 text-cyan-700 border-cyan-500/40",
+  delivered: "bg-emerald-500/15 text-emerald-700 border-emerald-500/40",
+  read: "bg-violet-500/15 text-violet-700 border-violet-500/40",
+  failed: "bg-red-500/15 text-red-700 border-red-500/40",
+};
+
+function StatusBadge({ status }: { status?: string | null }) {
+  const s = status ?? "pending";
+  const cls = STATUS_STYLES[s] ?? "bg-muted text-muted-foreground border-border";
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${cls}`}>
+      {s}
+    </span>
+  );
+}
+
 function Page() {
   const listFn = useServerFn(listConnections);
   const sendFn = useServerFn(sendFrgc01);
