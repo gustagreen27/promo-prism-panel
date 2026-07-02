@@ -74,7 +74,7 @@ function Page() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Testar template frgc_01" subtitle="Envio oficial via WhatsApp Cloud API" />
+      <PageHeader title="Testar template frgc_01" description="Envio oficial via WhatsApp Cloud API" />
 
       <div className="rounded-lg border bg-card p-5 space-y-4 max-w-3xl">
         <div className="grid gap-4 md:grid-cols-2">
