@@ -513,6 +513,63 @@ function Page() {
           </div>
         )}
       </div>
+
+      <Dialog open={csvOpen} onOpenChange={setCsvOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Importar CSV</DialogTitle>
+            <DialogDescription>
+              {csvName} · {csvRows.length} linha(s). Escolha a coluna com o telefone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>Coluna do telefone</Label>
+              <Select value={csvCol} onValueChange={setCsvCol}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {csvHeaders.map((h, i) => (
+                    <SelectItem key={i} value={String(i)}>{h || `Coluna ${i + 1}`}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="rounded-md border max-h-64 overflow-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/50 sticky top-0">
+                  <tr>
+                    {csvHeaders.map((h, i) => (
+                      <th key={i} className={`px-2 py-1.5 text-left font-medium ${String(i) === csvCol ? "bg-primary/10 text-primary" : ""}`}>
+                        {h || `Col ${i + 1}`}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {csvRows.slice(0, 8).map((r, ri) => (
+                    <tr key={ri} className="border-t">
+                      {csvHeaders.map((_, ci) => (
+                        <td key={ci} className={`px-2 py-1 font-mono ${String(ci) === csvCol ? "bg-primary/5 text-primary font-semibold" : ""}`}>
+                          {r[ci] ?? ""}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {csvRows.length > 8 && (
+                <div className="px-2 py-1 text-xs text-muted-foreground border-t">
+                  + {csvRows.length - 8} linha(s)…
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCsvOpen(false)}>Cancelar</Button>
+            <Button onClick={confirmCsvImport}>Importar {csvRows.length} número(s)</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
