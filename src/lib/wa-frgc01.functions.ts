@@ -143,3 +143,19 @@ export const sendFrgc01 = createServerFn({ method: "POST" })
       logId: log?.id,
     };
   });
+
+export const getMessageLogStatus = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ logId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+    if (!isAdmin) throw new Error("Forbidden");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await supabaseAdmin
+      .from("message_logs")
+      .select("id, meta_message_id, message_status, failed_reason, error_code, sent_at, updated_at")
+      .eq("id", data.logId)
+      .maybeSingle();
+    return row;
+  });
