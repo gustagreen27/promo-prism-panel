@@ -82,3 +82,78 @@ export const removeContactFromList = createServerFn({ method: "POST" })
       .eq("contact_id", data.contact_id);
     return { ok: true };
   });
+
+// Import raw phones/rows directly into a list. Creates missing contacts (opt_in),
+// dedupes, and links every valid contact to the list in a single call.
+export const importPhonesToList = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      list_id: z.string().uuid(),
+      source: z.string().max(80).default("manual"),
+      rows: z.array(z.object({
+        phone: z.string().min(1),
+        name: z.string().max(160).optional().nullable(),
+        email: z.string().max(160).optional().nullable(),
+      })).min(1).max(20000),
+    }).parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+
+    // fetch list to inherit client/project scoping
+    const { data: list } = await context.supabase
+      .from("contact_lists")
+      .select("client_id,project_id")
+      .eq("id", data.list_id)
+      .single();
+
+    const seen = new Set<string>();
+    const normalized: { phone: string; name: string | null; email: string | null }[] = [];
+    let invalid = 0;
+    const invalidRows: any[] = [];
+
+    for (const r of data.rows) {
+      const phone = normalizeBrPhone(r.phone);
+      if (!phone) { invalid++; invalidRows.push({ phone: r.phone, name: r.name }); continue; }
+      if (seen.has(phone)) continue;
+      seen.add(phone);
+      normalized.push({ phone, name: r.name ?? null, email: r.email ?? null });
+    }
+
+    if (!normalized.length) return { added: 0, created: 0, invalid, invalidRows };
+
+    // upsert contacts by phone+client_id
+    const toUpsert = normalized.map((n) => ({
+      phone: n.phone,
+      name: n.name,
+      email: n.email,
+      client_id: list?.client_id ?? null,
+      project_id: list?.project_id ?? null,
+      source: data.source,
+      opt_in: true,
+      opt_in_at: new Date().toISOString(),
+    }));
+
+    await context.supabase
+      .from("contacts")
+      .upsert(toUpsert, { onConflict: "phone,client_id" as any, ignoreDuplicates: true });
+
+    // fetch resulting contact ids for those phones (scoped to list's client_id)
+    let q = context.supabase.from("contacts").select("id,phone").in("phone", normalized.map((n) => n.phone));
+    q = list?.client_id ? q.eq("client_id", list.client_id) : q.is("client_id", null);
+    const { data: contactRows } = await q;
+    const contacts = (contactRows ?? []) as { id: string; phone: string }[];
+
+    if (contacts.length) {
+      const items = contacts.map((c) => ({ list_id: data.list_id, contact_id: c.id }));
+      await context.supabase.from("contact_list_items").upsert(items, { onConflict: "list_id,contact_id" });
+    }
+
+    return {
+      added: contacts.length,
+      created: normalized.length,
+      invalid,
+      invalidRows,
+    };
+  });
