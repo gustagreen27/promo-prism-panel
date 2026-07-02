@@ -1,14 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { Send } from "lucide-react";
+import { Send, Upload, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
 import { listConnections } from "@/lib/whatsapp.functions";
 import { sendFrgc01, getMessageLogStatus, type SendFrgc01Response } from "@/lib/wa-frgc01.functions";
 
@@ -82,6 +83,39 @@ function Page() {
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
 
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  async function handleUpload(file: File) {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Selecione um arquivo de imagem (JPG, PNG, WEBP)");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Imagem muito grande (máx. 5 MB — recomendação Meta)");
+      return;
+    }
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `frgc01/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("campaign-images")
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (upErr) throw upErr;
+      const { data: signed, error: sErr } = await supabase.storage
+        .from("campaign-images")
+        .createSignedUrl(path, 60 * 60 * 24 * 7); // 7 days
+      if (sErr || !signed?.signedUrl) throw sErr ?? new Error("Falha ao gerar URL");
+      set("imageUrl", signed.signedUrl);
+      toast.success("Imagem enviada");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha no upload");
+    } finally {
+      setUploading(false);
+    }
+  }
+
   const mut = useMutation({
     mutationFn: async () => sendFn({ data: form }),
     onSuccess: (r) => {
@@ -128,8 +162,48 @@ function Page() {
           </div>
 
           <div className="space-y-2 md:col-span-2">
-            <Label>URL da imagem do cabeçalho</Label>
-            <Input value={form.imageUrl} onChange={(e) => set("imageUrl", e.target.value)} />
+            <Label>Imagem do cabeçalho</Label>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                value={form.imageUrl}
+                onChange={(e) => set("imageUrl", e.target.value)}
+                placeholder="Cole uma URL pública ou envie um arquivo"
+              />
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleUpload(f);
+                  e.target.value = "";
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                disabled={uploading}
+                onClick={() => fileRef.current?.click()}
+              >
+                {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                {uploading ? "Enviando…" : "Upload"}
+              </Button>
+            </div>
+            {form.imageUrl && (
+              <img
+                src={form.imageUrl}
+                alt="Preview do cabeçalho"
+                className="mt-2 max-h-40 rounded-md border object-contain bg-muted"
+              />
+            )}
+          </div>
+
+          <div className="space-y-2 md:col-span-2 rounded-md border bg-muted/30 p-3">
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Corpo</div>
+            <div className="text-sm whitespace-pre-line leading-relaxed">
+              {`Olá ${form.nomeCliente || "{{1}}"}!\n\nInformamos que ${form.informacaoPrincipal || "{{2}}"}.\n\n${form.mensagemComplementar || "{{3}}"}.\n\nPara ${form.textoAcao || "{{4}}"}, clique no botão logo abaixo 👇`}
+            </div>
           </div>
 
           <div className="space-y-2">
