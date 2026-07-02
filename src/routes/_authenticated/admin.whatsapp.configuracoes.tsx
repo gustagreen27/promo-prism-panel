@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { listSettings, upsertSetting } from "@/lib/settings.functions";
-import { sendTestTemplate, listWabaTemplates } from "@/lib/whatsapp-test.functions";
+import { sendTestTemplate, listWabaTemplates, testWhatsappConnection } from "@/lib/whatsapp-test.functions";
 
 const KEY = "whatsapp_credentials";
 
@@ -64,6 +64,7 @@ function Page() {
   const upsertFn = useServerFn(upsertSetting);
   const sendFn = useServerFn(sendTestTemplate);
   const templatesFn = useServerFn(listWabaTemplates);
+  const testConnFn = useServerFn(testWhatsappConnection);
   const qc = useQueryClient();
 
   const { data: rows = [], isLoading } = useQuery({ queryKey: ["settings"], queryFn: () => listFn() });
@@ -90,6 +91,19 @@ function Page() {
     queryKey: ["waba-templates"],
     queryFn: () => templatesFn() as Promise<Tpl[]>,
     enabled: credsReady,
+  });
+
+  type CheckResult = { name: string; ok: boolean; detail: string; hint?: string; raw?: any };
+  const [checks, setChecks] = useState<CheckResult[] | null>(null);
+  const testMut = useMutation({
+    mutationFn: async () => (await testConnFn()) as { results: CheckResult[] },
+    onSuccess: (r) => {
+      setChecks(r.results);
+      const failed = r.results.filter((x) => !x.ok).length;
+      if (failed === 0) toast.success("Conexão OK — todos os checks passaram");
+      else toast.error(`${failed} check(s) falharam — veja os detalhes abaixo`);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao testar conexão"),
   });
 
   const [testTo, setTestTo] = useState("5562984817929");
@@ -166,11 +180,52 @@ function Page() {
               <Label>Access Token</Label>
               <Input type="password" value={form.access_token} onChange={(e) => set("access_token", e.target.value)} />
             </div>
-            <div className="sm:col-span-2 flex justify-end">
+            <div className="sm:col-span-2 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                disabled={testMut.isPending}
+                onClick={() => testMut.mutate()}
+              >
+                {testMut.isPending ? "Testando…" : "Testar conexão"}
+              </Button>
               <Button disabled={saveMut.isPending} onClick={() => saveMut.mutate()}>
                 {saveMut.isPending ? "Salvando…" : "Salvar credenciais"}
               </Button>
             </div>
+          </div>
+        )}
+
+        {checks && (
+          <div className="mt-6 space-y-2">
+            <div className="text-sm font-semibold">Resultado do teste</div>
+            {checks.map((c, i) => (
+              <div
+                key={i}
+                className={`rounded-md border p-3 text-sm ${
+                  c.ok ? "border-emerald-500/40 bg-emerald-500/5" : "border-destructive/40 bg-destructive/5"
+                }`}
+              >
+                <div className="flex items-center gap-2 font-medium">
+                  <span>{c.ok ? "✓" : "✗"}</span>
+                  <span>{c.name}</span>
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground whitespace-pre-wrap break-words">{c.detail}</div>
+                {c.hint && (
+                  <div className="mt-1 text-xs">
+                    <span className="font-semibold">Como resolver: </span>
+                    {c.hint}
+                  </div>
+                )}
+                {c.raw && (
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-xs text-muted-foreground">Resposta bruta da Meta</summary>
+                    <pre className="mt-1 max-h-48 overflow-auto rounded bg-muted p-2 text-[10px]">
+{JSON.stringify(c.raw, null, 2)}
+                    </pre>
+                  </details>
+                )}
+              </div>
+            ))}
           </div>
         )}
       </div>

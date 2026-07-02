@@ -22,6 +22,133 @@ async function loadCreds(ctx: { supabase: any }) {
   return creds;
 }
 
+type CheckResult = {
+  name: string;
+  ok: boolean;
+  detail: string;
+  hint?: string;
+  raw?: any;
+};
+
+function explainMetaError(err: any): { detail: string; hint: string } {
+  const code = err?.code;
+  const sub = err?.error_subcode;
+  const msg: string = err?.message ?? "Erro desconhecido";
+  if (code === 190 || /access token/i.test(msg) || /Session has expired/i.test(msg)) {
+    return {
+      detail: msg,
+      hint: "Access Token expirado ou inválido. Gere um novo em Meta for Developers → seu app → WhatsApp → API Setup. Para não expirar, use um System User Token (Business Settings → Users → System Users) com escopos whatsapp_business_messaging e whatsapp_business_management.",
+    };
+  }
+  if (code === 10 || code === 200 || sub === 2018001) {
+    return { detail: msg, hint: "O token não tem permissão suficiente. Verifique escopos whatsapp_business_messaging + whatsapp_business_management e se o System User tem acesso ao WABA." };
+  }
+  if (code === 100) {
+    return { detail: msg, hint: "ID inválido (WABA ID ou Phone Number ID). Confirme os IDs no Business Manager." };
+  }
+  if (code === 803) {
+    return { detail: msg, hint: "Objeto não encontrado. O ID informado não existe ou o token não tem acesso." };
+  }
+  return { detail: msg, hint: "Consulte a documentação da Meta para o código de erro retornado." };
+}
+
+async function metaGet(url: string, token: string) {
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  const json: any = await res.json().catch(() => ({}));
+  return { ok: res.ok, status: res.status, json };
+}
+
+export const testWhatsappConnection = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const creds = (await loadCreds(context)) as any;
+    const version = "v25.0";
+    const results: CheckResult[] = [];
+
+    // 1) Credenciais presentes
+    const missing: string[] = [];
+    if (!creds.access_token) missing.push("Access Token");
+    if (!creds.phone_number_id) missing.push("Phone Number ID");
+    if (!creds.waba_id) missing.push("WABA ID");
+    results.push({
+      name: "Credenciais salvas",
+      ok: missing.length === 0,
+      detail: missing.length ? `Faltando: ${missing.join(", ")}` : "Todas as credenciais obrigatórias estão preenchidas.",
+      hint: missing.length ? "Preencha e clique em Salvar credenciais." : undefined,
+    });
+    if (!creds.access_token) return { results };
+
+    // 2) Token válido (/me ou /debug_token)
+    {
+      const r = await metaGet(`https://graph.facebook.com/${version}/me`, creds.access_token);
+      if (r.ok) {
+        results.push({ name: "Access Token válido", ok: true, detail: `Autenticado como: ${r.json?.name ?? r.json?.id ?? "OK"}` });
+      } else {
+        const ex = explainMetaError(r.json?.error);
+        results.push({ name: "Access Token válido", ok: false, detail: ex.detail, hint: ex.hint, raw: r.json });
+        return { results };
+      }
+    }
+
+    // 3) WABA acessível
+    if (creds.waba_id) {
+      const r = await metaGet(
+        `https://graph.facebook.com/${version}/${creds.waba_id}?fields=id,name,currency,timezone_id,message_template_namespace`,
+        creds.access_token,
+      );
+      if (r.ok) {
+        results.push({
+          name: "WABA acessível",
+          ok: true,
+          detail: `WABA: ${r.json?.name ?? r.json?.id} · namespace: ${r.json?.message_template_namespace ?? "—"}`,
+        });
+      } else {
+        const ex = explainMetaError(r.json?.error);
+        results.push({ name: "WABA acessível", ok: false, detail: ex.detail, hint: ex.hint, raw: r.json });
+      }
+    }
+
+    // 4) Phone Number acessível
+    if (creds.phone_number_id) {
+      const r = await metaGet(
+        `https://graph.facebook.com/${version}/${creds.phone_number_id}?fields=id,display_phone_number,verified_name,quality_rating,code_verification_status`,
+        creds.access_token,
+      );
+      if (r.ok) {
+        results.push({
+          name: "Phone Number acessível",
+          ok: true,
+          detail: `${r.json?.display_phone_number ?? r.json?.id} · ${r.json?.verified_name ?? ""} · qualidade: ${r.json?.quality_rating ?? "—"}`,
+        });
+      } else {
+        const ex = explainMetaError(r.json?.error);
+        results.push({ name: "Phone Number acessível", ok: false, detail: ex.detail, hint: ex.hint, raw: r.json });
+      }
+    }
+
+    // 5) Templates (permissão whatsapp_business_management)
+    if (creds.waba_id) {
+      const r = await metaGet(
+        `https://graph.facebook.com/${version}/${creds.waba_id}/message_templates?limit=1&fields=name,status`,
+        creds.access_token,
+      );
+      if (r.ok) {
+        const count = Array.isArray(r.json?.data) ? r.json.data.length : 0;
+        results.push({
+          name: "Permissão para listar templates",
+          ok: true,
+          detail: count ? `OK — encontrado ao menos ${count} template.` : "OK — nenhum template cadastrado ainda.",
+        });
+      } else {
+        const ex = explainMetaError(r.json?.error);
+        results.push({ name: "Permissão para listar templates", ok: false, detail: ex.detail, hint: ex.hint, raw: r.json });
+      }
+    }
+
+    return { results };
+  });
+
 export const listWabaTemplates = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
