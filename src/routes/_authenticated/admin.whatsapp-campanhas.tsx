@@ -1,14 +1,16 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Eye, Play, Pause, X, RefreshCw } from "lucide-react";
+import { Plus, Trash2, Eye, Play, Pause, X, RefreshCw, Upload, ClipboardPaste, ListPlus } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -18,7 +20,7 @@ import { listClients } from "@/lib/clients.functions";
 import { listProjects } from "@/lib/projects.functions";
 import { listNumbers } from "@/lib/whatsapp-numbers.functions";
 import { listTemplates } from "@/lib/whatsapp-templates.functions";
-import { listLists } from "@/lib/contact-lists.functions";
+import { listLists, createList, importPhonesToList } from "@/lib/contact-lists.functions";
 import { formatDate } from "@/lib/format";
 import {
   ParticipantsBadges,
@@ -94,7 +96,7 @@ function Page() {
         actions={
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Nova campanha</Button></DialogTrigger>
-            <CreateDialog clients={clients} projects={projects} numbers={numbers} templates={templates} lists={lists} onSubmit={(p: any) => saveMut.mutate(p)} saving={saveMut.isPending} />
+            <CreateDialog clients={clients} projects={projects} numbers={numbers} templates={templates} lists={lists} onSubmit={(p: any) => saveMut.mutate(p)} saving={saveMut.isPending} onListsChanged={() => qc.invalidateQueries({ queryKey: ["lists"] })} />
           </Dialog>
         }
       />
@@ -151,14 +153,40 @@ function Page() {
   );
 }
 
-function CreateDialog({ clients, projects, numbers, templates, lists, onSubmit, saving }: any) {
+function CreateDialog({ clients, projects, numbers, templates, lists, onSubmit, saving, onListsChanged }: any) {
   const [form, setForm] = useState<any>({
     name: "", client_id: "", project_id: "", connection_id: "", template_id: "", list_id: "",
     template_variables: {}, send_rate_per_min: 30, notes: "", participants: [],
   });
+  const [importOpen, setImportOpen] = useState(false);
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
   const template = templates.find((t: any) => t.id === form.template_id);
   const varsList: string[] = Array.isArray(template?.variables) ? template.variables : [];
+
+  const createListFn = useServerFn(createList);
+  const importFn = useServerFn(importPhonesToList);
+
+  const importMut = useMutation({
+    mutationFn: async (p: { listName: string; rows: { phone: string; name?: string | null }[]; source: string }) => {
+      const list = await createListFn({
+        data: {
+          name: p.listName,
+          description: `Criada via campanha "${form.name || "sem nome"}"`,
+          client_id: form.client_id || null,
+          project_id: form.project_id || null,
+        },
+      });
+      const res = await importFn({ data: { list_id: list.id, rows: p.rows, source: p.source } });
+      return { list, ...res };
+    },
+    onSuccess: (r: any) => {
+      toast.success(`Lista "${r.list.name}" criada · ${r.added} leads vinculados${r.invalid ? ` · ${r.invalid} inválidos` : ""}`);
+      set("list_id", r.list.id);
+      setImportOpen(false);
+      onListsChanged?.();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao importar leads"),
+  });
 
   return (
     <DialogContent className="max-w-2xl">
@@ -189,11 +217,20 @@ function CreateDialog({ clients, projects, numbers, templates, lists, onSubmit, 
             <SelectContent>{templates.filter((t: any) => t.status === "approved").map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name} ({t.language})</SelectItem>)}</SelectContent>
           </Select>
         </div>
-        <div className="sm:col-span-2"><Label>Lista de contatos *</Label>
+        <div className="sm:col-span-2">
+          <div className="flex items-center justify-between">
+            <Label>Lista de contatos *</Label>
+            <Button type="button" variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+              <ListPlus className="mr-1.5 h-3.5 w-3.5" />Importar leads
+            </Button>
+          </div>
           <Select value={form.list_id} onValueChange={(v) => set("list_id", v)}>
             <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
             <SelectContent>{lists.map((l: any) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent>
           </Select>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Escolha uma lista existente ou clique em <strong>Importar leads</strong> para colar/enviar os telefones agora — uma nova lista será criada automaticamente.
+          </p>
         </div>
 
         {varsList.length > 0 && (
@@ -228,6 +265,118 @@ function CreateDialog({ clients, projects, numbers, templates, lists, onSubmit, 
         </div>
       </div>
       <DialogFooter><Button disabled={saving || !form.name || !form.connection_id || !form.template_id || !form.list_id} onClick={() => onSubmit({ ...form, participants: form.participants ?? [] })}>Criar como rascunho</Button></DialogFooter>
+
+      <Dialog open={importOpen} onOpenChange={setImportOpen}>
+        <QuickImportDialog
+          defaultName={form.name ? `${form.name} — leads` : `Leads ${new Date().toLocaleDateString("pt-BR")}`}
+          saving={importMut.isPending}
+          onSubmit={(listName, rows, source) => importMut.mutate({ listName, rows, source })}
+        />
+      </Dialog>
+    </DialogContent>
+  );
+}
+
+type ImportRow = { phone: string; name?: string | null };
+
+function QuickImportDialog({
+  defaultName,
+  saving,
+  onSubmit,
+}: {
+  defaultName: string;
+  saving: boolean;
+  onSubmit: (listName: string, rows: ImportRow[], source: string) => void;
+}) {
+  const [listName, setListName] = useState(defaultName);
+  const [tab, setTab] = useState("paste");
+  const [paste, setPaste] = useState("");
+  const [csvRows, setCsvRows] = useState<ImportRow[] | null>(null);
+  const [csvName, setCsvName] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const pasteRows: ImportRow[] = useMemo(() => {
+    if (!paste.trim()) return [];
+    return paste
+      .split(/[\n;,]/)
+      .map((v) => v.trim())
+      .filter(Boolean)
+      .map((phone) => ({ phone }));
+  }, [paste]);
+
+  const handleFile = async (file: File) => {
+    const text = await file.text();
+    const lines = text.split(/\r?\n/).filter((l) => l.trim().length);
+    if (!lines.length) { setCsvRows([]); return; }
+    const headerLine = lines[0];
+    const hasHeader = /phone|telefone|celular|nome|name|email/i.test(headerLine);
+    const sep = headerLine.includes(";") ? ";" : ",";
+    const headers = hasHeader
+      ? headerLine.split(sep).map((h) => h.trim().toLowerCase())
+      : ["phone", "name"];
+    const dataLines = hasHeader ? lines.slice(1) : lines;
+    const rows: ImportRow[] = dataLines.map((line) => {
+      const cols = line.split(sep).map((c) => c.trim().replace(/^"|"$/g, ""));
+      const obj: any = {};
+      headers.forEach((h, i) => { obj[h] = cols[i] ?? ""; });
+      return {
+        phone: obj.phone || obj.telefone || obj.celular || cols[0] || "",
+        name: obj.name || obj.nome || null,
+      };
+    }).filter((r) => r.phone);
+    setCsvRows(rows);
+    setCsvName(file.name);
+  };
+
+  const activeRows = tab === "paste" ? pasteRows : (csvRows ?? []);
+
+  return (
+    <DialogContent className="max-w-xl">
+      <DialogHeader><DialogTitle>Importar leads para esta campanha</DialogTitle></DialogHeader>
+      <div className="space-y-3">
+        <div>
+          <Label>Nome da nova lista *</Label>
+          <Input value={listName} onChange={(e) => setListName(e.target.value)} />
+        </div>
+        <Tabs value={tab} onValueChange={setTab}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="paste"><ClipboardPaste className="mr-2 h-4 w-4" />Colar telefones</TabsTrigger>
+            <TabsTrigger value="csv"><Upload className="mr-2 h-4 w-4" />CSV</TabsTrigger>
+          </TabsList>
+          <TabsContent value="paste">
+            <Textarea
+              rows={10}
+              className="font-mono text-xs"
+              placeholder={"5562984817929\n5511999998888\n..."}
+              value={paste}
+              onChange={(e) => setPaste(e.target.value)}
+            />
+            <p className="mt-1 text-xs text-muted-foreground">{pasteRows.length} número(s) detectado(s).</p>
+          </TabsContent>
+          <TabsContent value="csv">
+            <div
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) handleFile(f); }}
+              className="rounded-lg border-2 border-dashed p-6 text-center"
+            >
+              <Upload className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
+              <p className="mb-2 text-sm">Arraste um CSV ou</p>
+              <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>Selecionar arquivo</Button>
+              <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+              <p className="mt-3 text-xs text-muted-foreground">Colunas: <code>phone/telefone/celular</code>, <code>name/nome</code>.</p>
+            </div>
+            {csvRows && <div className="mt-2 rounded-md border bg-muted/40 p-2 text-xs"><strong>{csvName}</strong> · {csvRows.length} linha(s).</div>}
+          </TabsContent>
+        </Tabs>
+      </div>
+      <DialogFooter>
+        <Button
+          disabled={saving || !listName || activeRows.length === 0}
+          onClick={() => onSubmit(listName, activeRows, tab === "csv" ? "csv" : "paste")}
+        >
+          {saving ? "Importando…" : `Criar lista e importar ${activeRows.length}`}
+        </Button>
+      </DialogFooter>
     </DialogContent>
   );
 }
