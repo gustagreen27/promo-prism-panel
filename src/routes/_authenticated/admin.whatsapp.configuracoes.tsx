@@ -220,6 +220,17 @@ function Page() {
               />
             )}
           </div>
+          <div>
+            <Label>Idioma (code)</Label>
+            <Input
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              placeholder="pt_BR, pt, en, en_US…"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Use exatamente o código aprovado na Meta (ex.: <code>pt_BR</code>, <code>pt</code>, <code>en_US</code>).
+            </p>
+          </div>
 
           {bodyComp?.text && (
             <div className="sm:col-span-2 rounded-md border bg-muted/40 p-3 text-xs whitespace-pre-wrap">
