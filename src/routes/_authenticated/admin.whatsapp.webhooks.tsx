@@ -213,28 +213,71 @@ function Page() {
 
         <div className="rounded-xl border bg-card p-4">
           <div className="text-xs uppercase text-muted-foreground">Verify Tokens por número</div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Cada conexão precisa de um verify token. A Meta usa esse token para validar a URL de callback acima.
+          </p>
           <div className="mt-2 grid gap-2">
-            {rows.length === 0 && (
+            {numbersLoading && <div className="text-sm text-muted-foreground">Carregando…</div>}
+            {rows.length === 0 && !numbersLoading && (
               <div className="text-sm text-muted-foreground">
                 Cadastre um número para configurar o verify token específico.
               </div>
             )}
-            {rows.map((r: any) => (
-              <div
-                key={r.id}
-                className="flex items-center justify-between rounded border p-2 text-sm"
-              >
-                <div>
-                  <div className="font-medium">{r.name}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {r.display_phone ?? r.phone ?? "—"}
+            {rows.map((r: any) => {
+              const visible = visibleTokens[r.id] ?? false;
+              const token = r.verify_token ?? "";
+              return (
+                <div
+                  key={r.id}
+                  className="flex flex-col gap-2 rounded border p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div>
+                    <div className="font-medium">{r.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {r.display_phone ?? r.phone ?? "—"} · {r.phone_number_id ?? "—"}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      readOnly
+                      type={visible ? "text" : "password"}
+                      value={token}
+                      className="w-[200px] font-mono text-xs"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      title={visible ? "Ocultar" : "Mostrar"}
+                      onClick={() =>
+                        setVisibleTokens((prev) => ({ ...prev, [r.id]: !visible }))
+                      }
+                    >
+                      {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      title="Copiar"
+                      disabled={!token}
+                      onClick={() => copy(token)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      title="Regenerar"
+                      disabled={updateTokenMut.isPending}
+                      onClick={() =>
+                        updateTokenMut.mutate({ id: r.id, token: regenerateConnectionToken(r.id) })
+                      }
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-                <code className="font-mono text-xs">
-                  {r.verify_token ? "•••••• (configurado)" : "não definido"}
-                </code>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
