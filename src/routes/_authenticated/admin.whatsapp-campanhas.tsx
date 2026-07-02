@@ -96,7 +96,7 @@ function Page() {
         actions={
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Nova campanha</Button></DialogTrigger>
-            <CreateDialog clients={clients} projects={projects} numbers={numbers} templates={templates} lists={lists} onSubmit={(p: any) => saveMut.mutate(p)} saving={saveMut.isPending} />
+            <CreateDialog clients={clients} projects={projects} numbers={numbers} templates={templates} lists={lists} onSubmit={(p: any) => saveMut.mutate(p)} saving={saveMut.isPending} onListsChanged={() => qc.invalidateQueries({ queryKey: ["lists"] })} />
           </Dialog>
         }
       />
