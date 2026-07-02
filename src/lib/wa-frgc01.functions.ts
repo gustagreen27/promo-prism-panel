@@ -52,8 +52,9 @@ export const sendFrgc01 = createServerFn({ method: "POST" })
       .maybeSingle();
 
     if (cErr || !conn) return { ok: false, error: "Conexão WhatsApp não encontrada" };
-    if (!conn.phone_number_id || !conn.access_token) {
-      return { ok: false, error: "Conexão sem phone_number_id ou access_token configurados" };
+    const accessToken = conn.access_token || process.env.WHATSAPP_ACCESS_TOKEN;
+    if (!conn.phone_number_id || !accessToken) {
+      return { ok: false, error: "Conexão sem phone_number_id ou access_token configurados (defina em whatsapp_connections.access_token ou no secret WHATSAPP_ACCESS_TOKEN)" };
     }
 
     const to = data.to.replace(/\D/g, "");
