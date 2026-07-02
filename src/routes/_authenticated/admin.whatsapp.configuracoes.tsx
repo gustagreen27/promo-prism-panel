@@ -10,7 +10,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { listSettings, upsertSetting } from "@/lib/settings.functions";
-import { sendTestTemplate, listWabaTemplates, testWhatsappConnection } from "@/lib/whatsapp-test.functions";
+import {
+  sendTestTemplate,
+  listWabaTemplates,
+  testWhatsappConnection,
+  type CheckResult,
+  type ListWabaTemplatesResult,
+  type SendTestTemplateResult,
+} from "@/lib/whatsapp-test.functions";
 
 const KEY = "whatsapp_credentials";
 
@@ -89,11 +96,10 @@ function Page() {
   const credsReady = Boolean(form.waba_id && form.access_token);
   const tplQuery = useQuery({
     queryKey: ["waba-templates"],
-    queryFn: () => templatesFn() as Promise<Tpl[]>,
+    queryFn: () => templatesFn() as Promise<ListWabaTemplatesResult>,
     enabled: credsReady,
   });
 
-  type CheckResult = { name: string; ok: boolean; detail: string; hint?: string; raw?: any };
   const [checks, setChecks] = useState<CheckResult[] | null>(null);
   const testMut = useMutation({
     mutationFn: async () => (await testConnFn()) as { results: CheckResult[] },
@@ -112,10 +118,9 @@ function Page() {
   const [params, setParams] = useState<string[]>(["", "", "", ""]);
   const [buttonParam, setButtonParam] = useState("");
 
-  const selected = useMemo(
-    () => tplQuery.data?.find((t) => t.name === templateName),
-    [tplQuery.data, templateName],
-  );
+  const templates = tplQuery.data?.templates ?? [];
+  const templatesError = tplQuery.data?.error;
+  const selected = useMemo(() => templates.find((t) => t.name === templateName), [templates, templateName]);
   useEffect(() => {
     if (selected?.language) setLanguage(selected.language);
   }, [selected]);
@@ -146,12 +151,15 @@ function Page() {
             ? { button_url_param: buttonParam, button_index: dynBtn.index }
             : {}),
         },
-      }),
-    onSuccess: (r: any) => toast.success(`Enviado ✓ ${r?.message_id ?? ""}`),
+      }) as Promise<SendTestTemplateResult>,
+    onSuccess: (r) => {
+      if (r.ok) toast.success(`Enviado ✓ ${r.message_id ?? ""}`);
+      else toast.error(r.hint ? `${r.error} — ${r.hint}` : r.error);
+    },
     onError: (e: any) => toast.error(e?.message ?? "Falha ao enviar"),
   });
 
-  const approved = (tplQuery.data ?? []).filter((t) => t.status?.toUpperCase() === "APPROVED");
+  const approved = templates.filter((t) => t.status?.toUpperCase() === "APPROVED");
 
   return (
     <>
@@ -333,10 +341,14 @@ function Page() {
           </div>
         </div>
 
-        {tplQuery.error && (
-          <p className="mt-3 text-xs text-destructive">
-            {(tplQuery.error as any)?.message ?? "Erro ao listar templates"}
-          </p>
+        {(tplQuery.error || templatesError) && (
+          <div className="mt-3 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs">
+            <div className="font-semibold text-destructive">Erro ao listar templates</div>
+            <div className="mt-1 text-muted-foreground">
+              {templatesError?.detail ?? (tplQuery.error as any)?.message ?? "Falha ao listar templates"}
+            </div>
+            {templatesError?.hint && <div className="mt-1">{templatesError.hint}</div>}
+          </div>
         )}
       </div>
     </>
