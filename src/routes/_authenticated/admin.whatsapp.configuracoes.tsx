@@ -94,6 +94,7 @@ function Page() {
 
   const [testTo, setTestTo] = useState("5562984817929");
   const [templateName, setTemplateName] = useState("frgc_01");
+  const [language, setLanguage] = useState("pt_BR");
   const [params, setParams] = useState<string[]>(["", "", "", ""]);
   const [buttonParam, setButtonParam] = useState("");
 
@@ -101,7 +102,9 @@ function Page() {
     () => tplQuery.data?.find((t) => t.name === templateName),
     [tplQuery.data, templateName],
   );
-  const language = selected?.language ?? "pt_BR";
+  useEffect(() => {
+    if (selected?.language) setLanguage(selected.language);
+  }, [selected]);
   const bodyComp = selected?.components.find((c) => c.type?.toUpperCase() === "BODY");
   const bodyVars = countVars(bodyComp?.text);
   const dynBtn = findDynamicUrlButton(selected);
@@ -216,6 +219,17 @@ function Page() {
                 placeholder={credsReady ? "Nenhum aprovado — digite o nome" : "Salve credenciais para listar"}
               />
             )}
+          </div>
+          <div>
+            <Label>Idioma (code)</Label>
+            <Input
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              placeholder="pt_BR, pt, en, en_US…"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Use exatamente o código aprovado na Meta (ex.: <code>pt_BR</code>, <code>pt</code>, <code>en_US</code>).
+            </p>
           </div>
 
           {bodyComp?.text && (
