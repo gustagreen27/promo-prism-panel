@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { listConnections } from "@/lib/whatsapp.functions";
-import { sendFrgc01, type SendFrgc01Response } from "@/lib/wa-frgc01.functions";
+import { sendFrgc01, getMessageLogStatus, type SendFrgc01Response } from "@/lib/wa-frgc01.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp/teste-frgc01")({
   head: () => ({ meta: [{ title: "Testar template frgc_01" }] }),
@@ -39,15 +39,45 @@ const EMPTY: Form = {
   urlParametro: "",
 };
 
+const STATUS_STYLES: Record<string, string> = {
+  accepted: "bg-blue-500/15 text-blue-700 border-blue-500/40",
+  sent: "bg-cyan-500/15 text-cyan-700 border-cyan-500/40",
+  delivered: "bg-emerald-500/15 text-emerald-700 border-emerald-500/40",
+  read: "bg-violet-500/15 text-violet-700 border-violet-500/40",
+  failed: "bg-red-500/15 text-red-700 border-red-500/40",
+};
+
+function StatusBadge({ status }: { status?: string | null }) {
+  const s = status ?? "pending";
+  const cls = STATUS_STYLES[s] ?? "bg-muted text-muted-foreground border-border";
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${cls}`}>
+      {s}
+    </span>
+  );
+}
+
 function Page() {
   const listFn = useServerFn(listConnections);
   const sendFn = useServerFn(sendFrgc01);
+  const statusFn = useServerFn(getMessageLogStatus);
   const [form, setForm] = useState<Form>(EMPTY);
   const [result, setResult] = useState<SendFrgc01Response | null>(null);
 
   const { data: connections = [] } = useQuery({
     queryKey: ["whatsapp-connections"],
     queryFn: () => listFn(),
+  });
+
+  const logId = result?.ok ? result.logId : result?.ok === false ? result.logId : undefined;
+  const { data: liveStatus } = useQuery({
+    queryKey: ["message-log-status", logId],
+    queryFn: () => statusFn({ data: { logId: logId! } }),
+    enabled: !!logId,
+    refetchInterval: (q) => {
+      const s = (q.state.data as any)?.message_status;
+      return s === "read" || s === "failed" ? false : 2500;
+    },
   });
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
@@ -145,6 +175,15 @@ function Page() {
                 <div className="mt-1">Status: {result.status}</div>
                 <div className="text-muted-foreground text-xs mt-1 break-all">meta_message_id: {result.metaMessageId}</div>
                 <div className="text-muted-foreground text-xs">log_id: {result.logId}</div>
+                <div className="mt-3 border-t pt-2">
+                  <div className="text-xs font-medium mb-1">Status ao vivo (webhook Meta):</div>
+                  <StatusBadge status={liveStatus?.message_status ?? result.status} />
+                  {liveStatus?.failed_reason && (
+                    <div className="text-xs text-destructive mt-1">
+                      {liveStatus.failed_reason} {liveStatus.error_code ? `(${liveStatus.error_code})` : ""}
+                    </div>
+                  )}
+                </div>
               </>
             ) : (
               <>

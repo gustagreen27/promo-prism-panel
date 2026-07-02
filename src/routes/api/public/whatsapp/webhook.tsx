@@ -88,6 +88,14 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
                 if (Object.keys(patch).length) {
                   await supabaseAdmin.from("campaign_recipients").update(patch).eq("meta_message_id", id);
                 }
+
+                // Also update message_logs (test sends + campaign sends land here)
+                const logPatch: any = { message_status: status };
+                if (status === "failed") {
+                  logPatch.failed_reason = s?.errors?.[0]?.title ?? "failed";
+                  logPatch.error_code = s?.errors?.[0]?.code ? String(s.errors[0].code) : null;
+                }
+                await supabaseAdmin.from("message_logs").update(logPatch).eq("meta_message_id", id);
               }
 
               // Inbound messages
