@@ -31,6 +31,7 @@ type Form = {
   connectionId: string;
   recipientsRaw: string;
   imageUrl: string;
+  mediaType: "image" | "video";
   nomeCliente: string;
   informacaoPrincipal: string;
   mensagemComplementar: string;
@@ -42,6 +43,7 @@ const EMPTY: Form = {
   connectionId: "",
   recipientsRaw: "",
   imageUrl: "https://metodovidacursos.com.br/og-cover.jpg",
+  mediaType: "image",
   nomeCliente: "",
   informacaoPrincipal: "",
   mensagemComplementar: "",
@@ -251,17 +253,20 @@ function Page() {
   }
 
   async function handleUpload(file: File) {
-    if (!file.type.startsWith("image/")) {
-      toast.error("Selecione um arquivo de imagem (JPG, PNG, WEBP)");
+    const isImage = file.type.startsWith("image/");
+    const isVideo = file.type.startsWith("video/");
+    if (!isImage && !isVideo) {
+      toast.error("Selecione uma imagem (JPG, PNG, WEBP) ou vídeo (MP4, 3GP)");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Imagem muito grande (máx. 5 MB — recomendação Meta)");
+    const maxMb = isVideo ? 16 : 5;
+    if (file.size > maxMb * 1024 * 1024) {
+      toast.error(`Arquivo muito grande (máx. ${maxMb} MB — recomendação Meta)`);
       return;
     }
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop() || "jpg";
+      const ext = file.name.split(".").pop() || (isVideo ? "mp4" : "jpg");
       const path = `campanhas/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
       const { error: upErr } = await supabase.storage
         .from("campaign-images")
@@ -271,8 +276,8 @@ function Page() {
         .from("campaign-images")
         .createSignedUrl(path, 60 * 60 * 24 * 30); // 30 days
       if (sErr || !signed?.signedUrl) throw sErr ?? new Error("Falha ao gerar URL");
-      set("imageUrl", signed.signedUrl);
-      toast.success("Imagem enviada");
+      setForm((f) => ({ ...f, imageUrl: signed.signedUrl, mediaType: isVideo ? "video" : "image" }));
+      toast.success(isVideo ? "Vídeo enviado" : "Imagem enviada");
     } catch (e: any) {
       toast.error(e?.message ?? "Falha no upload");
     } finally {
@@ -308,6 +313,7 @@ function Page() {
             connectionId: form.connectionId,
             to: phone,
             imageUrl: form.imageUrl,
+            mediaType: form.mediaType,
             nomeCliente: form.nomeCliente,
             informacaoPrincipal: form.informacaoPrincipal,
             mensagemComplementar: form.mensagemComplementar,
@@ -417,17 +423,21 @@ function Page() {
 
 
           <div className="space-y-2 md:col-span-2">
-            <Label>Imagem do cabeçalho</Label>
+            <Label>Mídia do cabeçalho (imagem ou vídeo)</Label>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Input
                 value={form.imageUrl}
-                onChange={(e) => set("imageUrl", e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  const isVid = /\.(mp4|3gp|mov)(\?|$)/i.test(v);
+                  setForm((f) => ({ ...f, imageUrl: v, mediaType: isVid ? "video" : "image" }));
+                }}
                 placeholder="Cole uma URL pública ou envie um arquivo"
               />
               <input
                 ref={fileRef}
                 type="file"
-                accept="image/jpeg,image/png,image/webp"
+                accept="image/jpeg,image/png,image/webp,video/mp4,video/3gpp,video/quicktime"
                 className="hidden"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
@@ -445,12 +455,23 @@ function Page() {
                 {uploading ? "Enviando…" : "Upload"}
               </Button>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Imagem até 5 MB (JPG/PNG/WEBP) · Vídeo até 16 MB (MP4/3GP). O template frgc_01 precisa aceitar o tipo escolhido.
+            </p>
             {form.imageUrl && (
-              <img
-                src={form.imageUrl}
-                alt="Preview do cabeçalho"
-                className="mt-2 max-h-40 rounded-md border object-contain bg-muted"
-              />
+              form.mediaType === "video" ? (
+                <video
+                  src={form.imageUrl}
+                  controls
+                  className="mt-2 max-h-48 rounded-md border bg-muted"
+                />
+              ) : (
+                <img
+                  src={form.imageUrl}
+                  alt="Preview do cabeçalho"
+                  className="mt-2 max-h-40 rounded-md border object-contain bg-muted"
+                />
+              )
             )}
           </div>
 
