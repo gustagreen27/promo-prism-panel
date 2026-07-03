@@ -75,14 +75,35 @@ function normalizePhone(v: string): string {
   return v.replace(/\D/g, "");
 }
 
-function parseRecipients(raw: string): string[] {
+type Recipient = { phone: string; name?: string };
+
+function parseRecipients(raw: string): Recipient[] {
   const seen = new Set<string>();
-  const out: string[] = [];
-  for (const part of raw.split(/[\s,;]+/)) {
-    const p = normalizePhone(part);
-    if (p.length >= 8 && !seen.has(p)) {
-      seen.add(p);
-      out.push(p);
+  const out: Recipient[] = [];
+  for (const line of raw.split(/[\n;]+/)) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const parts = trimmed.split(/[,\t]/).map((s) => s.trim()).filter(Boolean);
+    if (parts.length === 0) continue;
+    // If every field looks like a phone number, treat as list of phones (no names).
+    const allPhones = parts.every((p) => normalizePhone(p).length >= 8);
+    if (parts.length === 1 || allPhones) {
+      for (const p of parts) {
+        const n = normalizePhone(p);
+        if (n.length >= 8 && !seen.has(n)) {
+          seen.add(n);
+          out.push({ phone: n });
+        }
+      }
+    } else {
+      // Mixed: last numeric-ish field is the phone, everything before it is the name.
+      const phoneRaw = parts[parts.length - 1];
+      const name = parts.slice(0, -1).join(" ").trim();
+      const n = normalizePhone(phoneRaw);
+      if (n.length >= 8 && !seen.has(n)) {
+        seen.add(n);
+        out.push({ phone: n, name: name || undefined });
+      }
     }
   }
   return out;
@@ -130,6 +151,7 @@ function guessPhoneColumn(headers: string[]): number {
 
 type RowState = {
   phone: string;
+  name?: string;
   status: "pending" | "sending" | "sent" | "failed";
   logId?: string;
   metaMessageId?: string;
@@ -150,7 +172,10 @@ function RecipientRow({ row }: { row: RowState }) {
   const status = live?.message_status ?? row.status;
   return (
     <div className="flex items-center justify-between gap-3 rounded-md border bg-card px-3 py-2 text-sm">
-      <div className="font-mono">{row.phone}</div>
+      <div className="flex items-center gap-2 min-w-0">
+        {row.name && <span className="text-sm font-medium truncate">{row.name}</span>}
+        <span className="font-mono text-xs text-muted-foreground">{row.phone}</span>
+      </div>
       <div className="flex items-center gap-2">
         {row.error && <span className="text-xs text-destructive truncate max-w-[240px]" title={row.error}>{row.error}</span>}
         {live?.failed_reason && !row.error && (
@@ -225,7 +250,7 @@ function Page() {
   }
 
   function appendPhones(raw: string[]) {
-    const existing = new Set(parseRecipients(form.recipientsRaw));
+    const existing = new Set(parseRecipients(form.recipientsRaw).map((r) => r.phone));
     const add: string[] = [];
     for (const r of raw) {
       const p = normalizePhone(r);
@@ -289,7 +314,7 @@ function Page() {
     !!form.connectionId &&
     recipients.length > 0 &&
     !!form.imageUrl &&
-    !!form.nomeCliente &&
+    (!!form.nomeCliente || recipients.every((r) => !!r.name)) &&
     !!form.informacaoPrincipal &&
     !!form.mensagemComplementar &&
     !!form.textoAcao &&
@@ -299,13 +324,13 @@ function Page() {
     if (!canSubmit || sending) return;
     cancelRef.current = false;
     setSending(true);
-    const initial: RowState[] = recipients.map((p) => ({ phone: p, status: "pending" }));
+    const initial: RowState[] = recipients.map((r) => ({ phone: r.phone, name: r.name, status: "pending" }));
     setRows(initial);
     let okCount = 0;
     let failCount = 0;
     for (let i = 0; i < recipients.length; i++) {
       if (cancelRef.current) break;
-      const phone = recipients[i];
+      const { phone, name } = recipients[i];
       setRows((rs) => rs.map((r) => (r.phone === phone ? { ...r, status: "sending" } : r)));
       try {
         const res: SendFrgc01Response = await sendFn({
@@ -314,7 +339,7 @@ function Page() {
             to: phone,
             imageUrl: form.imageUrl,
             mediaType: form.mediaType,
-            nomeCliente: form.nomeCliente,
+            nomeCliente: name || form.nomeCliente,
             informacaoPrincipal: form.informacaoPrincipal,
             mensagemComplementar: form.mensagemComplementar,
             textoAcao: form.textoAcao,
@@ -370,7 +395,7 @@ function Page() {
 
           <div className="space-y-2 md:col-span-2">
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <Label>Destinatários (E.164 sem +, um por linha ou separados por vírgula)</Label>
+              <Label>Destinatários — um por linha. Use <code className="text-[11px]">Nome,Telefone</code> para personalizar {"{{1}}"}.</Label>
               <div className="flex gap-2">
                 <input
                   ref={csvInputRef}
@@ -413,11 +438,11 @@ function Page() {
                 className="font-mono text-xs"
                 value={form.recipientsRaw}
                 onChange={(e) => set("recipientsRaw", e.target.value)}
-                placeholder={"5562984817929\n5511999998888\n...\n\nDica: arraste um CSV aqui ou clique em Importar CSV"}
+                placeholder={"Gustavo,5562991301856\nMaria,5511999998888\n5562984817929\n\nDica: arraste um CSV aqui ou clique em Importar CSV"}
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              {recipients.length} número(s) válidos detectados. Cole texto, arraste um CSV ou use o botão acima.
+              {recipients.length} destinatário(s) detectados{recipients.some((r) => r.name) ? ` · ${recipients.filter((r) => r.name).length} com nome` : ""}. Quando houver nome, ele substitui {"{{1}}"} para aquele contato.
             </p>
           </div>
 
@@ -483,8 +508,12 @@ function Page() {
           </div>
 
           <div className="space-y-2">
-            <Label>{"{{1}} Nome do cliente"}</Label>
-            <Input value={form.nomeCliente} onChange={(e) => set("nomeCliente", e.target.value)} />
+            <Label>{"{{1}} Nome do cliente (fallback)"}</Label>
+            <Input
+              value={form.nomeCliente}
+              onChange={(e) => set("nomeCliente", e.target.value)}
+              placeholder="Usado quando a linha do destinatário não trouxer nome"
+            />
           </div>
 
           <div className="space-y-2">
