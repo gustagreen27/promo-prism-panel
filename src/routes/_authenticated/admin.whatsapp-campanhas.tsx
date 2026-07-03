@@ -328,9 +328,10 @@ function Page() {
     setRows(initial);
     let okCount = 0;
     let failCount = 0;
-    for (let i = 0; i < recipients.length; i++) {
-      if (cancelRef.current) break;
-      const { phone, name } = recipients[i];
+    const CONCURRENCY = 25;
+    const sendOne = async (idx: number) => {
+      if (cancelRef.current) return;
+      const { phone, name } = recipients[idx];
       setRows((rs) => rs.map((r) => (r.phone === phone ? { ...r, status: "sending" } : r)));
       try {
         const res: SendFrgc01Response = await sendFn({
@@ -363,9 +364,14 @@ function Page() {
           ? { ...r, status: "failed", error: e?.message ?? "Falha ao enviar" }
           : r)));
       }
-      // small delay to avoid hammering Meta
-      if (i < recipients.length - 1) await new Promise((r) => setTimeout(r, 300));
+    };
+
+    for (let i = 0; i < recipients.length; i += CONCURRENCY) {
+      if (cancelRef.current) break;
+      const slice = Array.from({ length: Math.min(CONCURRENCY, recipients.length - i) }, (_, k) => i + k);
+      await Promise.all(slice.map(sendOne));
     }
+
     setSending(false);
     toast[failCount === 0 ? "success" : "message"](`Envio concluído · ${okCount} ok · ${failCount} falha(s)`);
   }
