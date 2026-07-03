@@ -438,11 +438,11 @@ function Page() {
                 className="font-mono text-xs"
                 value={form.recipientsRaw}
                 onChange={(e) => set("recipientsRaw", e.target.value)}
-                placeholder={"5562984817929\n5511999998888\n...\n\nDica: arraste um CSV aqui ou clique em Importar CSV"}
+                placeholder={"Gustavo,5562991301856\nMaria,5511999998888\n5562984817929\n\nDica: arraste um CSV aqui ou clique em Importar CSV"}
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              {recipients.length} número(s) válidos detectados. Cole texto, arraste um CSV ou use o botão acima.
+              {recipients.length} destinatário(s) detectados{recipients.some((r) => r.name) ? ` · ${recipients.filter((r) => r.name).length} com nome` : ""}. Quando houver nome, ele substitui {"{{1}}"} para aquele contato.
             </p>
           </div>
 
