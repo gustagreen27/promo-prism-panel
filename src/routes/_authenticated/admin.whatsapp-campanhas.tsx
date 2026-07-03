@@ -246,7 +246,7 @@ function Page() {
   }
 
   function appendPhones(raw: string[]) {
-    const existing = new Set(parseRecipients(form.recipientsRaw));
+    const existing = new Set(parseRecipients(form.recipientsRaw).map((r) => r.phone));
     const add: string[] = [];
     for (const r of raw) {
       const p = normalizePhone(r);
