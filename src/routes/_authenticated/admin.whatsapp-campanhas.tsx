@@ -172,7 +172,10 @@ function RecipientRow({ row }: { row: RowState }) {
   const status = live?.message_status ?? row.status;
   return (
     <div className="flex items-center justify-between gap-3 rounded-md border bg-card px-3 py-2 text-sm">
-      <div className="font-mono">{row.phone}</div>
+      <div className="flex items-center gap-2 min-w-0">
+        {row.name && <span className="text-sm font-medium truncate">{row.name}</span>}
+        <span className="font-mono text-xs text-muted-foreground">{row.phone}</span>
+      </div>
       <div className="flex items-center gap-2">
         {row.error && <span className="text-xs text-destructive truncate max-w-[240px]" title={row.error}>{row.error}</span>}
         {live?.failed_reason && !row.error && (
