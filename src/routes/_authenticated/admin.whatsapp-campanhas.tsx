@@ -310,7 +310,7 @@ function Page() {
     !!form.connectionId &&
     recipients.length > 0 &&
     !!form.imageUrl &&
-    !!form.nomeCliente &&
+    (!!form.nomeCliente || recipients.every((r) => !!r.name)) &&
     !!form.informacaoPrincipal &&
     !!form.mensagemComplementar &&
     !!form.textoAcao &&
@@ -320,13 +320,13 @@ function Page() {
     if (!canSubmit || sending) return;
     cancelRef.current = false;
     setSending(true);
-    const initial: RowState[] = recipients.map((p) => ({ phone: p, status: "pending" }));
+    const initial: RowState[] = recipients.map((r) => ({ phone: r.phone, name: r.name, status: "pending" }));
     setRows(initial);
     let okCount = 0;
     let failCount = 0;
     for (let i = 0; i < recipients.length; i++) {
       if (cancelRef.current) break;
-      const phone = recipients[i];
+      const { phone, name } = recipients[i];
       setRows((rs) => rs.map((r) => (r.phone === phone ? { ...r, status: "sending" } : r)));
       try {
         const res: SendFrgc01Response = await sendFn({
@@ -335,7 +335,7 @@ function Page() {
             to: phone,
             imageUrl: form.imageUrl,
             mediaType: form.mediaType,
-            nomeCliente: form.nomeCliente,
+            nomeCliente: name || form.nomeCliente,
             informacaoPrincipal: form.informacaoPrincipal,
             mensagemComplementar: form.mensagemComplementar,
             textoAcao: form.textoAcao,
