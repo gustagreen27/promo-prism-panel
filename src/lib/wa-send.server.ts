@@ -133,6 +133,7 @@ export type SendFrgc01Input = {
   mensagemComplementar: string;
   textoAcao: string;
   urlParametro: string;
+  templateName?: string;
 };
 
 export type SendFrgc01Result =
@@ -145,7 +146,9 @@ export function buildFrgc01Payload(input: SendFrgc01Input) {
     mediaType === "video"
       ? { type: "video", video: { link: input.imageUrl } }
       : { type: "image", image: { link: input.imageUrl } };
-  const templateName = mediaType === "video" ? "fdsda_01" : "frgc_01";
+  const templateName =
+    input.templateName ?? (mediaType === "video" ? "fdsda_01" : "frgc_01");
+
   return {
     messaging_product: "whatsapp",
     to: input.to,
