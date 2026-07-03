@@ -395,7 +395,7 @@ function Page() {
 
           <div className="space-y-2 md:col-span-2">
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <Label>Destinatários (E.164 sem +, um por linha ou separados por vírgula)</Label>
+              <Label>Destinatários — um por linha. Use <code className="text-[11px]">Nome,Telefone</code> para personalizar {"{{1}}"}.</Label>
               <div className="flex gap-2">
                 <input
                   ref={csvInputRef}
