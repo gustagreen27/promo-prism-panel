@@ -151,6 +151,7 @@ function guessPhoneColumn(headers: string[]): number {
 
 type RowState = {
   phone: string;
+  name?: string;
   status: "pending" | "sending" | "sent" | "failed";
   logId?: string;
   metaMessageId?: string;
