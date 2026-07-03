@@ -145,12 +145,13 @@ export function buildFrgc01Payload(input: SendFrgc01Input) {
     mediaType === "video"
       ? { type: "video", video: { link: input.imageUrl } }
       : { type: "image", image: { link: input.imageUrl } };
+  const templateName = mediaType === "video" ? "fdsda_01" : "frgc_01";
   return {
     messaging_product: "whatsapp",
     to: input.to,
     type: "template",
     template: {
-      name: "frgc_01",
+      name: templateName,
       language: { code: "en" },
       components: [
         {
