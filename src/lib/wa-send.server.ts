@@ -127,6 +127,7 @@ export type SendFrgc01Input = {
   graphVersion?: string;
   to: string;
   imageUrl: string;
+  mediaType?: "image" | "video";
   nomeCliente: string;
   informacaoPrincipal: string;
   mensagemComplementar: string;
@@ -139,6 +140,11 @@ export type SendFrgc01Result =
   | { ok: false; error: string; code?: string; requestPayload: any; raw?: any; httpStatus?: number };
 
 export function buildFrgc01Payload(input: SendFrgc01Input) {
+  const mediaType = input.mediaType ?? "image";
+  const headerParam =
+    mediaType === "video"
+      ? { type: "video", video: { link: input.imageUrl } }
+      : { type: "image", image: { link: input.imageUrl } };
   return {
     messaging_product: "whatsapp",
     to: input.to,
@@ -149,7 +155,7 @@ export function buildFrgc01Payload(input: SendFrgc01Input) {
       components: [
         {
           type: "header",
-          parameters: [{ type: "image", image: { link: input.imageUrl } }],
+          parameters: [headerParam],
         },
         {
           type: "body",
