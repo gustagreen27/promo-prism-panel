@@ -75,14 +75,35 @@ function normalizePhone(v: string): string {
   return v.replace(/\D/g, "");
 }
 
-function parseRecipients(raw: string): string[] {
+type Recipient = { phone: string; name?: string };
+
+function parseRecipients(raw: string): Recipient[] {
   const seen = new Set<string>();
-  const out: string[] = [];
-  for (const part of raw.split(/[\s,;]+/)) {
-    const p = normalizePhone(part);
-    if (p.length >= 8 && !seen.has(p)) {
-      seen.add(p);
-      out.push(p);
+  const out: Recipient[] = [];
+  for (const line of raw.split(/[\n;]+/)) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const parts = trimmed.split(/[,\t]/).map((s) => s.trim()).filter(Boolean);
+    if (parts.length === 0) continue;
+    // If every field looks like a phone number, treat as list of phones (no names).
+    const allPhones = parts.every((p) => normalizePhone(p).length >= 8);
+    if (parts.length === 1 || allPhones) {
+      for (const p of parts) {
+        const n = normalizePhone(p);
+        if (n.length >= 8 && !seen.has(n)) {
+          seen.add(n);
+          out.push({ phone: n });
+        }
+      }
+    } else {
+      // Mixed: last numeric-ish field is the phone, everything before it is the name.
+      const phoneRaw = parts[parts.length - 1];
+      const name = parts.slice(0, -1).join(" ").trim();
+      const n = normalizePhone(phoneRaw);
+      if (n.length >= 8 && !seen.has(n)) {
+        seen.add(n);
+        out.push({ phone: n, name: name || undefined });
+      }
     }
   }
   return out;
