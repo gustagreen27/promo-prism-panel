@@ -508,8 +508,12 @@ function Page() {
           </div>
 
           <div className="space-y-2">
-            <Label>{"{{1}} Nome do cliente"}</Label>
-            <Input value={form.nomeCliente} onChange={(e) => set("nomeCliente", e.target.value)} />
+            <Label>{"{{1}} Nome do cliente (fallback)"}</Label>
+            <Input
+              value={form.nomeCliente}
+              onChange={(e) => set("nomeCliente", e.target.value)}
+              placeholder="Usado quando a linha do destinatário não trouxer nome"
+            />
           </div>
 
           <div className="space-y-2">
