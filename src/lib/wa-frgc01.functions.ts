@@ -6,6 +6,7 @@ const InputSchema = z.object({
   connectionId: z.string().uuid(),
   to: z.string().min(6),
   imageUrl: z.string().url(),
+  mediaType: z.enum(["image", "video"]).optional(),
   nomeCliente: z.string().min(1),
   informacaoPrincipal: z.string().min(1),
   mensagemComplementar: z.string().min(1),
