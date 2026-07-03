@@ -94,7 +94,7 @@ export const sendFrgc01 = createServerFn({ method: "POST" })
       recipient_id: data.recipientId ?? null,
       connection_id: conn.id,
       to_phone: to,
-      template_name: "frgc_01",
+      template_name: data.mediaType === "video" ? "fdsda_01" : "frgc_01",
       language_code: "en",
       request_payload: requestPayload,
       response_payload: result.raw ?? null,
