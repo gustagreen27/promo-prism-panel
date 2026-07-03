@@ -313,6 +313,7 @@ function Page() {
             connectionId: form.connectionId,
             to: phone,
             imageUrl: form.imageUrl,
+            mediaType: form.mediaType,
             nomeCliente: form.nomeCliente,
             informacaoPrincipal: form.informacaoPrincipal,
             mensagemComplementar: form.mensagemComplementar,
