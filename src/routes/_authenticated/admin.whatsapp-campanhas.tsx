@@ -423,17 +423,21 @@ function Page() {
 
 
           <div className="space-y-2 md:col-span-2">
-            <Label>Imagem do cabeçalho</Label>
+            <Label>Mídia do cabeçalho (imagem ou vídeo)</Label>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Input
                 value={form.imageUrl}
-                onChange={(e) => set("imageUrl", e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  const isVid = /\.(mp4|3gp|mov)(\?|$)/i.test(v);
+                  setForm((f) => ({ ...f, imageUrl: v, mediaType: isVid ? "video" : "image" }));
+                }}
                 placeholder="Cole uma URL pública ou envie um arquivo"
               />
               <input
                 ref={fileRef}
                 type="file"
-                accept="image/jpeg,image/png,image/webp"
+                accept="image/jpeg,image/png,image/webp,video/mp4,video/3gpp,video/quicktime"
                 className="hidden"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
@@ -451,12 +455,23 @@ function Page() {
                 {uploading ? "Enviando…" : "Upload"}
               </Button>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Imagem até 5 MB (JPG/PNG/WEBP) · Vídeo até 16 MB (MP4/3GP). O template frgc_01 precisa aceitar o tipo escolhido.
+            </p>
             {form.imageUrl && (
-              <img
-                src={form.imageUrl}
-                alt="Preview do cabeçalho"
-                className="mt-2 max-h-40 rounded-md border object-contain bg-muted"
-              />
+              form.mediaType === "video" ? (
+                <video
+                  src={form.imageUrl}
+                  controls
+                  className="mt-2 max-h-48 rounded-md border bg-muted"
+                />
+              ) : (
+                <img
+                  src={form.imageUrl}
+                  alt="Preview do cabeçalho"
+                  className="mt-2 max-h-40 rounded-md border object-contain bg-muted"
+                />
+              )
             )}
           </div>
 
