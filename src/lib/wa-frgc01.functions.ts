@@ -48,7 +48,7 @@ export const sendFrgc01 = createServerFn({ method: "POST" })
 
     const { data: conn, error: cErr } = await supabaseAdmin
       .from("whatsapp_connections")
-      .select("id, phone_number_id, access_token, graph_api_version")
+      .select("id, phone_number_id, access_token, graph_api_version, waba_id")
       .eq("id", data.connectionId)
       .maybeSingle();
 
@@ -57,6 +57,18 @@ export const sendFrgc01 = createServerFn({ method: "POST" })
     if (!conn.phone_number_id || !accessToken) {
       return { ok: false, error: "Conexão sem phone_number_id ou access_token configurados (defina em whatsapp_connections.access_token ou no secret WHATSAPP_ACCESS_TOKEN)" };
     }
+
+    // Per-WABA template mapping (Fagner Jequié usa dsadsa_01 para imagem)
+    const mediaType = data.mediaType ?? "image";
+    const wabaTemplateMap: Record<string, { image: string; video: string }> = {
+      "37857640713834515": { image: "dsadsa_01", video: "dsadsa_01" },
+    };
+    const perWaba = conn.waba_id ? wabaTemplateMap[String(conn.waba_id)] : undefined;
+    const templateName = perWaba
+      ? perWaba[mediaType]
+      : mediaType === "video"
+        ? "fdsda_01"
+        : "frgc_01";
 
     const to = data.to.replace(/\D/g, "");
     const requestPayload = buildFrgc01Payload({
@@ -71,6 +83,7 @@ export const sendFrgc01 = createServerFn({ method: "POST" })
       mensagemComplementar: data.mensagemComplementar,
       textoAcao: data.textoAcao,
       urlParametro: data.urlParametro,
+      templateName,
     });
 
     const result = await sendWhatsAppTemplateFrgc01({
@@ -85,6 +98,7 @@ export const sendFrgc01 = createServerFn({ method: "POST" })
       mensagemComplementar: data.mensagemComplementar,
       textoAcao: data.textoAcao,
       urlParametro: data.urlParametro,
+      templateName,
     });
 
     const nowIso = new Date().toISOString();
@@ -94,7 +108,8 @@ export const sendFrgc01 = createServerFn({ method: "POST" })
       recipient_id: data.recipientId ?? null,
       connection_id: conn.id,
       to_phone: to,
-      template_name: data.mediaType === "video" ? "fdsda_01" : "frgc_01",
+      template_name: templateName,
+
       language_code: "en",
       request_payload: requestPayload,
       response_payload: result.raw ?? null,
