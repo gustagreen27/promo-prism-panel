@@ -31,6 +31,7 @@ type Form = {
   connectionId: string;
   recipientsRaw: string;
   imageUrl: string;
+  mediaType: "image" | "video";
   nomeCliente: string;
   informacaoPrincipal: string;
   mensagemComplementar: string;
@@ -42,6 +43,7 @@ const EMPTY: Form = {
   connectionId: "",
   recipientsRaw: "",
   imageUrl: "https://metodovidacursos.com.br/og-cover.jpg",
+  mediaType: "image",
   nomeCliente: "",
   informacaoPrincipal: "",
   mensagemComplementar: "",
