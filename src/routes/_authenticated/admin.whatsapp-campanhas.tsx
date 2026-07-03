@@ -253,17 +253,20 @@ function Page() {
   }
 
   async function handleUpload(file: File) {
-    if (!file.type.startsWith("image/")) {
-      toast.error("Selecione um arquivo de imagem (JPG, PNG, WEBP)");
+    const isImage = file.type.startsWith("image/");
+    const isVideo = file.type.startsWith("video/");
+    if (!isImage && !isVideo) {
+      toast.error("Selecione uma imagem (JPG, PNG, WEBP) ou vídeo (MP4, 3GP)");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Imagem muito grande (máx. 5 MB — recomendação Meta)");
+    const maxMb = isVideo ? 16 : 5;
+    if (file.size > maxMb * 1024 * 1024) {
+      toast.error(`Arquivo muito grande (máx. ${maxMb} MB — recomendação Meta)`);
       return;
     }
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop() || "jpg";
+      const ext = file.name.split(".").pop() || (isVideo ? "mp4" : "jpg");
       const path = `campanhas/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
       const { error: upErr } = await supabase.storage
         .from("campaign-images")
@@ -273,8 +276,8 @@ function Page() {
         .from("campaign-images")
         .createSignedUrl(path, 60 * 60 * 24 * 30); // 30 days
       if (sErr || !signed?.signedUrl) throw sErr ?? new Error("Falha ao gerar URL");
-      set("imageUrl", signed.signedUrl);
-      toast.success("Imagem enviada");
+      setForm((f) => ({ ...f, imageUrl: signed.signedUrl, mediaType: isVideo ? "video" : "image" }));
+      toast.success(isVideo ? "Vídeo enviado" : "Imagem enviada");
     } catch (e: any) {
       toast.error(e?.message ?? "Falha no upload");
     } finally {
