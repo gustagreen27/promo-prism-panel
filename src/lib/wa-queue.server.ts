@@ -336,13 +336,41 @@ export async function processCampaignTick(
       const campVars = (camp.template_variables as Record<string, string> | null) || {};
       const recVars = (r.variables as Record<string, string> | null) || {};
       const mergedVars = { ...campVars, ...recVars };
-      const headerImageOverride = mergedVars._header_image_url || null;
-      const buttonUrlParam = mergedVars._button_url_param || null;
-      const buttonIndexRaw = mergedVars._button_index;
-      const buttonIndex = buttonIndexRaw != null ? Number(buttonIndexRaw) : 0;
+
+      // Load contact for this recipient to build the token context
+      let contactRow: any = null;
+      if ((r as any).contact_id) {
+        const { data: c } = await supabaseAdmin.from("contacts").select("*").eq("id", (r as any).contact_id).maybeSingle();
+        contactRow = c;
+      }
+      if (!contactRow) {
+        const { data: c } = await supabaseAdmin.from("contacts").select("*").eq("phone", r.phone).maybeSingle();
+        contactRow = c;
+      }
+      const ctx = buildContext({
+        contact: contactRow ?? { phone: r.phone },
+        client: clientRow,
+        project: projectRow,
+        campaign: camp,
+        responsavel: responsavelRow,
+      });
+
+      // Render mapping strings (e.g. "{nome} como você está?") into final text per recipient.
+      const renderedVars: Record<string, string> = {};
+      for (const [k, v] of Object.entries(mergedVars)) {
+        if (k.startsWith("_")) { renderedVars[k] = String(v ?? ""); continue; }
+        renderedVars[k] = renderMapping(String(v ?? ""), ctx);
+      }
+
+      const headerImageOverride = renderedVars._header_image_url || null;
+      const rawButtonUrlParam = renderedVars._button_url_param || null;
+      const buttonUrlParam = rawButtonUrlParam ? renderMapping(rawButtonUrlParam, ctx) : null;
+      const buttonIndexRaw = renderedVars._button_index;
+      const buttonIndex = buttonIndexRaw != null && buttonIndexRaw !== "" ? Number(buttonIndexRaw) : 0;
 
       const resolvedHeaderType = headerImageOverride ? "image" : tpl.header_type;
       const resolvedHeaderValue = headerImageOverride ?? tpl.header_text;
+
 
       const result = await sendTemplateMessage({
         phoneNumberId: conn.phone_number_id!,
