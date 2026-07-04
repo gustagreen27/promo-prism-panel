@@ -79,7 +79,7 @@ function ApprovedList({ workspaceId }: { workspaceId: string }) {
   const templates = (data?.templates ?? []) as TemplateRow[];
 
   if (isLoading) return <p className="text-sm text-muted-foreground">Carregando…</p>;
-  if (!data.length) return (
+  if (!templates.length) return (
     <Card><CardContent className="p-8 text-center">
       <FileText className="mx-auto h-8 w-8 text-muted-foreground" />
       <p className="mt-2 text-sm font-medium">Nenhum template aprovado ainda</p>
@@ -88,7 +88,7 @@ function ApprovedList({ workspaceId }: { workspaceId: string }) {
   );
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      {data.map((t) => (
+      {templates.map((t) => (
         <Card key={t.id}>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
