@@ -11,7 +11,6 @@ import {
   Briefcase,
   FileText,
   Link2,
-  Send,
   Inbox,
   History,
   Boxes,
