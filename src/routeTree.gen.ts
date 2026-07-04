@@ -9,11 +9,24 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RecuperarSenhaRouteImport } from './routes/recuperar-senha'
 import { Route as PoliticaDePrivacidadeRouteImport } from './routes/politica-de-privacidade'
+import { Route as PainelRouteImport } from './routes/painel'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as SlugRouteImport } from './routes/$slug'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
-import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as PainelIndexRouteImport } from './routes/painel.index'
+import { Route as PainelWhatsappRouteImport } from './routes/painel.whatsapp'
+import { Route as PainelTemplatesRouteImport } from './routes/painel.templates'
+import { Route as PainelRelatoriosRouteImport } from './routes/painel.relatorios'
+import { Route as PainelFinanceiroRouteImport } from './routes/painel.financeiro'
+import { Route as PainelContatosRouteImport } from './routes/painel.contatos'
+import { Route as PainelConfiguracoesRouteImport } from './routes/painel.configuracoes'
+import { Route as PainelCampanhasRouteImport } from './routes/painel.campanhas'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedAdminWhatsappCampanhasRouteImport } from './routes/_authenticated/admin.whatsapp-campanhas'
 import { Route as AuthenticatedAdminWhatsappRouteImport } from './routes/_authenticated/admin.whatsapp'
@@ -56,9 +69,34 @@ import { Route as AuthenticatedAdminCampaignsIdRouteImport } from './routes/_aut
 import { Route as AuthenticatedAdminCampaignsIdPreviewRouteImport } from './routes/_authenticated/admin.campaigns.$id.preview'
 import { Route as AuthenticatedAdminCampaignsIdEditRouteImport } from './routes/_authenticated/admin.campaigns.$id.edit'
 
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecuperarSenhaRoute = RecuperarSenhaRouteImport.update({
+  id: '/recuperar-senha',
+  path: '/recuperar-senha',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PoliticaDePrivacidadeRoute = PoliticaDePrivacidadeRouteImport.update({
   id: '/politica-de-privacidade',
   path: '/politica-de-privacidade',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PainelRoute = PainelRouteImport.update({
+  id: '/painel',
+  path: '/painel',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CadastroRoute = CadastroRouteImport.update({
+  id: '/cadastro',
+  path: '/cadastro',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -75,10 +113,50 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AuthenticatedRouteRoute,
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PainelIndexRoute = PainelIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PainelRoute,
+} as any)
+const PainelWhatsappRoute = PainelWhatsappRouteImport.update({
+  id: '/whatsapp',
+  path: '/whatsapp',
+  getParentRoute: () => PainelRoute,
+} as any)
+const PainelTemplatesRoute = PainelTemplatesRouteImport.update({
+  id: '/templates',
+  path: '/templates',
+  getParentRoute: () => PainelRoute,
+} as any)
+const PainelRelatoriosRoute = PainelRelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
+  getParentRoute: () => PainelRoute,
+} as any)
+const PainelFinanceiroRoute = PainelFinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
+  getParentRoute: () => PainelRoute,
+} as any)
+const PainelContatosRoute = PainelContatosRouteImport.update({
+  id: '/contatos',
+  path: '/contatos',
+  getParentRoute: () => PainelRoute,
+} as any)
+const PainelConfiguracoesRoute = PainelConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => PainelRoute,
+} as any)
+const PainelCampanhasRoute = PainelCampanhasRouteImport.update({
+  id: '/campanhas',
+  path: '/campanhas',
+  getParentRoute: () => PainelRoute,
 } as any)
 const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/admin/',
@@ -325,10 +403,23 @@ const AuthenticatedAdminCampaignsIdEditRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof AuthenticatedIndexRoute
+  '/': typeof IndexRoute
   '/$slug': typeof SlugRoute
   '/auth': typeof AuthRoute
+  '/cadastro': typeof CadastroRoute
+  '/login': typeof LoginRoute
+  '/painel': typeof PainelRouteWithChildren
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
+  '/recuperar-senha': typeof RecuperarSenhaRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/painel/campanhas': typeof PainelCampanhasRoute
+  '/painel/configuracoes': typeof PainelConfiguracoesRoute
+  '/painel/contatos': typeof PainelContatosRoute
+  '/painel/financeiro': typeof PainelFinanceiroRoute
+  '/painel/relatorios': typeof PainelRelatoriosRoute
+  '/painel/templates': typeof PainelTemplatesRoute
+  '/painel/whatsapp': typeof PainelWhatsappRoute
+  '/painel/': typeof PainelIndexRoute
   '/admin/agenda': typeof AuthenticatedAdminAgendaRoute
   '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
@@ -372,10 +463,22 @@ export interface FileRoutesByFullPath {
   '/admin/campaigns/$id/preview': typeof AuthenticatedAdminCampaignsIdPreviewRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof IndexRoute
   '/$slug': typeof SlugRoute
   '/auth': typeof AuthRoute
+  '/cadastro': typeof CadastroRoute
+  '/login': typeof LoginRoute
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
-  '/': typeof AuthenticatedIndexRoute
+  '/recuperar-senha': typeof RecuperarSenhaRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/painel/campanhas': typeof PainelCampanhasRoute
+  '/painel/configuracoes': typeof PainelConfiguracoesRoute
+  '/painel/contatos': typeof PainelContatosRoute
+  '/painel/financeiro': typeof PainelFinanceiroRoute
+  '/painel/relatorios': typeof PainelRelatoriosRoute
+  '/painel/templates': typeof PainelTemplatesRoute
+  '/painel/whatsapp': typeof PainelWhatsappRoute
+  '/painel': typeof PainelIndexRoute
   '/admin/agenda': typeof AuthenticatedAdminAgendaRoute
   '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
@@ -420,11 +523,24 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/$slug': typeof SlugRoute
   '/auth': typeof AuthRoute
+  '/cadastro': typeof CadastroRoute
+  '/login': typeof LoginRoute
+  '/painel': typeof PainelRouteWithChildren
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
-  '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/recuperar-senha': typeof RecuperarSenhaRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/painel/campanhas': typeof PainelCampanhasRoute
+  '/painel/configuracoes': typeof PainelConfiguracoesRoute
+  '/painel/contatos': typeof PainelContatosRoute
+  '/painel/financeiro': typeof PainelFinanceiroRoute
+  '/painel/relatorios': typeof PainelRelatoriosRoute
+  '/painel/templates': typeof PainelTemplatesRoute
+  '/painel/whatsapp': typeof PainelWhatsappRoute
+  '/painel/': typeof PainelIndexRoute
   '/_authenticated/admin/agenda': typeof AuthenticatedAdminAgendaRoute
   '/_authenticated/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
   '/_authenticated/admin/clientes': typeof AuthenticatedAdminClientesRoute
@@ -473,7 +589,20 @@ export interface FileRouteTypes {
     | '/'
     | '/$slug'
     | '/auth'
+    | '/cadastro'
+    | '/login'
+    | '/painel'
     | '/politica-de-privacidade'
+    | '/recuperar-senha'
+    | '/reset-password'
+    | '/painel/campanhas'
+    | '/painel/configuracoes'
+    | '/painel/contatos'
+    | '/painel/financeiro'
+    | '/painel/relatorios'
+    | '/painel/templates'
+    | '/painel/whatsapp'
+    | '/painel/'
     | '/admin/agenda'
     | '/admin/campanhas'
     | '/admin/clientes'
@@ -517,10 +646,22 @@ export interface FileRouteTypes {
     | '/admin/campaigns/$id/preview'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/'
     | '/$slug'
     | '/auth'
+    | '/cadastro'
+    | '/login'
     | '/politica-de-privacidade'
-    | '/'
+    | '/recuperar-senha'
+    | '/reset-password'
+    | '/painel/campanhas'
+    | '/painel/configuracoes'
+    | '/painel/contatos'
+    | '/painel/financeiro'
+    | '/painel/relatorios'
+    | '/painel/templates'
+    | '/painel/whatsapp'
+    | '/painel'
     | '/admin/agenda'
     | '/admin/campanhas'
     | '/admin/clientes'
@@ -564,11 +705,24 @@ export interface FileRouteTypes {
     | '/admin/campaigns/$id/preview'
   id:
     | '__root__'
+    | '/'
     | '/_authenticated'
     | '/$slug'
     | '/auth'
+    | '/cadastro'
+    | '/login'
+    | '/painel'
     | '/politica-de-privacidade'
-    | '/_authenticated/'
+    | '/recuperar-senha'
+    | '/reset-password'
+    | '/painel/campanhas'
+    | '/painel/configuracoes'
+    | '/painel/contatos'
+    | '/painel/financeiro'
+    | '/painel/relatorios'
+    | '/painel/templates'
+    | '/painel/whatsapp'
+    | '/painel/'
     | '/_authenticated/admin/agenda'
     | '/_authenticated/admin/campanhas'
     | '/_authenticated/admin/clientes'
@@ -613,10 +767,16 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   SlugRoute: typeof SlugRoute
   AuthRoute: typeof AuthRoute
+  CadastroRoute: typeof CadastroRoute
+  LoginRoute: typeof LoginRoute
+  PainelRoute: typeof PainelRouteWithChildren
   PoliticaDePrivacidadeRoute: typeof PoliticaDePrivacidadeRoute
+  RecuperarSenhaRoute: typeof RecuperarSenhaRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   ApiPublicCiSplatRoute: typeof ApiPublicCiSplatRoute
   ApiPublicWhatsappQueueTickRoute: typeof ApiPublicWhatsappQueueTickRoute
   ApiPublicWhatsappWebhookRoute: typeof ApiPublicWhatsappWebhookRoute
@@ -625,11 +785,46 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recuperar-senha': {
+      id: '/recuperar-senha'
+      path: '/recuperar-senha'
+      fullPath: '/recuperar-senha'
+      preLoaderRoute: typeof RecuperarSenhaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/politica-de-privacidade': {
       id: '/politica-de-privacidade'
       path: '/politica-de-privacidade'
       fullPath: '/politica-de-privacidade'
       preLoaderRoute: typeof PoliticaDePrivacidadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/painel': {
+      id: '/painel'
+      path: '/painel'
+      fullPath: '/painel'
+      preLoaderRoute: typeof PainelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cadastro': {
+      id: '/cadastro'
+      path: '/cadastro'
+      fullPath: '/cadastro'
+      preLoaderRoute: typeof CadastroRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -653,12 +848,68 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/': {
-      id: '/_authenticated/'
+    '/': {
+      id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof AuthenticatedIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/painel/': {
+      id: '/painel/'
+      path: '/'
+      fullPath: '/painel/'
+      preLoaderRoute: typeof PainelIndexRouteImport
+      parentRoute: typeof PainelRoute
+    }
+    '/painel/whatsapp': {
+      id: '/painel/whatsapp'
+      path: '/whatsapp'
+      fullPath: '/painel/whatsapp'
+      preLoaderRoute: typeof PainelWhatsappRouteImport
+      parentRoute: typeof PainelRoute
+    }
+    '/painel/templates': {
+      id: '/painel/templates'
+      path: '/templates'
+      fullPath: '/painel/templates'
+      preLoaderRoute: typeof PainelTemplatesRouteImport
+      parentRoute: typeof PainelRoute
+    }
+    '/painel/relatorios': {
+      id: '/painel/relatorios'
+      path: '/relatorios'
+      fullPath: '/painel/relatorios'
+      preLoaderRoute: typeof PainelRelatoriosRouteImport
+      parentRoute: typeof PainelRoute
+    }
+    '/painel/financeiro': {
+      id: '/painel/financeiro'
+      path: '/financeiro'
+      fullPath: '/painel/financeiro'
+      preLoaderRoute: typeof PainelFinanceiroRouteImport
+      parentRoute: typeof PainelRoute
+    }
+    '/painel/contatos': {
+      id: '/painel/contatos'
+      path: '/contatos'
+      fullPath: '/painel/contatos'
+      preLoaderRoute: typeof PainelContatosRouteImport
+      parentRoute: typeof PainelRoute
+    }
+    '/painel/configuracoes': {
+      id: '/painel/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/painel/configuracoes'
+      preLoaderRoute: typeof PainelConfiguracoesRouteImport
+      parentRoute: typeof PainelRoute
+    }
+    '/painel/campanhas': {
+      id: '/painel/campanhas'
+      path: '/campanhas'
+      fullPath: '/painel/campanhas'
+      preLoaderRoute: typeof PainelCampanhasRouteImport
+      parentRoute: typeof PainelRoute
     }
     '/_authenticated/admin/': {
       id: '/_authenticated/admin/'
@@ -1044,7 +1295,6 @@ const AuthenticatedAdminCampaignsIdRouteWithChildren =
   )
 
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedAdminAgendaRoute: typeof AuthenticatedAdminAgendaRoute
   AuthenticatedAdminCampanhasRoute: typeof AuthenticatedAdminCampanhasRoute
   AuthenticatedAdminClientesRoute: typeof AuthenticatedAdminClientesRoute
@@ -1069,7 +1319,6 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedAdminAgendaRoute: AuthenticatedAdminAgendaRoute,
   AuthenticatedAdminCampanhasRoute: AuthenticatedAdminCampanhasRoute,
   AuthenticatedAdminClientesRoute: AuthenticatedAdminClientesRoute,
@@ -1100,11 +1349,42 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface PainelRouteChildren {
+  PainelCampanhasRoute: typeof PainelCampanhasRoute
+  PainelConfiguracoesRoute: typeof PainelConfiguracoesRoute
+  PainelContatosRoute: typeof PainelContatosRoute
+  PainelFinanceiroRoute: typeof PainelFinanceiroRoute
+  PainelRelatoriosRoute: typeof PainelRelatoriosRoute
+  PainelTemplatesRoute: typeof PainelTemplatesRoute
+  PainelWhatsappRoute: typeof PainelWhatsappRoute
+  PainelIndexRoute: typeof PainelIndexRoute
+}
+
+const PainelRouteChildren: PainelRouteChildren = {
+  PainelCampanhasRoute: PainelCampanhasRoute,
+  PainelConfiguracoesRoute: PainelConfiguracoesRoute,
+  PainelContatosRoute: PainelContatosRoute,
+  PainelFinanceiroRoute: PainelFinanceiroRoute,
+  PainelRelatoriosRoute: PainelRelatoriosRoute,
+  PainelTemplatesRoute: PainelTemplatesRoute,
+  PainelWhatsappRoute: PainelWhatsappRoute,
+  PainelIndexRoute: PainelIndexRoute,
+}
+
+const PainelRouteWithChildren =
+  PainelRoute._addFileChildren(PainelRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   SlugRoute: SlugRoute,
   AuthRoute: AuthRoute,
+  CadastroRoute: CadastroRoute,
+  LoginRoute: LoginRoute,
+  PainelRoute: PainelRouteWithChildren,
   PoliticaDePrivacidadeRoute: PoliticaDePrivacidadeRoute,
+  RecuperarSenhaRoute: RecuperarSenhaRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   ApiPublicCiSplatRoute: ApiPublicCiSplatRoute,
   ApiPublicWhatsappQueueTickRoute: ApiPublicWhatsappQueueTickRoute,
   ApiPublicWhatsappWebhookRoute: ApiPublicWhatsappWebhookRoute,
@@ -1113,13 +1393,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

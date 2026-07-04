@@ -9,16 +9,17 @@ export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async () => {
     const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) throw redirect({ to: "/auth" });
+    if (error || !data.user) throw redirect({ to: "/login" });
 
     const { data: roles } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", data.user.id);
-    const isAdmin = (roles ?? []).some((r) => r.role === "admin");
-    if (!isAdmin) {
-      await supabase.auth.signOut();
-      throw redirect({ to: "/auth", search: { reason: "not-admin" } as never });
+    const internalRoles = new Set(["admin", "super_admin", "support", "finance", "operations"]);
+    const isInternal = (roles ?? []).some((r) => internalRoles.has(r.role as string));
+    if (!isInternal) {
+      // Non-staff logged in: send to client panel instead of forcing sign-out
+      throw redirect({ to: "/painel" });
     }
     return { user: data.user };
   },
@@ -44,7 +45,7 @@ function AuthenticatedLayout() {
               size="sm"
               onClick={async () => {
                 await supabase.auth.signOut();
-                navigate({ to: "/auth" });
+                navigate({ to: "/login" });
               }}
             >
               <LogOut className="mr-2 h-4 w-4" />
