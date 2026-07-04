@@ -14,7 +14,7 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  adminListWorkspacesWithBalance, adminSetCustomPrice, adminAdjustWallet, adminListAllTransactions,
+  adminListWorkspacesWithBalance, adminSetCustomPrice, adminSetCustomMinimumMessages, adminAdjustWallet, adminListAllTransactions,
 } from "@/lib/billing.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/financeiro")({
@@ -38,6 +38,7 @@ function Page() {
   const listWs = useServerFn(adminListWorkspacesWithBalance);
   const listTx = useServerFn(adminListAllTransactions);
   const setPrice = useServerFn(adminSetCustomPrice);
+  const setMinMsg = useServerFn(adminSetCustomMinimumMessages);
   const adjust = useServerFn(adminAdjustWallet);
   const qc = useQueryClient();
 
@@ -47,8 +48,9 @@ function Page() {
     queryFn: () => listTx({ data: { limit: 200 } }),
   });
 
-  const [modal, setModal] = useState<null | { ws: any; type: "price" | "adjust" }>(null);
+  const [modal, setModal] = useState<null | { ws: any; type: "price" | "minmsg" | "adjust" }>(null);
   const [priceStr, setPriceStr] = useState("");
+  const [minMsgStr, setMinMsgStr] = useState("");
   const [amountStr, setAmountStr] = useState("");
   const [description, setDescription] = useState("");
   const [signMul, setSignMul] = useState(1);
@@ -61,6 +63,15 @@ function Page() {
       custom_price_cents: priceStr.trim() === "" ? null : parse(priceStr),
     } }),
     onSuccess: () => { toast.success("Preço atualizado"); qc.invalidateQueries({ queryKey: ["admin-ws-balance"] }); setModal(null); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro"),
+  });
+
+  const saveMinMsg = useMutation({
+    mutationFn: () => setMinMsg({ data: {
+      workspace_id: modal!.ws.id,
+      custom_minimum_messages: minMsgStr.trim() === "" ? null : Math.max(1, parseInt(minMsgStr, 10)),
+    } }),
+    onSuccess: () => { toast.success("Mínimo atualizado"); qc.invalidateQueries({ queryKey: ["admin-ws-balance"] }); setModal(null); },
     onError: (e: any) => toast.error(e?.message ?? "Erro"),
   });
 
@@ -93,6 +104,7 @@ function Page() {
                 <TableHead className="text-right">Saldo</TableHead>
                 <TableHead className="text-right">Reservado</TableHead>
                 <TableHead className="text-right">Preço/msg</TableHead>
+                <TableHead className="text-right">Mín. msgs</TableHead>
                 <TableHead></TableHead>
               </TableRow>
             </TableHeader>
@@ -113,7 +125,13 @@ function Page() {
                         : <span className="text-muted-foreground">padrão</span>}
                     </TableCell>
                     <TableCell className="text-right">
+                      {wal.custom_minimum_messages != null
+                        ? <Badge variant="secondary">{Number(wal.custom_minimum_messages).toLocaleString("pt-BR")}</Badge>
+                        : <span className="text-muted-foreground">padrão</span>}
+                    </TableCell>
+                    <TableCell className="text-right">
                       <Button size="sm" variant="outline" onClick={() => { setPriceStr(wal.custom_price_cents != null ? (wal.custom_price_cents/100).toFixed(2).replace(".", ",") : ""); setModal({ ws: w, type: "price" }); }}>Preço</Button>
+                      <Button size="sm" variant="outline" className="ml-2" onClick={() => { setMinMsgStr(wal.custom_minimum_messages != null ? String(wal.custom_minimum_messages) : ""); setModal({ ws: w, type: "minmsg" }); }}>Mín. msgs</Button>
                       <Button size="sm" variant="outline" className="ml-2" onClick={() => { setAmountStr(""); setDescription(""); setSignMul(1); setModal({ ws: w, type: "adjust" }); }}>Ajuste</Button>
                     </TableCell>
                   </TableRow>
@@ -168,6 +186,22 @@ function Page() {
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setModal(null)}>Cancelar</Button>
                 <Button onClick={() => savePrice.mutate()} disabled={savePrice.isPending}>Salvar</Button>
+              </DialogFooter>
+            </>
+          )}
+          {modal?.type === "minmsg" && (
+            <>
+              <DialogHeader><DialogTitle>Mínimo de mensagens — {modal.ws.name}</DialogTitle></DialogHeader>
+              <div>
+                <Label>Quantidade mínima (vazio = usar padrão global)</Label>
+                <Input inputMode="numeric" value={minMsgStr} onChange={(e) => setMinMsgStr(e.target.value.replace(/\D/g, ""))} placeholder="2500" />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  O depósito mínimo será o maior entre o mínimo global e (preço × mínimo de mensagens).
+                </p>
+              </div>
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setModal(null)}>Cancelar</Button>
+                <Button onClick={() => saveMinMsg.mutate()} disabled={saveMinMsg.isPending}>Salvar</Button>
               </DialogFooter>
             </>
           )}

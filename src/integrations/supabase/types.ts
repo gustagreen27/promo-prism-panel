@@ -47,6 +47,7 @@ export type Database = {
       billing_settings: {
         Row: {
           currency: string
+          default_minimum_messages: number
           default_price_cents: number
           id: number
           minimum_deposit_cents: number
@@ -55,6 +56,7 @@ export type Database = {
         }
         Insert: {
           currency?: string
+          default_minimum_messages?: number
           default_price_cents?: number
           id?: number
           minimum_deposit_cents?: number
@@ -63,6 +65,7 @@ export type Database = {
         }
         Update: {
           currency?: string
+          default_minimum_messages?: number
           default_price_cents?: number
           id?: number
           minimum_deposit_cents?: number
@@ -2884,6 +2887,7 @@ export type Database = {
         Row: {
           balance_cents: number
           created_at: string
+          custom_minimum_messages: number | null
           custom_price_cents: number | null
           low_balance_alert_at: string | null
           reserved_cents: number
@@ -2893,6 +2897,7 @@ export type Database = {
         Insert: {
           balance_cents?: number
           created_at?: string
+          custom_minimum_messages?: number | null
           custom_price_cents?: number | null
           low_balance_alert_at?: string | null
           reserved_cents?: number
@@ -2902,6 +2907,7 @@ export type Database = {
         Update: {
           balance_cents?: number
           created_at?: string
+          custom_minimum_messages?: number | null
           custom_price_cents?: number | null
           low_balance_alert_at?: string | null
           reserved_cents?: number
@@ -3140,10 +3146,12 @@ export type Database = {
         }
       }
       wallet_effective_price: { Args: { _ws: string }; Returns: number }
+      wallet_minimum_messages: { Args: { _ws: string }; Returns: number }
       wallet_release_reservation: {
         Args: { _qty?: number; _reservation_id: string }
         Returns: boolean
       }
+      wallet_required_deposit_cents: { Args: { _ws: string }; Returns: number }
       wallet_reserve: {
         Args: {
           _campaign_id: string

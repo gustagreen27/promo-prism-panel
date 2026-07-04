@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -69,15 +69,21 @@ function Page() {
   });
 
   const [open, setOpen] = useState(false);
-  const [amountStr, setAmountStr] = useState("150,00");
+  const requiredCents = (w as any)?.required_deposit_cents ?? w?.minimum_deposit_cents ?? 15000;
+  const minMessages = (w as any)?.minimum_messages ?? 2500;
+  const [amountStr, setAmountStr] = useState("375,00");
 
-  const minCents = w?.minimum_deposit_cents ?? 15000;
+  useEffect(() => {
+    if (requiredCents) {
+      setAmountStr((requiredCents / 100).toFixed(2).replace(".", ","));
+    }
+  }, [requiredCents]);
 
   const deposit = useMutation({
     mutationFn: async () => {
       const cents = Math.round(Number(amountStr.replace(/\./g, "").replace(",", ".")) * 100);
-      if (!Number.isFinite(cents) || cents < minCents) {
-        throw new Error(`O valor mínimo para depósito é ${fmt(minCents)}`);
+      if (!Number.isFinite(cents) || cents < requiredCents) {
+        throw new Error(`O valor mínimo para depósito é ${fmt(requiredCents)}`);
       }
       return createDep({ data: { workspace_id: wsId, amount_cents: cents } });
     },
@@ -138,7 +144,9 @@ function Page() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{fmt(w?.unit_price_cents ?? 15)}</div>
-            <div className="mt-1 text-xs text-muted-foreground">Aplicado ao seu workspace</div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              Mínimo {minMessages.toLocaleString("pt-BR")} mensagens · pacote mínimo {fmt(requiredCents)}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -222,7 +230,7 @@ function Page() {
           <DialogHeader>
             <DialogTitle>Depositar saldo</DialogTitle>
             <DialogDescription>
-              Depósito mínimo {fmt(minCents)}. Pagamento por Pix ou cartão.
+              Depósito mínimo para o seu plano: <strong>{fmt(requiredCents)}</strong> ({minMessages.toLocaleString("pt-BR")} mensagens × {fmt(w?.unit_price_cents ?? 15)}).
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -232,9 +240,9 @@ function Page() {
                 inputMode="decimal"
                 value={amountStr}
                 onChange={(e) => setAmountStr(e.target.value)}
-                placeholder="150,00"
+                placeholder={(requiredCents / 100).toFixed(2).replace(".", ",")}
               />
-              <p className="mt-1 text-xs text-muted-foreground">Mínimo {fmt(minCents)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Mínimo {fmt(requiredCents)}</p>
             </div>
           </div>
           <DialogFooter>
