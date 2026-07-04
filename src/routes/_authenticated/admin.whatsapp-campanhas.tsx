@@ -21,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { listConnections } from "@/lib/whatsapp.functions";
 import { sendFrgc01, getMessageLogStatus, type SendFrgc01Response } from "@/lib/wa-frgc01.functions";
+import { renderMapping, buildContext } from "@/lib/wa-variables";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp-campanhas")({
   head: () => ({ meta: [{ title: "Campanhas WhatsApp (frgc_01)" }] }),
