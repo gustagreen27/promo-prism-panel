@@ -100,18 +100,19 @@ export const renderPreview = createServerFn({ method: "POST" })
     const bodyRendered = fillMetaTemplate(tpl.body ?? "", resolved);
 
     let buttonRendered: { text: string; url: string }[] = [];
-    const btns = Array.isArray(tpl.buttons) ? tpl.buttons : [];
-    for (const b of btns) {
-      if ((b?.type || "").toLowerCase() === "url" && b.url) {
-        const urlVars = metaVarsIn(b.url);
+    const btns = (Array.isArray(tpl.buttons) ? tpl.buttons : []) as any[];
+    for (const raw of btns) {
+      const b: any = raw ?? {};
+      if ((b.type || "").toString().toLowerCase() === "url" && b.url) {
+        const urlVars = metaVarsIn(String(b.url));
         const urlResolved: Record<number, string> = {};
         for (const n of urlVars) {
           const mapping = (data.button_url_mapping ?? {})[String(n)] ?? "";
           urlResolved[n] = renderMapping(mapping, ctx);
         }
-        buttonRendered.push({ text: b.text, url: fillMetaTemplate(b.url, urlResolved) });
-      } else if (b?.text) {
-        buttonRendered.push({ text: b.text, url: "" });
+        buttonRendered.push({ text: String(b.text ?? ""), url: fillMetaTemplate(String(b.url), urlResolved) });
+      } else if (b.text) {
+        buttonRendered.push({ text: String(b.text), url: "" });
       }
     }
     return {
