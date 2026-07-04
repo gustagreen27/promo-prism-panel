@@ -128,9 +128,9 @@ export const startCampaignAsync = createServerFn({ method: "POST" })
     if (!recCount) throw new Error("Gere a fila de destinatários antes de iniciar.");
 
     const { data: avail } = await supabase.rpc("wa_available_stock", {
-      _client_id: camp.client_id,
-      _project_id: camp.project_id,
-    });
+      _client_id: camp.client_id ?? undefined,
+      _project_id: camp.project_id ?? undefined,
+    } as any);
     if (Number(avail ?? 0) < recCount) throw new Error(`Estoque insuficiente: ${avail ?? 0} disponíveis, ${recCount} necessárias.`);
 
     await supabase
