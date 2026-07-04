@@ -272,6 +272,14 @@ function Page() {
             {prog?.last_error && (
               <div className="flex items-center gap-1 text-red-600"><AlertTriangle className="h-4 w-4" /> {prog.last_error}</div>
             )}
+            {(camp as any)?.pause_reason && (
+              <div className="flex items-center gap-1 text-amber-600">
+                <AlertTriangle className="h-4 w-4" />
+                {(camp as any).pause_reason === "quiet_hours" && "Aguardando fim da janela de silêncio"}
+                {(camp as any).pause_reason === "quota_reached" && "Cota (hora/dia) atingida — retomará no próximo ciclo"}
+                {(camp as any).pause_reason === "failure_rate" && "Auto-pausada por taxa de falha elevada"}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
