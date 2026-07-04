@@ -81,7 +81,46 @@ function Page() {
             </Button>
             <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
               <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Novo</Button></DialogTrigger>
-              <FormDialog editing={editing} numbers={numbers} onSubmit={(p: any) => save.mutate(p)} saving={save.isPending} />
+              <FormDialog editing={editing} numbers={numbers} wabas={wabas} onSubmit={(p: any) => save.mutate(p)} saving={save.isPending} />
+            </Dialog>
+          </div>
+        }
+      />
+      <div className="rounded-xl border bg-card">
+        {isLoading ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
+        : rows.length === 0 ? <EmptyState title="Nenhum template" description="Cadastre manualmente ou sincronize com a Meta." />
+        : <Table>
+          <TableHeader><TableRow>
+            <TableHead>Nome</TableHead><TableHead>WABA</TableHead><TableHead>Idioma</TableHead><TableHead>Categoria</TableHead>
+            <TableHead>Status</TableHead><TableHead>Meta ID</TableHead><TableHead /></TableRow></TableHeader>
+          <TableBody>
+            {rows.map((r: any) => (
+              <TableRow key={r.id}>
+                <TableCell className="font-medium">{r.name}</TableCell>
+                <TableCell className="text-xs">{r.waba?.nome_interno ?? "—"}</TableCell>
+                <TableCell>{r.language}</TableCell>
+                <TableCell>{r.category ?? "—"}</TableCell>
+                <TableCell>
+                  <Badge variant={r.status === "approved" ? "default" : r.status === "rejected" ? "destructive" : "secondary"}>{r.status}</Badge>
+                  {r.rejection_reason && <div className="text-[10px] text-destructive mt-1 max-w-[200px] truncate" title={r.rejection_reason}>{r.rejection_reason}</div>}
+                </TableCell>
+                <TableCell className="font-mono text-xs">{r.meta_template_id ?? "—"}</TableCell>
+                <TableCell className="text-right">
+                  <Button size="icon" variant="ghost" title="Enviar para aprovação" disabled={submitMut.isPending || !r.waba_ref_id} onClick={() => submitMut.mutate(r.id)}><Send className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" title="Consultar status" disabled={refreshMut.isPending || !r.waba_ref_id} onClick={() => refreshMut.mutate(r.id)}><ClipboardCheck className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => { setEditing(r); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => confirm("Remover?") && del.mutate(r.id)}><Trash2 className="h-4 w-4" /></Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>}
+      </div>
+    </>
+  );
+}
+
+// Substituindo o bloco antigo abaixo:
             </Dialog>
           </div>
         }
