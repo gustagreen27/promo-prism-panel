@@ -179,10 +179,14 @@ function FormDialog({ editing, numbers, wabas, onSubmit, saving }: any) {
             </SelectContent>
           </Select>
         </div>
-        <div className="sm:col-span-2"><Label>Cabeçalho (texto ou URL da mídia)</Label><Input value={form.header_text ?? ""} onChange={(e) => set("header_text", e.target.value)} /></div>
+        <div className="sm:col-span-2"><Label>Cabeçalho — texto</Label><Input value={form.header_text ?? ""} onChange={(e) => set("header_text", e.target.value)} placeholder="(apenas se tipo = texto)" /></div>
+        <div className="sm:col-span-2"><Label>Cabeçalho — URL de mídia (image/video/document)</Label><Input value={form.header_media_url ?? ""} onChange={(e) => set("header_media_url", e.target.value)} placeholder="https://exemplo.com/mídia.jpg" /></div>
         <div className="sm:col-span-2"><Label>Corpo *</Label><Textarea rows={4} value={form.body ?? ""} onChange={(e) => set("body", e.target.value)} placeholder="Olá {{1}}, sua mensagem..." /></div>
-        <div className="sm:col-span-2"><Label>Variáveis (separadas por vírgula, ex: 1,2,3)</Label>
-          <Input value={Array.isArray(form.variables) ? form.variables.join(",") : ""} onChange={(e) => set("variables", e.target.value.split(",").map(s => s.trim()).filter(Boolean))} />
+        <div className="sm:col-span-2"><Label>Exemplos das variáveis do corpo (obrigatório na Meta — 1 por variável, separadas por |)</Label>
+          <Input value={bodyExamples.join(" | ")} onChange={(e) => setBodyExamples(e.target.value.split("|").map((s) => s.trim()).filter(Boolean))} placeholder="João | Segunda-feira | 20% OFF" />
+        </div>
+        <div className="sm:col-span-2"><Label>Variáveis detectadas</Label>
+          <Input readOnly value={((form.body || "").match(/\{\{\d+\}\}/g) || []).join(", ") || "—"} className="font-mono text-xs" />
         </div>
         <div className="sm:col-span-2"><Label>Rodapé</Label><Input value={form.footer ?? ""} onChange={(e) => set("footer", e.target.value)} /></div>
       </div>
