@@ -1,16 +1,14 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
-  MessageSquare,
   Megaphone,
   Users,
-  Wallet,
   BarChart3,
   Settings,
   LogOut,
   Briefcase,
   FileText,
-  Send,
+  Link2,
   Inbox,
   History,
   Boxes,
@@ -74,16 +72,19 @@ const GROUPS: { label: string; items: NavItem[] }[] = [
     ],
   },
   {
-    label: "Campanhas",
+    label: "Campanhas Disparo",
     items: [
       { title: "Todas as campanhas", to: "/admin/whatsapp-campanhas", icon: Megaphone },
       { title: "Nova campanha", to: "/admin/whatsapp-campanhas/novo", icon: Plus },
       { title: "Agendadas", to: "/admin/whatsapp-campanhas", search: { status: "scheduled" }, icon: Clock },
       { title: "Em andamento", to: "/admin/whatsapp-campanhas", search: { status: "running" }, icon: PlayCircle },
       { title: "Concluídas", to: "/admin/whatsapp-campanhas", search: { status: "completed" }, icon: CheckCircle2 },
-      { title: "Campanhas de links", to: "/admin/campanhas", icon: Send },
       { title: "Relatórios de campanha", to: "/admin/whatsapp/relatorios", icon: BarChart3 },
     ],
+  },
+  {
+    label: "Cloaker",
+    items: [{ title: "Cloaker", to: "/admin/campanhas", icon: Link2 }],
   },
   {
     label: "Clientes",
