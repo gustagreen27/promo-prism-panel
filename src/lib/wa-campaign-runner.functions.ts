@@ -80,9 +80,9 @@ export const preflightCampaign = createServerFn({ method: "POST" })
 
     // Stock
     const { data: avail } = await supabase.rpc("wa_available_stock", {
-      _client_id: camp.client_id,
-      _project_id: camp.project_id,
-    });
+      _client_id: camp.client_id ?? undefined,
+      _project_id: camp.project_id ?? undefined,
+    } as any);
     const available = Number(avail ?? 0);
     checks.push({
       key: "stock",
