@@ -228,7 +228,7 @@ function Page() {
           <DialogHeader>
             <DialogTitle>Depositar saldo</DialogTitle>
             <DialogDescription>
-              Depósito mínimo {fmt(minCents)}. Pagamento por Pix ou cartão.
+              Depósito mínimo para o seu plano: <strong>{fmt(requiredCents)}</strong> ({minMessages.toLocaleString("pt-BR")} mensagens × {fmt(w?.unit_price_cents ?? 15)}).
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -238,9 +238,9 @@ function Page() {
                 inputMode="decimal"
                 value={amountStr}
                 onChange={(e) => setAmountStr(e.target.value)}
-                placeholder="150,00"
+                placeholder={(requiredCents / 100).toFixed(2).replace(".", ",")}
               />
-              <p className="mt-1 text-xs text-muted-foreground">Mínimo {fmt(minCents)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Mínimo {fmt(requiredCents)}</p>
             </div>
           </div>
           <DialogFooter>
