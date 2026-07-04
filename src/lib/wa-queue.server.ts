@@ -1,6 +1,8 @@
 // Server-only queue processor for WhatsApp campaigns (async worker with lease + timeline + final report).
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendTemplateMessage } from "@/lib/wa-send.server";
+import { renderMapping, buildContext } from "@/lib/wa-variables";
+
 
 const OPT_OUT_REGEX = /\b(parar|sair|cancelar|cancela|remover|descadastrar|n[ãa]o quero|stop|unsubscribe)\b/i;
 
@@ -232,6 +234,16 @@ export async function processCampaignTick(
       await logEvent(campaignId, "error", "Número ou template inválido");
       return { processed: 0, done: true };
     }
+    // Load client / project / responsavel once for token context
+    const [clientRes, projectRes, respRes] = await Promise.all([
+      camp.client_id ? supabaseAdmin.from("clients").select("*").eq("id", camp.client_id).maybeSingle() : Promise.resolve({ data: null } as any),
+      camp.project_id ? supabaseAdmin.from("projects").select("*").eq("id", camp.project_id).maybeSingle() : Promise.resolve({ data: null } as any),
+      (camp as any).responsavel_id ? supabaseAdmin.from("profiles").select("*").eq("id", (camp as any).responsavel_id).maybeSingle() : Promise.resolve({ data: null } as any),
+    ]);
+    const clientRow = (clientRes as any).data ?? null;
+    const projectRow = (projectRes as any).data ?? null;
+    const responsavelRow = (respRes as any).data ?? null;
+
 
     // Quiet hours: skip tick, keep status=running (will retry next tick)
     if (isInQuietHours(new Date().toISOString(), camp.quiet_hours_start as any, camp.quiet_hours_end as any, (camp as any).timezone || "America/Sao_Paulo")) {
@@ -324,13 +336,41 @@ export async function processCampaignTick(
       const campVars = (camp.template_variables as Record<string, string> | null) || {};
       const recVars = (r.variables as Record<string, string> | null) || {};
       const mergedVars = { ...campVars, ...recVars };
-      const headerImageOverride = mergedVars._header_image_url || null;
-      const buttonUrlParam = mergedVars._button_url_param || null;
-      const buttonIndexRaw = mergedVars._button_index;
-      const buttonIndex = buttonIndexRaw != null ? Number(buttonIndexRaw) : 0;
+
+      // Load contact for this recipient to build the token context
+      let contactRow: any = null;
+      if ((r as any).contact_id) {
+        const { data: c } = await supabaseAdmin.from("contacts").select("*").eq("id", (r as any).contact_id).maybeSingle();
+        contactRow = c;
+      }
+      if (!contactRow) {
+        const { data: c } = await supabaseAdmin.from("contacts").select("*").eq("phone", r.phone).maybeSingle();
+        contactRow = c;
+      }
+      const ctx = buildContext({
+        contact: contactRow ?? { phone: r.phone },
+        client: clientRow,
+        project: projectRow,
+        campaign: camp,
+        responsavel: responsavelRow,
+      });
+
+      // Render mapping strings (e.g. "{nome} como você está?") into final text per recipient.
+      const renderedVars: Record<string, string> = {};
+      for (const [k, v] of Object.entries(mergedVars)) {
+        if (k.startsWith("_")) { renderedVars[k] = String(v ?? ""); continue; }
+        renderedVars[k] = renderMapping(String(v ?? ""), ctx);
+      }
+
+      const headerImageOverride = renderedVars._header_image_url || null;
+      const rawButtonUrlParam = renderedVars._button_url_param || null;
+      const buttonUrlParam = rawButtonUrlParam ? renderMapping(rawButtonUrlParam, ctx) : null;
+      const buttonIndexRaw = renderedVars._button_index;
+      const buttonIndex = buttonIndexRaw != null && buttonIndexRaw !== "" ? Number(buttonIndexRaw) : 0;
 
       const resolvedHeaderType = headerImageOverride ? "image" : tpl.header_type;
       const resolvedHeaderValue = headerImageOverride ?? tpl.header_text;
+
 
       const result = await sendTemplateMessage({
         phoneNumberId: conn.phone_number_id!,
@@ -339,7 +379,7 @@ export async function processCampaignTick(
         to: r.phone.replace(/\D/g, ""),
         templateName: tpl.name,
         languageCode: tpl.language || "pt_BR",
-        variables: mergedVars,
+        variables: renderedVars,
         headerType: resolvedHeaderType,
         headerValue: resolvedHeaderValue,
         buttonUrlParam,
