@@ -20,6 +20,13 @@ import { Route as SlugRouteImport } from './routes/$slug'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PainelIndexRouteImport } from './routes/painel.index'
+import { Route as PainelWhatsappRouteImport } from './routes/painel.whatsapp'
+import { Route as PainelTemplatesRouteImport } from './routes/painel.templates'
+import { Route as PainelRelatoriosRouteImport } from './routes/painel.relatorios'
+import { Route as PainelFinanceiroRouteImport } from './routes/painel.financeiro'
+import { Route as PainelContatosRouteImport } from './routes/painel.contatos'
+import { Route as PainelConfiguracoesRouteImport } from './routes/painel.configuracoes'
+import { Route as PainelCampanhasRouteImport } from './routes/painel.campanhas'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedAdminWhatsappCampanhasRouteImport } from './routes/_authenticated/admin.whatsapp-campanhas'
 import { Route as AuthenticatedAdminWhatsappRouteImport } from './routes/_authenticated/admin.whatsapp'
@@ -114,6 +121,41 @@ const IndexRoute = IndexRouteImport.update({
 const PainelIndexRoute = PainelIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => PainelRoute,
+} as any)
+const PainelWhatsappRoute = PainelWhatsappRouteImport.update({
+  id: '/whatsapp',
+  path: '/whatsapp',
+  getParentRoute: () => PainelRoute,
+} as any)
+const PainelTemplatesRoute = PainelTemplatesRouteImport.update({
+  id: '/templates',
+  path: '/templates',
+  getParentRoute: () => PainelRoute,
+} as any)
+const PainelRelatoriosRoute = PainelRelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
+  getParentRoute: () => PainelRoute,
+} as any)
+const PainelFinanceiroRoute = PainelFinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
+  getParentRoute: () => PainelRoute,
+} as any)
+const PainelContatosRoute = PainelContatosRouteImport.update({
+  id: '/contatos',
+  path: '/contatos',
+  getParentRoute: () => PainelRoute,
+} as any)
+const PainelConfiguracoesRoute = PainelConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => PainelRoute,
+} as any)
+const PainelCampanhasRoute = PainelCampanhasRouteImport.update({
+  id: '/campanhas',
+  path: '/campanhas',
   getParentRoute: () => PainelRoute,
 } as any)
 const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
@@ -370,6 +412,13 @@ export interface FileRoutesByFullPath {
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/painel/campanhas': typeof PainelCampanhasRoute
+  '/painel/configuracoes': typeof PainelConfiguracoesRoute
+  '/painel/contatos': typeof PainelContatosRoute
+  '/painel/financeiro': typeof PainelFinanceiroRoute
+  '/painel/relatorios': typeof PainelRelatoriosRoute
+  '/painel/templates': typeof PainelTemplatesRoute
+  '/painel/whatsapp': typeof PainelWhatsappRoute
   '/painel/': typeof PainelIndexRoute
   '/admin/agenda': typeof AuthenticatedAdminAgendaRoute
   '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
@@ -422,6 +471,13 @@ export interface FileRoutesByTo {
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/painel/campanhas': typeof PainelCampanhasRoute
+  '/painel/configuracoes': typeof PainelConfiguracoesRoute
+  '/painel/contatos': typeof PainelContatosRoute
+  '/painel/financeiro': typeof PainelFinanceiroRoute
+  '/painel/relatorios': typeof PainelRelatoriosRoute
+  '/painel/templates': typeof PainelTemplatesRoute
+  '/painel/whatsapp': typeof PainelWhatsappRoute
   '/painel': typeof PainelIndexRoute
   '/admin/agenda': typeof AuthenticatedAdminAgendaRoute
   '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
@@ -477,6 +533,13 @@ export interface FileRoutesById {
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/painel/campanhas': typeof PainelCampanhasRoute
+  '/painel/configuracoes': typeof PainelConfiguracoesRoute
+  '/painel/contatos': typeof PainelContatosRoute
+  '/painel/financeiro': typeof PainelFinanceiroRoute
+  '/painel/relatorios': typeof PainelRelatoriosRoute
+  '/painel/templates': typeof PainelTemplatesRoute
+  '/painel/whatsapp': typeof PainelWhatsappRoute
   '/painel/': typeof PainelIndexRoute
   '/_authenticated/admin/agenda': typeof AuthenticatedAdminAgendaRoute
   '/_authenticated/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
@@ -532,6 +595,13 @@ export interface FileRouteTypes {
     | '/politica-de-privacidade'
     | '/recuperar-senha'
     | '/reset-password'
+    | '/painel/campanhas'
+    | '/painel/configuracoes'
+    | '/painel/contatos'
+    | '/painel/financeiro'
+    | '/painel/relatorios'
+    | '/painel/templates'
+    | '/painel/whatsapp'
     | '/painel/'
     | '/admin/agenda'
     | '/admin/campanhas'
@@ -584,6 +654,13 @@ export interface FileRouteTypes {
     | '/politica-de-privacidade'
     | '/recuperar-senha'
     | '/reset-password'
+    | '/painel/campanhas'
+    | '/painel/configuracoes'
+    | '/painel/contatos'
+    | '/painel/financeiro'
+    | '/painel/relatorios'
+    | '/painel/templates'
+    | '/painel/whatsapp'
     | '/painel'
     | '/admin/agenda'
     | '/admin/campanhas'
@@ -638,6 +715,13 @@ export interface FileRouteTypes {
     | '/politica-de-privacidade'
     | '/recuperar-senha'
     | '/reset-password'
+    | '/painel/campanhas'
+    | '/painel/configuracoes'
+    | '/painel/contatos'
+    | '/painel/financeiro'
+    | '/painel/relatorios'
+    | '/painel/templates'
+    | '/painel/whatsapp'
     | '/painel/'
     | '/_authenticated/admin/agenda'
     | '/_authenticated/admin/campanhas'
@@ -776,6 +860,55 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/painel/'
       preLoaderRoute: typeof PainelIndexRouteImport
+      parentRoute: typeof PainelRoute
+    }
+    '/painel/whatsapp': {
+      id: '/painel/whatsapp'
+      path: '/whatsapp'
+      fullPath: '/painel/whatsapp'
+      preLoaderRoute: typeof PainelWhatsappRouteImport
+      parentRoute: typeof PainelRoute
+    }
+    '/painel/templates': {
+      id: '/painel/templates'
+      path: '/templates'
+      fullPath: '/painel/templates'
+      preLoaderRoute: typeof PainelTemplatesRouteImport
+      parentRoute: typeof PainelRoute
+    }
+    '/painel/relatorios': {
+      id: '/painel/relatorios'
+      path: '/relatorios'
+      fullPath: '/painel/relatorios'
+      preLoaderRoute: typeof PainelRelatoriosRouteImport
+      parentRoute: typeof PainelRoute
+    }
+    '/painel/financeiro': {
+      id: '/painel/financeiro'
+      path: '/financeiro'
+      fullPath: '/painel/financeiro'
+      preLoaderRoute: typeof PainelFinanceiroRouteImport
+      parentRoute: typeof PainelRoute
+    }
+    '/painel/contatos': {
+      id: '/painel/contatos'
+      path: '/contatos'
+      fullPath: '/painel/contatos'
+      preLoaderRoute: typeof PainelContatosRouteImport
+      parentRoute: typeof PainelRoute
+    }
+    '/painel/configuracoes': {
+      id: '/painel/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/painel/configuracoes'
+      preLoaderRoute: typeof PainelConfiguracoesRouteImport
+      parentRoute: typeof PainelRoute
+    }
+    '/painel/campanhas': {
+      id: '/painel/campanhas'
+      path: '/campanhas'
+      fullPath: '/painel/campanhas'
+      preLoaderRoute: typeof PainelCampanhasRouteImport
       parentRoute: typeof PainelRoute
     }
     '/_authenticated/admin/': {
@@ -1217,10 +1350,24 @@ const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
 interface PainelRouteChildren {
+  PainelCampanhasRoute: typeof PainelCampanhasRoute
+  PainelConfiguracoesRoute: typeof PainelConfiguracoesRoute
+  PainelContatosRoute: typeof PainelContatosRoute
+  PainelFinanceiroRoute: typeof PainelFinanceiroRoute
+  PainelRelatoriosRoute: typeof PainelRelatoriosRoute
+  PainelTemplatesRoute: typeof PainelTemplatesRoute
+  PainelWhatsappRoute: typeof PainelWhatsappRoute
   PainelIndexRoute: typeof PainelIndexRoute
 }
 
 const PainelRouteChildren: PainelRouteChildren = {
+  PainelCampanhasRoute: PainelCampanhasRoute,
+  PainelConfiguracoesRoute: PainelConfiguracoesRoute,
+  PainelContatosRoute: PainelContatosRoute,
+  PainelFinanceiroRoute: PainelFinanceiroRoute,
+  PainelRelatoriosRoute: PainelRelatoriosRoute,
+  PainelTemplatesRoute: PainelTemplatesRoute,
+  PainelWhatsappRoute: PainelWhatsappRoute,
   PainelIndexRoute: PainelIndexRoute,
 }
 
