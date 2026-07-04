@@ -1375,7 +1375,9 @@ export type Database = {
       }
       wa_campaigns: {
         Row: {
+          abort_on_failure_rate: number | null
           avg_speed_per_min: number | null
+          batch_size: number
           button_url_mapping: Json | null
           canceled_at: string | null
           canceled_by: string | null
@@ -1390,17 +1392,24 @@ export type Database = {
           final_report: Json | null
           finished_at: string | null
           id: string
+          jitter_ms: number
           last_error: string | null
           last_sent_at: string | null
           linked_revenue_id: string | null
           list_id: string | null
+          max_per_day: number | null
+          max_per_hour: number | null
+          min_processed_for_abort: number
           name: string
           notes: string | null
           participants: Database["public"]["Enums"]["partner_participant"][]
+          pause_reason: string | null
           paused_at: string | null
           paused_by: string | null
           progress: Json
           project_id: string | null
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
           read_count: number
           replied_count: number
           responsavel_id: string | null
@@ -1414,6 +1423,7 @@ export type Database = {
           tag_filters: string[] | null
           template_id: string | null
           template_variables: Json
+          timezone: string
           total_recipients: number
           updated_at: string
           variables_mapping: Json | null
@@ -1422,7 +1432,9 @@ export type Database = {
           worker_lease_until: string | null
         }
         Insert: {
+          abort_on_failure_rate?: number | null
           avg_speed_per_min?: number | null
+          batch_size?: number
           button_url_mapping?: Json | null
           canceled_at?: string | null
           canceled_by?: string | null
@@ -1437,17 +1449,24 @@ export type Database = {
           final_report?: Json | null
           finished_at?: string | null
           id?: string
+          jitter_ms?: number
           last_error?: string | null
           last_sent_at?: string | null
           linked_revenue_id?: string | null
           list_id?: string | null
+          max_per_day?: number | null
+          max_per_hour?: number | null
+          min_processed_for_abort?: number
           name: string
           notes?: string | null
           participants?: Database["public"]["Enums"]["partner_participant"][]
+          pause_reason?: string | null
           paused_at?: string | null
           paused_by?: string | null
           progress?: Json
           project_id?: string | null
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
           read_count?: number
           replied_count?: number
           responsavel_id?: string | null
@@ -1461,6 +1480,7 @@ export type Database = {
           tag_filters?: string[] | null
           template_id?: string | null
           template_variables?: Json
+          timezone?: string
           total_recipients?: number
           updated_at?: string
           variables_mapping?: Json | null
@@ -1469,7 +1489,9 @@ export type Database = {
           worker_lease_until?: string | null
         }
         Update: {
+          abort_on_failure_rate?: number | null
           avg_speed_per_min?: number | null
+          batch_size?: number
           button_url_mapping?: Json | null
           canceled_at?: string | null
           canceled_by?: string | null
@@ -1484,17 +1506,24 @@ export type Database = {
           final_report?: Json | null
           finished_at?: string | null
           id?: string
+          jitter_ms?: number
           last_error?: string | null
           last_sent_at?: string | null
           linked_revenue_id?: string | null
           list_id?: string | null
+          max_per_day?: number | null
+          max_per_hour?: number | null
+          min_processed_for_abort?: number
           name?: string
           notes?: string | null
           participants?: Database["public"]["Enums"]["partner_participant"][]
+          pause_reason?: string | null
           paused_at?: string | null
           paused_by?: string | null
           progress?: Json
           project_id?: string | null
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
           read_count?: number
           replied_count?: number
           responsavel_id?: string | null
@@ -1508,6 +1537,7 @@ export type Database = {
           tag_filters?: string[] | null
           template_id?: string | null
           template_variables?: Json
+          timezone?: string
           total_recipients?: number
           updated_at?: string
           variables_mapping?: Json | null
