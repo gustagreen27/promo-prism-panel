@@ -169,11 +169,8 @@ function Page() {
       <PageHeader
         title={camp?.name ?? "Campanha"}
         description={
-          <div className="flex items-center gap-2 flex-wrap">
-            <StatusBadge status={status} />
-            {(camp as any)?.client?.name && <span className="text-xs text-muted-foreground">• {(camp as any).client.name}</span>}
-            {(camp as any)?.template?.name && <span className="text-xs text-muted-foreground">• Template {(camp as any).template.name}</span>}
-          </div>
+          [(camp as any)?.client?.name, (camp as any)?.template?.name && `Template ${(camp as any).template.name}`]
+            .filter(Boolean).join(" • ") || undefined
         }
         actions={
           <div className="flex flex-wrap gap-2">
