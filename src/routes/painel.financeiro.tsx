@@ -69,15 +69,21 @@ function Page() {
   });
 
   const [open, setOpen] = useState(false);
-  const [amountStr, setAmountStr] = useState("150,00");
+  const requiredCents = (w as any)?.required_deposit_cents ?? w?.minimum_deposit_cents ?? 15000;
+  const minMessages = (w as any)?.minimum_messages ?? 2500;
+  const [amountStr, setAmountStr] = useState("375,00");
 
-  const minCents = w?.minimum_deposit_cents ?? 15000;
+  useEffect(() => {
+    if (requiredCents) {
+      setAmountStr((requiredCents / 100).toFixed(2).replace(".", ","));
+    }
+  }, [requiredCents]);
 
   const deposit = useMutation({
     mutationFn: async () => {
       const cents = Math.round(Number(amountStr.replace(/\./g, "").replace(",", ".")) * 100);
-      if (!Number.isFinite(cents) || cents < minCents) {
-        throw new Error(`O valor mínimo para depósito é ${fmt(minCents)}`);
+      if (!Number.isFinite(cents) || cents < requiredCents) {
+        throw new Error(`O valor mínimo para depósito é ${fmt(requiredCents)}`);
       }
       return createDep({ data: { workspace_id: wsId, amount_cents: cents } });
     },
