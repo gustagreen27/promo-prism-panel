@@ -71,14 +71,12 @@ function Page() {
 }
 
 function ApprovedList({ workspaceId }: { workspaceId: string }) {
-  const { data = [], isLoading } = useQuery<TemplateRow[]>({
+  const listFn = useServerFn(listMyTemplates);
+  const { data, isLoading } = useQuery({
     queryKey: ["ws-templates-approved", workspaceId],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("v_client_templates").select("*") as any;
-      if (error) throw error;
-      return (data as TemplateRow[]) || [];
-    },
+    queryFn: () => listFn({ data: { workspace_id: workspaceId } }),
   });
+  const templates = (data?.templates ?? []) as TemplateRow[];
 
   if (isLoading) return <p className="text-sm text-muted-foreground">Carregando…</p>;
   if (!data.length) return (
