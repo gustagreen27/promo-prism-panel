@@ -38,12 +38,18 @@ const MAP: Record<string, { label: string; tone: Tone; Icon?: React.ComponentTyp
   completed: { label: "Concluída", tone: "success", Icon: CheckCircle2 },
   cancelled: { label: "Cancelada", tone: "neutral", Icon: Ban },
   failed: { label: "Falhou", tone: "danger", Icon: XCircle },
+  partial: { label: "Parcial", tone: "warning", Icon: AlertTriangle },
+  error: { label: "Erro", tone: "danger", Icon: XCircle },
 
   // recipient / message
   sent: { label: "Enviada", tone: "info", Icon: Send },
+  accepted: { label: "Aceita pela Meta", tone: "info", Icon: CheckCircle2 },
   delivered: { label: "Entregue", tone: "success", Icon: CheckCircle2 },
   read: { label: "Lida", tone: "success", Icon: CheckCircle2 },
+  replied: { label: "Respondida", tone: "primary", Icon: Send },
   processing: { label: "Processando", tone: "info", Icon: Loader2 },
+  opt_out: { label: "Opt-out", tone: "warning", Icon: Ban },
+  skipped: { label: "Ignorada", tone: "neutral", Icon: Ban },
 
   // quality
   GREEN: { label: "Alta qualidade", tone: "success" },
