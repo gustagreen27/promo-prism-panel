@@ -20,7 +20,6 @@ import { Route as SlugRouteImport } from './routes/$slug'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PainelIndexRouteImport } from './routes/painel.index'
-import { Route as PainelWhatsappRouteImport } from './routes/painel.whatsapp'
 import { Route as PainelTemplatesRouteImport } from './routes/painel.templates'
 import { Route as PainelRelatoriosRouteImport } from './routes/painel.relatorios'
 import { Route as PainelFinanceiroRouteImport } from './routes/painel.financeiro'
@@ -28,6 +27,7 @@ import { Route as PainelContatosRouteImport } from './routes/painel.contatos'
 import { Route as PainelConfiguracoesRouteImport } from './routes/painel.configuracoes'
 import { Route as PainelCampanhasRouteImport } from './routes/painel.campanhas'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as PainelCampanhasNovaRouteImport } from './routes/painel.campanhas.nova'
 import { Route as AuthenticatedAdminWhatsappCampanhasRouteImport } from './routes/_authenticated/admin.whatsapp-campanhas'
 import { Route as AuthenticatedAdminWhatsappRouteImport } from './routes/_authenticated/admin.whatsapp'
 import { Route as AuthenticatedAdminUpsellRouteImport } from './routes/_authenticated/admin.upsell'
@@ -41,6 +41,7 @@ import { Route as AuthenticatedAdminCustosRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAdminContatosRouteImport } from './routes/_authenticated/admin.contatos'
 import { Route as AuthenticatedAdminConfiguracoesRouteImport } from './routes/_authenticated/admin.configuracoes'
 import { Route as AuthenticatedAdminClientesRouteImport } from './routes/_authenticated/admin.clientes'
+import { Route as AuthenticatedAdminCampanhasAprovacaoRouteImport } from './routes/_authenticated/admin.campanhas-aprovacao'
 import { Route as AuthenticatedAdminCampanhasRouteImport } from './routes/_authenticated/admin.campanhas'
 import { Route as AuthenticatedAdminAgendaRouteImport } from './routes/_authenticated/admin.agenda'
 import { Route as AuthenticatedAdminRelatoriosIndexRouteImport } from './routes/_authenticated/admin.relatorios.index'
@@ -56,6 +57,7 @@ import { Route as AuthenticatedAdminWhatsappRelatoriosRouteImport } from './rout
 import { Route as AuthenticatedAdminWhatsappQualidadeRouteImport } from './routes/_authenticated/admin.whatsapp.qualidade'
 import { Route as AuthenticatedAdminWhatsappNumerosRouteImport } from './routes/_authenticated/admin.whatsapp.numeros'
 import { Route as AuthenticatedAdminWhatsappLogsRouteImport } from './routes/_authenticated/admin.whatsapp.logs'
+import { Route as AuthenticatedAdminWhatsappLiberacoesRouteImport } from './routes/_authenticated/admin.whatsapp.liberacoes'
 import { Route as AuthenticatedAdminWhatsappInboxRouteImport } from './routes/_authenticated/admin.whatsapp.inbox'
 import { Route as AuthenticatedAdminWhatsappEmbeddedSignupRouteImport } from './routes/_authenticated/admin.whatsapp.embedded-signup'
 import { Route as AuthenticatedAdminWhatsappConfiguracoesRouteImport } from './routes/_authenticated/admin.whatsapp.configuracoes'
@@ -123,11 +125,6 @@ const PainelIndexRoute = PainelIndexRouteImport.update({
   path: '/',
   getParentRoute: () => PainelRoute,
 } as any)
-const PainelWhatsappRoute = PainelWhatsappRouteImport.update({
-  id: '/whatsapp',
-  path: '/whatsapp',
-  getParentRoute: () => PainelRoute,
-} as any)
 const PainelTemplatesRoute = PainelTemplatesRouteImport.update({
   id: '/templates',
   path: '/templates',
@@ -162,6 +159,11 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const PainelCampanhasNovaRoute = PainelCampanhasNovaRouteImport.update({
+  id: '/nova',
+  path: '/nova',
+  getParentRoute: () => PainelCampanhasRoute,
 } as any)
 const AuthenticatedAdminWhatsappCampanhasRoute =
   AuthenticatedAdminWhatsappCampanhasRouteImport.update({
@@ -238,6 +240,12 @@ const AuthenticatedAdminClientesRoute =
   AuthenticatedAdminClientesRouteImport.update({
     id: '/admin/clientes',
     path: '/admin/clientes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminCampanhasAprovacaoRoute =
+  AuthenticatedAdminCampanhasAprovacaoRouteImport.update({
+    id: '/admin/campanhas-aprovacao',
+    path: '/admin/campanhas-aprovacao',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAdminCampanhasRoute =
@@ -329,6 +337,12 @@ const AuthenticatedAdminWhatsappLogsRoute =
     path: '/logs',
     getParentRoute: () => AuthenticatedAdminWhatsappRoute,
   } as any)
+const AuthenticatedAdminWhatsappLiberacoesRoute =
+  AuthenticatedAdminWhatsappLiberacoesRouteImport.update({
+    id: '/liberacoes',
+    path: '/liberacoes',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
 const AuthenticatedAdminWhatsappInboxRoute =
   AuthenticatedAdminWhatsappInboxRouteImport.update({
     id: '/inbox',
@@ -412,16 +426,16 @@ export interface FileRoutesByFullPath {
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/painel/campanhas': typeof PainelCampanhasRoute
+  '/painel/campanhas': typeof PainelCampanhasRouteWithChildren
   '/painel/configuracoes': typeof PainelConfiguracoesRoute
   '/painel/contatos': typeof PainelContatosRoute
   '/painel/financeiro': typeof PainelFinanceiroRoute
   '/painel/relatorios': typeof PainelRelatoriosRoute
   '/painel/templates': typeof PainelTemplatesRoute
-  '/painel/whatsapp': typeof PainelWhatsappRoute
   '/painel/': typeof PainelIndexRoute
   '/admin/agenda': typeof AuthenticatedAdminAgendaRoute
   '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
+  '/admin/campanhas-aprovacao': typeof AuthenticatedAdminCampanhasAprovacaoRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
   '/admin/configuracoes': typeof AuthenticatedAdminConfiguracoesRoute
   '/admin/contatos': typeof AuthenticatedAdminContatosRouteWithChildren
@@ -435,6 +449,7 @@ export interface FileRoutesByFullPath {
   '/admin/upsell': typeof AuthenticatedAdminUpsellRoute
   '/admin/whatsapp': typeof AuthenticatedAdminWhatsappRouteWithChildren
   '/admin/whatsapp-campanhas': typeof AuthenticatedAdminWhatsappCampanhasRouteWithChildren
+  '/painel/campanhas/nova': typeof PainelCampanhasNovaRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
   '/admin/contatos/listas': typeof AuthenticatedAdminContatosListasRoute
@@ -446,6 +461,7 @@ export interface FileRoutesByFullPath {
   '/admin/whatsapp/configuracoes': typeof AuthenticatedAdminWhatsappConfiguracoesRoute
   '/admin/whatsapp/embedded-signup': typeof AuthenticatedAdminWhatsappEmbeddedSignupRoute
   '/admin/whatsapp/inbox': typeof AuthenticatedAdminWhatsappInboxRoute
+  '/admin/whatsapp/liberacoes': typeof AuthenticatedAdminWhatsappLiberacoesRoute
   '/admin/whatsapp/logs': typeof AuthenticatedAdminWhatsappLogsRoute
   '/admin/whatsapp/numeros': typeof AuthenticatedAdminWhatsappNumerosRoute
   '/admin/whatsapp/qualidade': typeof AuthenticatedAdminWhatsappQualidadeRoute
@@ -471,16 +487,16 @@ export interface FileRoutesByTo {
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/painel/campanhas': typeof PainelCampanhasRoute
+  '/painel/campanhas': typeof PainelCampanhasRouteWithChildren
   '/painel/configuracoes': typeof PainelConfiguracoesRoute
   '/painel/contatos': typeof PainelContatosRoute
   '/painel/financeiro': typeof PainelFinanceiroRoute
   '/painel/relatorios': typeof PainelRelatoriosRoute
   '/painel/templates': typeof PainelTemplatesRoute
-  '/painel/whatsapp': typeof PainelWhatsappRoute
   '/painel': typeof PainelIndexRoute
   '/admin/agenda': typeof AuthenticatedAdminAgendaRoute
   '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
+  '/admin/campanhas-aprovacao': typeof AuthenticatedAdminCampanhasAprovacaoRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
   '/admin/configuracoes': typeof AuthenticatedAdminConfiguracoesRoute
   '/admin/contatos': typeof AuthenticatedAdminContatosRouteWithChildren
@@ -494,6 +510,7 @@ export interface FileRoutesByTo {
   '/admin/upsell': typeof AuthenticatedAdminUpsellRoute
   '/admin/whatsapp': typeof AuthenticatedAdminWhatsappRouteWithChildren
   '/admin/whatsapp-campanhas': typeof AuthenticatedAdminWhatsappCampanhasRouteWithChildren
+  '/painel/campanhas/nova': typeof PainelCampanhasNovaRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
   '/admin/contatos/listas': typeof AuthenticatedAdminContatosListasRoute
@@ -505,6 +522,7 @@ export interface FileRoutesByTo {
   '/admin/whatsapp/configuracoes': typeof AuthenticatedAdminWhatsappConfiguracoesRoute
   '/admin/whatsapp/embedded-signup': typeof AuthenticatedAdminWhatsappEmbeddedSignupRoute
   '/admin/whatsapp/inbox': typeof AuthenticatedAdminWhatsappInboxRoute
+  '/admin/whatsapp/liberacoes': typeof AuthenticatedAdminWhatsappLiberacoesRoute
   '/admin/whatsapp/logs': typeof AuthenticatedAdminWhatsappLogsRoute
   '/admin/whatsapp/numeros': typeof AuthenticatedAdminWhatsappNumerosRoute
   '/admin/whatsapp/qualidade': typeof AuthenticatedAdminWhatsappQualidadeRoute
@@ -533,16 +551,16 @@ export interface FileRoutesById {
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/painel/campanhas': typeof PainelCampanhasRoute
+  '/painel/campanhas': typeof PainelCampanhasRouteWithChildren
   '/painel/configuracoes': typeof PainelConfiguracoesRoute
   '/painel/contatos': typeof PainelContatosRoute
   '/painel/financeiro': typeof PainelFinanceiroRoute
   '/painel/relatorios': typeof PainelRelatoriosRoute
   '/painel/templates': typeof PainelTemplatesRoute
-  '/painel/whatsapp': typeof PainelWhatsappRoute
   '/painel/': typeof PainelIndexRoute
   '/_authenticated/admin/agenda': typeof AuthenticatedAdminAgendaRoute
   '/_authenticated/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
+  '/_authenticated/admin/campanhas-aprovacao': typeof AuthenticatedAdminCampanhasAprovacaoRoute
   '/_authenticated/admin/clientes': typeof AuthenticatedAdminClientesRoute
   '/_authenticated/admin/configuracoes': typeof AuthenticatedAdminConfiguracoesRoute
   '/_authenticated/admin/contatos': typeof AuthenticatedAdminContatosRouteWithChildren
@@ -556,6 +574,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/upsell': typeof AuthenticatedAdminUpsellRoute
   '/_authenticated/admin/whatsapp': typeof AuthenticatedAdminWhatsappRouteWithChildren
   '/_authenticated/admin/whatsapp-campanhas': typeof AuthenticatedAdminWhatsappCampanhasRouteWithChildren
+  '/painel/campanhas/nova': typeof PainelCampanhasNovaRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
   '/_authenticated/admin/contatos/listas': typeof AuthenticatedAdminContatosListasRoute
@@ -567,6 +586,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/whatsapp/configuracoes': typeof AuthenticatedAdminWhatsappConfiguracoesRoute
   '/_authenticated/admin/whatsapp/embedded-signup': typeof AuthenticatedAdminWhatsappEmbeddedSignupRoute
   '/_authenticated/admin/whatsapp/inbox': typeof AuthenticatedAdminWhatsappInboxRoute
+  '/_authenticated/admin/whatsapp/liberacoes': typeof AuthenticatedAdminWhatsappLiberacoesRoute
   '/_authenticated/admin/whatsapp/logs': typeof AuthenticatedAdminWhatsappLogsRoute
   '/_authenticated/admin/whatsapp/numeros': typeof AuthenticatedAdminWhatsappNumerosRoute
   '/_authenticated/admin/whatsapp/qualidade': typeof AuthenticatedAdminWhatsappQualidadeRoute
@@ -601,10 +621,10 @@ export interface FileRouteTypes {
     | '/painel/financeiro'
     | '/painel/relatorios'
     | '/painel/templates'
-    | '/painel/whatsapp'
     | '/painel/'
     | '/admin/agenda'
     | '/admin/campanhas'
+    | '/admin/campanhas-aprovacao'
     | '/admin/clientes'
     | '/admin/configuracoes'
     | '/admin/contatos'
@@ -618,6 +638,7 @@ export interface FileRouteTypes {
     | '/admin/upsell'
     | '/admin/whatsapp'
     | '/admin/whatsapp-campanhas'
+    | '/painel/campanhas/nova'
     | '/admin/'
     | '/admin/campaigns/$id'
     | '/admin/contatos/listas'
@@ -629,6 +650,7 @@ export interface FileRouteTypes {
     | '/admin/whatsapp/configuracoes'
     | '/admin/whatsapp/embedded-signup'
     | '/admin/whatsapp/inbox'
+    | '/admin/whatsapp/liberacoes'
     | '/admin/whatsapp/logs'
     | '/admin/whatsapp/numeros'
     | '/admin/whatsapp/qualidade'
@@ -660,10 +682,10 @@ export interface FileRouteTypes {
     | '/painel/financeiro'
     | '/painel/relatorios'
     | '/painel/templates'
-    | '/painel/whatsapp'
     | '/painel'
     | '/admin/agenda'
     | '/admin/campanhas'
+    | '/admin/campanhas-aprovacao'
     | '/admin/clientes'
     | '/admin/configuracoes'
     | '/admin/contatos'
@@ -677,6 +699,7 @@ export interface FileRouteTypes {
     | '/admin/upsell'
     | '/admin/whatsapp'
     | '/admin/whatsapp-campanhas'
+    | '/painel/campanhas/nova'
     | '/admin'
     | '/admin/campaigns/$id'
     | '/admin/contatos/listas'
@@ -688,6 +711,7 @@ export interface FileRouteTypes {
     | '/admin/whatsapp/configuracoes'
     | '/admin/whatsapp/embedded-signup'
     | '/admin/whatsapp/inbox'
+    | '/admin/whatsapp/liberacoes'
     | '/admin/whatsapp/logs'
     | '/admin/whatsapp/numeros'
     | '/admin/whatsapp/qualidade'
@@ -721,10 +745,10 @@ export interface FileRouteTypes {
     | '/painel/financeiro'
     | '/painel/relatorios'
     | '/painel/templates'
-    | '/painel/whatsapp'
     | '/painel/'
     | '/_authenticated/admin/agenda'
     | '/_authenticated/admin/campanhas'
+    | '/_authenticated/admin/campanhas-aprovacao'
     | '/_authenticated/admin/clientes'
     | '/_authenticated/admin/configuracoes'
     | '/_authenticated/admin/contatos'
@@ -738,6 +762,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/upsell'
     | '/_authenticated/admin/whatsapp'
     | '/_authenticated/admin/whatsapp-campanhas'
+    | '/painel/campanhas/nova'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/campaigns/$id'
     | '/_authenticated/admin/contatos/listas'
@@ -749,6 +774,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/whatsapp/configuracoes'
     | '/_authenticated/admin/whatsapp/embedded-signup'
     | '/_authenticated/admin/whatsapp/inbox'
+    | '/_authenticated/admin/whatsapp/liberacoes'
     | '/_authenticated/admin/whatsapp/logs'
     | '/_authenticated/admin/whatsapp/numeros'
     | '/_authenticated/admin/whatsapp/qualidade'
@@ -862,13 +888,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PainelIndexRouteImport
       parentRoute: typeof PainelRoute
     }
-    '/painel/whatsapp': {
-      id: '/painel/whatsapp'
-      path: '/whatsapp'
-      fullPath: '/painel/whatsapp'
-      preLoaderRoute: typeof PainelWhatsappRouteImport
-      parentRoute: typeof PainelRoute
-    }
     '/painel/templates': {
       id: '/painel/templates'
       path: '/templates'
@@ -917,6 +936,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/painel/campanhas/nova': {
+      id: '/painel/campanhas/nova'
+      path: '/nova'
+      fullPath: '/painel/campanhas/nova'
+      preLoaderRoute: typeof PainelCampanhasNovaRouteImport
+      parentRoute: typeof PainelCampanhasRoute
     }
     '/_authenticated/admin/whatsapp-campanhas': {
       id: '/_authenticated/admin/whatsapp-campanhas'
@@ -1007,6 +1033,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/clientes'
       fullPath: '/admin/clientes'
       preLoaderRoute: typeof AuthenticatedAdminClientesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/campanhas-aprovacao': {
+      id: '/_authenticated/admin/campanhas-aprovacao'
+      path: '/admin/campanhas-aprovacao'
+      fullPath: '/admin/campanhas-aprovacao'
+      preLoaderRoute: typeof AuthenticatedAdminCampanhasAprovacaoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/admin/campanhas': {
@@ -1112,6 +1145,13 @@ declare module '@tanstack/react-router' {
       path: '/logs'
       fullPath: '/admin/whatsapp/logs'
       preLoaderRoute: typeof AuthenticatedAdminWhatsappLogsRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
+    '/_authenticated/admin/whatsapp/liberacoes': {
+      id: '/_authenticated/admin/whatsapp/liberacoes'
+      path: '/liberacoes'
+      fullPath: '/admin/whatsapp/liberacoes'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappLiberacoesRouteImport
       parentRoute: typeof AuthenticatedAdminWhatsappRoute
     }
     '/_authenticated/admin/whatsapp/inbox': {
@@ -1220,6 +1260,7 @@ interface AuthenticatedAdminWhatsappRouteChildren {
   AuthenticatedAdminWhatsappConfiguracoesRoute: typeof AuthenticatedAdminWhatsappConfiguracoesRoute
   AuthenticatedAdminWhatsappEmbeddedSignupRoute: typeof AuthenticatedAdminWhatsappEmbeddedSignupRoute
   AuthenticatedAdminWhatsappInboxRoute: typeof AuthenticatedAdminWhatsappInboxRoute
+  AuthenticatedAdminWhatsappLiberacoesRoute: typeof AuthenticatedAdminWhatsappLiberacoesRoute
   AuthenticatedAdminWhatsappLogsRoute: typeof AuthenticatedAdminWhatsappLogsRoute
   AuthenticatedAdminWhatsappNumerosRoute: typeof AuthenticatedAdminWhatsappNumerosRoute
   AuthenticatedAdminWhatsappQualidadeRoute: typeof AuthenticatedAdminWhatsappQualidadeRoute
@@ -1237,6 +1278,8 @@ const AuthenticatedAdminWhatsappRouteChildren: AuthenticatedAdminWhatsappRouteCh
     AuthenticatedAdminWhatsappEmbeddedSignupRoute:
       AuthenticatedAdminWhatsappEmbeddedSignupRoute,
     AuthenticatedAdminWhatsappInboxRoute: AuthenticatedAdminWhatsappInboxRoute,
+    AuthenticatedAdminWhatsappLiberacoesRoute:
+      AuthenticatedAdminWhatsappLiberacoesRoute,
     AuthenticatedAdminWhatsappLogsRoute: AuthenticatedAdminWhatsappLogsRoute,
     AuthenticatedAdminWhatsappNumerosRoute:
       AuthenticatedAdminWhatsappNumerosRoute,
@@ -1297,6 +1340,7 @@ const AuthenticatedAdminCampaignsIdRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminAgendaRoute: typeof AuthenticatedAdminAgendaRoute
   AuthenticatedAdminCampanhasRoute: typeof AuthenticatedAdminCampanhasRoute
+  AuthenticatedAdminCampanhasAprovacaoRoute: typeof AuthenticatedAdminCampanhasAprovacaoRoute
   AuthenticatedAdminClientesRoute: typeof AuthenticatedAdminClientesRoute
   AuthenticatedAdminConfiguracoesRoute: typeof AuthenticatedAdminConfiguracoesRoute
   AuthenticatedAdminContatosRoute: typeof AuthenticatedAdminContatosRouteWithChildren
@@ -1321,6 +1365,8 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminAgendaRoute: AuthenticatedAdminAgendaRoute,
   AuthenticatedAdminCampanhasRoute: AuthenticatedAdminCampanhasRoute,
+  AuthenticatedAdminCampanhasAprovacaoRoute:
+    AuthenticatedAdminCampanhasAprovacaoRoute,
   AuthenticatedAdminClientesRoute: AuthenticatedAdminClientesRoute,
   AuthenticatedAdminConfiguracoesRoute: AuthenticatedAdminConfiguracoesRoute,
   AuthenticatedAdminContatosRoute: AuthenticatedAdminContatosRouteWithChildren,
@@ -1349,25 +1395,35 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface PainelCampanhasRouteChildren {
+  PainelCampanhasNovaRoute: typeof PainelCampanhasNovaRoute
+}
+
+const PainelCampanhasRouteChildren: PainelCampanhasRouteChildren = {
+  PainelCampanhasNovaRoute: PainelCampanhasNovaRoute,
+}
+
+const PainelCampanhasRouteWithChildren = PainelCampanhasRoute._addFileChildren(
+  PainelCampanhasRouteChildren,
+)
+
 interface PainelRouteChildren {
-  PainelCampanhasRoute: typeof PainelCampanhasRoute
+  PainelCampanhasRoute: typeof PainelCampanhasRouteWithChildren
   PainelConfiguracoesRoute: typeof PainelConfiguracoesRoute
   PainelContatosRoute: typeof PainelContatosRoute
   PainelFinanceiroRoute: typeof PainelFinanceiroRoute
   PainelRelatoriosRoute: typeof PainelRelatoriosRoute
   PainelTemplatesRoute: typeof PainelTemplatesRoute
-  PainelWhatsappRoute: typeof PainelWhatsappRoute
   PainelIndexRoute: typeof PainelIndexRoute
 }
 
 const PainelRouteChildren: PainelRouteChildren = {
-  PainelCampanhasRoute: PainelCampanhasRoute,
+  PainelCampanhasRoute: PainelCampanhasRouteWithChildren,
   PainelConfiguracoesRoute: PainelConfiguracoesRoute,
   PainelContatosRoute: PainelContatosRoute,
   PainelFinanceiroRoute: PainelFinanceiroRoute,
   PainelRelatoriosRoute: PainelRelatoriosRoute,
   PainelTemplatesRoute: PainelTemplatesRoute,
-  PainelWhatsappRoute: PainelWhatsappRoute,
   PainelIndexRoute: PainelIndexRoute,
 }
 

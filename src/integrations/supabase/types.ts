@@ -1086,6 +1086,13 @@ export type Database = {
             foreignKeyName: "message_logs_connection_id_fkey"
             columns: ["connection_id"]
             isOneToOne: false
+            referencedRelation: "v_client_numbers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_logs_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
             referencedRelation: "whatsapp_connections"
             referencedColumns: ["id"]
           },
@@ -1183,6 +1190,54 @@ export type Database = {
           },
           {
             foreignKeyName: "message_stock_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_stock_reservations: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          id: string
+          qty_consumed: number
+          qty_reserved: number
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          id?: string
+          qty_consumed?: number
+          qty_reserved?: number
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          qty_consumed?: number
+          qty_reserved?: number
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_stock_reservations_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "wa_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_stock_reservations_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -1550,6 +1605,10 @@ export type Database = {
       wa_campaigns: {
         Row: {
           abort_on_failure_rate: number | null
+          approval_mode: string
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
           avg_speed_per_min: number | null
           batch_size: number
           button_url_mapping: Json | null
@@ -1585,6 +1644,7 @@ export type Database = {
           quiet_hours_end: string | null
           quiet_hours_start: string | null
           read_count: number
+          rejection_reason: string | null
           replied_count: number
           responsavel_id: string | null
           resumed_at: string | null
@@ -1608,6 +1668,10 @@ export type Database = {
         }
         Insert: {
           abort_on_failure_rate?: number | null
+          approval_mode?: string
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
           avg_speed_per_min?: number | null
           batch_size?: number
           button_url_mapping?: Json | null
@@ -1643,6 +1707,7 @@ export type Database = {
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
           read_count?: number
+          rejection_reason?: string | null
           replied_count?: number
           responsavel_id?: string | null
           resumed_at?: string | null
@@ -1666,6 +1731,10 @@ export type Database = {
         }
         Update: {
           abort_on_failure_rate?: number | null
+          approval_mode?: string
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
           avg_speed_per_min?: number | null
           batch_size?: number
           button_url_mapping?: Json | null
@@ -1701,6 +1770,7 @@ export type Database = {
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
           read_count?: number
+          rejection_reason?: string | null
           replied_count?: number
           responsavel_id?: string | null
           resumed_at?: string | null
@@ -1728,6 +1798,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_campaigns_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_numbers"
             referencedColumns: ["id"]
           },
           {
@@ -1762,6 +1839,13 @@ export type Database = {
             foreignKeyName: "wa_campaigns_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
+            referencedRelation: "v_client_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_campaigns_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
             referencedRelation: "whatsapp_templates"
             referencedColumns: ["id"]
           },
@@ -1788,6 +1872,7 @@ export type Database = {
           business_id: string | null
           client_id: string | null
           created_at: string
+          daily_cap: number | null
           daily_limit: number | null
           display_name: string | null
           display_phone: string | null
@@ -1796,14 +1881,18 @@ export type Database = {
           messaging_limit: string | null
           name: string
           nome_interno: string | null
+          notes: string | null
+          paused_at: string | null
           phone: string | null
           phone_number_id: string | null
           project_id: string | null
           provider: string | null
           quality_rating: string | null
+          quality_visible_to_client: boolean
           status: string
           updated_at: string
           verify_token: string | null
+          visibility: string
           waba_id: string | null
           waba_ref_id: string | null
           webhook_url: string | null
@@ -1815,6 +1904,7 @@ export type Database = {
           business_id?: string | null
           client_id?: string | null
           created_at?: string
+          daily_cap?: number | null
           daily_limit?: number | null
           display_name?: string | null
           display_phone?: string | null
@@ -1823,14 +1913,18 @@ export type Database = {
           messaging_limit?: string | null
           name: string
           nome_interno?: string | null
+          notes?: string | null
+          paused_at?: string | null
           phone?: string | null
           phone_number_id?: string | null
           project_id?: string | null
           provider?: string | null
           quality_rating?: string | null
+          quality_visible_to_client?: boolean
           status?: string
           updated_at?: string
           verify_token?: string | null
+          visibility?: string
           waba_id?: string | null
           waba_ref_id?: string | null
           webhook_url?: string | null
@@ -1842,6 +1936,7 @@ export type Database = {
           business_id?: string | null
           client_id?: string | null
           created_at?: string
+          daily_cap?: number | null
           daily_limit?: number | null
           display_name?: string | null
           display_phone?: string | null
@@ -1850,14 +1945,18 @@ export type Database = {
           messaging_limit?: string | null
           name?: string
           nome_interno?: string | null
+          notes?: string | null
+          paused_at?: string | null
           phone?: string | null
           phone_number_id?: string | null
           project_id?: string | null
           provider?: string | null
           quality_rating?: string | null
+          quality_visible_to_client?: boolean
           status?: string
           updated_at?: string
           verify_token?: string | null
+          visibility?: string
           waba_id?: string | null
           waba_ref_id?: string | null
           webhook_url?: string | null
@@ -1938,6 +2037,13 @@ export type Database = {
           workspace_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "whatsapp_inbox_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_numbers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "whatsapp_inbox_connection_id_fkey"
             columns: ["connection_id"]
@@ -2031,6 +2137,62 @@ export type Database = {
           },
         ]
       }
+      whatsapp_number_grants: {
+        Row: {
+          connection_id: string
+          created_at: string
+          granted_by: string | null
+          id: string
+          project_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          connection_id: string
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          project_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          connection_id?: string
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          project_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_number_grants_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_numbers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_number_grants_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_number_grants_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_number_grants_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_onboarding_logs: {
         Row: {
           client_id: string | null
@@ -2080,6 +2242,13 @@ export type Database = {
             foreignKeyName: "whatsapp_onboarding_logs_connection_id_fkey"
             columns: ["connection_id"]
             isOneToOne: false
+            referencedRelation: "v_client_numbers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_onboarding_logs_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
             referencedRelation: "whatsapp_connections"
             referencedColumns: ["id"]
           },
@@ -2095,6 +2264,160 @@ export type Database = {
             columns: ["waba_ref_id"]
             isOneToOne: false
             referencedRelation: "whatsapp_wabas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_template_grants: {
+        Row: {
+          connection_id: string | null
+          created_at: string
+          granted_by: string | null
+          id: string
+          template_id: string
+          workspace_id: string | null
+        }
+        Insert: {
+          connection_id?: string | null
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          template_id: string
+          workspace_id?: string | null
+        }
+        Update: {
+          connection_id?: string | null
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          template_id?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_template_grants_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_numbers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_template_grants_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_template_grants_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_template_grants_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_template_grants_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_template_requests: {
+        Row: {
+          admin_notes: string | null
+          body: string
+          buttons: Json
+          category: string
+          created_at: string
+          created_template_id: string | null
+          footer: string | null
+          header_media_type: string | null
+          header_type: string | null
+          id: string
+          language: string
+          name: string
+          requested_by: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          submitted_at: string | null
+          updated_at: string
+          variables: Json
+          workspace_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          body: string
+          buttons?: Json
+          category: string
+          created_at?: string
+          created_template_id?: string | null
+          footer?: string | null
+          header_media_type?: string | null
+          header_type?: string | null
+          id?: string
+          language?: string
+          name: string
+          requested_by: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+          variables?: Json
+          workspace_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          body?: string
+          buttons?: Json
+          category?: string
+          created_at?: string
+          created_template_id?: string | null
+          footer?: string | null
+          header_media_type?: string | null
+          header_type?: string | null
+          id?: string
+          language?: string
+          name?: string
+          requested_by?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+          variables?: Json
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_template_requests_created_template_id_fkey"
+            columns: ["created_template_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_template_requests_created_template_id_fkey"
+            columns: ["created_template_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_template_requests_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
@@ -2123,6 +2446,7 @@ export type Database = {
           updated_at: string
           variables: Json
           variables_examples: Json | null
+          visibility: string
           waba_ref_id: string | null
           workspace_id: string | null
         }
@@ -2149,6 +2473,7 @@ export type Database = {
           updated_at?: string
           variables?: Json
           variables_examples?: Json | null
+          visibility?: string
           waba_ref_id?: string | null
           workspace_id?: string | null
         }
@@ -2175,10 +2500,18 @@ export type Database = {
           updated_at?: string
           variables?: Json
           variables_examples?: Json | null
+          visibility?: string
           waba_ref_id?: string | null
           workspace_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "whatsapp_templates_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_numbers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "whatsapp_templates_connection_id_fkey"
             columns: ["connection_id"]
@@ -2311,6 +2644,13 @@ export type Database = {
             foreignKeyName: "whatsapp_webhook_logs_connection_id_fkey"
             columns: ["connection_id"]
             isOneToOne: false
+            referencedRelation: "v_client_numbers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_webhook_logs_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
             referencedRelation: "whatsapp_connections"
             referencedColumns: ["id"]
           },
@@ -2350,6 +2690,9 @@ export type Database = {
       }
       workspaces: {
         Row: {
+          approval_mode: string
+          block_reason: string | null
+          blocked_at: string | null
           created_at: string
           id: string
           name: string
@@ -2361,6 +2704,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          approval_mode?: string
+          block_reason?: string | null
+          blocked_at?: string | null
           created_at?: string
           id?: string
           name: string
@@ -2372,6 +2718,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          approval_mode?: string
+          block_reason?: string | null
+          blocked_at?: string | null
           created_at?: string
           id?: string
           name?: string
@@ -2386,7 +2735,77 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_client_numbers: {
+        Row: {
+          daily_cap: number | null
+          display_name: string | null
+          id: string | null
+          paused_at: string | null
+          phone_masked: string | null
+          project_id: string | null
+          quality_rating: string | null
+          status: string | null
+          visibility: string | null
+          workspace_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_number_grants_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_number_grants_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_client_templates: {
+        Row: {
+          body: string | null
+          buttons: Json | null
+          category: string | null
+          connection_id: string | null
+          footer: string | null
+          header_text: string | null
+          header_type: string | null
+          id: string | null
+          language: string | null
+          name: string | null
+          status: Database["public"]["Enums"]["wa_template_status"] | null
+          variables: Json | null
+          visibility: string | null
+          workspace_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_template_grants_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_numbers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_template_grants_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_template_grants_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       has_role: {
@@ -2447,6 +2866,11 @@ export type Database = {
         | "cancelled"
         | "error"
         | "partial"
+        | "awaiting_approval"
+        | "approved"
+        | "rejected"
+        | "blocked"
+        | "queued"
       wa_recipient_status:
         | "pending"
         | "processing"
@@ -2617,6 +3041,11 @@ export const Constants = {
         "cancelled",
         "error",
         "partial",
+        "awaiting_approval",
+        "approved",
+        "rejected",
+        "blocked",
+        "queued",
       ],
       wa_recipient_status: [
         "pending",
