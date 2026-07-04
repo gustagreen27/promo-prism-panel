@@ -81,6 +81,7 @@ const GROUPS: { label: string; items: NavItem[] }[] = [
       { title: "Agendadas", to: "/admin/whatsapp-campanhas", search: { status: "scheduled" }, icon: Clock },
       { title: "Em andamento", to: "/admin/whatsapp-campanhas", search: { status: "running" }, icon: PlayCircle },
       { title: "Concluídas", to: "/admin/whatsapp-campanhas", search: { status: "completed" }, icon: CheckCircle2 },
+      { title: "Campanhas de links", to: "/admin/campanhas", icon: Send },
       { title: "Relatórios de campanha", to: "/admin/whatsapp/relatorios", icon: BarChart3 },
     ],
   },
