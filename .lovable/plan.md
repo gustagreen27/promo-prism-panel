@@ -1,107 +1,164 @@
+# Ajuste de modelo — SaaS "White-glove WhatsApp"
 
-# Disparos FR → Plataforma SaaS Pública
+Neste modelo, **só o admin** possui BMs, WABAs, números e tokens. Clientes se cadastram, recebem números/templates liberados e disparam campanhas dentro desse pool controlado, com saldo, opt-in/opt-out e (opcionalmente) aprovação interna.
 
-Escopo grande. Proponho entregar em **5 fases incrementais**, cada uma testável e sem quebrar o `/admin` atual. Confirme a fase 1 e sigo; depois validamos cada etapa antes da próxima.
+Reaproveita 100% do que já existe (`whatsapp_wabas`, `whatsapp_connections`, `whatsapp_templates`, `wa_campaigns`, `message_stock`, workspaces, roles). Nada é removido do `/admin`.
 
 ---
 
-## Arquitetura geral
+## 1. Modelo de dados (migration única)
 
-### Rotas
+### 1.1 Números — disponibilidade para clientes
+Adicionar em `whatsapp_connections`:
+- `display_name text` (nome público mostrado ao cliente)
+- `visibility text check in ('internal','shared','exclusive')` default `'internal'`
+- `daily_cap int` (limite interno diário por número)
+- `paused_at timestamptz` (pausa manual de novos disparos)
+- `quality_visible_to_client bool` default `false`
+- `notes text`
+
+Nova tabela `whatsapp_number_grants`:
+- `connection_id`, `workspace_id`, `project_id` (nullable), `granted_by`, `created_at`
+- unique(`connection_id`,`workspace_id`,`project_id`)
+
+Regra de resolução: visibility=`exclusive` exige grant específico; `shared` requer grant; `internal` só staff.
+
+### 1.2 Templates — liberação por cliente/número
+Adicionar em `whatsapp_templates`:
+- `visibility text check in ('internal','shared','exclusive')` default `'internal'`
+
+Nova tabela `whatsapp_template_grants`:
+- `template_id`, `workspace_id` (nullable), `connection_id` (nullable), `created_at`
+
+Nova tabela `whatsapp_template_requests` (cliente solicita template novo):
+- `workspace_id`, `requested_by`, `name`, `category`, `language`, `body`, `variables jsonb`, `buttons jsonb`, `header_media_type`, `status text` (`rascunho|em_revisao|enviado_meta|aprovado|rejeitado`), `admin_notes`, `created_template_id` (fk após criação), timestamps.
+
+### 1.3 Campanhas — aprovação e número escolhido
+Em `wa_campaigns`:
+- `workspace_id uuid` (backfill via `client_id`→workspace do owner; depois NOT NULL)
+- `connection_id uuid` (número remetente escolhido)
+- `approval_mode text check in ('auto','manual')` default `'auto'`
+- `approval_status text check in ('not_required','pending','approved','rejected')` default `'not_required'`
+- `approved_by uuid`, `approved_at`, `rejection_reason text`
+- Ampliar enum `status` com: `awaiting_approval`, `approved`, `rejected`, `blocked`
+
+Em `workspaces`:
+- `approval_mode text` default `'auto'` (política padrão do cliente/plano)
+- `blocked_at timestamptz`, `block_reason text`
+
+### 1.4 Saldo (reaproveita `message_stock`)
+Nova tabela `message_stock_reservations`:
+- `campaign_id`, `workspace_id`, `qty_reserved int`, `qty_consumed int`, `status` (`held|consumed|released`), timestamps.
+
+Fluxo: ao iniciar campanha reserva `total_recipients`; ao aceitar/enviar consome; ao cancelar/falhar em massa devolve saldo.
+
+### 1.5 RLS (todas as tabelas)
+- Cliente: `workspace_id IN user_workspace_ids(auth.uid())`
+- Staff interno: `is_internal_staff(auth.uid())` libera tudo
+- Grants: cliente só lê grants do próprio workspace
+- Tokens/App Secret/Phone Number ID sensível: **nenhuma policy SELECT para authenticated** — só backend service role
+
+### 1.6 Views seguras para o cliente
+- `v_client_numbers` (WITH security_invoker=on): projeta apenas `id, display_name, phone_masked, status, quality (se permitido), daily_cap_available, paused` — sem token, sem WABA ID, sem Phone Number ID.
+- `v_client_templates`: `id, name, category, language, body_preview, variables, buttons` — sem meta IDs.
+
+---
+
+## 2. Server functions (todas com `requireSupabaseAuth` + checagem de workspace)
+
+`src/lib/client-panel.functions.ts`:
+- `listMyNumbers({ workspace_id, project_id? })` → lê `v_client_numbers` filtrando por grants
+- `listMyTemplates({ workspace_id, connection_id? })` → lê `v_client_templates` filtrando por grants
+- `getMyBalance({ workspace_id })` → usa `wa_available_stock`
+- `createTemplateRequest(...)`
+- `createCampaign(...)` → valida grants, saldo, opt-in, template aprovado, número ativo, cliente não bloqueado; grava com `approval_status` conforme `workspaces.approval_mode`
+- `startCampaign({ campaign_id })` → se `auto` inicia direto; se `manual` marca `awaiting_approval`
+
+`src/lib/admin-whatsapp.functions.ts`:
+- `grantNumberToWorkspace / revokeNumberGrant`
+- `grantTemplateToWorkspace / revokeTemplateGrant`
+- `approveCampaign / rejectCampaign(reason)`
+- `pauseCampaign / cancelCampaign / reprocessFailures`
+- `blockWorkspace / unblockWorkspace`
+- `reviewTemplateRequest / submitTemplateRequestToMeta`
+
+Todo `handler` dispatcher existente (`sendCampaign`, webhook) passa a debitar/creditar `message_stock_reservations` e respeitar `daily_cap` + `paused_at` do número.
+
+---
+
+## 3. Rotas
+
+### `/admin` (staff) — adiciona
+- `/admin/numeros` — CRUD dos números com aba **Liberações** (grants por workspace/projeto), visibility, daily cap, pause, notes
+- `/admin/templates` — aba **Liberações** + fila de `whatsapp_template_requests`
+- `/admin/campanhas-aprovacao` — fila de `awaiting_approval` com aprovar/rejeitar/trocar número
+- `/admin/clientes/[id]` — aba **Números liberados**, **Templates liberados**, **Estoque**, **Modo de aprovação**, **Bloquear**
+
+Telas existentes permanecem intactas.
+
+### `/painel` (cliente)
+- `/painel` — dashboard: saldo, últimas campanhas, alertas
+- `/painel/contatos`, `/painel/listas`
+- `/painel/templates` — lista dos liberados + botão "Solicitar novo template"
+- `/painel/campanhas` — lista filtrada por workspace
+- `/painel/campanhas/nova` — wizard 7 etapas (Dados → Público → Número → Template → Variáveis → Revisão → Envio)
+- `/painel/relatorios`
+- `/painel/configuracoes` (perfil, membros do workspace)
+- **Sem** telas de conexão WhatsApp / BM / token
+
+### `/` (público)
+- Mantém landing já criada; ajustar copy para deixar claro: "Nós cuidamos da infraestrutura oficial Meta. Você só dispara." Sem prometer "ilimitado" ou "burlar bloqueios".
+
+---
+
+## 4. Wizard de nova campanha (`/painel/campanhas/nova`)
+
+Passos exatamente como especificado. Regras-chave:
+- Etapa 3: `listMyNumbers` — se retornar 1, auto-seleciona; se 0, bloqueia com CTA "Solicitar liberação ao suporte"
+- Etapa 4: `listMyTemplates(connection_id)` — filtra por grants do número + workspace
+- Etapa 5: reaproveita `wa-variables.ts` já existente (fallback `{campo|default}` já suportado)
+- Etapa 6: chama `getMyBalance` + `estimateCost` — bloqueia se saldo insuficiente
+- Etapa 7: `startCampaign` respeita `approval_mode`
+
+---
+
+## 5. Status e transições
+
+```text
+rascunho ─▶ awaiting_approval ─▶ approved ─▶ scheduled|queued ─▶ running ─▶ paused|completed|cancelled|failed
+       └───────────(auto)─────────────────────┘
+       └──────▶ rejected (com motivo)
 ```
-/                       → Site público (landing)
-/login, /cadastro       → Auth pública do cliente
-/recuperar-senha        → Reset
-/painel/*               → Área logada do cliente (workspace)
-/admin/*                → Área interna (mantida, gate = super_admin)
-```
 
-### Multi-tenant
-- Nova tabela `workspaces` (empresa do cliente).
-- Nova tabela `workspace_members(workspace_id, user_id, role)` com enum `workspace_role` = `owner | admin | operator | viewer`.
-- Enum `app_role` existente ganha `super_admin | support | finance | operations` para equipe interna. `/admin` passa a exigir um desses roles internos (hoje exige `admin`).
-- Todas as tabelas operacionais ganham `workspace_id uuid not null`:
-  - `contacts`, `contact_lists`, `contact_list_items`, `contact_tags`, `whatsapp_wabas`, `whatsapp_connections`, `whatsapp_templates`, `wa_campaigns`, `campaign_recipients`, `campaign_events`, `campaign_timeline`, `message_logs`, `message_stock`, `opt_outs`, `whatsapp_inbox`, `whatsapp_messages`, `reports`, etc.
-- RLS reescrita: função `current_workspace_id()` + `is_workspace_member(ws, role[])` (SECURITY DEFINER). Policies:
-  - Cliente vê apenas linhas do seu workspace.
-  - Roles internos (`has_role(uid, 'super_admin' | 'support' | ...)`) veem tudo.
-- Migração de dados existentes: criar um workspace "Legacy" e vincular todas as linhas atuais a ele; usuários admin atuais viram membros desse workspace + mantêm role interno.
-
-### Auth
-- Habilitar signup público (hoje o `handle_new_user` promove o primeiro user a admin — vamos ajustar para NÃO conceder role interno em signups públicos; só criar profile + workspace + membership owner).
-- Trigger `handle_new_user` reescrito: cria `profiles`, cria `workspaces` (nome = empresa do cadastro, via metadata) e `workspace_members` com role `owner`.
-- `/painel/*` protegido por layout que exige sessão + membership.
-- `/admin/*` protegido por role interno (`super_admin` etc.).
+Admin pode: aprovar, rejeitar, trocar número antes de `running`, pausar, cancelar, reprocessar falhas.
 
 ---
 
-## Fase 1 — Fundação multi-tenant (backend + auth)
-
-1. Migração SQL:
-   - Enums `workspace_role`, ampliar `app_role`.
-   - Tabela `workspaces` (id, name, slug, plan, status, owner_id, created_at, updated_at).
-   - Tabela `workspace_members` (workspace_id, user_id, role, unique).
-   - GRANTs + RLS + policies (via `has_workspace_role` SECURITY DEFINER).
-   - Adicionar coluna `workspace_id` nas tabelas operacionais (nullable primeiro), backfill para workspace "Legacy", depois `NOT NULL`.
-   - Reescrever policies existentes para escopar por workspace + bypass para roles internos.
-   - Ajustar `handle_new_user` para o novo fluxo.
-2. Middleware server: helper `requireWorkspace` que resolve `workspace_id` do usuário logado e injeta no context de todos os server functions.
-3. Ajustar server functions atuais (`contacts.functions.ts`, `wa-campaigns.functions.ts`, etc.) para filtrar/inserir com `workspace_id`.
-4. `/admin` continua funcionando: passa a exigir role interno; usuário admin atual recebe `super_admin` na migração.
-
-**Entregável:** `/admin` intacto, backend pronto para múltiplos workspaces. Nenhuma UI nova ainda.
+## 6. Segurança
+- Nenhuma tabela com token/app_secret exposta ao role `authenticated`
+- `client.ts` browser nunca lê `whatsapp_connections` cru — só as views
+- Todos servers fns validam `workspace_id ∈ user_workspace_ids(auth.uid())` antes de qualquer operação
+- Bloqueio: se `workspaces.blocked_at IS NOT NULL`, `createCampaign` e `startCampaign` rejeitam
+- Rate/daily cap: dispatcher consulta `daily_cap` do número + envios do dia; se estourar, pausa e loga
+- Opt-in obrigatório: recipient só entra se `opt_in=true` (respeitando `opt_outs`)
 
 ---
 
-## Fase 2 — Auth pública (`/login`, `/cadastro`, `/recuperar-senha`)
+## 7. Ordem de execução
 
-1. Rotas públicas com design premium (mesmo sistema visual da futura landing).
-2. Cadastro: nome, e-mail, telefone, empresa, senha → `supabase.auth.signUp` com metadata `{ company_name, full_name, phone }` que o trigger usa para criar o workspace.
-3. Login redireciona: role interno → `/admin`; membro de workspace → `/painel`.
-4. Recuperação de senha (`resetPasswordForEmail` + rota `/reset-password`).
-
----
-
-## Fase 3 — Landing pública `/`
-
-Landing SaaS moderna, responsiva, com as seções pedidas: Header, Hero, Prova de valor, Como funciona (6 passos), Recursos, Segurança/Conformidade, Planos (Starter/Growth/Scale/Enterprise — valores placeholders editáveis), FAQ, CTA final, Footer. Design de referência: Stripe/Brevo/Zenvia. Tokens em `src/styles.css`, componentes shadcn. SEO: `head()` por seção via route metadata, `og:image` gerada.
-
----
-
-## Fase 4 — Painel do cliente `/painel/*`
-
-Novo layout com sidebar/topbar próprios (separado do `/admin`).
-
-Rotas:
-- `/painel` — dashboard + checklist de onboarding + cards de KPIs (do próprio workspace).
-- `/painel/campanhas` + `/painel/campanhas/nova` + `/painel/campanhas/$id` — reaproveitando lógica de `wa-campaigns` já existente, filtrada por workspace.
-- `/painel/contatos` (+ listas + tags).
-- `/painel/templates` — CRUD com status `rascunho | aguardando_revisao | enviado_meta | aprovado | rejeitado`.
-- `/painel/whatsapp` — Embedded Signup quando disponível, senão botão "Solicitar configuração" (cria ticket lido pelo admin).
-- `/painel/relatorios` — só dados do workspace, export CSV.
-- `/painel/financeiro` — plano, estoque de mensagens, consumo, faturas (estrutura pronta; pagamento online fica para fase futura).
-- `/painel/configuracoes` — dados da empresa, membros (convidar por e-mail, atribuir role de workspace), preferências.
-
-Regras de negócio preservadas: campanha só inicia com opt-in, template aprovado, número ativo, estoque suficiente, token válido, cliente não bloqueado.
-
----
-
-## Fase 5 — Admin interno ampliado
-
-Ampliar `/admin` para visão cross-workspace: listar clientes/workspaces, ver campanhas de todos, aprovar templates internamente (fila "aguardando revisão"), gerenciar planos, gerenciar estoque/créditos por workspace, bloquear/desbloquear cliente, ver logs e faturamento geral, atender solicitações de configuração de WhatsApp.
-
----
-
-## O que **não** vou fazer sem confirmação
-- Não vou implementar pagamentos online (Stripe/Paddle) agora — só a estrutura de planos/faturas. Confirme se quer que eu já habilite Stripe na Fase 4/5.
-- Não vou remover nenhuma tela existente do `/admin`.
-- Não vou trocar o design system atual do `/admin`; a landing e o `/painel` recebem tratamento premium novo e podem convergir depois.
+**Fase A — Backend (uma migration):** todas as colunas, tabelas, views, RLS, grants, enum extension.
+**Fase B — Server fns admin:** grants de número/template, aprovação, template requests.
+**Fase C — Server fns cliente + views:** listagens seguras, saldo, criar/iniciar campanha.
+**Fase D — Telas admin novas:** `/admin/numeros` (aba liberações), fila de aprovação, fila de templates.
+**Fase E — Painel cliente:** wizard 7 etapas + templates + relatórios (reaproveitando componentes de `/admin`).
+**Fase F — Dispatcher:** reservar/consumir/devolver saldo, respeitar `daily_cap`, `paused_at`, bloqueio de workspace.
+**Fase G — Copy da landing** ajustada ao novo posicionamento.
 
 ---
 
 ## Perguntas antes de começar
 
-1. **Usuários existentes:** algum e-mail específico deve virar `super_admin` além do dono atual? Ou promovo todos os `admin` atuais para `super_admin` automaticamente?
-2. **Auto-confirm de e-mail no cadastro público:** ativo (usuário cai direto no painel) ou exijo confirmação por e-mail?
-3. **Planos iniciais:** posso usar valores placeholders (R$ 197 / 497 / 1.497 / sob consulta) que você edita depois?
-4. **Posso começar pela Fase 1 (migração multi-tenant)?** Ela é a base de tudo e envolve alterar RLS de várias tabelas — quero seu ok antes de rodar a migration.
+1. **Valores dos 4 planos** (Starter / Growth / Scale / Enterprise) — ainda preciso para a landing e para o seed de `workspaces.plan`.
+2. **Modo de aprovação default** para novos cadastros: `auto` (cliente dispara direto) ou `manual` (toda campanha passa por você)?
+3. **Cliente pode solicitar template novo** já no MVP, ou só usa os que você libera?
+4. Posso seguir direto para **Fase A (migration)** assim que responder as 3 acima?
