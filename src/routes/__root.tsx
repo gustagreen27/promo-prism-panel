@@ -77,18 +77,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Campaign Canvas is an admin panel for creating and managing marketing campaigns with custom URLs and traffic tracking." },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Campaign Canvas is an admin panel for creating and managing marketing campaigns with custom URLs and traffic tracking." },
+      { title: "Disparos FR — Campanhas oficiais no WhatsApp Business" },
+      {
+        name: "description",
+        content:
+          "Plataforma SaaS para disparos oficiais via WhatsApp Business Platform: templates aprovados, contatos, filas de envio, relatórios em tempo real e controle financeiro.",
+      },
+      { property: "og:title", content: "Disparos FR — WhatsApp Business Platform" },
+      {
+        property: "og:description",
+        content:
+          "Dispare campanhas oficiais no WhatsApp com controle, automação e relatórios em tempo real.",
+      },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "Lovable App" },
-      { name: "twitter:description", content: "Campaign Canvas is an admin panel for creating and managing marketing campaigns with custom URLs and traffic tracking." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/15579412-d459-4ac0-8e75-9d8601f7f9e8/id-preview-ef5c6fde--7ab5bd9b-6708-45d5-aac2-6105c07f9fee.lovable.app-1782511341707.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/15579412-d459-4ac0-8e75-9d8601f7f9e8/id-preview-ef5c6fde--7ab5bd9b-6708-45d5-aac2-6105c07f9fee.lovable.app-1782511341707.png" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
       {
