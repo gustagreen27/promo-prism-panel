@@ -120,42 +120,7 @@ function Page() {
   );
 }
 
-// Substituindo o bloco antigo abaixo:
-            </Dialog>
-          </div>
-        }
-      />
-      <div className="rounded-xl border bg-card">
-        {isLoading ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
-        : rows.length === 0 ? <EmptyState title="Nenhum template" description="Cadastre manualmente ou sincronize com a Meta." />
-        : <Table>
-          <TableHeader><TableRow>
-            <TableHead>Nome</TableHead><TableHead>Idioma</TableHead><TableHead>Categoria</TableHead>
-            <TableHead>Status</TableHead><TableHead>Variáveis</TableHead><TableHead>Número</TableHead><TableHead />
-          </TableRow></TableHeader>
-          <TableBody>
-            {rows.map((r: any) => (
-              <TableRow key={r.id}>
-                <TableCell className="font-medium">{r.name}</TableCell>
-                <TableCell>{r.language}</TableCell>
-                <TableCell>{r.category ?? "—"}</TableCell>
-                <TableCell><Badge variant={r.status === "approved" ? "default" : "secondary"}>{r.status}</Badge></TableCell>
-                <TableCell className="font-mono text-xs">{Array.isArray(r.variables) ? r.variables.join(", ") : "—"}</TableCell>
-                <TableCell className="text-sm">{r.connection?.name ?? "—"}</TableCell>
-                <TableCell className="text-right">
-                  <Button size="icon" variant="ghost" onClick={() => { setEditing(r); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-                  <Button size="icon" variant="ghost" onClick={() => confirm("Remover?") && del.mutate(r.id)}><Trash2 className="h-4 w-4" /></Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>}
-      </div>
-    </>
-  );
-}
-
-function FormDialog({ editing, numbers, onSubmit, saving }: any) {
+function FormDialog({ editing, numbers, wabas, onSubmit, saving }: any) {
   const [form, setForm] = useState<any>(() => editing ?? {
     connection_id: "", name: "", language: "pt_BR", category: "MARKETING",
     status: "approved", header_type: "", header_text: "", body: "", footer: "",
