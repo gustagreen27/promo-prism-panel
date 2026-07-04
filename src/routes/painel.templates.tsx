@@ -17,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, Plus, MessageSquare, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyContext } from "@/lib/auth.functions";
-import { createTemplateRequest } from "@/lib/client-panel.functions";
+import { createTemplateRequest, listMyTemplates } from "@/lib/client-panel.functions";
 
 export const Route = createFileRoute("/painel/templates")({
   head: () => ({ meta: [{ title: "Templates — Disparos FR" }] }),
