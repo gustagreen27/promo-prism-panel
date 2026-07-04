@@ -31,9 +31,13 @@ function Page() {
   const update = useServerFn(updateTemplate);
   const remove = useServerFn(deleteTemplate);
   const sync = useServerFn(syncTemplates);
+  const submitFn = useServerFn(submitTemplateForApproval);
+  const refreshStatusFn = useServerFn(refreshTemplateStatus);
+  const wabasFn = useServerFn(listWabas);
   const qc = useQueryClient();
   const { data: rows = [], isLoading } = useQuery({ queryKey: ["wa-templates"], queryFn: () => listFn() });
   const { data: numbers = [] } = useQuery({ queryKey: ["wa-numbers"], queryFn: () => numFn() });
+  const { data: wabas = [] } = useQuery({ queryKey: ["wa-wabas"], queryFn: () => wabasFn() });
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [syncConn, setSyncConn] = useState<string>("");
@@ -49,6 +53,16 @@ function Page() {
     mutationFn: (id: string) => sync({ data: { connection_id: id } }),
     onSuccess: (r: any) => { toast.success(`${r.synced}/${r.total} templates sincronizados`); refresh(); },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao sincronizar"),
+  });
+  const submitMut = useMutation({
+    mutationFn: (id: string) => submitFn({ data: { template_id: id } }),
+    onSuccess: () => { toast.success("Enviado para aprovação"); refresh(); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro"),
+  });
+  const refreshMut = useMutation({
+    mutationFn: (id: string) => refreshStatusFn({ data: { template_id: id } }),
+    onSuccess: (r: any) => { toast.success(`Status: ${r.status}`); refresh(); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro"),
   });
 
   return (
