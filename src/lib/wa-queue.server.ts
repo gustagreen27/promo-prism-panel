@@ -1,6 +1,8 @@
 // Server-only queue processor for WhatsApp campaigns (async worker with lease + timeline + final report).
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendTemplateMessage } from "@/lib/wa-send.server";
+import { renderMapping, buildContext } from "@/lib/wa-variables";
+
 
 const OPT_OUT_REGEX = /\b(parar|sair|cancelar|cancela|remover|descadastrar|n[ãa]o quero|stop|unsubscribe)\b/i;
 
