@@ -122,16 +122,27 @@ function Page() {
 
 function FormDialog({ editing, numbers, wabas, onSubmit, saving }: any) {
   const [form, setForm] = useState<any>(() => editing ?? {
-    connection_id: "", name: "", language: "pt_BR", category: "MARKETING",
-    status: "approved", header_type: "", header_text: "", body: "", footer: "",
-    variables: [], buttons: [],
+    connection_id: "", waba_ref_id: "", name: "", language: "pt_BR", category: "MARKETING",
+    status: "pending", header_type: "", header_text: "", header_media_url: "", body: "", footer: "",
+    variables: [], variables_examples: [], buttons: [],
   });
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
+  const bodyExamples = (Array.isArray(form.variables_examples) ? form.variables_examples : []).find((e: any) => e?.section === "body")?.values ?? [];
+  const setBodyExamples = (arr: string[]) => {
+    const others = (Array.isArray(form.variables_examples) ? form.variables_examples : []).filter((e: any) => e?.section !== "body");
+    set("variables_examples", [...others, { section: "body", values: arr }]);
+  };
   return (
-    <DialogContent className="max-w-2xl">
+    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
       <DialogHeader><DialogTitle>{editing ? "Editar template" : "Novo template"}</DialogTitle></DialogHeader>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div><Label>Número</Label>
+        <div><Label>WABA *</Label>
+          <Select value={form.waba_ref_id ?? ""} onValueChange={(v) => set("waba_ref_id", v)}>
+            <SelectTrigger><SelectValue placeholder="Selecione a WABA" /></SelectTrigger>
+            <SelectContent>{wabas.map((w: any) => <SelectItem key={w.id} value={w.id}>{w.nome_interno}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div><Label>Número (opcional)</Label>
           <Select value={form.connection_id ?? ""} onValueChange={(v) => set("connection_id", v)}>
             <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
             <SelectContent>{numbers.map((n: any) => <SelectItem key={n.id} value={n.id}>{n.name}</SelectItem>)}</SelectContent>
