@@ -379,7 +379,7 @@ export async function processCampaignTick(
         to: r.phone.replace(/\D/g, ""),
         templateName: tpl.name,
         languageCode: tpl.language || "pt_BR",
-        variables: mergedVars,
+        variables: renderedVars,
         headerType: resolvedHeaderType,
         headerValue: resolvedHeaderValue,
         buttonUrlParam,
