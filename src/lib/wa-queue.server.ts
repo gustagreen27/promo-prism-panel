@@ -433,6 +433,13 @@ export async function processCampaignTick(
             attempt: attempts,
           })
           .eq("id", r.id);
+        // Falha permanente: libera 1 unidade da reserva
+        if (!shouldRetry && (camp as any).reservation_id) {
+          await supabaseAdmin.rpc("wallet_release_reservation" as any, {
+            _reservation_id: (camp as any).reservation_id,
+            _qty: 1,
+          });
+        }
       }
 
       // Jitter delay between sends (in-lote)
