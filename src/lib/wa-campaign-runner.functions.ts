@@ -271,7 +271,7 @@ export const getCampaignRecipients = createServerFn({ method: "GET" })
       .eq("campaign_id", data.id)
       .order("created_at", { ascending: true })
       .limit(data.limit ?? 1000);
-    if (data.status) q = q.eq("status", data.status);
+    if (data.status) q = q.eq("status", data.status as any);
     const { data: rows } = await q;
     return rows ?? [];
   });
