@@ -335,17 +335,24 @@ function Page() {
       const { phone, name } = recipients[idx];
       setRows((rs) => rs.map((r) => (r.phone === phone ? { ...r, status: "sending" } : r)));
       try {
+        // Render per-recipient tokens like {nome}, {primeiro_nome}, {telefone} etc.
+        // If the {{1}} field is empty, fall back to the CSV name so old behavior still works.
+        const ctx = buildContext({ contact: { name: name ?? "", phone } });
+        const render = (v: string) => renderMapping(v ?? "", ctx);
+        const nomeClienteFinal = form.nomeCliente
+          ? render(form.nomeCliente)
+          : (name || "");
         const res: SendFrgc01Response = await sendFn({
           data: {
             connectionId: form.connectionId,
             to: phone,
             imageUrl: form.imageUrl,
             mediaType: form.mediaType,
-            nomeCliente: name || form.nomeCliente,
-            informacaoPrincipal: form.informacaoPrincipal,
-            mensagemComplementar: form.mensagemComplementar,
-            textoAcao: form.textoAcao,
-            urlParametro: form.urlParametro,
+            nomeCliente: nomeClienteFinal,
+            informacaoPrincipal: render(form.informacaoPrincipal),
+            mensagemComplementar: render(form.mensagemComplementar),
+            textoAcao: render(form.textoAcao),
+            urlParametro: render(form.urlParametro),
           },
         });
         if (res.ok) {
