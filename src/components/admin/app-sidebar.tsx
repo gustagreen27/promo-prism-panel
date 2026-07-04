@@ -1,4 +1,3 @@
-import { Link2 } from "lucide-react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
@@ -11,6 +10,7 @@ import {
   LogOut,
   Briefcase,
   FileText,
+  Link2,
   Send,
   Inbox,
   History,
