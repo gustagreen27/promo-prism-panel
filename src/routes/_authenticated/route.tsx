@@ -11,18 +11,17 @@ export const Route = createFileRoute("/_authenticated")({
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw redirect({ to: "/login" });
 
-    const [{ data: roles }, { data: memberships }] = await Promise.all([
-      supabase.from("user_roles").select("role").eq("user_id", data.user.id),
-      supabase.from("workspace_members").select("workspace_id, role").eq("user_id", data.user.id),
-    ]);
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", data.user.id);
     const internalRoles = new Set(["admin", "super_admin", "support", "finance", "operations"]);
     const isInternal = (roles ?? []).some((r) => internalRoles.has(r.role as string));
-    const hasWorkspace = (memberships ?? []).length > 0;
-    if (!isInternal && !hasWorkspace) {
-      await supabase.auth.signOut();
-      throw redirect({ to: "/login", search: { reason: "no-access" } as never });
+    if (!isInternal) {
+      // Non-staff logged in: send to client panel instead of forcing sign-out
+      throw redirect({ to: "/painel" });
     }
-    return { user: data.user, isInternal, hasWorkspace };
+    return { user: data.user };
   },
   component: AuthenticatedLayout,
 });
