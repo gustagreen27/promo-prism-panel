@@ -38,6 +38,7 @@ function Page() {
   const listWs = useServerFn(adminListWorkspacesWithBalance);
   const listTx = useServerFn(adminListAllTransactions);
   const setPrice = useServerFn(adminSetCustomPrice);
+  const setMinMsg = useServerFn(adminSetCustomMinimumMessages);
   const adjust = useServerFn(adminAdjustWallet);
   const qc = useQueryClient();
 
@@ -47,8 +48,9 @@ function Page() {
     queryFn: () => listTx({ data: { limit: 200 } }),
   });
 
-  const [modal, setModal] = useState<null | { ws: any; type: "price" | "adjust" }>(null);
+  const [modal, setModal] = useState<null | { ws: any; type: "price" | "minmsg" | "adjust" }>(null);
   const [priceStr, setPriceStr] = useState("");
+  const [minMsgStr, setMinMsgStr] = useState("");
   const [amountStr, setAmountStr] = useState("");
   const [description, setDescription] = useState("");
   const [signMul, setSignMul] = useState(1);
