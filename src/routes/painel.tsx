@@ -33,8 +33,7 @@ export const Route = createFileRoute("/painel")({
       user: data.user,
       workspaceId: first.workspace_id,
       workspaceRole: first.role,
-      // @ts-expect-error nested typing
-      workspace: first.workspaces,
+      workspace: (first as unknown as { workspaces: { id: string; name: string; slug: string | null; plan: string; status: string } }).workspaces,
     };
   },
   component: PanelLayout,

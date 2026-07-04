@@ -12,12 +12,14 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RecuperarSenhaRouteImport } from './routes/recuperar-senha'
 import { Route as PoliticaDePrivacidadeRouteImport } from './routes/politica-de-privacidade'
+import { Route as PainelRouteImport } from './routes/painel'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as SlugRouteImport } from './routes/$slug'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PainelIndexRouteImport } from './routes/painel.index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedAdminWhatsappCampanhasRouteImport } from './routes/_authenticated/admin.whatsapp-campanhas'
 import { Route as AuthenticatedAdminWhatsappRouteImport } from './routes/_authenticated/admin.whatsapp'
@@ -75,6 +77,11 @@ const PoliticaDePrivacidadeRoute = PoliticaDePrivacidadeRouteImport.update({
   path: '/politica-de-privacidade',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PainelRoute = PainelRouteImport.update({
+  id: '/painel',
+  path: '/painel',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -103,6 +110,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PainelIndexRoute = PainelIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PainelRoute,
 } as any)
 const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/admin/',
@@ -354,9 +366,11 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/cadastro': typeof CadastroRoute
   '/login': typeof LoginRoute
+  '/painel': typeof PainelRouteWithChildren
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/painel/': typeof PainelIndexRoute
   '/admin/agenda': typeof AuthenticatedAdminAgendaRoute
   '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
@@ -408,6 +422,7 @@ export interface FileRoutesByTo {
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/painel': typeof PainelIndexRoute
   '/admin/agenda': typeof AuthenticatedAdminAgendaRoute
   '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
@@ -458,9 +473,11 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/cadastro': typeof CadastroRoute
   '/login': typeof LoginRoute
+  '/painel': typeof PainelRouteWithChildren
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/painel/': typeof PainelIndexRoute
   '/_authenticated/admin/agenda': typeof AuthenticatedAdminAgendaRoute
   '/_authenticated/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
   '/_authenticated/admin/clientes': typeof AuthenticatedAdminClientesRoute
@@ -511,9 +528,11 @@ export interface FileRouteTypes {
     | '/auth'
     | '/cadastro'
     | '/login'
+    | '/painel'
     | '/politica-de-privacidade'
     | '/recuperar-senha'
     | '/reset-password'
+    | '/painel/'
     | '/admin/agenda'
     | '/admin/campanhas'
     | '/admin/clientes'
@@ -565,6 +584,7 @@ export interface FileRouteTypes {
     | '/politica-de-privacidade'
     | '/recuperar-senha'
     | '/reset-password'
+    | '/painel'
     | '/admin/agenda'
     | '/admin/campanhas'
     | '/admin/clientes'
@@ -614,9 +634,11 @@ export interface FileRouteTypes {
     | '/auth'
     | '/cadastro'
     | '/login'
+    | '/painel'
     | '/politica-de-privacidade'
     | '/recuperar-senha'
     | '/reset-password'
+    | '/painel/'
     | '/_authenticated/admin/agenda'
     | '/_authenticated/admin/campanhas'
     | '/_authenticated/admin/clientes'
@@ -667,6 +689,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CadastroRoute: typeof CadastroRoute
   LoginRoute: typeof LoginRoute
+  PainelRoute: typeof PainelRouteWithChildren
   PoliticaDePrivacidadeRoute: typeof PoliticaDePrivacidadeRoute
   RecuperarSenhaRoute: typeof RecuperarSenhaRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -697,6 +720,13 @@ declare module '@tanstack/react-router' {
       path: '/politica-de-privacidade'
       fullPath: '/politica-de-privacidade'
       preLoaderRoute: typeof PoliticaDePrivacidadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/painel': {
+      id: '/painel'
+      path: '/painel'
+      fullPath: '/painel'
+      preLoaderRoute: typeof PainelRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -740,6 +770,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/painel/': {
+      id: '/painel/'
+      path: '/'
+      fullPath: '/painel/'
+      preLoaderRoute: typeof PainelIndexRouteImport
+      parentRoute: typeof PainelRoute
     }
     '/_authenticated/admin/': {
       id: '/_authenticated/admin/'
@@ -1179,6 +1216,17 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface PainelRouteChildren {
+  PainelIndexRoute: typeof PainelIndexRoute
+}
+
+const PainelRouteChildren: PainelRouteChildren = {
+  PainelIndexRoute: PainelIndexRoute,
+}
+
+const PainelRouteWithChildren =
+  PainelRoute._addFileChildren(PainelRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
@@ -1186,6 +1234,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CadastroRoute: CadastroRoute,
   LoginRoute: LoginRoute,
+  PainelRoute: PainelRouteWithChildren,
   PoliticaDePrivacidadeRoute: PoliticaDePrivacidadeRoute,
   RecuperarSenhaRoute: RecuperarSenhaRoute,
   ResetPasswordRoute: ResetPasswordRoute,
