@@ -380,6 +380,34 @@ export async function processCampaignTick(
           })
           .eq("id", r.id);
       }
+
+      // Jitter delay between sends (in-lote)
+      const jitter = Math.max(0, (camp as any).jitter_ms ?? 0);
+      if (jitter > 0) {
+        const wait = Math.floor(Math.random() * jitter);
+        if (wait > 0) await new Promise((res) => setTimeout(res, wait));
+      }
+    }
+
+    // Auto-pause on failure-rate threshold
+    const threshold = (camp as any).abort_on_failure_rate as number | null;
+    const minProc = (camp as any).min_processed_for_abort ?? 50;
+    if (threshold && threshold > 0) {
+      const { data: agg } = await supabaseAdmin
+        .from("campaign_recipients")
+        .select("status")
+        .eq("campaign_id", campaignId);
+      const rows = agg ?? [];
+      const processedTotal = rows.filter((r: any) => !["pending", "processing"].includes(r.status)).length;
+      const failedTotal = rows.filter((r: any) => r.status === "failed").length;
+      if (processedTotal >= minProc && failedTotal / processedTotal >= threshold) {
+        await markPaused(
+          campaignId,
+          "failure_rate",
+          `Auto-pausada: taxa de falha ${(100 * failedTotal / processedTotal).toFixed(1)}% ≥ ${(100 * threshold).toFixed(0)}%`,
+        );
+        return { processed: sent + failed, done: false, reason: "failure_rate" };
+      }
     }
 
     // Update speed / last_sent / last_error on campaign
