@@ -41,6 +41,7 @@ import { Route as AuthenticatedAdminCustosRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAdminContatosRouteImport } from './routes/_authenticated/admin.contatos'
 import { Route as AuthenticatedAdminConfiguracoesRouteImport } from './routes/_authenticated/admin.configuracoes'
 import { Route as AuthenticatedAdminClientesRouteImport } from './routes/_authenticated/admin.clientes'
+import { Route as AuthenticatedAdminCampanhasAprovacaoRouteImport } from './routes/_authenticated/admin.campanhas-aprovacao'
 import { Route as AuthenticatedAdminCampanhasRouteImport } from './routes/_authenticated/admin.campanhas'
 import { Route as AuthenticatedAdminAgendaRouteImport } from './routes/_authenticated/admin.agenda'
 import { Route as AuthenticatedAdminRelatoriosIndexRouteImport } from './routes/_authenticated/admin.relatorios.index'
@@ -241,6 +242,12 @@ const AuthenticatedAdminClientesRoute =
     path: '/admin/clientes',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAdminCampanhasAprovacaoRoute =
+  AuthenticatedAdminCampanhasAprovacaoRouteImport.update({
+    id: '/admin/campanhas-aprovacao',
+    path: '/admin/campanhas-aprovacao',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAdminCampanhasRoute =
   AuthenticatedAdminCampanhasRouteImport.update({
     id: '/admin/campanhas',
@@ -428,6 +435,7 @@ export interface FileRoutesByFullPath {
   '/painel/': typeof PainelIndexRoute
   '/admin/agenda': typeof AuthenticatedAdminAgendaRoute
   '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
+  '/admin/campanhas-aprovacao': typeof AuthenticatedAdminCampanhasAprovacaoRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
   '/admin/configuracoes': typeof AuthenticatedAdminConfiguracoesRoute
   '/admin/contatos': typeof AuthenticatedAdminContatosRouteWithChildren
@@ -488,6 +496,7 @@ export interface FileRoutesByTo {
   '/painel': typeof PainelIndexRoute
   '/admin/agenda': typeof AuthenticatedAdminAgendaRoute
   '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
+  '/admin/campanhas-aprovacao': typeof AuthenticatedAdminCampanhasAprovacaoRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
   '/admin/configuracoes': typeof AuthenticatedAdminConfiguracoesRoute
   '/admin/contatos': typeof AuthenticatedAdminContatosRouteWithChildren
@@ -551,6 +560,7 @@ export interface FileRoutesById {
   '/painel/': typeof PainelIndexRoute
   '/_authenticated/admin/agenda': typeof AuthenticatedAdminAgendaRoute
   '/_authenticated/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
+  '/_authenticated/admin/campanhas-aprovacao': typeof AuthenticatedAdminCampanhasAprovacaoRoute
   '/_authenticated/admin/clientes': typeof AuthenticatedAdminClientesRoute
   '/_authenticated/admin/configuracoes': typeof AuthenticatedAdminConfiguracoesRoute
   '/_authenticated/admin/contatos': typeof AuthenticatedAdminContatosRouteWithChildren
@@ -614,6 +624,7 @@ export interface FileRouteTypes {
     | '/painel/'
     | '/admin/agenda'
     | '/admin/campanhas'
+    | '/admin/campanhas-aprovacao'
     | '/admin/clientes'
     | '/admin/configuracoes'
     | '/admin/contatos'
@@ -674,6 +685,7 @@ export interface FileRouteTypes {
     | '/painel'
     | '/admin/agenda'
     | '/admin/campanhas'
+    | '/admin/campanhas-aprovacao'
     | '/admin/clientes'
     | '/admin/configuracoes'
     | '/admin/contatos'
@@ -736,6 +748,7 @@ export interface FileRouteTypes {
     | '/painel/'
     | '/_authenticated/admin/agenda'
     | '/_authenticated/admin/campanhas'
+    | '/_authenticated/admin/campanhas-aprovacao'
     | '/_authenticated/admin/clientes'
     | '/_authenticated/admin/configuracoes'
     | '/_authenticated/admin/contatos'
@@ -1020,6 +1033,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/clientes'
       fullPath: '/admin/clientes'
       preLoaderRoute: typeof AuthenticatedAdminClientesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/campanhas-aprovacao': {
+      id: '/_authenticated/admin/campanhas-aprovacao'
+      path: '/admin/campanhas-aprovacao'
+      fullPath: '/admin/campanhas-aprovacao'
+      preLoaderRoute: typeof AuthenticatedAdminCampanhasAprovacaoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/admin/campanhas': {
@@ -1320,6 +1340,7 @@ const AuthenticatedAdminCampaignsIdRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminAgendaRoute: typeof AuthenticatedAdminAgendaRoute
   AuthenticatedAdminCampanhasRoute: typeof AuthenticatedAdminCampanhasRoute
+  AuthenticatedAdminCampanhasAprovacaoRoute: typeof AuthenticatedAdminCampanhasAprovacaoRoute
   AuthenticatedAdminClientesRoute: typeof AuthenticatedAdminClientesRoute
   AuthenticatedAdminConfiguracoesRoute: typeof AuthenticatedAdminConfiguracoesRoute
   AuthenticatedAdminContatosRoute: typeof AuthenticatedAdminContatosRouteWithChildren
@@ -1344,6 +1365,8 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminAgendaRoute: AuthenticatedAdminAgendaRoute,
   AuthenticatedAdminCampanhasRoute: AuthenticatedAdminCampanhasRoute,
+  AuthenticatedAdminCampanhasAprovacaoRoute:
+    AuthenticatedAdminCampanhasAprovacaoRoute,
   AuthenticatedAdminClientesRoute: AuthenticatedAdminClientesRoute,
   AuthenticatedAdminConfiguracoesRoute: AuthenticatedAdminConfiguracoesRoute,
   AuthenticatedAdminContatosRoute: AuthenticatedAdminContatosRouteWithChildren,
