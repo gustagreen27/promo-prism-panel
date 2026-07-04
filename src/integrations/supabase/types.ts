@@ -1692,6 +1692,74 @@ export type Database = {
           },
         ]
       }
+      whatsapp_onboarding_logs: {
+        Row: {
+          client_id: string | null
+          connection_id: string | null
+          created_at: string
+          error: string | null
+          id: string
+          payload: Json | null
+          project_id: string | null
+          status: string
+          step: string
+          waba_ref_id: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          connection_id?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          payload?: Json | null
+          project_id?: string | null
+          status: string
+          step: string
+          waba_ref_id?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          connection_id?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          payload?: Json | null
+          project_id?: string | null
+          status?: string
+          step?: string
+          waba_ref_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_onboarding_logs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_onboarding_logs_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_onboarding_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_onboarding_logs_waba_ref_id_fkey"
+            columns: ["waba_ref_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_wabas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_templates: {
         Row: {
           body: string
@@ -1787,38 +1855,50 @@ export type Database = {
       }
       whatsapp_wabas: {
         Row: {
+          access_token: string | null
           business_id: string | null
           client_id: string | null
           created_at: string
           id: string
           nome_interno: string
           observacoes: string | null
+          onboarded_at: string | null
+          onboarded_via: string
           project_id: string | null
           status: string
+          token_expires_at: string | null
           updated_at: string
           waba_id: string
         }
         Insert: {
+          access_token?: string | null
           business_id?: string | null
           client_id?: string | null
           created_at?: string
           id?: string
           nome_interno: string
           observacoes?: string | null
+          onboarded_at?: string | null
+          onboarded_via?: string
           project_id?: string | null
           status?: string
+          token_expires_at?: string | null
           updated_at?: string
           waba_id: string
         }
         Update: {
+          access_token?: string | null
           business_id?: string | null
           client_id?: string | null
           created_at?: string
           id?: string
           nome_interno?: string
           observacoes?: string | null
+          onboarded_at?: string | null
+          onboarded_via?: string
           project_id?: string | null
           status?: string
+          token_expires_at?: string | null
           updated_at?: string
           waba_id?: string
         }
