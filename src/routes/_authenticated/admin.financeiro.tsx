@@ -66,6 +66,15 @@ function Page() {
     onError: (e: any) => toast.error(e?.message ?? "Erro"),
   });
 
+  const saveMinMsg = useMutation({
+    mutationFn: () => setMinMsg({ data: {
+      workspace_id: modal!.ws.id,
+      custom_minimum_messages: minMsgStr.trim() === "" ? null : Math.max(1, parseInt(minMsgStr, 10)),
+    } }),
+    onSuccess: () => { toast.success("Mínimo atualizado"); qc.invalidateQueries({ queryKey: ["admin-ws-balance"] }); setModal(null); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro"),
+  });
+
   const saveAdjust = useMutation({
     mutationFn: () => adjust({ data: {
       workspace_id: modal!.ws.id,
