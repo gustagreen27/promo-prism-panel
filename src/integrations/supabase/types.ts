@@ -246,10 +246,12 @@ export type Database = {
           failed_at: string | null
           failed_reason: string | null
           id: string
+          last_attempt_at: string | null
           meta_message_id: string | null
           phone: string
           read_at: string | null
           replied_at: string | null
+          responded_at: string | null
           sent_at: string | null
           status: Database["public"]["Enums"]["wa_recipient_status"]
           updated_at: string
@@ -265,10 +267,12 @@ export type Database = {
           failed_at?: string | null
           failed_reason?: string | null
           id?: string
+          last_attempt_at?: string | null
           meta_message_id?: string | null
           phone: string
           read_at?: string | null
           replied_at?: string | null
+          responded_at?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["wa_recipient_status"]
           updated_at?: string
@@ -284,10 +288,12 @@ export type Database = {
           failed_at?: string | null
           failed_reason?: string | null
           id?: string
+          last_attempt_at?: string | null
           meta_message_id?: string | null
           phone?: string
           read_at?: string | null
           replied_at?: string | null
+          responded_at?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["wa_recipient_status"]
           updated_at?: string
@@ -306,6 +312,44 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_timeline: {
+        Row: {
+          actor_id: string | null
+          campaign_id: string
+          created_at: string
+          event_type: string
+          id: string
+          message: string | null
+          payload: Json
+        }
+        Insert: {
+          actor_id?: string | null
+          campaign_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          message?: string | null
+          payload?: Json
+        }
+        Update: {
+          actor_id?: string | null
+          campaign_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          message?: string | null
+          payload?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_timeline_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "wa_campaigns"
             referencedColumns: ["id"]
           },
         ]
@@ -1331,7 +1375,10 @@ export type Database = {
       }
       wa_campaigns: {
         Row: {
+          avg_speed_per_min: number | null
           button_url_mapping: Json | null
+          canceled_at: string | null
+          canceled_by: string | null
           client_id: string | null
           connection_id: string | null
           created_at: string
@@ -1340,21 +1387,29 @@ export type Database = {
           delivered_count: number
           estimated_cost: number
           failed_count: number
+          final_report: Json | null
           finished_at: string | null
           id: string
+          last_error: string | null
+          last_sent_at: string | null
           linked_revenue_id: string | null
           list_id: string | null
           name: string
           notes: string | null
           participants: Database["public"]["Enums"]["partner_participant"][]
+          paused_at: string | null
+          paused_by: string | null
+          progress: Json
           project_id: string | null
           read_count: number
           replied_count: number
           responsavel_id: string | null
+          resumed_at: string | null
           scheduled_at: string | null
           send_rate_per_min: number
           sent_count: number
           started_at: string | null
+          started_by: string | null
           status: Database["public"]["Enums"]["wa_campaign_status"]
           tag_filters: string[] | null
           template_id: string | null
@@ -1363,9 +1418,14 @@ export type Database = {
           updated_at: string
           variables_mapping: Json | null
           waba_ref_id: string | null
+          worker_lease_id: string | null
+          worker_lease_until: string | null
         }
         Insert: {
+          avg_speed_per_min?: number | null
           button_url_mapping?: Json | null
+          canceled_at?: string | null
+          canceled_by?: string | null
           client_id?: string | null
           connection_id?: string | null
           created_at?: string
@@ -1374,21 +1434,29 @@ export type Database = {
           delivered_count?: number
           estimated_cost?: number
           failed_count?: number
+          final_report?: Json | null
           finished_at?: string | null
           id?: string
+          last_error?: string | null
+          last_sent_at?: string | null
           linked_revenue_id?: string | null
           list_id?: string | null
           name: string
           notes?: string | null
           participants?: Database["public"]["Enums"]["partner_participant"][]
+          paused_at?: string | null
+          paused_by?: string | null
+          progress?: Json
           project_id?: string | null
           read_count?: number
           replied_count?: number
           responsavel_id?: string | null
+          resumed_at?: string | null
           scheduled_at?: string | null
           send_rate_per_min?: number
           sent_count?: number
           started_at?: string | null
+          started_by?: string | null
           status?: Database["public"]["Enums"]["wa_campaign_status"]
           tag_filters?: string[] | null
           template_id?: string | null
@@ -1397,9 +1465,14 @@ export type Database = {
           updated_at?: string
           variables_mapping?: Json | null
           waba_ref_id?: string | null
+          worker_lease_id?: string | null
+          worker_lease_until?: string | null
         }
         Update: {
+          avg_speed_per_min?: number | null
           button_url_mapping?: Json | null
+          canceled_at?: string | null
+          canceled_by?: string | null
           client_id?: string | null
           connection_id?: string | null
           created_at?: string
@@ -1408,21 +1481,29 @@ export type Database = {
           delivered_count?: number
           estimated_cost?: number
           failed_count?: number
+          final_report?: Json | null
           finished_at?: string | null
           id?: string
+          last_error?: string | null
+          last_sent_at?: string | null
           linked_revenue_id?: string | null
           list_id?: string | null
           name?: string
           notes?: string | null
           participants?: Database["public"]["Enums"]["partner_participant"][]
+          paused_at?: string | null
+          paused_by?: string | null
+          progress?: Json
           project_id?: string | null
           read_count?: number
           replied_count?: number
           responsavel_id?: string | null
+          resumed_at?: string | null
           scheduled_at?: string | null
           send_rate_per_min?: number
           sent_count?: number
           started_at?: string | null
+          started_by?: string | null
           status?: Database["public"]["Enums"]["wa_campaign_status"]
           tag_filters?: string[] | null
           template_id?: string | null
@@ -1431,6 +1512,8 @@ export type Database = {
           updated_at?: string
           variables_mapping?: Json | null
           waba_ref_id?: string | null
+          worker_lease_id?: string | null
+          worker_lease_until?: string | null
         }
         Relationships: [
           {
@@ -1989,6 +2072,10 @@ export type Database = {
         Args: { _client_id: string; _project_id: string; _qty: number }
         Returns: boolean
       }
+      wa_recalc_campaign_progress: {
+        Args: { _campaign_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin"
@@ -2013,6 +2100,7 @@ export type Database = {
         | "completed"
         | "cancelled"
         | "error"
+        | "partial"
       wa_recipient_status:
         | "pending"
         | "processing"
@@ -2023,6 +2111,8 @@ export type Database = {
         | "failed"
         | "cancelled"
         | "opt_out"
+        | "accepted"
+        | "skipped"
       wa_template_status:
         | "approved"
         | "pending"
@@ -2179,6 +2269,7 @@ export const Constants = {
         "completed",
         "cancelled",
         "error",
+        "partial",
       ],
       wa_recipient_status: [
         "pending",
@@ -2190,6 +2281,8 @@ export const Constants = {
         "failed",
         "cancelled",
         "opt_out",
+        "accepted",
+        "skipped",
       ],
       wa_template_status: [
         "approved",
