@@ -53,8 +53,8 @@ export const Route = createFileRoute("/api/public/whatsapp-webhook")({
                   patch.error_code = st.errors?.[0]?.code ? String(st.errors[0].code) : null;
                 }
                 if (Object.keys(patch).length && metaId) {
-                  await supabaseAdmin.from("campaign_recipients").update(patch).eq("meta_message_id", metaId);
-                  await supabaseAdmin.from("message_logs").update({
+                  await (supabaseAdmin.from("campaign_recipients") as any).update(patch).eq("meta_message_id", metaId);
+                  await (supabaseAdmin.from("message_logs") as any).update({
                     message_status: status,
                     delivered_at: patch.delivered_at ?? null,
                     read_at: patch.read_at ?? null,
