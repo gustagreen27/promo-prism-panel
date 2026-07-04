@@ -1,125 +1,107 @@
-# Disparos assíncronos estilo Infobip/Data Crazy
 
-Transformar o módulo de campanhas em um sistema com fila real, worker em background, progresso em tempo real e relatório final premium — reaproveitando `wa_campaigns`, `campaign_recipients`, `message_logs`, `whatsapp_wabas`, `whatsapp_connections`, `whatsapp_templates`, `message_stock` e `opt_outs`.
+# Disparos FR → Plataforma SaaS Pública
 
-## 1. Schema (migração única)
+Escopo grande. Proponho entregar em **5 fases incrementais**, cada uma testável e sem quebrar o `/admin` atual. Confirme a fase 1 e sigo; depois validamos cada etapa antes da próxima.
 
-**`wa_campaigns`** — novos campos:
-- `status` expandido: `rascunho | agendada | na_fila | em_andamento | pausada | concluida | cancelada | erro | parcial`
-- `started_at`, `paused_at`, `resumed_at`, `finished_at`, `canceled_at timestamptz`
-- `started_by uuid`, `paused_by`, `canceled_by uuid` → `auth.users`
-- `progress jsonb` (contadores materializados: total/pending/processing/accepted/sent/delivered/read/failed/responded/optout/skipped/canceled)
-- `last_error text`, `last_sent_at timestamptz`, `avg_speed_per_min numeric`
-- `final_report jsonb` (snapshot gerado no fim)
-- `worker_lease_until timestamptz`, `worker_lease_id uuid` (lock de worker)
+---
 
-**`campaign_recipients`** — status individual expandido:
-`pendente | processando | accepted | sent | delivered | read | failed | responded | optout | skipped | canceled`
-- `meta_message_id text`, `attempts int default 0`, `last_attempt_at`, `sent_at`, `delivered_at`, `read_at`, `responded_at`, `failed_at`, `error_code text`, `error_message text`, `variables_snapshot jsonb`
+## Arquitetura geral
 
-**`campaign_timeline`** (nova) — linha do tempo:
-- `campaign_id`, `event_type` (`created|started|queued|paused|resumed|canceled|completed|report_generated|milestone|error|message_sent|message_delivered|message_read|message_failed|response_received|optout_detected`), `actor_id`, `payload jsonb`, `created_at`
-- Índice em `(campaign_id, created_at desc)`
-- RLS admin-only
-
-**Triggers**:
-- Trigger em `campaign_recipients` que recalcula `wa_campaigns.progress` a cada UPDATE de status
-- Trigger que insere em `campaign_timeline` em mudanças de status da campanha
-
-## 2. Worker (cron + endpoint)
-
-Endpoint público autenticado por `apikey` (Supabase anon key):
-`POST /api/public/wa/worker/tick`
-
-Chamado a cada 1 min por `pg_cron` via `pg_net`. Também acionado imediatamente quando o usuário clica Iniciar/Retomar (via server fn que faz fetch interno).
-
-Lógica do tick:
-1. Buscar campanhas `em_andamento` OU `agendada` com `scheduled_at <= now()` ou `na_fila`.
-2. Para cada campanha, tentar adquirir lease: `UPDATE ... SET worker_lease_until = now()+3min, worker_lease_id = gen_random_uuid() WHERE worker_lease_until IS NULL OR worker_lease_until < now()` (evita duplo processamento).
-3. Dentro do lease, processar em lote (ex: 50 recipients por tick, respeitando rate limit Meta):
-   - `SELECT ... FROM campaign_recipients WHERE campaign_id = ? AND status = 'pendente' LIMIT 50 FOR UPDATE SKIP LOCKED`
-   - Marca `processando`, renderiza variáveis, valida opt-out, valida estoque, envia via Cloud API.
-   - Salva `meta_message_id`, status `accepted/sent` ou `failed` com `error_code/message`.
-   - `wa_consume_stock` a cada envio bem-sucedido.
-   - Insere linha na `campaign_timeline` para marcos (a cada 10% ou eventos).
-4. Se campanha `pausada|cancelada` — libera lease sem processar. Cancelamento marca pendentes como `canceled`.
-5. Se `pending = 0` — status vai para `concluida` (ou `parcial` se houve falhas), gera `final_report jsonb`, insere evento `completed` + `report_generated`.
-6. Retry: `failed` com erros temporários (Meta code 130429/131056/etc) permanece `pendente` até `attempts >= 3`.
-
-**Webhook oficial** `/api/public/whatsapp/webhook` já existe — apenas estender para: localizar recipient por `meta_message_id` e atualizar `delivered_at/read_at/responded_at/failed_at` + inserir timeline event. Não alterar validação/verify_token.
-
-## 3. Server functions (`src/lib/wa-campaign-runner.functions.ts`)
-
-- `preflightCampaign({campaignId})` → checklist (cliente/projeto/lista/número/template/opt-in/estoque/token/webhook). Retorna `{ok, checks[]}`.
-- `startCampaign({campaignId})` — valida preflight, cria recipients da lista (dedup por telefone), status → `em_andamento`, dispara tick.
-- `pauseCampaign`, `resumeCampaign`, `cancelCampaign` — atualizam status + timeline.
-- `retryFailed({campaignId})` — reseta `failed` transitórios para `pendente`.
-- `getCampaignProgress({campaignId})` — retorna `progress`, `last_error`, `last_sent_at`, `avg_speed_per_min`, ETA calculado.
-- `getCampaignTimeline({campaignId, limit})`.
-- `getCampaignFinalReport({campaignId})` — se `final_report` existe retorna, senão recalcula on-the-fly.
-- `exportRecipientsCSV({campaignId})`.
-
-Todas com `requireSupabaseAuth` + `has_role('admin')`.
-
-## 4. Frontend
-
-**`/admin/campanhas/nova`** (wizard existente): passo final adiciona botão **Iniciar agora** vs **Salvar rascunho** vs **Agendar**. Ao iniciar, roda `preflightCampaign` — se falha, mostra `PreflightChecklist` (X vermelho / ✓ verde por item, com botão fix).
-
-**`/admin/campanhas/$id`** (nova tela detalhe premium) com abas:
-
-1. **Visão geral** — StatusBadge, cards (Total, Processadas, Entregues, Lidas, Falhas, Respostas, Opt-outs), barra de progresso premium, velocidade média, ETA, última mensagem, último erro. Botões: Pausar/Retomar/Cancelar/Reprocessar falhas/Duplicar/Exportar. Polling via `useQuery` refetchInterval 3s enquanto `em_andamento|na_fila`.
-2. **Destinatários** — DataTable com telefone/nome/status/sent/delivered/read/erro + filtros por status + export CSV.
-3. **Timeline** — feed vertical estilo activity (ícones por evento, timestamps relativos).
-4. **Respostas** — mensagens inbound vinculadas via `meta_message_id → context.id`.
-5. **Erros** — agrupado por `error_code`, com contagem e primeiros exemplos.
-6. **Financeiro** — estoque consumido, custo estimado, valor cobrado (do cliente/projeto), lucro, custo/msg entregue, custo/resposta.
-7. **Relatório final** — só habilita quando `concluida|parcial|cancelada`. Render do `final_report` no padrão dos relatórios existentes. Botões Exportar CSV/Excel, Imprimir (window.print com CSS print-only), Duplicar campanha.
-
-**`/admin/campanhas`** (lista existente): coluna de progresso inline (mini barra), StatusBadge unificado, link para detalhe.
-
-## 5. Componentes reutilizáveis
-
-- `<ProgressBarPremium value total />`
-- `<CampaignStatusBadge status />` (mapeia 9 status → cores semânticas)
-- `<PreflightChecklist checks />`
-- `<TimelineFeed events />`
-- `<StatCardGroup />` já existe do redesign
-- `<RecipientStatusBadge />`
-
-## 6. Cron
-
-```sql
-select cron.schedule('wa-campaign-worker', '* * * * *', $$
-  select net.http_post(
-    url := 'https://project--<id>.lovable.app/api/public/wa/worker/tick',
-    headers := '{"apikey":"<anon>"}'::jsonb,
-    body := '{}'::jsonb
-  );
-$$);
+### Rotas
+```
+/                       → Site público (landing)
+/login, /cadastro       → Auth pública do cliente
+/recuperar-senha        → Reset
+/painel/*               → Área logada do cliente (workspace)
+/admin/*                → Área interna (mantida, gate = super_admin)
 ```
 
-## 7. Segurança / regras (preservadas)
+### Multi-tenant
+- Nova tabela `workspaces` (empresa do cliente).
+- Nova tabela `workspace_members(workspace_id, user_id, role)` com enum `workspace_role` = `owner | admin | operator | viewer`.
+- Enum `app_role` existente ganha `super_admin | support | finance | operations` para equipe interna. `/admin` passa a exigir um desses roles internos (hoje exige `admin`).
+- Todas as tabelas operacionais ganham `workspace_id uuid not null`:
+  - `contacts`, `contact_lists`, `contact_list_items`, `contact_tags`, `whatsapp_wabas`, `whatsapp_connections`, `whatsapp_templates`, `wa_campaigns`, `campaign_recipients`, `campaign_events`, `campaign_timeline`, `message_logs`, `message_stock`, `opt_outs`, `whatsapp_inbox`, `whatsapp_messages`, `reports`, etc.
+- RLS reescrita: função `current_workspace_id()` + `is_workspace_member(ws, role[])` (SECURITY DEFINER). Policies:
+  - Cliente vê apenas linhas do seu workspace.
+  - Roles internos (`has_role(uid, 'super_admin' | 'support' | ...)`) veem tudo.
+- Migração de dados existentes: criar um workspace "Legacy" e vincular todas as linhas atuais a ele; usuários admin atuais viram membros desse workspace + mantêm role interno.
 
-- Tokens WhatsApp só no backend (worker lê `whatsapp_connections.access_token_encrypted` ou secret).
-- Opt-out validado no worker antes de cada envio.
-- Estoque validado antes do envio; falha se insuficiente marca `skipped`.
-- Dedup de telefone por campanha (unique `(campaign_id, phone)`).
-- Lease impede execução concorrente.
-- Nada muda no webhook oficial além de handlers de status por `meta_message_id`.
-- RLS admin-only em todas as tabelas novas.
+### Auth
+- Habilitar signup público (hoje o `handle_new_user` promove o primeiro user a admin — vamos ajustar para NÃO conceder role interno em signups públicos; só criar profile + workspace + membership owner).
+- Trigger `handle_new_user` reescrito: cria `profiles`, cria `workspaces` (nome = empresa do cadastro, via metadata) e `workspace_members` com role `owner`.
+- `/painel/*` protegido por layout que exige sessão + membership.
+- `/admin/*` protegido por role interno (`super_admin` etc.).
 
-## 8. Escopo NÃO incluído
+---
 
-- Não altera wizard de criação além do botão final.
-- Não altera `/api/public/whatsapp/webhook` GET (verify) — apenas estende POST.
-- Não mexe em Embedded Signup, WABAs, Templates, Números.
-- Não remove nada existente.
+## Fase 1 — Fundação multi-tenant (backend + auth)
 
-## Ordem de implementação
+1. Migração SQL:
+   - Enums `workspace_role`, ampliar `app_role`.
+   - Tabela `workspaces` (id, name, slug, plan, status, owner_id, created_at, updated_at).
+   - Tabela `workspace_members` (workspace_id, user_id, role, unique).
+   - GRANTs + RLS + policies (via `has_workspace_role` SECURITY DEFINER).
+   - Adicionar coluna `workspace_id` nas tabelas operacionais (nullable primeiro), backfill para workspace "Legacy", depois `NOT NULL`.
+   - Reescrever policies existentes para escopar por workspace + bypass para roles internos.
+   - Ajustar `handle_new_user` para o novo fluxo.
+2. Middleware server: helper `requireWorkspace` que resolve `workspace_id` do usuário logado e injeta no context de todos os server functions.
+3. Ajustar server functions atuais (`contacts.functions.ts`, `wa-campaigns.functions.ts`, etc.) para filtrar/inserir com `workspace_id`.
+4. `/admin` continua funcionando: passa a exigir role interno; usuário admin atual recebe `super_admin` na migração.
 
-1. Migração (schema + triggers + cron).
-2. Server functions + endpoint worker.
-3. Extensão do webhook para status por `meta_message_id`.
-4. Tela detalhe `/admin/campanhas/$id` com 7 abas.
-5. Preflight + botão Iniciar no wizard.
-6. Ajuste da lista com progresso inline.
+**Entregável:** `/admin` intacto, backend pronto para múltiplos workspaces. Nenhuma UI nova ainda.
+
+---
+
+## Fase 2 — Auth pública (`/login`, `/cadastro`, `/recuperar-senha`)
+
+1. Rotas públicas com design premium (mesmo sistema visual da futura landing).
+2. Cadastro: nome, e-mail, telefone, empresa, senha → `supabase.auth.signUp` com metadata `{ company_name, full_name, phone }` que o trigger usa para criar o workspace.
+3. Login redireciona: role interno → `/admin`; membro de workspace → `/painel`.
+4. Recuperação de senha (`resetPasswordForEmail` + rota `/reset-password`).
+
+---
+
+## Fase 3 — Landing pública `/`
+
+Landing SaaS moderna, responsiva, com as seções pedidas: Header, Hero, Prova de valor, Como funciona (6 passos), Recursos, Segurança/Conformidade, Planos (Starter/Growth/Scale/Enterprise — valores placeholders editáveis), FAQ, CTA final, Footer. Design de referência: Stripe/Brevo/Zenvia. Tokens em `src/styles.css`, componentes shadcn. SEO: `head()` por seção via route metadata, `og:image` gerada.
+
+---
+
+## Fase 4 — Painel do cliente `/painel/*`
+
+Novo layout com sidebar/topbar próprios (separado do `/admin`).
+
+Rotas:
+- `/painel` — dashboard + checklist de onboarding + cards de KPIs (do próprio workspace).
+- `/painel/campanhas` + `/painel/campanhas/nova` + `/painel/campanhas/$id` — reaproveitando lógica de `wa-campaigns` já existente, filtrada por workspace.
+- `/painel/contatos` (+ listas + tags).
+- `/painel/templates` — CRUD com status `rascunho | aguardando_revisao | enviado_meta | aprovado | rejeitado`.
+- `/painel/whatsapp` — Embedded Signup quando disponível, senão botão "Solicitar configuração" (cria ticket lido pelo admin).
+- `/painel/relatorios` — só dados do workspace, export CSV.
+- `/painel/financeiro` — plano, estoque de mensagens, consumo, faturas (estrutura pronta; pagamento online fica para fase futura).
+- `/painel/configuracoes` — dados da empresa, membros (convidar por e-mail, atribuir role de workspace), preferências.
+
+Regras de negócio preservadas: campanha só inicia com opt-in, template aprovado, número ativo, estoque suficiente, token válido, cliente não bloqueado.
+
+---
+
+## Fase 5 — Admin interno ampliado
+
+Ampliar `/admin` para visão cross-workspace: listar clientes/workspaces, ver campanhas de todos, aprovar templates internamente (fila "aguardando revisão"), gerenciar planos, gerenciar estoque/créditos por workspace, bloquear/desbloquear cliente, ver logs e faturamento geral, atender solicitações de configuração de WhatsApp.
+
+---
+
+## O que **não** vou fazer sem confirmação
+- Não vou implementar pagamentos online (Stripe/Paddle) agora — só a estrutura de planos/faturas. Confirme se quer que eu já habilite Stripe na Fase 4/5.
+- Não vou remover nenhuma tela existente do `/admin`.
+- Não vou trocar o design system atual do `/admin`; a landing e o `/painel` recebem tratamento premium novo e podem convergir depois.
+
+---
+
+## Perguntas antes de começar
+
+1. **Usuários existentes:** algum e-mail específico deve virar `super_admin` além do dono atual? Ou promovo todos os `admin` atuais para `super_admin` automaticamente?
+2. **Auto-confirm de e-mail no cadastro público:** ativo (usuário cai direto no painel) ou exijo confirmação por e-mail?
+3. **Planos iniciais:** posso usar valores placeholders (R$ 197 / 497 / 1.497 / sob consulta) que você edita depois?
+4. **Posso começar pela Fase 1 (migração multi-tenant)?** Ela é a base de tudo e envolve alterar RLS de várias tabelas — quero seu ok antes de rodar a migration.
