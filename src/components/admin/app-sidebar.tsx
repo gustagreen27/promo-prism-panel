@@ -59,14 +59,17 @@ const GROUPS: { label: string; items: NavItem[] }[] = [
     ],
   },
   {
-    label: "WhatsApp Cloud",
+    label: "WhatsApp Platform",
     items: [
+      { title: "WABAs", to: "/admin/whatsapp/wabas", icon: Briefcase },
       { title: "Números", to: "/admin/whatsapp/numeros", icon: MessageSquare },
       { title: "Templates", to: "/admin/whatsapp/templates", icon: FileText },
       { title: "Webhooks", to: "/admin/whatsapp/webhooks", icon: Settings },
       { title: "Qualidade", to: "/admin/whatsapp/qualidade", icon: Sparkles },
       { title: "Inbox", to: "/admin/whatsapp/inbox", icon: MessageSquare },
       { title: "Logs", to: "/admin/whatsapp/logs", icon: History },
+      { title: "Relatórios", to: "/admin/whatsapp/relatorios", icon: FileText },
+      { title: "Embedded Signup", to: "/admin/whatsapp/embedded-signup", icon: Sparkles },
       { title: "Testar frgc_01", to: "/admin/whatsapp/teste-frgc01", icon: Send },
     ],
   },

@@ -49,7 +49,7 @@ function Page() {
 
   const defaultUrl = useMemo(() => {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    return `${origin}/api/public/whatsapp/webhook`;
+    return `${origin}/api/public/whatsapp-webhook`;
   }, []);
 
   const [form, setForm] = useState<WebhookConfig>({
