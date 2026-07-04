@@ -1358,6 +1358,7 @@ export type Database = {
           template_variables: Json
           total_recipients: number
           updated_at: string
+          waba_ref_id: string | null
         }
         Insert: {
           client_id?: string | null
@@ -1387,6 +1388,7 @@ export type Database = {
           template_variables?: Json
           total_recipients?: number
           updated_at?: string
+          waba_ref_id?: string | null
         }
         Update: {
           client_id?: string | null
@@ -1416,6 +1418,7 @@ export type Database = {
           template_variables?: Json
           total_recipients?: number
           updated_at?: string
+          waba_ref_id?: string | null
         }
         Relationships: [
           {
@@ -1460,6 +1463,13 @@ export type Database = {
             referencedRelation: "whatsapp_templates"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "wa_campaigns_waba_ref_id_fkey"
+            columns: ["waba_ref_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_wabas"
+            referencedColumns: ["id"]
+          },
         ]
       }
       whatsapp_connections: {
@@ -1470,10 +1480,13 @@ export type Database = {
           client_id: string | null
           created_at: string
           daily_limit: number | null
+          display_name: string | null
           display_phone: string | null
           graph_api_version: string | null
           id: string
+          messaging_limit: string | null
           name: string
+          nome_interno: string | null
           phone: string | null
           phone_number_id: string | null
           project_id: string | null
@@ -1483,6 +1496,7 @@ export type Database = {
           updated_at: string
           verify_token: string | null
           waba_id: string | null
+          waba_ref_id: string | null
           webhook_url: string | null
         }
         Insert: {
@@ -1492,10 +1506,13 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           daily_limit?: number | null
+          display_name?: string | null
           display_phone?: string | null
           graph_api_version?: string | null
           id?: string
+          messaging_limit?: string | null
           name: string
+          nome_interno?: string | null
           phone?: string | null
           phone_number_id?: string | null
           project_id?: string | null
@@ -1505,6 +1522,7 @@ export type Database = {
           updated_at?: string
           verify_token?: string | null
           waba_id?: string | null
+          waba_ref_id?: string | null
           webhook_url?: string | null
         }
         Update: {
@@ -1514,10 +1532,13 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           daily_limit?: number | null
+          display_name?: string | null
           display_phone?: string | null
           graph_api_version?: string | null
           id?: string
+          messaging_limit?: string | null
           name?: string
+          nome_interno?: string | null
           phone?: string | null
           phone_number_id?: string | null
           project_id?: string | null
@@ -1527,6 +1548,7 @@ export type Database = {
           updated_at?: string
           verify_token?: string | null
           waba_id?: string | null
+          waba_ref_id?: string | null
           webhook_url?: string | null
         }
         Relationships: [
@@ -1542,6 +1564,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_connections_waba_ref_id_fkey"
+            columns: ["waba_ref_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_wabas"
             referencedColumns: ["id"]
           },
         ]
@@ -1671,16 +1700,23 @@ export type Database = {
           connection_id: string | null
           created_at: string
           footer: string | null
+          header_media_url: string | null
           header_text: string | null
           header_type: string | null
+          history: Json | null
           id: string
           language: string
           meta_template_id: string | null
           name: string
           raw: Json | null
+          rejection_reason: string | null
+          reviewed_at: string | null
           status: Database["public"]["Enums"]["wa_template_status"]
+          submitted_at: string | null
           updated_at: string
           variables: Json
+          variables_examples: Json | null
+          waba_ref_id: string | null
         }
         Insert: {
           body?: string
@@ -1689,16 +1725,23 @@ export type Database = {
           connection_id?: string | null
           created_at?: string
           footer?: string | null
+          header_media_url?: string | null
           header_text?: string | null
           header_type?: string | null
+          history?: Json | null
           id?: string
           language?: string
           meta_template_id?: string | null
           name: string
           raw?: Json | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
           status?: Database["public"]["Enums"]["wa_template_status"]
+          submitted_at?: string | null
           updated_at?: string
           variables?: Json
+          variables_examples?: Json | null
+          waba_ref_id?: string | null
         }
         Update: {
           body?: string
@@ -1707,16 +1750,23 @@ export type Database = {
           connection_id?: string | null
           created_at?: string
           footer?: string | null
+          header_media_url?: string | null
           header_text?: string | null
           header_type?: string | null
+          history?: Json | null
           id?: string
           language?: string
           meta_template_id?: string | null
           name?: string
           raw?: Json | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
           status?: Database["public"]["Enums"]["wa_template_status"]
+          submitted_at?: string | null
           updated_at?: string
           variables?: Json
+          variables_examples?: Json | null
+          waba_ref_id?: string | null
         }
         Relationships: [
           {
@@ -1724,6 +1774,67 @@ export type Database = {
             columns: ["connection_id"]
             isOneToOne: false
             referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_templates_waba_ref_id_fkey"
+            columns: ["waba_ref_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_wabas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_wabas: {
+        Row: {
+          business_id: string | null
+          client_id: string | null
+          created_at: string
+          id: string
+          nome_interno: string
+          observacoes: string | null
+          project_id: string | null
+          status: string
+          updated_at: string
+          waba_id: string
+        }
+        Insert: {
+          business_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          nome_interno: string
+          observacoes?: string | null
+          project_id?: string | null
+          status?: string
+          updated_at?: string
+          waba_id: string
+        }
+        Update: {
+          business_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          nome_interno?: string
+          observacoes?: string | null
+          project_id?: string | null
+          status?: string
+          updated_at?: string
+          waba_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_wabas_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_wabas_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
