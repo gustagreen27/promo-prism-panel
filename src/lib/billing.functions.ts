@@ -160,10 +160,15 @@ export const createDepositCheckout = createServerFn({ method: 'POST' })
 
 export const adminUpdateBillingSettings = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { default_price_cents?: number; minimum_deposit_cents?: number }) =>
+  .inputValidator((d: {
+    default_price_cents?: number
+    minimum_deposit_cents?: number
+    default_minimum_messages?: number
+  }) =>
     z.object({
       default_price_cents: z.number().int().positive().optional(),
       minimum_deposit_cents: z.number().int().positive().optional(),
+      default_minimum_messages: z.number().int().positive().optional(),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
@@ -172,6 +177,7 @@ export const adminUpdateBillingSettings = createServerFn({ method: 'POST' })
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString(), updated_by: userId }
     if (data.default_price_cents !== undefined) patch.default_price_cents = data.default_price_cents
     if (data.minimum_deposit_cents !== undefined) patch.minimum_deposit_cents = data.minimum_deposit_cents
+    if (data.default_minimum_messages !== undefined) patch.default_minimum_messages = data.default_minimum_messages
     const { data: row, error } = await supabase
       .from('billing_settings')
       .update(patch)
@@ -189,7 +195,7 @@ export const adminListWorkspacesWithBalance = createServerFn({ method: 'GET' })
     await assertStaff(supabase, userId)
     const { data, error } = await supabase
       .from('workspaces')
-      .select('id, name, slug, plan, status, blocked_at, workspace_wallets(balance_cents, reserved_cents, custom_price_cents)')
+      .select('id, name, slug, plan, status, blocked_at, workspace_wallets(balance_cents, reserved_cents, custom_price_cents, custom_minimum_messages)')
       .order('created_at', { ascending: false })
     if (error) throw error
     return data ?? []
@@ -209,6 +215,24 @@ export const adminSetCustomPrice = createServerFn({ method: 'POST' })
     const { error } = await supabase
       .from('workspace_wallets')
       .upsert({ workspace_id: data.workspace_id, custom_price_cents: data.custom_price_cents, updated_at: new Date().toISOString() })
+    if (error) throw error
+    return { ok: true }
+  })
+
+export const adminSetCustomMinimumMessages = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { workspace_id: string; custom_minimum_messages: number | null }) =>
+    z.object({
+      workspace_id: z.string().uuid(),
+      custom_minimum_messages: z.number().int().positive().nullable(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any
+    await assertStaff(supabase, userId)
+    const { error } = await supabase
+      .from('workspace_wallets')
+      .upsert({ workspace_id: data.workspace_id, custom_minimum_messages: data.custom_minimum_messages, updated_at: new Date().toISOString() })
     if (error) throw error
     return { ok: true }
   })
