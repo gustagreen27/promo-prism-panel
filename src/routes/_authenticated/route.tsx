@@ -9,18 +9,20 @@ export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async () => {
     const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) throw redirect({ to: "/auth" });
+    if (error || !data.user) throw redirect({ to: "/login" });
 
-    const { data: roles } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", data.user.id);
-    const isAdmin = (roles ?? []).some((r) => r.role === "admin");
-    if (!isAdmin) {
+    const [{ data: roles }, { data: memberships }] = await Promise.all([
+      supabase.from("user_roles").select("role").eq("user_id", data.user.id),
+      supabase.from("workspace_members").select("workspace_id, role").eq("user_id", data.user.id),
+    ]);
+    const internalRoles = new Set(["admin", "super_admin", "support", "finance", "operations"]);
+    const isInternal = (roles ?? []).some((r) => internalRoles.has(r.role as string));
+    const hasWorkspace = (memberships ?? []).length > 0;
+    if (!isInternal && !hasWorkspace) {
       await supabase.auth.signOut();
-      throw redirect({ to: "/auth", search: { reason: "not-admin" } as never });
+      throw redirect({ to: "/login", search: { reason: "no-access" } as never });
     }
-    return { user: data.user };
+    return { user: data.user, isInternal, hasWorkspace };
   },
   component: AuthenticatedLayout,
 });
