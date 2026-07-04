@@ -45,7 +45,7 @@ function AuthenticatedLayout() {
               size="sm"
               onClick={async () => {
                 await supabase.auth.signOut();
-                navigate({ to: "/auth" });
+                navigate({ to: "/login" });
               }}
             >
               <LogOut className="mr-2 h-4 w-4" />
