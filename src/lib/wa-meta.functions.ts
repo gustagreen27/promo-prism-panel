@@ -72,7 +72,7 @@ export const submitTemplateForApproval = createServerFn({ method: "POST" })
 
     await context.supabase.from("whatsapp_templates").update({
       meta_template_id: result.data.id,
-      status: statusMap[result.data.status] || "pending",
+      status: (statusMap[result.data.status] || "pending") as any,
       submitted_at: new Date().toISOString(),
       rejection_reason: null,
       history: [
@@ -112,7 +112,7 @@ export const refreshTemplateStatus = createServerFn({ method: "POST" })
     const isFinal = ["approved", "rejected"].includes(newStatus);
     await context.supabase.from("whatsapp_templates").update({
       meta_template_id: result.data.id,
-      status: newStatus,
+      status: newStatus as any,
       rejection_reason: result.data.rejected_reason ?? null,
       reviewed_at: isFinal ? new Date().toISOString() : tpl.reviewed_at,
     }).eq("id", tpl.id);
