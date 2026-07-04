@@ -67,10 +67,13 @@ function Page() {
         title="WABAs"
         description="Contas oficiais do WhatsApp Business (WhatsApp Business Accounts)."
         actions={
-          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
-            <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Nova WABA</Button></DialogTrigger>
-            <FormDialog editing={editing} clients={clients} projects={projects} onSubmit={(p: any) => save.mutate(p)} saving={save.isPending} />
-          </Dialog>
+          <div className="flex items-center gap-2">
+            <EmbeddedSignupButton onCompleted={() => refresh()} />
+            <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
+              <DialogTrigger asChild><Button variant="outline"><Plus className="mr-2 h-4 w-4" />Cadastro manual</Button></DialogTrigger>
+              <FormDialog editing={editing} clients={clients} projects={projects} onSubmit={(p: any) => save.mutate(p)} saving={save.isPending} />
+            </Dialog>
+          </div>
         }
       />
       <div className="rounded-xl border bg-card">
