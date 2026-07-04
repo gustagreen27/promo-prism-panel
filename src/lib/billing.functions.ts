@@ -119,11 +119,17 @@ export const createDepositCheckout = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any
     await assertMember(supabase, userId, data.workspace_id)
-    const { data: settings } = await supabase.from('billing_settings').select('*').eq('id', 1).maybeSingle()
-    const minimum = settings?.minimum_deposit_cents ?? 15000
+    const [{ data: settings }, { data: wallet }] = await Promise.all([
+      supabase.from('billing_settings').select('*').eq('id', 1).maybeSingle(),
+      supabase.from('workspace_wallets').select('custom_price_cents, custom_minimum_messages').eq('workspace_id', data.workspace_id).maybeSingle(),
+    ])
+    const globalMinDeposit = settings?.minimum_deposit_cents ?? 15000
+    const unitPrice = wallet?.custom_price_cents ?? settings?.default_price_cents ?? 15
+    const minMessages = wallet?.custom_minimum_messages ?? settings?.default_minimum_messages ?? 2500
+    const minimum = Math.max(globalMinDeposit, unitPrice * minMessages)
     if (data.amount_cents < minimum) {
       throw new Error(
-        `Valor mínimo de depósito é R$ ${(minimum / 100).toFixed(2).replace('.', ',')}`,
+        `Valor mínimo de depósito para este workspace é R$ ${(minimum / 100).toFixed(2).replace('.', ',')} (${minMessages.toLocaleString('pt-BR')} mensagens × R$ ${(unitPrice / 100).toFixed(2).replace('.', ',')}).`,
       )
     }
     const { data: deposit, error } = await supabase
