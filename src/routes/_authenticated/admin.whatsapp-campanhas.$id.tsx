@@ -308,6 +308,7 @@ function Page() {
         <TabsList className="flex flex-wrap">
           <TabsTrigger value="overview">Visão geral</TabsTrigger>
           <TabsTrigger value="recipients">Destinatários</TabsTrigger>
+          <TabsTrigger value="previews">Prévias</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="errors">Erros</TabsTrigger>
           <TabsTrigger value="financial">Financeiro</TabsTrigger>
