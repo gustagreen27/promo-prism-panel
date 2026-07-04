@@ -18,10 +18,12 @@ import { Badge } from "@/components/ui/badge";
 import { getWaCampaign } from "@/lib/wa-campaigns.functions";
 import {
   getCampaignProgress, getCampaignTimeline, getCampaignRecipients,
-  getCampaignFinalReport, getCampaignErrors,
+  getCampaignFinalReport, getCampaignErrors, getRecipientPreviews,
   startCampaignAsync, pauseCampaignAsync, resumeCampaignAsync, cancelCampaignAsync,
   retryFailedRecipients, duplicateCampaign, preflightCampaign,
 } from "@/lib/wa-campaign-runner.functions";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp-campanhas/$id")({
   head: () => ({ meta: [{ title: "Campanha WhatsApp" }] }),
