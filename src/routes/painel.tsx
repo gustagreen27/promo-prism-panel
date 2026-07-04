@@ -1,16 +1,19 @@
 import { createFileRoute, Outlet, redirect, Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { getMyWallet } from "@/lib/billing.functions";
 import {
   LayoutDashboard,
   Send,
   Users,
   FileText,
-  MessageSquare,
   BarChart3,
   CreditCard,
   Settings,
   LogOut,
+  Wallet,
 } from "lucide-react";
 
 export const Route = createFileRoute("/painel")({
