@@ -63,6 +63,15 @@ type WizardState = {
   // step 1 extras
   notes: string;
   send_rate_per_min: number;
+  batch_size: number;
+  jitter_ms: number;
+  max_per_hour: number | null;
+  max_per_day: number | null;
+  quiet_hours_start: string | null;
+  quiet_hours_end: string | null;
+  timezone: string;
+  abort_on_failure_rate: number | null;
+  min_processed_for_abort: number;
 };
 
 const initial: WizardState = {
@@ -82,6 +91,15 @@ const initial: WizardState = {
   button_url_mapping: {},
   notes: "",
   send_rate_per_min: 40,
+  batch_size: 25,
+  jitter_ms: 0,
+  max_per_hour: null,
+  max_per_day: null,
+  quiet_hours_start: null,
+  quiet_hours_end: null,
+  timezone: "America/Sao_Paulo",
+  abort_on_failure_rate: null,
+  min_processed_for_abort: 50,
 };
 
 const NONE = "__none__";
