@@ -54,10 +54,17 @@ export const whatsappReport = createServerFn({ method: "POST" })
 
     const { count: optOuts } = await context.supabase.from("opt_outs").select("*", { count: "exact", head: true });
 
-    const { data: costs = [] } = await context.supabase.from("costs").select("amount").in("wa_campaign_id" as any, campIds).limit(1000).then((r: any) => r).catch(() => ({ data: [] }));
-    const { data: revs = [] } = await context.supabase.from("revenues").select("amount").in("wa_campaign_id" as any, campIds).limit(1000).then((r: any) => r).catch(() => ({ data: [] }));
-    const cost = (costs as any[]).reduce((a, r) => a + Number(r.amount || 0), 0);
-    const revenue = (revs as any[]).reduce((a, r) => a + Number(r.amount || 0), 0);
+    let cost = 0, revenue = 0;
+    try {
+      const { data: costs } = await (context.supabase.from("costs") as any).select("amount").in("wa_campaign_id", campIds);
+      cost = (costs ?? []).reduce((a: number, r: any) => a + Number(r.amount || 0), 0);
+    } catch { /* coluna pode não existir */ }
+    try {
+      const { data: revs } = await (context.supabase.from("revenues") as any).select("amount").in("wa_campaign_id", campIds);
+      revenue = (revs ?? []).reduce((a: number, r: any) => a + Number(r.amount || 0), 0);
+    } catch { /* idem */ }
+
+
 
     return {
       sent, delivered, read, failed, replied,
