@@ -213,6 +213,26 @@ export async function processCampaignTick(
       return { processed: 0, done: true };
     }
 
+    // Load connection + template
+    const { data: conn } = await supabaseAdmin
+      .from("whatsapp_connections")
+      .select("*")
+      .eq("id", camp.connection_id)
+      .single();
+    const { data: tpl } = await supabaseAdmin
+      .from("whatsapp_templates")
+      .select("*")
+      .eq("id", camp.template_id)
+      .single();
+    if (!conn?.phone_number_id || !conn?.access_token || !tpl) {
+      await supabaseAdmin
+        .from("wa_campaigns")
+        .update({ status: "error", last_error: "Número ou template inválido" })
+        .eq("id", campaignId);
+      await logEvent(campaignId, "error", "Número ou template inválido");
+      return { processed: 0, done: true };
+    }
+
     // Quiet hours: skip tick, keep status=running (will retry next tick)
     if (isInQuietHours(new Date().toISOString(), camp.quiet_hours_start as any, camp.quiet_hours_end as any, (camp as any).timezone || "America/Sao_Paulo")) {
       await supabaseAdmin
