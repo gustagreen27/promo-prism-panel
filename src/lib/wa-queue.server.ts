@@ -85,6 +85,14 @@ export async function finalizeCampaign(campaignId: string) {
       ? "partial"
       : "completed";
 
+  // Libera qualquer saldo ainda reservado para esta campanha
+  if ((camp as any).reservation_id) {
+    await supabaseAdmin.rpc("wallet_release_reservation" as any, {
+      _reservation_id: (camp as any).reservation_id,
+      _qty: null,
+    });
+  }
+
   const report = {
     summary: {
       name: camp.name,
@@ -330,6 +338,12 @@ export async function processCampaignTick(
           .from("campaign_recipients")
           .update({ status: "opt_out", failed_reason: "Contato em opt-out" })
           .eq("id", r.id);
+        if ((camp as any).reservation_id) {
+          await supabaseAdmin.rpc("wallet_release_reservation" as any, {
+            _reservation_id: (camp as any).reservation_id,
+            _qty: 1,
+          });
+        }
         continue;
       }
 
@@ -398,12 +412,20 @@ export async function processCampaignTick(
             attempt: attempts,
           })
           .eq("id", r.id);
-        // consume stock (1 msg per send)
-        await supabaseAdmin.rpc("wa_consume_stock" as any, {
-          _client_id: camp.client_id,
-          _project_id: camp.project_id,
-          _qty: 1,
-        });
+        // Cobrança: consome 1 unidade da reserva de saldo em R$ (novo modelo).
+        // Fallback: se a campanha ainda usa estoque legado, desconta do estoque.
+        if ((camp as any).reservation_id) {
+          await supabaseAdmin.rpc("wallet_consume_reservation" as any, {
+            _reservation_id: (camp as any).reservation_id,
+            _recipient_id: r.id,
+          });
+        } else {
+          await supabaseAdmin.rpc("wa_consume_stock" as any, {
+            _client_id: camp.client_id,
+            _project_id: camp.project_id,
+            _qty: 1,
+          });
+        }
       } else {
         failed++;
         lastError = result.error;
@@ -419,6 +441,13 @@ export async function processCampaignTick(
             attempt: attempts,
           })
           .eq("id", r.id);
+        // Falha permanente: libera 1 unidade da reserva
+        if (!shouldRetry && (camp as any).reservation_id) {
+          await supabaseAdmin.rpc("wallet_release_reservation" as any, {
+            _reservation_id: (camp as any).reservation_id,
+            _qty: 1,
+          });
+        }
       }
 
       // Jitter delay between sends (in-lote)

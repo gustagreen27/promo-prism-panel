@@ -44,6 +44,33 @@ export type Database = {
         }
         Relationships: []
       }
+      billing_settings: {
+        Row: {
+          currency: string
+          default_price_cents: number
+          id: number
+          minimum_deposit_cents: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          currency?: string
+          default_price_cents?: number
+          id?: number
+          minimum_deposit_cents?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          currency?: string
+          default_price_cents?: number
+          id?: number
+          minimum_deposit_cents?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       calendar_events: {
         Row: {
           client_id: string | null
@@ -259,6 +286,8 @@ export type Database = {
         Row: {
           attempt: number
           campaign_id: string
+          charged_at: string | null
+          charged_cents: number
           contact_id: string | null
           created_at: string
           delivered_at: string | null
@@ -281,6 +310,8 @@ export type Database = {
         Insert: {
           attempt?: number
           campaign_id: string
+          charged_at?: string | null
+          charged_cents?: number
           contact_id?: string | null
           created_at?: string
           delivered_at?: string | null
@@ -303,6 +334,8 @@ export type Database = {
         Update: {
           attempt?: number
           campaign_id?: string
+          charged_at?: string | null
+          charged_cents?: number
           contact_id?: string | null
           created_at?: string
           delivered_at?: string | null
@@ -963,6 +996,59 @@ export type Database = {
           },
         ]
       }
+      deposits: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          created_by: string | null
+          id: string
+          paid_at: string | null
+          payment_method: string | null
+          provider: string
+          receipt_url: string | null
+          status: string
+          stripe_payment_intent_id: string | null
+          stripe_session_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          paid_at?: string | null
+          payment_method?: string | null
+          provider?: string
+          receipt_url?: string | null
+          status?: string
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          paid_at?: string | null
+          payment_method?: string | null
+          provider?: string
+          receipt_url?: string | null
+          status?: string
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deposits_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       import_jobs: {
         Row: {
           created_at: string
@@ -1614,6 +1700,7 @@ export type Database = {
           button_url_mapping: Json | null
           canceled_at: string | null
           canceled_by: string | null
+          charged_cents: number
           client_id: string | null
           connection_id: string | null
           created_at: string
@@ -1639,6 +1726,7 @@ export type Database = {
           pause_reason: string | null
           paused_at: string | null
           paused_by: string | null
+          price_cents_at_start: number | null
           progress: Json
           project_id: string | null
           quiet_hours_end: string | null
@@ -1646,6 +1734,7 @@ export type Database = {
           read_count: number
           rejection_reason: string | null
           replied_count: number
+          reservation_id: string | null
           responsavel_id: string | null
           resumed_at: string | null
           scheduled_at: string | null
@@ -1677,6 +1766,7 @@ export type Database = {
           button_url_mapping?: Json | null
           canceled_at?: string | null
           canceled_by?: string | null
+          charged_cents?: number
           client_id?: string | null
           connection_id?: string | null
           created_at?: string
@@ -1702,6 +1792,7 @@ export type Database = {
           pause_reason?: string | null
           paused_at?: string | null
           paused_by?: string | null
+          price_cents_at_start?: number | null
           progress?: Json
           project_id?: string | null
           quiet_hours_end?: string | null
@@ -1709,6 +1800,7 @@ export type Database = {
           read_count?: number
           rejection_reason?: string | null
           replied_count?: number
+          reservation_id?: string | null
           responsavel_id?: string | null
           resumed_at?: string | null
           scheduled_at?: string | null
@@ -1740,6 +1832,7 @@ export type Database = {
           button_url_mapping?: Json | null
           canceled_at?: string | null
           canceled_by?: string | null
+          charged_cents?: number
           client_id?: string | null
           connection_id?: string | null
           created_at?: string
@@ -1765,6 +1858,7 @@ export type Database = {
           pause_reason?: string | null
           paused_at?: string | null
           paused_by?: string | null
+          price_cents_at_start?: number | null
           progress?: Json
           project_id?: string | null
           quiet_hours_end?: string | null
@@ -1772,6 +1866,7 @@ export type Database = {
           read_count?: number
           rejection_reason?: string | null
           replied_count?: number
+          reservation_id?: string | null
           responsavel_id?: string | null
           resumed_at?: string | null
           scheduled_at?: string | null
@@ -1858,6 +1953,103 @@ export type Database = {
           },
           {
             foreignKeyName: "wa_campaigns_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallet_reservations: {
+        Row: {
+          campaign_id: string | null
+          created_at: string
+          id: string
+          qty_consumed: number
+          qty_reserved: number
+          status: string
+          unit_price_cents: number
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string
+          id?: string
+          qty_consumed?: number
+          qty_reserved: number
+          status?: string
+          unit_price_cents: number
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string
+          id?: string
+          qty_consumed?: number
+          qty_reserved?: number
+          status?: string
+          unit_price_cents?: number
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_reservations_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallet_transactions: {
+        Row: {
+          amount_cents: number
+          balance_after_cents: number
+          balance_before_cents: number
+          campaign_id: string | null
+          created_at: string
+          created_by: string | null
+          deposit_id: string | null
+          description: string | null
+          id: string
+          recipient_id: string | null
+          type: string
+          workspace_id: string
+        }
+        Insert: {
+          amount_cents: number
+          balance_after_cents: number
+          balance_before_cents: number
+          campaign_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deposit_id?: string | null
+          description?: string | null
+          id?: string
+          recipient_id?: string | null
+          type: string
+          workspace_id: string
+        }
+        Update: {
+          amount_cents?: number
+          balance_after_cents?: number
+          balance_before_cents?: number
+          campaign_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deposit_id?: string | null
+          description?: string | null
+          id?: string
+          recipient_id?: string | null
+          type?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_transactions_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -2688,6 +2880,44 @@ export type Database = {
           },
         ]
       }
+      workspace_wallets: {
+        Row: {
+          balance_cents: number
+          created_at: string
+          custom_price_cents: number | null
+          low_balance_alert_at: string | null
+          reserved_cents: number
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          balance_cents?: number
+          created_at?: string
+          custom_price_cents?: number | null
+          low_balance_alert_at?: string | null
+          reserved_cents?: number
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          balance_cents?: number
+          created_at?: string
+          custom_price_cents?: number | null
+          low_balance_alert_at?: string | null
+          reserved_cents?: number
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_wallets_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspaces: {
         Row: {
           approval_mode: string
@@ -2840,6 +3070,104 @@ export type Database = {
       wa_recalc_campaign_progress: {
         Args: { _campaign_id: string }
         Returns: undefined
+      }
+      wallet_available: { Args: { _ws: string }; Returns: number }
+      wallet_consume_reservation: {
+        Args: { _recipient_id?: string; _reservation_id: string }
+        Returns: boolean
+      }
+      wallet_credit: {
+        Args: {
+          _amount_cents: number
+          _campaign_id?: string
+          _created_by?: string
+          _deposit_id?: string
+          _description: string
+          _type: string
+          _ws: string
+        }
+        Returns: {
+          amount_cents: number
+          balance_after_cents: number
+          balance_before_cents: number
+          campaign_id: string | null
+          created_at: string
+          created_by: string | null
+          deposit_id: string | null
+          description: string | null
+          id: string
+          recipient_id: string | null
+          type: string
+          workspace_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "wallet_transactions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      wallet_debit: {
+        Args: {
+          _allow_negative?: boolean
+          _amount_cents: number
+          _campaign_id?: string
+          _created_by?: string
+          _description: string
+          _recipient_id?: string
+          _type: string
+          _ws: string
+        }
+        Returns: {
+          amount_cents: number
+          balance_after_cents: number
+          balance_before_cents: number
+          campaign_id: string | null
+          created_at: string
+          created_by: string | null
+          deposit_id: string | null
+          description: string | null
+          id: string
+          recipient_id: string | null
+          type: string
+          workspace_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "wallet_transactions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      wallet_effective_price: { Args: { _ws: string }; Returns: number }
+      wallet_release_reservation: {
+        Args: { _qty?: number; _reservation_id: string }
+        Returns: boolean
+      }
+      wallet_reserve: {
+        Args: {
+          _campaign_id: string
+          _qty: number
+          _unit_price_cents: number
+          _ws: string
+        }
+        Returns: {
+          campaign_id: string | null
+          created_at: string
+          id: string
+          qty_consumed: number
+          qty_reserved: number
+          status: string
+          unit_price_cents: number
+          updated_at: string
+          workspace_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "wallet_reservations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
     }
     Enums: {

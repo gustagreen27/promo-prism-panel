@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { listSettings, upsertSetting } from "@/lib/settings.functions";
+import { getBillingSettings, adminUpdateBillingSettings } from "@/lib/billing.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/configuracoes")({
   head: () => ({ meta: [{ title: "Configurações — Painel" }] }),
@@ -67,7 +68,53 @@ function Page() {
             <Button onClick={() => saveMut.mutate({ key: "company", value: { name: companyName } })}>Salvar</Button>
           </div>
         </section>
+
+        <BillingSection />
       </div>
     </>
+  );
+}
+
+function BillingSection() {
+  const getBilling = useServerFn(getBillingSettings);
+  const updateBilling = useServerFn(adminUpdateBillingSettings);
+  const qc = useQueryClient();
+  const { data } = useQuery({ queryKey: ["billing-settings"], queryFn: () => getBilling() });
+
+  const [price, setPrice] = useState("");
+  const [minimum, setMinimum] = useState("");
+  useEffect(() => {
+    if (data) {
+      setPrice(((data.default_price_cents ?? 15) / 100).toFixed(2).replace(".", ","));
+      setMinimum(((data.minimum_deposit_cents ?? 15000) / 100).toFixed(2).replace(".", ","));
+    }
+  }, [data]);
+
+  const parse = (s: string) => Math.round(Number(s.replace(/\./g, "").replace(",", ".")) * 100);
+
+  const save = useMutation({
+    mutationFn: () => updateBilling({ data: { default_price_cents: parse(price), minimum_deposit_cents: parse(minimum) } }),
+    onSuccess: () => { toast.success("Cobrança atualizada"); qc.invalidateQueries({ queryKey: ["billing-settings"] }); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro"),
+  });
+
+  return (
+    <section className="rounded-xl border bg-card p-5">
+      <h3 className="text-sm font-semibold">Cobrança (carteira SaaS)</h3>
+      <p className="text-xs text-muted-foreground">Valor cobrado do saldo do cliente por cada mensagem enviada, e valor mínimo de depósito.</p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div>
+          <Label>Preço por mensagem (R$)</Label>
+          <Input inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0,15" />
+        </div>
+        <div>
+          <Label>Depósito mínimo (R$)</Label>
+          <Input inputMode="decimal" value={minimum} onChange={(e) => setMinimum(e.target.value)} placeholder="150,00" />
+        </div>
+      </div>
+      <div className="mt-3">
+        <Button onClick={() => save.mutate()} disabled={save.isPending}>Salvar cobrança</Button>
+      </div>
+    </section>
   );
 }

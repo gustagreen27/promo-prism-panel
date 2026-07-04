@@ -1,16 +1,19 @@
 import { createFileRoute, Outlet, redirect, Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { getMyWallet } from "@/lib/billing.functions";
 import {
   LayoutDashboard,
   Send,
   Users,
   FileText,
-  MessageSquare,
   BarChart3,
   CreditCard,
   Settings,
   LogOut,
+  Wallet,
 } from "lucide-react";
 
 export const Route = createFileRoute("/painel")({
@@ -83,16 +86,19 @@ function PanelLayout() {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background/80 px-4 backdrop-blur">
           <div className="text-sm font-medium">{workspace?.name ?? "Painel"}</div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={async () => {
-              await supabase.auth.signOut();
-              navigate({ to: "/login" });
-            }}
-          >
-            <LogOut className="mr-2 h-4 w-4" /> Sair
-          </Button>
+          <div className="flex items-center gap-2">
+            <WalletBadge workspaceId={workspace?.id} />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async () => {
+                await supabase.auth.signOut();
+                navigate({ to: "/login" });
+              }}
+            >
+              <LogOut className="mr-2 h-4 w-4" /> Sair
+            </Button>
+          </div>
         </header>
         <main className="flex-1 px-4 py-6 sm:px-6 sm:py-8">
           <div className="mx-auto w-full max-w-6xl space-y-6">
@@ -101,5 +107,26 @@ function PanelLayout() {
         </main>
       </div>
     </div>
+  );
+}
+
+function WalletBadge({ workspaceId }: { workspaceId?: string }) {
+  const wallet = useServerFn(getMyWallet);
+  const { data } = useQuery({
+    queryKey: ["wallet-badge", workspaceId],
+    queryFn: () => wallet({ data: { workspace_id: workspaceId! } }),
+    enabled: !!workspaceId,
+    refetchInterval: 30000,
+  });
+  const cents = data?.available_cents ?? 0;
+  const low = data && data.unit_price_cents ? cents < data.unit_price_cents * 10 : false;
+  return (
+    <Link
+      to="/painel/financeiro"
+      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition hover:bg-muted ${low ? "border-destructive/60 text-destructive" : ""}`}
+    >
+      <Wallet className="h-3.5 w-3.5" />
+      {(cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+    </Link>
   );
 }
