@@ -34,6 +34,7 @@ import { Route as AuthenticatedAdminUpsellRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAdminTvRouteImport } from './routes/_authenticated/admin.tv'
 import { Route as AuthenticatedAdminProjetosRouteImport } from './routes/_authenticated/admin.projetos'
 import { Route as AuthenticatedAdminHistoricoRouteImport } from './routes/_authenticated/admin.historico'
+import { Route as AuthenticatedAdminFinanceiroRouteImport } from './routes/_authenticated/admin.financeiro'
 import { Route as AuthenticatedAdminFechamentoRouteImport } from './routes/_authenticated/admin.fechamento'
 import { Route as AuthenticatedAdminFaturamentoRouteImport } from './routes/_authenticated/admin.faturamento'
 import { Route as AuthenticatedAdminEstoqueRouteImport } from './routes/_authenticated/admin.estoque'
@@ -198,6 +199,12 @@ const AuthenticatedAdminHistoricoRoute =
   AuthenticatedAdminHistoricoRouteImport.update({
     id: '/admin/historico',
     path: '/admin/historico',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminFinanceiroRoute =
+  AuthenticatedAdminFinanceiroRouteImport.update({
+    id: '/admin/financeiro',
+    path: '/admin/financeiro',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAdminFechamentoRoute =
@@ -443,6 +450,7 @@ export interface FileRoutesByFullPath {
   '/admin/estoque': typeof AuthenticatedAdminEstoqueRoute
   '/admin/faturamento': typeof AuthenticatedAdminFaturamentoRoute
   '/admin/fechamento': typeof AuthenticatedAdminFechamentoRoute
+  '/admin/financeiro': typeof AuthenticatedAdminFinanceiroRoute
   '/admin/historico': typeof AuthenticatedAdminHistoricoRoute
   '/admin/projetos': typeof AuthenticatedAdminProjetosRoute
   '/admin/tv': typeof AuthenticatedAdminTvRoute
@@ -504,6 +512,7 @@ export interface FileRoutesByTo {
   '/admin/estoque': typeof AuthenticatedAdminEstoqueRoute
   '/admin/faturamento': typeof AuthenticatedAdminFaturamentoRoute
   '/admin/fechamento': typeof AuthenticatedAdminFechamentoRoute
+  '/admin/financeiro': typeof AuthenticatedAdminFinanceiroRoute
   '/admin/historico': typeof AuthenticatedAdminHistoricoRoute
   '/admin/projetos': typeof AuthenticatedAdminProjetosRoute
   '/admin/tv': typeof AuthenticatedAdminTvRoute
@@ -568,6 +577,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/estoque': typeof AuthenticatedAdminEstoqueRoute
   '/_authenticated/admin/faturamento': typeof AuthenticatedAdminFaturamentoRoute
   '/_authenticated/admin/fechamento': typeof AuthenticatedAdminFechamentoRoute
+  '/_authenticated/admin/financeiro': typeof AuthenticatedAdminFinanceiroRoute
   '/_authenticated/admin/historico': typeof AuthenticatedAdminHistoricoRoute
   '/_authenticated/admin/projetos': typeof AuthenticatedAdminProjetosRoute
   '/_authenticated/admin/tv': typeof AuthenticatedAdminTvRoute
@@ -632,6 +642,7 @@ export interface FileRouteTypes {
     | '/admin/estoque'
     | '/admin/faturamento'
     | '/admin/fechamento'
+    | '/admin/financeiro'
     | '/admin/historico'
     | '/admin/projetos'
     | '/admin/tv'
@@ -693,6 +704,7 @@ export interface FileRouteTypes {
     | '/admin/estoque'
     | '/admin/faturamento'
     | '/admin/fechamento'
+    | '/admin/financeiro'
     | '/admin/historico'
     | '/admin/projetos'
     | '/admin/tv'
@@ -756,6 +768,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/estoque'
     | '/_authenticated/admin/faturamento'
     | '/_authenticated/admin/fechamento'
+    | '/_authenticated/admin/financeiro'
     | '/_authenticated/admin/historico'
     | '/_authenticated/admin/projetos'
     | '/_authenticated/admin/tv'
@@ -984,6 +997,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/historico'
       fullPath: '/admin/historico'
       preLoaderRoute: typeof AuthenticatedAdminHistoricoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/financeiro': {
+      id: '/_authenticated/admin/financeiro'
+      path: '/admin/financeiro'
+      fullPath: '/admin/financeiro'
+      preLoaderRoute: typeof AuthenticatedAdminFinanceiroRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/admin/fechamento': {
@@ -1348,6 +1368,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminEstoqueRoute: typeof AuthenticatedAdminEstoqueRoute
   AuthenticatedAdminFaturamentoRoute: typeof AuthenticatedAdminFaturamentoRoute
   AuthenticatedAdminFechamentoRoute: typeof AuthenticatedAdminFechamentoRoute
+  AuthenticatedAdminFinanceiroRoute: typeof AuthenticatedAdminFinanceiroRoute
   AuthenticatedAdminHistoricoRoute: typeof AuthenticatedAdminHistoricoRoute
   AuthenticatedAdminProjetosRoute: typeof AuthenticatedAdminProjetosRoute
   AuthenticatedAdminTvRoute: typeof AuthenticatedAdminTvRoute
@@ -1374,6 +1395,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminEstoqueRoute: AuthenticatedAdminEstoqueRoute,
   AuthenticatedAdminFaturamentoRoute: AuthenticatedAdminFaturamentoRoute,
   AuthenticatedAdminFechamentoRoute: AuthenticatedAdminFechamentoRoute,
+  AuthenticatedAdminFinanceiroRoute: AuthenticatedAdminFinanceiroRoute,
   AuthenticatedAdminHistoricoRoute: AuthenticatedAdminHistoricoRoute,
   AuthenticatedAdminProjetosRoute: AuthenticatedAdminProjetosRoute,
   AuthenticatedAdminTvRoute: AuthenticatedAdminTvRoute,
