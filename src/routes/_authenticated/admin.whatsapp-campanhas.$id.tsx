@@ -374,6 +374,85 @@ function Page() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="previews" className="space-y-3">
+          {(() => {
+            const all = (previews as any)?.previews ?? [];
+            const q = previewSearch.trim().toLowerCase();
+            const filtered = q
+              ? all.filter((p: any) =>
+                  (p.phone ?? "").toLowerCase().includes(q) ||
+                  (p.name ?? "").toLowerCase().includes(q) ||
+                  (p.body ?? "").toLowerCase().includes(q))
+              : all;
+            return (
+              <>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-sm text-muted-foreground">
+                    Prévia do texto renderizado para cada destinatário{" "}
+                    {(previews as any)?.template?.name && (
+                      <span>· Template <span className="font-mono">{(previews as any).template.name}</span></span>
+                    )}
+                    {all.length > 0 && <span> · {filtered.length} de {all.length}</span>}
+                  </div>
+                  <Input
+                    className="max-w-xs"
+                    placeholder="Buscar por nome, telefone ou texto..."
+                    value={previewSearch}
+                    onChange={(e) => setPreviewSearch(e.target.value)}
+                  />
+                </div>
+                {!all.length && (
+                  <Card><CardContent className="pt-6 text-center text-muted-foreground text-sm">
+                    Gere a fila de destinatários para visualizar as prévias.
+                  </CardContent></Card>
+                )}
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {filtered.slice(0, 60).map((p: any) => (
+                    <Card key={p.recipient_id}>
+                      <CardContent className="pt-4 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="font-medium truncate">{p.name ?? "Sem nome"}</div>
+                            <div className="text-xs font-mono text-muted-foreground">{p.phone}</div>
+                          </div>
+                          <StatusBadge status={p.status} />
+                        </div>
+                        <div className="rounded-lg bg-emerald-50 border border-emerald-100 p-3 text-sm space-y-1 whitespace-pre-wrap break-words">
+                          {p.header && <div className="font-semibold">{p.header}</div>}
+                          <div>{p.body}</div>
+                          {p.footer && <div className="text-xs text-muted-foreground pt-1">{p.footer}</div>}
+                          {p.buttons?.length > 0 && (
+                            <div className="pt-2 space-y-1 border-t border-emerald-200 mt-2">
+                              {p.buttons.map((b: any, i: number) => (
+                                <div key={i} className="text-xs text-sky-700 truncate">
+                                  ▸ {b.text}{b.url ? ` — ${b.url}` : ""}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        {p.warnings?.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {p.warnings.map((w: string, i: number) => (
+                              <Badge key={i} variant="outline" className="text-amber-700 border-amber-300 text-[10px]">{w}</Badge>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+                {filtered.length > 60 && (
+                  <div className="text-xs text-muted-foreground text-center">
+                    Mostrando 60 de {filtered.length}. Refine a busca para ver mais.
+                  </div>
+                )}
+              </>
+            );
+          })()}
+        </TabsContent>
+
+
         <TabsContent value="timeline" className="space-y-3">
           <Card>
             <CardContent className="p-4 space-y-3 max-h-[600px] overflow-auto">
