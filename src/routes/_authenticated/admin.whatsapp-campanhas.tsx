@@ -205,6 +205,16 @@ function Page() {
 
   const recipients = useMemo(() => parseRecipients(form.recipientsRaw), [form.recipientsRaw]);
 
+  const previewRecipient = recipients[0];
+  const previewContext = useMemo(
+    () => buildContext({ contact: { name: previewRecipient?.name ?? "", phone: previewRecipient?.phone ?? "" } }),
+    [previewRecipient?.name, previewRecipient?.phone],
+  );
+  const previewValue = (value: string, fallback: string) => {
+    const rendered = renderMapping(value ?? "", previewContext).trim();
+    return rendered || fallback;
+  };
+
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -315,7 +325,7 @@ function Page() {
     !!form.connectionId &&
     recipients.length > 0 &&
     !!form.imageUrl &&
-    (!!form.nomeCliente || recipients.every((r) => !!r.name)) &&
+    !!form.nomeCliente &&
     !!form.informacaoPrincipal &&
     !!form.mensagemComplementar &&
     !!form.textoAcao &&
@@ -335,20 +345,16 @@ function Page() {
       const { phone, name } = recipients[idx];
       setRows((rs) => rs.map((r) => (r.phone === phone ? { ...r, status: "sending" } : r)));
       try {
-        // Render per-recipient tokens like {nome}, {primeiro_nome}, {telefone} etc.
-        // If the {{1}} field is empty, fall back to the CSV name so old behavior still works.
+        // Render the complete configured value for each Meta variable per recipient.
         const ctx = buildContext({ contact: { name: name ?? "", phone } });
         const render = (v: string) => renderMapping(v ?? "", ctx);
-        const nomeClienteFinal = form.nomeCliente
-          ? render(form.nomeCliente)
-          : (name || "");
         const res: SendFrgc01Response = await sendFn({
           data: {
             connectionId: form.connectionId,
             to: phone,
             imageUrl: form.imageUrl,
             mediaType: form.mediaType,
-            nomeCliente: nomeClienteFinal,
+            nomeCliente: render(form.nomeCliente),
             informacaoPrincipal: render(form.informacaoPrincipal),
             mensagemComplementar: render(form.mensagemComplementar),
             textoAcao: render(form.textoAcao),
