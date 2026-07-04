@@ -104,7 +104,45 @@ function Page() {
     qc.invalidateQueries({ queryKey: ["wa-camp", id] });
     qc.invalidateQueries({ queryKey: ["wa-camp-progress", id] });
     qc.invalidateQueries({ queryKey: ["wa-camp-timeline", id] });
+    qc.invalidateQueries({ queryKey: ["wa-camp-recipients", id] });
+    qc.invalidateQueries({ queryKey: ["wa-camp-errors", id] });
+    qc.invalidateQueries({ queryKey: ["wa-camp-report", id] });
   };
+
+  // Realtime: escuta alterações de campanha, destinatários e timeline
+  useEffect(() => {
+    const channel = supabase
+      .channel(`wa-camp-${id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "wa_campaigns", filter: `id=eq.${id}` },
+        () => {
+          qc.invalidateQueries({ queryKey: ["wa-camp", id] });
+          qc.invalidateQueries({ queryKey: ["wa-camp-progress", id] });
+          qc.invalidateQueries({ queryKey: ["wa-camp-report", id] });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "campaign_recipients", filter: `campaign_id=eq.${id}` },
+        () => {
+          qc.invalidateQueries({ queryKey: ["wa-camp-recipients", id] });
+          qc.invalidateQueries({ queryKey: ["wa-camp-progress", id] });
+          qc.invalidateQueries({ queryKey: ["wa-camp-errors", id] });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "campaign_timeline", filter: `campaign_id=eq.${id}` },
+        () => {
+          qc.invalidateQueries({ queryKey: ["wa-camp-timeline", id] });
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id, qc]);
 
   const m = {
     start: useMutation({
