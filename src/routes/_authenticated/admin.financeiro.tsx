@@ -104,6 +104,7 @@ function Page() {
                 <TableHead className="text-right">Saldo</TableHead>
                 <TableHead className="text-right">Reservado</TableHead>
                 <TableHead className="text-right">Preço/msg</TableHead>
+                <TableHead className="text-right">Mín. msgs</TableHead>
                 <TableHead></TableHead>
               </TableRow>
             </TableHeader>
@@ -124,7 +125,13 @@ function Page() {
                         : <span className="text-muted-foreground">padrão</span>}
                     </TableCell>
                     <TableCell className="text-right">
+                      {wal.custom_minimum_messages != null
+                        ? <Badge variant="secondary">{Number(wal.custom_minimum_messages).toLocaleString("pt-BR")}</Badge>
+                        : <span className="text-muted-foreground">padrão</span>}
+                    </TableCell>
+                    <TableCell className="text-right">
                       <Button size="sm" variant="outline" onClick={() => { setPriceStr(wal.custom_price_cents != null ? (wal.custom_price_cents/100).toFixed(2).replace(".", ",") : ""); setModal({ ws: w, type: "price" }); }}>Preço</Button>
+                      <Button size="sm" variant="outline" className="ml-2" onClick={() => { setMinMsgStr(wal.custom_minimum_messages != null ? String(wal.custom_minimum_messages) : ""); setModal({ ws: w, type: "minmsg" }); }}>Mín. msgs</Button>
                       <Button size="sm" variant="outline" className="ml-2" onClick={() => { setAmountStr(""); setDescription(""); setSignMul(1); setModal({ ws: w, type: "adjust" }); }}>Ajuste</Button>
                     </TableCell>
                   </TableRow>
