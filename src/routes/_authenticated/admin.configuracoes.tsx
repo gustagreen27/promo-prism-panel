@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { listSettings, upsertSetting } from "@/lib/settings.functions";
+import { getBillingSettings, adminUpdateBillingSettings } from "@/lib/billing.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/configuracoes")({
   head: () => ({ meta: [{ title: "Configurações — Painel" }] }),
