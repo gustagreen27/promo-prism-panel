@@ -207,20 +207,45 @@ export const startClientCampaign = createServerFn({ method: 'POST' })
         .from('wa_campaigns')
         .update({ status: 'awaiting_approval', approval_status: 'pending' })
         .eq('id', c.id)
-      return { status: 'awaiting_approval' }
+      return { status: 'awaiting_approval' as const }
     }
-    await supabase
-      .from('wa_campaigns')
-      .update({ status: 'queued', approval_status: 'approved', approved_at: new Date().toISOString(), approved_by: userId })
-      .eq('id', c.id)
-    // reserva de saldo (best-effort)
+
+    // Reserva de saldo em R$ (atômica). Se saldo insuficiente, bloqueia o start.
     if (c.total_recipients && c.total_recipients > 0) {
-      await supabase.from('message_stock_reservations').insert({
-        campaign_id: c.id,
-        workspace_id: c.workspace_id,
-        qty_reserved: c.total_recipients,
-        status: 'held',
+      const [{ data: wallet }, { data: settings }] = await Promise.all([
+        supabase.from('workspace_wallets').select('custom_price_cents').eq('workspace_id', c.workspace_id).maybeSingle(),
+        supabase.from('billing_settings').select('default_price_cents').eq('id', 1).maybeSingle(),
+      ])
+      const unit = wallet?.custom_price_cents ?? settings?.default_price_cents ?? 15
+      const { data: reservation, error: resErr } = await supabase.rpc('wallet_reserve', {
+        _ws: c.workspace_id,
+        _campaign_id: c.id,
+        _qty: c.total_recipients,
+        _unit_price_cents: unit,
       })
+      if (resErr) {
+        if (String(resErr.message).includes('INSUFFICIENT_BALANCE')) {
+          throw new Error('Saldo insuficiente. Faça um depósito para iniciar esta campanha.')
+        }
+        throw resErr
+      }
+      const reservationId = Array.isArray(reservation) ? reservation[0]?.id : (reservation as any)?.id
+      await supabase
+        .from('wa_campaigns')
+        .update({
+          status: 'queued',
+          approval_status: 'approved',
+          approved_at: new Date().toISOString(),
+          approved_by: userId,
+          price_cents_at_start: unit,
+          reservation_id: reservationId ?? null,
+        })
+        .eq('id', c.id)
+    } else {
+      await supabase
+        .from('wa_campaigns')
+        .update({ status: 'queued', approval_status: 'approved', approved_at: new Date().toISOString(), approved_by: userId })
+        .eq('id', c.id)
     }
-    return { status: 'queued' }
+    return { status: 'queued' as const }
   })
