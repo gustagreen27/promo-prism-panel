@@ -144,7 +144,9 @@ function Page() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{fmt(w?.unit_price_cents ?? 15)}</div>
-            <div className="mt-1 text-xs text-muted-foreground">Aplicado ao seu workspace</div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              Mínimo {minMessages.toLocaleString("pt-BR")} mensagens · pacote mínimo {fmt(requiredCents)}
+            </div>
           </CardContent>
         </Card>
       </div>
