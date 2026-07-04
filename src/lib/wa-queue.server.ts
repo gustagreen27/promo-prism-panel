@@ -1,171 +1,338 @@
-// Server-only queue processor for WhatsApp campaigns.
+// Server-only queue processor for WhatsApp campaigns (async worker with lease + timeline + final report).
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendTemplateMessage } from "@/lib/wa-send.server";
 
 const OPT_OUT_REGEX = /\b(parar|sair|cancelar|cancela|remover|descadastrar|n[ãa]o quero|stop|unsubscribe)\b/i;
 
-export async function processCampaignTick(campaignId: string, batchSize = 25): Promise<{ processed: number; done: boolean }> {
+// Temporary/transient Meta error codes eligible for retry
+const RETRYABLE_CODES = new Set(["130429", "131056", "131048", "131047", "500", "502", "503", "504"]);
+const MAX_ATTEMPTS = 3;
+const LEASE_MS = 3 * 60 * 1000;
+
+async function logEvent(campaignId: string, event_type: string, message: string, payload: any = {}) {
+  try {
+    await supabaseAdmin.from("campaign_timeline").insert({
+      campaign_id: campaignId,
+      event_type,
+      message,
+      payload,
+    });
+  } catch {}
+}
+
+async function acquireLease(campaignId: string): Promise<string | null> {
+  const leaseId = crypto.randomUUID();
+  const until = new Date(Date.now() + LEASE_MS).toISOString();
+  const { data, error } = await supabaseAdmin
+    .from("wa_campaigns")
+    .update({ worker_lease_id: leaseId, worker_lease_until: until })
+    .eq("id", campaignId)
+    .or(`worker_lease_until.is.null,worker_lease_until.lt.${new Date().toISOString()}`)
+    .select("id")
+    .maybeSingle();
+  if (error || !data) return null;
+  return leaseId;
+}
+
+async function releaseLease(campaignId: string) {
+  await supabaseAdmin
+    .from("wa_campaigns")
+    .update({ worker_lease_id: null, worker_lease_until: null })
+    .eq("id", campaignId);
+}
+
+export async function finalizeCampaign(campaignId: string) {
   const { data: camp } = await supabaseAdmin
     .from("wa_campaigns")
-    .select("*")
+    .select("*, client:clients(name), project:projects(name), template:whatsapp_templates(name,language), connection:whatsapp_connections(display_phone,nome_interno), waba:whatsapp_wabas(nome_interno,waba_id)")
     .eq("id", campaignId)
     .single();
-  if (!camp) return { processed: 0, done: true };
-  if (camp.status !== "running") return { processed: 0, done: true };
-  if (!camp.connection_id || !camp.template_id) {
-    await supabaseAdmin.from("wa_campaigns").update({ status: "error" }).eq("id", campaignId);
-    return { processed: 0, done: true };
-  }
+  if (!camp) return;
 
-  const { data: conn } = await supabaseAdmin
-    .from("whatsapp_connections")
-    .select("*")
-    .eq("id", camp.connection_id)
-    .single();
-  const { data: tpl } = await supabaseAdmin
-    .from("whatsapp_templates")
-    .select("*")
-    .eq("id", camp.template_id)
-    .single();
-
-  if (!conn?.phone_number_id || !conn?.access_token || !tpl) {
-    await supabaseAdmin.from("wa_campaigns").update({ status: "error" }).eq("id", campaignId);
-    return { processed: 0, done: true };
-  }
-
-  // Pick a batch
-  const { data: recipients } = await supabaseAdmin
+  const { data: recs } = await supabaseAdmin
     .from("campaign_recipients")
-    .select("*")
-    .eq("campaign_id", campaignId)
-    .eq("status", "pending")
-    .limit(batchSize);
-
-  if (!recipients || recipients.length === 0) {
-    // No more pending — finalize if nothing processing
-    const { count: processing } = await supabaseAdmin
-      .from("campaign_recipients")
-      .select("id", { count: "exact", head: true })
-      .eq("campaign_id", campaignId)
-      .eq("status", "processing");
-    if (!processing) {
-      await supabaseAdmin
-        .from("wa_campaigns")
-        .update({ status: "completed", finished_at: new Date().toISOString() })
-        .eq("id", campaignId);
-      return { processed: 0, done: true };
-    }
-    return { processed: 0, done: false };
-  }
-
-  // Mark processing
-  await supabaseAdmin
-    .from("campaign_recipients")
-    .update({ status: "processing" })
-    .in("id", recipients.map((r: any) => r.id));
-
-  let sent = 0;
-  let failed = 0;
-
-  for (const r of recipients) {
-    // Last-mile opt-out check
-    const { data: oo } = await supabaseAdmin
-      .from("opt_outs")
-      .select("id")
-      .eq("phone", r.phone)
-      .maybeSingle();
-    if (oo) {
-      await supabaseAdmin
-        .from("campaign_recipients")
-        .update({ status: "opt_out", failed_reason: "Contato em opt-out" })
-        .eq("id", r.id);
-      continue;
-    }
-
-    const campVars = (camp.template_variables as Record<string, string> | null) || {};
-    const recVars = (r.variables as Record<string, string> | null) || {};
-    const mergedVars = { ...campVars, ...recVars };
-    const headerImageOverride = mergedVars._header_image_url || null;
-    const buttonUrlParam = mergedVars._button_url_param || null;
-    const buttonIndexRaw = mergedVars._button_index;
-    const buttonIndex = buttonIndexRaw != null ? Number(buttonIndexRaw) : 0;
-
-    const resolvedHeaderType = headerImageOverride ? "image" : tpl.header_type;
-    const resolvedHeaderValue = headerImageOverride ?? tpl.header_text;
-
-    const result = await sendTemplateMessage({
-      phoneNumberId: conn.phone_number_id!,
-      accessToken: conn.access_token!,
-      graphVersion: conn.graph_api_version || "v21.0",
-      to: r.phone.replace(/\D/g, ""),
-      templateName: tpl.name,
-      languageCode: tpl.language || "pt_BR",
-      variables: mergedVars,
-      headerType: resolvedHeaderType,
-      headerValue: resolvedHeaderValue,
-      buttonUrlParam,
-      buttonIndex,
-    });
-
-    if (result.ok) {
-      sent++;
-      await supabaseAdmin
-        .from("campaign_recipients")
-        .update({
-          status: "sent",
-          meta_message_id: result.metaMessageId,
-          sent_at: new Date().toISOString(),
-          attempt: (r.attempt ?? 0) + 1,
-        })
-        .eq("id", r.id);
-    } else {
-      failed++;
-      await supabaseAdmin
-        .from("campaign_recipients")
-        .update({
-          status: "failed",
-          failed_at: new Date().toISOString(),
-          failed_reason: result.error,
-          error_code: result.code,
-          attempt: (r.attempt ?? 0) + 1,
-        })
-        .eq("id", r.id);
-    }
-  }
-
-  // Update counters
-  // counters refresh follows
-  const { data: counts } = await supabaseAdmin
-    .from("campaign_recipients")
-    .select("status")
+    .select("status,error_code,failed_reason,phone,sent_at,delivered_at,read_at")
     .eq("campaign_id", campaignId);
-  const c = {
-    sent: 0,
-    delivered: 0,
-    read: 0,
-    failed: 0,
-    replied: 0,
-  };
-  for (const row of counts ?? []) {
-    const s = (row as any).status as string;
-    if (s === "sent" || s === "delivered" || s === "read" || s === "replied") c.sent++;
-    if (s === "delivered" || s === "read" || s === "replied") c.delivered++;
-    if (s === "read" || s === "replied") c.read++;
-    if (s === "replied") c.replied++;
-    if (s === "failed") c.failed++;
+
+  const rows = recs ?? [];
+  const total = rows.length;
+  const byStatus: Record<string, number> = {};
+  const byError: Record<string, number> = {};
+  for (const r of rows) {
+    byStatus[r.status as string] = (byStatus[r.status as string] ?? 0) + 1;
+    if (r.status === "failed") {
+      const k = r.error_code || r.failed_reason || "unknown";
+      byError[k] = (byError[k] ?? 0) + 1;
+    }
   }
+  const delivered = (byStatus.delivered || 0) + (byStatus.read || 0) + (byStatus.replied || 0);
+  const read = (byStatus.read || 0) + (byStatus.replied || 0);
+  const replied = byStatus.replied || 0;
+  const failed = byStatus.failed || 0;
+  const optout = byStatus.opt_out || 0;
+  const sent = (byStatus.sent || 0) + delivered;
+
+  const durMs = camp.started_at
+    ? new Date().getTime() - new Date(camp.started_at as string).getTime()
+    : 0;
+
+  const finalStatus: "completed" | "partial" | "cancelled" =
+    (byStatus.pending || 0) + (byStatus.processing || 0) > 0
+      ? "cancelled"
+      : failed > 0
+      ? "partial"
+      : "completed";
+
+  const report = {
+    summary: {
+      name: camp.name,
+      client: (camp as any).client?.name ?? null,
+      project: (camp as any).project?.name ?? null,
+      template: (camp as any).template?.name ?? null,
+      language: (camp as any).template?.language ?? null,
+      connection: (camp as any).connection?.nome_interno ?? (camp as any).connection?.display_phone ?? null,
+      waba: (camp as any).waba?.nome_interno ?? null,
+      started_at: camp.started_at,
+      finished_at: new Date().toISOString(),
+      duration_ms: durMs,
+    },
+    metrics: {
+      total,
+      sent,
+      delivered,
+      read,
+      replied,
+      failed,
+      optout,
+      skipped: byStatus.skipped || 0,
+      cancelled: byStatus.cancelled || 0,
+      delivery_rate: total ? +((delivered / total) * 100).toFixed(2) : 0,
+      read_rate: delivered ? +((read / delivered) * 100).toFixed(2) : 0,
+      failure_rate: total ? +((failed / total) * 100).toFixed(2) : 0,
+      response_rate: delivered ? +((replied / delivered) * 100).toFixed(2) : 0,
+      optout_rate: total ? +((optout / total) * 100).toFixed(2) : 0,
+    },
+    financials: {
+      estimated_cost: Number(camp.estimated_cost || 0),
+      cost_per_delivered: delivered ? +(Number(camp.estimated_cost || 0) / delivered).toFixed(4) : 0,
+      cost_per_reply: replied ? +(Number(camp.estimated_cost || 0) / replied).toFixed(4) : 0,
+    },
+    errors: Object.entries(byError)
+      .map(([code, count]) => ({ code, count }))
+      .sort((a, b) => b.count - a.count),
+  };
+
   await supabaseAdmin
     .from("wa_campaigns")
     .update({
-      sent_count: c.sent,
-      delivered_count: c.delivered,
-      read_count: c.read,
-      failed_count: c.failed,
-      replied_count: c.replied,
+      status: finalStatus,
+      finished_at: new Date().toISOString(),
+      final_report: report as any,
     })
     .eq("id", campaignId);
 
-  return { processed: sent + failed, done: false };
+  await logEvent(campaignId, "completed", `Campanha finalizada (${finalStatus})`, { finalStatus });
+  await logEvent(campaignId, "report_generated", "Relatório final gerado", { metrics: report.metrics });
+}
+
+export async function processCampaignTick(
+  campaignId: string,
+  batchSize = 25,
+): Promise<{ processed: number; done: boolean; skipped?: boolean }> {
+  const lease = await acquireLease(campaignId);
+  if (!lease) return { processed: 0, done: false, skipped: true };
+
+  try {
+    const { data: camp } = await supabaseAdmin
+      .from("wa_campaigns")
+      .select("*")
+      .eq("id", campaignId)
+      .single();
+    if (!camp) return { processed: 0, done: true };
+
+    // pause/cancel guard
+    if (camp.status === "paused") return { processed: 0, done: false };
+    if (camp.status === "cancelled") {
+      await supabaseAdmin
+        .from("campaign_recipients")
+        .update({ status: "cancelled" })
+        .eq("campaign_id", campaignId)
+        .eq("status", "pending");
+      return { processed: 0, done: true };
+    }
+    if (camp.status !== "running") return { processed: 0, done: true };
+
+    if (!camp.connection_id || !camp.template_id) {
+      await supabaseAdmin
+        .from("wa_campaigns")
+        .update({ status: "error", last_error: "Conexão ou template ausente" })
+        .eq("id", campaignId);
+      await logEvent(campaignId, "error", "Conexão ou template ausente");
+      return { processed: 0, done: true };
+    }
+
+    const { data: conn } = await supabaseAdmin
+      .from("whatsapp_connections")
+      .select("*")
+      .eq("id", camp.connection_id)
+      .single();
+    const { data: tpl } = await supabaseAdmin
+      .from("whatsapp_templates")
+      .select("*")
+      .eq("id", camp.template_id)
+      .single();
+
+    if (!conn?.phone_number_id || !conn?.access_token || !tpl) {
+      await supabaseAdmin
+        .from("wa_campaigns")
+        .update({ status: "error", last_error: "Número ou template inválido" })
+        .eq("id", campaignId);
+      await logEvent(campaignId, "error", "Número ou template inválido");
+      return { processed: 0, done: true };
+    }
+
+    const { data: recipients } = await supabaseAdmin
+      .from("campaign_recipients")
+      .select("*")
+      .eq("campaign_id", campaignId)
+      .eq("status", "pending")
+      .limit(batchSize);
+
+    if (!recipients || recipients.length === 0) {
+      const { count: processing } = await supabaseAdmin
+        .from("campaign_recipients")
+        .select("id", { count: "exact", head: true })
+        .eq("campaign_id", campaignId)
+        .eq("status", "processing");
+      if (!processing) {
+        await finalizeCampaign(campaignId);
+        return { processed: 0, done: true };
+      }
+      return { processed: 0, done: false };
+    }
+
+    // Mark processing
+    await supabaseAdmin
+      .from("campaign_recipients")
+      .update({ status: "processing", last_attempt_at: new Date().toISOString() })
+      .in("id", recipients.map((r: any) => r.id));
+
+    let sent = 0;
+    let failed = 0;
+    let lastError: string | null = null;
+
+    for (const r of recipients) {
+      // Opt-out check
+      const { data: oo } = await supabaseAdmin
+        .from("opt_outs")
+        .select("id")
+        .eq("phone", r.phone)
+        .maybeSingle();
+      if (oo) {
+        await supabaseAdmin
+          .from("campaign_recipients")
+          .update({ status: "opt_out", failed_reason: "Contato em opt-out" })
+          .eq("id", r.id);
+        continue;
+      }
+
+      const campVars = (camp.template_variables as Record<string, string> | null) || {};
+      const recVars = (r.variables as Record<string, string> | null) || {};
+      const mergedVars = { ...campVars, ...recVars };
+      const headerImageOverride = mergedVars._header_image_url || null;
+      const buttonUrlParam = mergedVars._button_url_param || null;
+      const buttonIndexRaw = mergedVars._button_index;
+      const buttonIndex = buttonIndexRaw != null ? Number(buttonIndexRaw) : 0;
+
+      const resolvedHeaderType = headerImageOverride ? "image" : tpl.header_type;
+      const resolvedHeaderValue = headerImageOverride ?? tpl.header_text;
+
+      const result = await sendTemplateMessage({
+        phoneNumberId: conn.phone_number_id!,
+        accessToken: conn.access_token!,
+        graphVersion: conn.graph_api_version || "v21.0",
+        to: r.phone.replace(/\D/g, ""),
+        templateName: tpl.name,
+        languageCode: tpl.language || "pt_BR",
+        variables: mergedVars,
+        headerType: resolvedHeaderType,
+        headerValue: resolvedHeaderValue,
+        buttonUrlParam,
+        buttonIndex,
+      });
+
+      const attempts = (r.attempt ?? 0) + 1;
+      if (result.ok) {
+        sent++;
+        await supabaseAdmin
+          .from("campaign_recipients")
+          .update({
+            status: "accepted",
+            meta_message_id: result.metaMessageId,
+            sent_at: new Date().toISOString(),
+            attempt: attempts,
+          })
+          .eq("id", r.id);
+        // consume stock (1 msg per send)
+        await supabaseAdmin.rpc("wa_consume_stock" as any, {
+          _client_id: camp.client_id,
+          _project_id: camp.project_id,
+          _qty: 1,
+        });
+      } else {
+        failed++;
+        lastError = result.error;
+        const isRetryable = result.code ? RETRYABLE_CODES.has(String(result.code)) : false;
+        const shouldRetry = isRetryable && attempts < MAX_ATTEMPTS;
+        await supabaseAdmin
+          .from("campaign_recipients")
+          .update({
+            status: shouldRetry ? "pending" : "failed",
+            failed_at: shouldRetry ? null : new Date().toISOString(),
+            failed_reason: result.error,
+            error_code: result.code,
+            attempt: attempts,
+          })
+          .eq("id", r.id);
+      }
+    }
+
+    // Update speed / last_sent / last_error on campaign
+    const startedAt = camp.started_at ? new Date(camp.started_at as string).getTime() : null;
+    let speed: number | null = null;
+    if (startedAt) {
+      const { count: doneCount } = await supabaseAdmin
+        .from("campaign_recipients")
+        .select("id", { count: "exact", head: true })
+        .eq("campaign_id", campaignId)
+        .not("status", "in", "(pending,processing)");
+      const mins = Math.max((Date.now() - startedAt) / 60000, 0.1);
+      speed = +(((doneCount ?? 0) / mins).toFixed(2));
+    }
+    await supabaseAdmin
+      .from("wa_campaigns")
+      .update({
+        last_sent_at: sent > 0 ? new Date().toISOString() : camp.last_sent_at,
+        last_error: lastError ?? camp.last_error,
+        avg_speed_per_min: speed,
+      })
+      .eq("id", campaignId);
+
+    // Check if done
+    const { count: pending } = await supabaseAdmin
+      .from("campaign_recipients")
+      .select("id", { count: "exact", head: true })
+      .eq("campaign_id", campaignId)
+      .in("status", ["pending", "processing"]);
+    if (!pending) {
+      await finalizeCampaign(campaignId);
+      return { processed: sent + failed, done: true };
+    }
+
+    return { processed: sent + failed, done: false };
+  } finally {
+    await releaseLease(campaignId);
+  }
 }
 
 export { OPT_OUT_REGEX };
