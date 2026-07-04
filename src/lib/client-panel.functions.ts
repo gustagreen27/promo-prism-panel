@@ -61,7 +61,7 @@ export const listMyTemplates = createServerFn({ method: 'POST' })
     return { templates: rows || [] }
   })
 
-// ---- Saldo do workspace ----
+// ---- Saldo do workspace (agora em R$/carteira) ----
 export const getMyBalance = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { workspace_id: string }) =>
@@ -70,25 +70,23 @@ export const getMyBalance = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any
     await assertWorkspaceMember(supabase, userId, data.workspace_id)
-    // Estoque disponível pelo client_id vinculado ao workspace (fallback: workspace_id direto quando existir)
-    const { data: rows } = await supabase
-      .from('message_stock')
-      .select('quantity, quantity_used, status, type')
-      .eq('workspace_id', data.workspace_id)
-      .eq('type', 'entrada')
-      .eq('status', 'ativo')
-    const total = (rows || []).reduce(
-      (acc: number, r: any) => acc + Math.max((r.quantity || 0) - (r.quantity_used || 0), 0),
-      0
-    )
-    // Reservas ativas
-    const { data: res } = await supabase
-      .from('message_stock_reservations')
-      .select('qty_reserved, qty_consumed, status')
-      .eq('workspace_id', data.workspace_id)
-      .eq('status', 'held')
-    const reserved = (res || []).reduce((a: number, r: any) => a + Math.max((r.qty_reserved || 0) - (r.qty_consumed || 0), 0), 0)
-    return { available: total - reserved, gross: total, reserved }
+    const [{ data: wallet }, { data: settings }] = await Promise.all([
+      supabase.from('workspace_wallets').select('*').eq('workspace_id', data.workspace_id).maybeSingle(),
+      supabase.from('billing_settings').select('default_price_cents').eq('id', 1).maybeSingle(),
+    ])
+    const balance = Number(wallet?.balance_cents ?? 0)
+    const reserved = Number(wallet?.reserved_cents ?? 0)
+    const unit = wallet?.custom_price_cents ?? settings?.default_price_cents ?? 15
+    return {
+      balance_cents: balance,
+      reserved_cents: reserved,
+      available_cents: balance - reserved,
+      unit_price_cents: unit,
+      // compat: quantidade estimada de mensagens que ainda cabe
+      available: unit > 0 ? Math.floor((balance - reserved) / unit) : 0,
+      gross: unit > 0 ? Math.floor(balance / unit) : 0,
+      reserved: unit > 0 ? Math.floor(reserved / unit) : 0,
+    }
   })
 
 // ---- Solicitar template novo ----
