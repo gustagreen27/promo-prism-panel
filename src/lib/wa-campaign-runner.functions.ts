@@ -338,3 +338,90 @@ export const duplicateCampaign = createServerFn({ method: "POST" })
     if (error) throw error;
     return { id: created.id };
   });
+
+/**
+ * Render the message body/header/buttons per recipient using the campaign's variable mappings.
+ * Used by the campaign detail screen to preview the exact text each contact will receive before sending.
+ */
+export const getRecipientPreviews = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({
+    id: z.string().uuid(),
+    limit: z.number().int().min(1).max(500).optional().default(100),
+  }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const supabase = context.supabase;
+
+    const { data: camp } = await supabase.from("wa_campaigns").select("*").eq("id", data.id).single();
+    if (!camp) throw new Error("Campanha não encontrada");
+
+    const [tplRes, clientRes, projectRes, respRes] = await Promise.all([
+      camp.template_id ? supabase.from("whatsapp_templates").select("*").eq("id", camp.template_id).single() : Promise.resolve({ data: null }),
+      camp.client_id ? supabase.from("clients").select("*").eq("id", camp.client_id).single() : Promise.resolve({ data: null }),
+      camp.project_id ? supabase.from("projects").select("*").eq("id", camp.project_id).single() : Promise.resolve({ data: null }),
+      camp.responsavel_id ? supabase.from("profiles").select("*").eq("id", camp.responsavel_id).single() : Promise.resolve({ data: null }),
+    ]);
+    const tpl = (tplRes as any).data;
+    if (!tpl) throw new Error("Template não encontrado");
+
+    const { data: recs } = await supabase
+      .from("campaign_recipients")
+      .select("id,phone,status,contact:contacts(id,name,email,phone,custom)")
+      .eq("campaign_id", data.id)
+      .order("created_at", { ascending: true })
+      .limit(data.limit);
+
+    const varsMap = ((camp.variables_mapping ?? camp.template_variables) as any) ?? {};
+    const btnMap = (camp.button_url_mapping as any) ?? {};
+    const bodyVars = metaVarsIn(tpl.body ?? "");
+    const btns = (Array.isArray(tpl.buttons) ? tpl.buttons : []) as any[];
+
+    const result = (recs ?? []).map((r: any) => {
+      const ctx = buildContext({
+        contact: r.contact ?? { phone: r.phone },
+        client: (clientRes as any).data,
+        project: (projectRes as any).data,
+        responsavel: (respRes as any).data,
+        campaign: camp,
+      });
+      const resolved: Record<number, string> = {};
+      const warnings: string[] = [];
+      for (const n of bodyVars) {
+        const mapping = varsMap[String(n)] ?? "";
+        const v = renderMapping(mapping, ctx);
+        resolved[n] = v;
+        if (!v || !v.trim()) warnings.push(`{{${n}}} vazio`);
+      }
+      const buttons: { text: string; url: string }[] = [];
+      for (const raw of btns) {
+        const b: any = raw ?? {};
+        if ((b.type || "").toString().toLowerCase() === "url" && b.url) {
+          const urlVars = metaVarsIn(String(b.url));
+          const urlResolved: Record<number, string> = {};
+          for (const n of urlVars) {
+            urlResolved[n] = renderMapping(btnMap[String(n)] ?? "", ctx);
+          }
+          buttons.push({ text: String(b.text ?? ""), url: fillMetaTemplate(String(b.url), urlResolved) });
+        } else if (b.text) {
+          buttons.push({ text: String(b.text), url: "" });
+        }
+      }
+      return {
+        recipient_id: r.id,
+        phone: r.phone,
+        name: r.contact?.name ?? null,
+        status: r.status,
+        body: fillMetaTemplate(tpl.body ?? "", resolved),
+        header: tpl.header_text ?? null,
+        footer: tpl.footer ?? null,
+        buttons,
+        warnings,
+      };
+    });
+
+    return {
+      template: { name: tpl.name, language: tpl.language, status: tpl.status },
+      previews: result,
+    };
+  });
