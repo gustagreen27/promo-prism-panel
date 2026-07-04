@@ -14,7 +14,7 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  adminListWorkspacesWithBalance, adminSetCustomPrice, adminAdjustWallet, adminListAllTransactions,
+  adminListWorkspacesWithBalance, adminSetCustomPrice, adminSetCustomMinimumMessages, adminAdjustWallet, adminListAllTransactions,
 } from "@/lib/billing.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/financeiro")({
