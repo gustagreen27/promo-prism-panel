@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, RefreshCw } from "lucide-react";
+import { Plus, Trash2, Pencil, RefreshCw, Send, ClipboardCheck } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { listTemplates, createTemplate, updateTemplate, deleteTemplate, syncTemplates } from "@/lib/whatsapp-templates.functions";
+import { submitTemplateForApproval, refreshTemplateStatus } from "@/lib/wa-meta.functions";
 import { listNumbers } from "@/lib/whatsapp-numbers.functions";
+import { listWabas } from "@/lib/wa-wabas.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp/templates")({
   head: () => ({ meta: [{ title: "Templates WhatsApp" }] }),
