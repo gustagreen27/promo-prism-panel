@@ -1,104 +1,125 @@
+# Disparos assíncronos estilo Infobip/Data Crazy
 
-# Redesign SaaS + Wizard de Campanhas
+Transformar o módulo de campanhas em um sistema com fila real, worker em background, progresso em tempo real e relatório final premium — reaproveitando `wa_campaigns`, `campaign_recipients`, `message_logs`, `whatsapp_wabas`, `whatsapp_connections`, `whatsapp_templates`, `message_stock` e `opt_outs`.
 
-Paleta **Cloud White (Stripe-like)** · **light-only** · entrega em uma leva.
-Nada é removido — só reagrupado, renomeado ou visualmente refinado.
+## 1. Schema (migração única)
 
----
+**`wa_campaigns`** — novos campos:
+- `status` expandido: `rascunho | agendada | na_fila | em_andamento | pausada | concluida | cancelada | erro | parcial`
+- `started_at`, `paused_at`, `resumed_at`, `finished_at`, `canceled_at timestamptz`
+- `started_by uuid`, `paused_by`, `canceled_by uuid` → `auth.users`
+- `progress jsonb` (contadores materializados: total/pending/processing/accepted/sent/delivered/read/failed/responded/optout/skipped/canceled)
+- `last_error text`, `last_sent_at timestamptz`, `avg_speed_per_min numeric`
+- `final_report jsonb` (snapshot gerado no fim)
+- `worker_lease_until timestamptz`, `worker_lease_id uuid` (lock de worker)
 
-## 1. Design system (`src/styles.css`)
+**`campaign_recipients`** — status individual expandido:
+`pendente | processando | accepted | sent | delivered | read | failed | responded | optout | skipped | canceled`
+- `meta_message_id text`, `attempts int default 0`, `last_attempt_at`, `sent_at`, `delivered_at`, `read_at`, `responded_at`, `failed_at`, `error_code text`, `error_message text`, `variables_snapshot jsonb`
 
-Novos tokens em `oklch`:
-- `--background` branco levíssimo, `--surface` #fafbfc, `--surface-2` #f4f6f9
-- `--border` #e5e7eb / `--border-strong` #d1d5db
-- `--primary` #3b82f6 (azul Stripe-like), `--primary-foreground` branco
-- `--success` #10b981 · `--warning` #f59e0b · `--danger` #ef4444 · `--info` #0ea5e9
-- Radius base 10px · sombra sutil `--shadow-card`, `--shadow-elevated`
-- Tipografia: **Inter Tight** (headings) + **Inter** (body), via `@fontsource`
-- Utilitários novos: `.card-premium`, `.stat-card`, `.data-table`, `.section-title`, `.pill`
+**`campaign_timeline`** (nova) — linha do tempo:
+- `campaign_id`, `event_type` (`created|started|queued|paused|resumed|canceled|completed|report_generated|milestone|error|message_sent|message_delivered|message_read|message_failed|response_received|optout_detected`), `actor_id`, `payload jsonb`, `created_at`
+- Índice em `(campaign_id, created_at desc)`
+- RLS admin-only
 
-Sem dark mode; removo troca de tema onde existir.
+**Triggers**:
+- Trigger em `campaign_recipients` que recalcula `wa_campaigns.progress` a cada UPDATE de status
+- Trigger que insere em `campaign_timeline` em mudanças de status da campanha
 
-## 2. Sidebar reagrupada (`src/components/admin/app-sidebar.tsx`)
+## 2. Worker (cron + endpoint)
 
-Grupos exatamente como pediu:
+Endpoint público autenticado por `apikey` (Supabase anon key):
+`POST /api/public/wa/worker/tick`
 
+Chamado a cada 1 min por `pg_cron` via `pg_net`. Também acionado imediatamente quando o usuário clica Iniciar/Retomar (via server fn que faz fetch interno).
+
+Lógica do tick:
+1. Buscar campanhas `em_andamento` OU `agendada` com `scheduled_at <= now()` ou `na_fila`.
+2. Para cada campanha, tentar adquirir lease: `UPDATE ... SET worker_lease_until = now()+3min, worker_lease_id = gen_random_uuid() WHERE worker_lease_until IS NULL OR worker_lease_until < now()` (evita duplo processamento).
+3. Dentro do lease, processar em lote (ex: 50 recipients por tick, respeitando rate limit Meta):
+   - `SELECT ... FROM campaign_recipients WHERE campaign_id = ? AND status = 'pendente' LIMIT 50 FOR UPDATE SKIP LOCKED`
+   - Marca `processando`, renderiza variáveis, valida opt-out, valida estoque, envia via Cloud API.
+   - Salva `meta_message_id`, status `accepted/sent` ou `failed` com `error_code/message`.
+   - `wa_consume_stock` a cada envio bem-sucedido.
+   - Insere linha na `campaign_timeline` para marcos (a cada 10% ou eventos).
+4. Se campanha `pausada|cancelada` — libera lease sem processar. Cancelamento marca pendentes como `canceled`.
+5. Se `pending = 0` — status vai para `concluida` (ou `parcial` se houve falhas), gera `final_report jsonb`, insere evento `completed` + `report_generated`.
+6. Retry: `failed` com erros temporários (Meta code 130429/131056/etc) permanece `pendente` até `attempts >= 3`.
+
+**Webhook oficial** `/api/public/whatsapp/webhook` já existe — apenas estender para: localizar recipient por `meta_message_id` e atualizar `delivered_at/read_at/responded_at/failed_at` + inserir timeline event. Não alterar validação/verify_token.
+
+## 3. Server functions (`src/lib/wa-campaign-runner.functions.ts`)
+
+- `preflightCampaign({campaignId})` → checklist (cliente/projeto/lista/número/template/opt-in/estoque/token/webhook). Retorna `{ok, checks[]}`.
+- `startCampaign({campaignId})` — valida preflight, cria recipients da lista (dedup por telefone), status → `em_andamento`, dispara tick.
+- `pauseCampaign`, `resumeCampaign`, `cancelCampaign` — atualizam status + timeline.
+- `retryFailed({campaignId})` — reseta `failed` transitórios para `pendente`.
+- `getCampaignProgress({campaignId})` — retorna `progress`, `last_error`, `last_sent_at`, `avg_speed_per_min`, ETA calculado.
+- `getCampaignTimeline({campaignId, limit})`.
+- `getCampaignFinalReport({campaignId})` — se `final_report` existe retorna, senão recalcula on-the-fly.
+- `exportRecipientsCSV({campaignId})`.
+
+Todas com `requireSupabaseAuth` + `has_role('admin')`.
+
+## 4. Frontend
+
+**`/admin/campanhas/nova`** (wizard existente): passo final adiciona botão **Iniciar agora** vs **Salvar rascunho** vs **Agendar**. Ao iniciar, roda `preflightCampaign` — se falha, mostra `PreflightChecklist` (X vermelho / ✓ verde por item, com botão fix).
+
+**`/admin/campanhas/$id`** (nova tela detalhe premium) com abas:
+
+1. **Visão geral** — StatusBadge, cards (Total, Processadas, Entregues, Lidas, Falhas, Respostas, Opt-outs), barra de progresso premium, velocidade média, ETA, última mensagem, último erro. Botões: Pausar/Retomar/Cancelar/Reprocessar falhas/Duplicar/Exportar. Polling via `useQuery` refetchInterval 3s enquanto `em_andamento|na_fila`.
+2. **Destinatários** — DataTable com telefone/nome/status/sent/delivered/read/erro + filtros por status + export CSV.
+3. **Timeline** — feed vertical estilo activity (ícones por evento, timestamps relativos).
+4. **Respostas** — mensagens inbound vinculadas via `meta_message_id → context.id`.
+5. **Erros** — agrupado por `error_code`, com contagem e primeiros exemplos.
+6. **Financeiro** — estoque consumido, custo estimado, valor cobrado (do cliente/projeto), lucro, custo/msg entregue, custo/resposta.
+7. **Relatório final** — só habilita quando `concluida|parcial|cancelada`. Render do `final_report` no padrão dos relatórios existentes. Botões Exportar CSV/Excel, Imprimir (window.print com CSS print-only), Duplicar campanha.
+
+**`/admin/campanhas`** (lista existente): coluna de progresso inline (mini barra), StatusBadge unificado, link para detalhe.
+
+## 5. Componentes reutilizáveis
+
+- `<ProgressBarPremium value total />`
+- `<CampaignStatusBadge status />` (mapeia 9 status → cores semânticas)
+- `<PreflightChecklist checks />`
+- `<TimelineFeed events />`
+- `<StatCardGroup />` já existe do redesign
+- `<RecipientStatusBadge />`
+
+## 6. Cron
+
+```sql
+select cron.schedule('wa-campaign-worker', '* * * * *', $$
+  select net.http_post(
+    url := 'https://project--<id>.lovable.app/api/public/wa/worker/tick',
+    headers := '{"apikey":"<anon>"}'::jsonb,
+    body := '{}'::jsonb
+  );
+$$);
 ```
-Dashboard
-WhatsApp        WABAs · Números · Templates · Embedded Signup · Webhooks · Inbox · Logs
-Campanhas       Todas · Nova · Agendadas · Em andamento · Concluídas · Relatórios
-Clientes        Clientes · Projetos · Contatos · Listas · Tags · Segmentos
-Financeiro      Faturamento · Custos · Estoque · Fechamentos · Histórico
-Relatórios      Geral · Por cliente · Por campanha · Por número · Por template · Por responsável
-Sistema         Configurações · Permissões · Usuários · Tokens/Secrets · Logs
-```
 
-Grupos expansíveis, item ativo destacado, mini-collapse com ícones. Rotas existentes são reaproveitadas; novas rotas de filtro (agendadas/em andamento/concluídas, relatórios segmentados) são páginas leves que reusam o listado atual com filtro pré-aplicado — sem duplicar módulos.
+## 7. Segurança / regras (preservadas)
 
-## 3. Dashboard novo (`/admin`)
+- Tokens WhatsApp só no backend (worker lê `whatsapp_connections.access_token_encrypted` ou secret).
+- Opt-out validado no worker antes de cada envio.
+- Estoque validado antes do envio; falha se insuficiente marca `skipped`.
+- Dedup de telefone por campanha (unique `(campaign_id, phone)`).
+- Lease impede execução concorrente.
+- Nada muda no webhook oficial além de handlers de status por `meta_message_id`.
+- RLS admin-only em todas as tabelas novas.
 
-Substitui a home atual. 4 stat cards (Mensagens do mês, Taxa de entrega, Faturamento, Lucro) + 2 gráficos (envios/dia, entrega vs falha) + tabela "Campanhas em andamento" + painel "Alertas" (opt-outs recentes, tokens expirando, qualidade caindo, estoque baixo). Tudo alimentado por server fns já existentes (`wa-reports`, `wa-campaigns`).
+## 8. Escopo NÃO incluído
 
-## 4. Componentes premium reutilizáveis
+- Não altera wizard de criação além do botão final.
+- Não altera `/api/public/whatsapp/webhook` GET (verify) — apenas estende POST.
+- Não mexe em Embedded Signup, WABAs, Templates, Números.
+- Não remove nada existente.
 
-- `StatCard`, `PageContainer`, `SectionHeader`, `EmptyState` (refinado), `DataTable` wrapper com zebra opcional, `StatusBadge` (mapeia todos os status: ativo/pendente/erro/aguardando_verificacao/aprovado/rejeitado/…), `Stepper` para wizards.
-- Aplicados em todas as telas existentes de WhatsApp/Clientes/Financeiro sem mexer na lógica.
+## Ordem de implementação
 
-## 5. Wizard de Nova Campanha (`/admin/campanhas/nova`)
-
-Rota nova com `Stepper` de 7 etapas. Substitui só a criação — a listagem atual permanece.
-
-**E1 – Dados**: nome · cliente · projeto · responsável · data/hora · imediato/agendado
-**E2 – Público**: lista de contatos · filtro por tags · dedup automática · exclusão de opt-outs · contador de destinatários em tempo real (server fn `previewAudience`)
-**E3 – WhatsApp**: WABA → carrega números → carrega templates aprovados dessa WABA. Exibe qualidade, tier de limite, status, idioma, categoria, preview do template.
-**E4 – Variáveis** (o coração): para cada `{{n}}` do template, editor com tokens dinâmicos:
-- Campos disponíveis: `{nome}`, `{primeiro_nome}`, `{telefone}`, `{email}`, `{cliente}`, `{projeto}`, `{protocolo}`, `{codigo_comprovante}`, `{data}`, `{link}`, `{responsavel}`, `{empresa}` + **campos personalizados por campanha**
-- Sintaxe de fallback: `{primeiro_nome|cliente}` — se vazio usa o próximo, se todos vazios usa string literal final
-- Texto fixo + tokens: `"Olá {primeiro_nome|amigo}, como você está?"`
-- Preview em tempo real com contato exemplo (escolhido da lista)
-- Botão "Testar com um contato" (envia via server fn existente, aparece como mensagem única)
-- Validação: variáveis obrigatórias, contatos que não possuem o campo → aviso e opção "usar valor padrão"
-
-**E5 – Botões / URL dinâmica**: se o template tem botão URL com `{{1}}`, mesmo editor com tokens; suporta prefixo fixo + token (`comprovante/{codigo_comprovante}`)
-
-**E6 – Revisão**: card grande com prévia final da mensagem renderizada, botão renderizado, cliente, projeto, número, template, lista, total destinatários, estimativa de custo, estoque disponível, alertas (opt-outs removidos, contatos sem campos obrigatórios, contatos inválidos)
-
-**E7 – Envio**: cria a campanha (`insertCampaign` já existente), enfileira (`wa-queue.server`), tela de progresso com controles Iniciar/Pausar/Retomar/Cancelar e counters em tempo real (enviadas · aceitas · entregues · lidas · falhas · respostas)
-
-### Backend do wizard (novo `src/lib/wa-wizard.functions.ts`)
-
-- `previewAudience({ list_id, tag_ids, exclude_optouts })` → conta e amostra
-- `renderVariables({ template_id, mapping, contact_id })` → renderiza preview
-- `sendTestMessage({ number_id, template_id, mapping, contact_id })` → envio pontual
-- `createCampaignFromWizard({...})` → grava tudo em `wa_campaigns` (usa colunas existentes + novo `variables_mapping jsonb`)
-
-### Migration mínima
-
-- `ALTER TABLE wa_campaigns ADD COLUMN variables_mapping jsonb`, `ADD COLUMN button_url_mapping jsonb`, `ADD COLUMN responsavel_id uuid`
-- Novo helper SQL: `public.wa_render_variable(_template text, _contact jsonb, _mapping jsonb)` — puro, sem side effects (opcional; posso fazer só em TS)
-
-## 6. Novas rotas leves (filtros de listagem)
-
-Reusam a página `admin.whatsapp-campanhas.tsx` já existente com prop de filtro:
-- `/admin/campanhas/agendadas` · `/em-andamento` · `/concluidas` · `/relatorios`
-- `/admin/relatorios/geral` · `/por-cliente` · `/por-campanha` · `/por-numero` · `/por-template` · `/por-responsavel` — todos derivam do `wa-reports.functions.ts` com `groupBy` diferente
-- `/admin/sistema/permissoes` · `/usuarios` · `/tokens` · `/logs` — reusam `user_roles`, `profiles`, `activity_logs`, `secrets`
-
-Nada disso é módulo novo — só route file + `<CampanhasList filter={...} />`.
-
-## 7. Preservado
-
-- Todas as tabelas, RLS, tokens no backend, opt-in, opt-out, webhook `/api/public/whatsapp/webhook`, Embedded Signup da Fase 2, integrações da Meta.
-- Nenhum arquivo apagado sem substituto na sidebar.
-
-## Ordem de execução
-
-1. Design tokens + fontes + utilitários
-2. Componentes premium (StatCard, Stepper, StatusBadge, etc.)
-3. Sidebar reagrupada + rotas leves de filtro
-4. Dashboard novo
-5. Refino visual nas telas existentes (cards, tabelas, headers)
-6. Migration do wizard
-7. Backend do wizard (`wa-wizard.functions.ts`)
-8. Wizard 7 etapas (nova rota)
-9. Typecheck + verificação visual via preview
+1. Migração (schema + triggers + cron).
+2. Server functions + endpoint worker.
+3. Extensão do webhook para status por `meta_message_id`.
+4. Tela detalhe `/admin/campanhas/$id` com 7 abas.
+5. Preflight + botão Iniciar no wizard.
+6. Ajuste da lista com progresso inline.
