@@ -84,9 +84,7 @@ const GROUPS: { label: string; items: NavItem[] }[] = [
   },
   {
     label: "Cloaker",
-    items: [
-      { title: "Campanhas de links", to: "/admin/campanhas", icon: Link2 },
-    ],
+    items: [{ title: "Cloaker", to: "/admin/campanhas", icon: Link2 }],
   },
   {
     label: "Clientes",
