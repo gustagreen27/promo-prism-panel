@@ -24,7 +24,12 @@ export const getBillingSettings = createServerFn({ method: 'GET' })
   .handler(async ({ context }) => {
     const { supabase } = context as any
     const { data } = await supabase.from('billing_settings').select('*').eq('id', 1).maybeSingle()
-    return data ?? { default_price_cents: 15, minimum_deposit_cents: 15000, currency: 'BRL' }
+    return data ?? {
+      default_price_cents: 15,
+      minimum_deposit_cents: 15000,
+      default_minimum_messages: 2500,
+      currency: 'BRL',
+    }
   })
 
 export const getMyWallet = createServerFn({ method: 'POST' })
@@ -39,15 +44,21 @@ export const getMyWallet = createServerFn({ method: 'POST' })
       supabase.from('workspace_wallets').select('*').eq('workspace_id', data.workspace_id).maybeSingle(),
       supabase.from('billing_settings').select('*').eq('id', 1).maybeSingle(),
     ])
-    const w = wallet ?? { balance_cents: 0, reserved_cents: 0, custom_price_cents: null }
+    const w = wallet ?? { balance_cents: 0, reserved_cents: 0, custom_price_cents: null, custom_minimum_messages: null }
     const defaultPrice = settings?.default_price_cents ?? 15
+    const defaultMin = settings?.default_minimum_messages ?? 2500
+    const globalMinDeposit = settings?.minimum_deposit_cents ?? 15000
     const unit_price_cents = w.custom_price_cents ?? defaultPrice
+    const minimum_messages = w.custom_minimum_messages ?? defaultMin
+    const required_deposit_cents = Math.max(globalMinDeposit, unit_price_cents * minimum_messages)
     return {
       balance_cents: Number(w.balance_cents ?? 0),
       reserved_cents: Number(w.reserved_cents ?? 0),
       available_cents: Number(w.balance_cents ?? 0) - Number(w.reserved_cents ?? 0),
       unit_price_cents,
-      minimum_deposit_cents: settings?.minimum_deposit_cents ?? 15000,
+      minimum_deposit_cents: globalMinDeposit,
+      minimum_messages,
+      required_deposit_cents,
       currency: settings?.currency ?? 'BRL',
     }
   })
