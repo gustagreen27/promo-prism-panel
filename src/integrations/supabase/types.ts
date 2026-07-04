@@ -1331,10 +1331,12 @@ export type Database = {
       }
       wa_campaigns: {
         Row: {
+          button_url_mapping: Json | null
           client_id: string | null
           connection_id: string | null
           created_at: string
           created_by: string | null
+          custom_fields: Json | null
           delivered_count: number
           estimated_cost: number
           failed_count: number
@@ -1348,6 +1350,7 @@ export type Database = {
           project_id: string | null
           read_count: number
           replied_count: number
+          responsavel_id: string | null
           scheduled_at: string | null
           send_rate_per_min: number
           sent_count: number
@@ -1358,13 +1361,16 @@ export type Database = {
           template_variables: Json
           total_recipients: number
           updated_at: string
+          variables_mapping: Json | null
           waba_ref_id: string | null
         }
         Insert: {
+          button_url_mapping?: Json | null
           client_id?: string | null
           connection_id?: string | null
           created_at?: string
           created_by?: string | null
+          custom_fields?: Json | null
           delivered_count?: number
           estimated_cost?: number
           failed_count?: number
@@ -1378,6 +1384,7 @@ export type Database = {
           project_id?: string | null
           read_count?: number
           replied_count?: number
+          responsavel_id?: string | null
           scheduled_at?: string | null
           send_rate_per_min?: number
           sent_count?: number
@@ -1388,13 +1395,16 @@ export type Database = {
           template_variables?: Json
           total_recipients?: number
           updated_at?: string
+          variables_mapping?: Json | null
           waba_ref_id?: string | null
         }
         Update: {
+          button_url_mapping?: Json | null
           client_id?: string | null
           connection_id?: string | null
           created_at?: string
           created_by?: string | null
+          custom_fields?: Json | null
           delivered_count?: number
           estimated_cost?: number
           failed_count?: number
@@ -1408,6 +1418,7 @@ export type Database = {
           project_id?: string | null
           read_count?: number
           replied_count?: number
+          responsavel_id?: string | null
           scheduled_at?: string | null
           send_rate_per_min?: number
           sent_count?: number
@@ -1418,6 +1429,7 @@ export type Database = {
           template_variables?: Json
           total_recipients?: number
           updated_at?: string
+          variables_mapping?: Json | null
           waba_ref_id?: string | null
         }
         Relationships: [
