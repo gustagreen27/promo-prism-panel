@@ -96,6 +96,11 @@ function Page() {
     queryFn: () => getReport({ data: { id } }),
   });
 
+  const { data: previews } = useQuery({
+    queryKey: ["wa-camp-previews", id],
+    queryFn: () => getPrev({ data: { id, limit: 200 } }),
+  });
+
   const startFn = useServerFn(startCampaignAsync);
   const pauseFn = useServerFn(pauseCampaignAsync);
   const resumeFn = useServerFn(resumeCampaignAsync);
