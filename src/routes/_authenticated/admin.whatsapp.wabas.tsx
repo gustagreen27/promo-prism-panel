@@ -18,6 +18,7 @@ import { listWabas, createWaba, updateWaba, deleteWaba, getWabaChildren } from "
 import { importWabaNumbers } from "@/lib/wa-meta.functions";
 import { listClients } from "@/lib/clients.functions";
 import { listProjects } from "@/lib/projects.functions";
+import { EmbeddedSignupButton } from "@/components/admin/whatsapp/embedded-signup-button";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp/wabas")({
   head: () => ({ meta: [{ title: "WABAs — WhatsApp Business" }] }),
