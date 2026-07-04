@@ -63,6 +63,15 @@ type WizardState = {
   // step 1 extras
   notes: string;
   send_rate_per_min: number;
+  batch_size: number;
+  jitter_ms: number;
+  max_per_hour: number | null;
+  max_per_day: number | null;
+  quiet_hours_start: string | null;
+  quiet_hours_end: string | null;
+  timezone: string;
+  abort_on_failure_rate: number | null;
+  min_processed_for_abort: number;
 };
 
 const initial: WizardState = {
@@ -82,6 +91,15 @@ const initial: WizardState = {
   button_url_mapping: {},
   notes: "",
   send_rate_per_min: 40,
+  batch_size: 25,
+  jitter_ms: 0,
+  max_per_hour: null,
+  max_per_day: null,
+  quiet_hours_start: null,
+  quiet_hours_end: null,
+  timezone: "America/Sao_Paulo",
+  abort_on_failure_rate: null,
+  min_processed_for_abort: 50,
 };
 
 const NONE = "__none__";
@@ -196,6 +214,15 @@ function WizardPage() {
           tag_filters: state.tag_filters,
           scheduled_at: state.imediato ? null : state.scheduled_at,
           send_rate_per_min: state.send_rate_per_min,
+          batch_size: state.batch_size,
+          jitter_ms: state.jitter_ms,
+          max_per_hour: state.max_per_hour,
+          max_per_day: state.max_per_day,
+          quiet_hours_start: state.quiet_hours_start,
+          quiet_hours_end: state.quiet_hours_end,
+          timezone: state.timezone,
+          abort_on_failure_rate: state.abort_on_failure_rate,
+          min_processed_for_abort: state.min_processed_for_abort,
           notes: state.notes || null,
           variables_mapping: state.variables_mapping,
           button_url_mapping: state.button_url_mapping,
@@ -287,6 +314,62 @@ function WizardPage() {
             <div>
               <Label>Taxa de envio (msg/min)</Label>
               <Input type="number" min={1} max={2400} value={state.send_rate_per_min} onChange={(e) => set("send_rate_per_min", Number(e.target.value) || 40)} />
+              <p className="text-xs text-muted-foreground mt-1">Limite superior de mensagens por minuto.</p>
+            </div>
+            <div>
+              <Label>Lote por ciclo</Label>
+              <Input type="number" min={1} max={500} value={state.batch_size} onChange={(e) => set("batch_size", Number(e.target.value) || 25)} />
+              <p className="text-xs text-muted-foreground mt-1">Quantidade processada a cada tick do worker.</p>
+            </div>
+            <div>
+              <Label>Jitter (ms)</Label>
+              <Input type="number" min={0} max={60000} value={state.jitter_ms} onChange={(e) => set("jitter_ms", Number(e.target.value) || 0)} />
+              <p className="text-xs text-muted-foreground mt-1">Atraso aleatório entre envios do lote (0 = sem jitter).</p>
+            </div>
+            <div className="sm:col-span-2 border-t pt-4">
+              <Label className="text-sm font-semibold">Limites por período (cotas Meta)</Label>
+              <p className="text-xs text-muted-foreground">Deixe vazio para não limitar. Ao atingir, a campanha aguarda o próximo ciclo dentro da janela.</p>
+            </div>
+            <div>
+              <Label>Máx. por hora</Label>
+              <Input type="number" min={1} placeholder="—" value={state.max_per_hour ?? ""} onChange={(e) => set("max_per_hour", e.target.value ? Number(e.target.value) : null)} />
+            </div>
+            <div>
+              <Label>Máx. por dia</Label>
+              <Input type="number" min={1} placeholder="Ex.: 1000 (tier inicial Meta)" value={state.max_per_day ?? ""} onChange={(e) => set("max_per_day", e.target.value ? Number(e.target.value) : null)} />
+            </div>
+            <div className="sm:col-span-2 border-t pt-4">
+              <Label className="text-sm font-semibold">Janela de silêncio (não enviar)</Label>
+              <p className="text-xs text-muted-foreground">Fora deste intervalo, o worker segue enviando. Vazio = 24/7.</p>
+            </div>
+            <div>
+              <Label>Início (HH:MM)</Label>
+              <Input type="time" value={state.quiet_hours_start ?? ""} onChange={(e) => set("quiet_hours_start", e.target.value || null)} />
+            </div>
+            <div>
+              <Label>Fim (HH:MM)</Label>
+              <Input type="time" value={state.quiet_hours_end ?? ""} onChange={(e) => set("quiet_hours_end", e.target.value || null)} />
+            </div>
+            <div>
+              <Label>Fuso horário</Label>
+              <Input value={state.timezone} onChange={(e) => set("timezone", e.target.value || "America/Sao_Paulo")} />
+            </div>
+            <div className="sm:col-span-2 border-t pt-4">
+              <Label className="text-sm font-semibold">Auto-pausa por taxa de falha</Label>
+              <p className="text-xs text-muted-foreground">Se muitos envios falharem, pausa automaticamente para proteger a qualidade do número.</p>
+            </div>
+            <div>
+              <Label>Taxa máxima de falha (%)</Label>
+              <Input
+                type="number" min={0} max={100} step={1}
+                placeholder="—"
+                value={state.abort_on_failure_rate != null ? Math.round(state.abort_on_failure_rate * 100) : ""}
+                onChange={(e) => set("abort_on_failure_rate", e.target.value ? Number(e.target.value) / 100 : null)}
+              />
+            </div>
+            <div>
+              <Label>Mínimo processado antes de pausar</Label>
+              <Input type="number" min={1} value={state.min_processed_for_abort} onChange={(e) => set("min_processed_for_abort", Number(e.target.value) || 50)} />
             </div>
             <div className="sm:col-span-2"><Label>Observações</Label><Textarea rows={2} value={state.notes} onChange={(e) => set("notes", e.target.value)} /></div>
           </CardContent>

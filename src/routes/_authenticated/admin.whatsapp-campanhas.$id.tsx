@@ -272,6 +272,14 @@ function Page() {
             {prog?.last_error && (
               <div className="flex items-center gap-1 text-red-600"><AlertTriangle className="h-4 w-4" /> {prog.last_error}</div>
             )}
+            {(camp as any)?.pause_reason && (
+              <div className="flex items-center gap-1 text-amber-600">
+                <AlertTriangle className="h-4 w-4" />
+                {(camp as any).pause_reason === "quiet_hours" && "Aguardando fim da janela de silêncio"}
+                {(camp as any).pause_reason === "quota_reached" && "Cota (hora/dia) atingida — retomará no próximo ciclo"}
+                {(camp as any).pause_reason === "failure_rate" && "Auto-pausada por taxa de falha elevada"}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -307,6 +315,12 @@ function Page() {
               <KV k="Idioma" v={(camp as any)?.template?.language ?? "—"} />
               <KV k="Número" v={(camp as any)?.connection?.display_phone ?? (camp as any)?.connection?.name ?? "—"} />
               <KV k="Taxa (msg/min)" v={String(camp?.send_rate_per_min ?? 30)} />
+              <KV k="Lote por ciclo" v={String((camp as any)?.batch_size ?? 25)} />
+              <KV k="Jitter" v={`${(camp as any)?.jitter_ms ?? 0} ms`} />
+              <KV k="Máx. por hora" v={(camp as any)?.max_per_hour ? String((camp as any).max_per_hour) : "sem limite"} />
+              <KV k="Máx. por dia" v={(camp as any)?.max_per_day ? String((camp as any).max_per_day) : "sem limite"} />
+              <KV k="Janela silenciosa" v={(camp as any)?.quiet_hours_start && (camp as any)?.quiet_hours_end ? `${(camp as any).quiet_hours_start} – ${(camp as any).quiet_hours_end} (${(camp as any)?.timezone ?? "TZ"})` : "—"} />
+              <KV k="Auto-pausa por falhas" v={(camp as any)?.abort_on_failure_rate ? `${Math.round((camp as any).abort_on_failure_rate * 100)}% após ${(camp as any).min_processed_for_abort ?? 50}` : "desativada"} />
               <KV k="Iniciada em" v={fmtDate(camp?.started_at)} />
               <KV k="Finalizada em" v={fmtDate(camp?.finished_at)} />
             </CardContent>

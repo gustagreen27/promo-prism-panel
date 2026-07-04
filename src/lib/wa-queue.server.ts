@@ -135,10 +135,52 @@ export async function finalizeCampaign(campaignId: string) {
   await logEvent(campaignId, "report_generated", "Relatório final gerado", { metrics: report.metrics });
 }
 
+function isInQuietHours(nowISO: string, startHM: string | null, endHM: string | null, tz: string): boolean {
+  if (!startHM || !endHM) return false;
+  try {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: tz,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).formatToParts(new Date(nowISO));
+    const hh = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
+    const mm = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
+    const cur = hh * 60 + mm;
+    const [sh, sm] = startHM.split(":").map(Number);
+    const [eh, em] = endHM.split(":").map(Number);
+    const s = sh * 60 + sm;
+    const e = eh * 60 + em;
+    if (s === e) return false;
+    if (s < e) return cur >= s && cur < e;
+    // overnight window (e.g. 22:00 -> 08:00)
+    return cur >= s || cur < e;
+  } catch {
+    return false;
+  }
+}
+
+async function countSentSince(campaignId: string, sinceISO: string): Promise<number> {
+  const { count } = await supabaseAdmin
+    .from("campaign_recipients")
+    .select("id", { count: "exact", head: true })
+    .eq("campaign_id", campaignId)
+    .gte("sent_at", sinceISO);
+  return count ?? 0;
+}
+
+async function markPaused(campaignId: string, reason: string, message: string) {
+  await supabaseAdmin
+    .from("wa_campaigns")
+    .update({ status: "paused", paused_at: new Date().toISOString(), pause_reason: reason })
+    .eq("id", campaignId);
+  await logEvent(campaignId, "auto_paused", message, { reason });
+}
+
 export async function processCampaignTick(
   campaignId: string,
-  batchSize = 25,
-): Promise<{ processed: number; done: boolean; skipped?: boolean }> {
+  batchSize?: number,
+): Promise<{ processed: number; done: boolean; skipped?: boolean; reason?: string }> {
   const lease = await acquireLease(campaignId);
   if (!lease) return { processed: 0, done: false, skipped: true };
 
@@ -171,6 +213,7 @@ export async function processCampaignTick(
       return { processed: 0, done: true };
     }
 
+    // Load connection + template
     const { data: conn } = await supabaseAdmin
       .from("whatsapp_connections")
       .select("*")
@@ -181,7 +224,6 @@ export async function processCampaignTick(
       .select("*")
       .eq("id", camp.template_id)
       .single();
-
     if (!conn?.phone_number_id || !conn?.access_token || !tpl) {
       await supabaseAdmin
         .from("wa_campaigns")
@@ -191,12 +233,49 @@ export async function processCampaignTick(
       return { processed: 0, done: true };
     }
 
+    // Quiet hours: skip tick, keep status=running (will retry next tick)
+    if (isInQuietHours(new Date().toISOString(), camp.quiet_hours_start as any, camp.quiet_hours_end as any, (camp as any).timezone || "America/Sao_Paulo")) {
+      await supabaseAdmin
+        .from("wa_campaigns")
+        .update({ pause_reason: "quiet_hours" })
+        .eq("id", campaignId);
+      return { processed: 0, done: false, reason: "quiet_hours" };
+    }
+
+    // Hourly / daily quota check
+    const now = new Date();
+    const hourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+    const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+    const maxHour = (camp as any).max_per_hour as number | null;
+    const maxDay = (camp as any).max_per_day as number | null;
+    let cap = Number.POSITIVE_INFINITY;
+    if (maxHour && maxHour > 0) {
+      const sentHour = await countSentSince(campaignId, hourAgo);
+      cap = Math.min(cap, Math.max(maxHour - sentHour, 0));
+    }
+    if (maxDay && maxDay > 0) {
+      const sentDay = await countSentSince(campaignId, dayAgo);
+      cap = Math.min(cap, Math.max(maxDay - sentDay, 0));
+    }
+    if (cap <= 0) {
+      await supabaseAdmin
+        .from("wa_campaigns")
+        .update({ pause_reason: "quota_reached" })
+        .eq("id", campaignId);
+      return { processed: 0, done: false, reason: "quota_reached" };
+    }
+
+    // Effective batch = min(param, campaign.batch_size, rate/min, remaining cap)
+    const cfgBatch = Math.max(1, (camp as any).batch_size ?? 25);
+    const rateMin = Math.max(1, camp.send_rate_per_min ?? cfgBatch);
+    const eff = Math.min(batchSize ?? cfgBatch, cfgBatch, rateMin, cap);
+
     const { data: recipients } = await supabaseAdmin
       .from("campaign_recipients")
       .select("*")
       .eq("campaign_id", campaignId)
       .eq("status", "pending")
-      .limit(batchSize);
+      .limit(eff);
 
     if (!recipients || recipients.length === 0) {
       const { count: processing } = await supabaseAdmin
@@ -216,6 +295,12 @@ export async function processCampaignTick(
       .from("campaign_recipients")
       .update({ status: "processing", last_attempt_at: new Date().toISOString() })
       .in("id", recipients.map((r: any) => r.id));
+
+    // Clear any previous pause_reason since we're actively processing
+    if ((camp as any).pause_reason) {
+      await supabaseAdmin.from("wa_campaigns").update({ pause_reason: null }).eq("id", campaignId);
+    }
+
 
     let sent = 0;
     let failed = 0;
@@ -294,6 +379,34 @@ export async function processCampaignTick(
             attempt: attempts,
           })
           .eq("id", r.id);
+      }
+
+      // Jitter delay between sends (in-lote)
+      const jitter = Math.max(0, (camp as any).jitter_ms ?? 0);
+      if (jitter > 0) {
+        const wait = Math.floor(Math.random() * jitter);
+        if (wait > 0) await new Promise((res) => setTimeout(res, wait));
+      }
+    }
+
+    // Auto-pause on failure-rate threshold
+    const threshold = (camp as any).abort_on_failure_rate as number | null;
+    const minProc = (camp as any).min_processed_for_abort ?? 50;
+    if (threshold && threshold > 0) {
+      const { data: agg } = await supabaseAdmin
+        .from("campaign_recipients")
+        .select("status")
+        .eq("campaign_id", campaignId);
+      const rows = agg ?? [];
+      const processedTotal = rows.filter((r: any) => !["pending", "processing"].includes(r.status)).length;
+      const failedTotal = rows.filter((r: any) => r.status === "failed").length;
+      if (processedTotal >= minProc && failedTotal / processedTotal >= threshold) {
+        await markPaused(
+          campaignId,
+          "failure_rate",
+          `Auto-pausada: taxa de falha ${(100 * failedTotal / processedTotal).toFixed(1)}% ≥ ${(100 * threshold).toFixed(0)}%`,
+        );
+        return { processed: sent + failed, done: false, reason: "failure_rate" };
       }
     }
 
