@@ -27,6 +27,7 @@ import { Route as PainelContatosRouteImport } from './routes/painel.contatos'
 import { Route as PainelConfiguracoesRouteImport } from './routes/painel.configuracoes'
 import { Route as PainelCampanhasRouteImport } from './routes/painel.campanhas'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as PainelCampanhasNovaRouteImport } from './routes/painel.campanhas.nova'
 import { Route as AuthenticatedAdminWhatsappCampanhasRouteImport } from './routes/_authenticated/admin.whatsapp-campanhas'
 import { Route as AuthenticatedAdminWhatsappRouteImport } from './routes/_authenticated/admin.whatsapp'
 import { Route as AuthenticatedAdminUpsellRouteImport } from './routes/_authenticated/admin.upsell'
@@ -156,6 +157,11 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const PainelCampanhasNovaRoute = PainelCampanhasNovaRouteImport.update({
+  id: '/nova',
+  path: '/nova',
+  getParentRoute: () => PainelCampanhasRoute,
 } as any)
 const AuthenticatedAdminWhatsappCampanhasRoute =
   AuthenticatedAdminWhatsappCampanhasRouteImport.update({
@@ -406,7 +412,7 @@ export interface FileRoutesByFullPath {
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/painel/campanhas': typeof PainelCampanhasRoute
+  '/painel/campanhas': typeof PainelCampanhasRouteWithChildren
   '/painel/configuracoes': typeof PainelConfiguracoesRoute
   '/painel/contatos': typeof PainelContatosRoute
   '/painel/financeiro': typeof PainelFinanceiroRoute
@@ -428,6 +434,7 @@ export interface FileRoutesByFullPath {
   '/admin/upsell': typeof AuthenticatedAdminUpsellRoute
   '/admin/whatsapp': typeof AuthenticatedAdminWhatsappRouteWithChildren
   '/admin/whatsapp-campanhas': typeof AuthenticatedAdminWhatsappCampanhasRouteWithChildren
+  '/painel/campanhas/nova': typeof PainelCampanhasNovaRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
   '/admin/contatos/listas': typeof AuthenticatedAdminContatosListasRoute
@@ -464,7 +471,7 @@ export interface FileRoutesByTo {
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/painel/campanhas': typeof PainelCampanhasRoute
+  '/painel/campanhas': typeof PainelCampanhasRouteWithChildren
   '/painel/configuracoes': typeof PainelConfiguracoesRoute
   '/painel/contatos': typeof PainelContatosRoute
   '/painel/financeiro': typeof PainelFinanceiroRoute
@@ -486,6 +493,7 @@ export interface FileRoutesByTo {
   '/admin/upsell': typeof AuthenticatedAdminUpsellRoute
   '/admin/whatsapp': typeof AuthenticatedAdminWhatsappRouteWithChildren
   '/admin/whatsapp-campanhas': typeof AuthenticatedAdminWhatsappCampanhasRouteWithChildren
+  '/painel/campanhas/nova': typeof PainelCampanhasNovaRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
   '/admin/contatos/listas': typeof AuthenticatedAdminContatosListasRoute
@@ -525,7 +533,7 @@ export interface FileRoutesById {
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/painel/campanhas': typeof PainelCampanhasRoute
+  '/painel/campanhas': typeof PainelCampanhasRouteWithChildren
   '/painel/configuracoes': typeof PainelConfiguracoesRoute
   '/painel/contatos': typeof PainelContatosRoute
   '/painel/financeiro': typeof PainelFinanceiroRoute
@@ -547,6 +555,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/upsell': typeof AuthenticatedAdminUpsellRoute
   '/_authenticated/admin/whatsapp': typeof AuthenticatedAdminWhatsappRouteWithChildren
   '/_authenticated/admin/whatsapp-campanhas': typeof AuthenticatedAdminWhatsappCampanhasRouteWithChildren
+  '/painel/campanhas/nova': typeof PainelCampanhasNovaRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
   '/_authenticated/admin/contatos/listas': typeof AuthenticatedAdminContatosListasRoute
@@ -608,6 +617,7 @@ export interface FileRouteTypes {
     | '/admin/upsell'
     | '/admin/whatsapp'
     | '/admin/whatsapp-campanhas'
+    | '/painel/campanhas/nova'
     | '/admin/'
     | '/admin/campaigns/$id'
     | '/admin/contatos/listas'
@@ -666,6 +676,7 @@ export interface FileRouteTypes {
     | '/admin/upsell'
     | '/admin/whatsapp'
     | '/admin/whatsapp-campanhas'
+    | '/painel/campanhas/nova'
     | '/admin'
     | '/admin/campaigns/$id'
     | '/admin/contatos/listas'
@@ -726,6 +737,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/upsell'
     | '/_authenticated/admin/whatsapp'
     | '/_authenticated/admin/whatsapp-campanhas'
+    | '/painel/campanhas/nova'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/campaigns/$id'
     | '/_authenticated/admin/contatos/listas'
@@ -898,6 +910,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/painel/campanhas/nova': {
+      id: '/painel/campanhas/nova'
+      path: '/nova'
+      fullPath: '/painel/campanhas/nova'
+      preLoaderRoute: typeof PainelCampanhasNovaRouteImport
+      parentRoute: typeof PainelCampanhasRoute
     }
     '/_authenticated/admin/whatsapp-campanhas': {
       id: '/_authenticated/admin/whatsapp-campanhas'
@@ -1330,8 +1349,20 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface PainelCampanhasRouteChildren {
+  PainelCampanhasNovaRoute: typeof PainelCampanhasNovaRoute
+}
+
+const PainelCampanhasRouteChildren: PainelCampanhasRouteChildren = {
+  PainelCampanhasNovaRoute: PainelCampanhasNovaRoute,
+}
+
+const PainelCampanhasRouteWithChildren = PainelCampanhasRoute._addFileChildren(
+  PainelCampanhasRouteChildren,
+)
+
 interface PainelRouteChildren {
-  PainelCampanhasRoute: typeof PainelCampanhasRoute
+  PainelCampanhasRoute: typeof PainelCampanhasRouteWithChildren
   PainelConfiguracoesRoute: typeof PainelConfiguracoesRoute
   PainelContatosRoute: typeof PainelContatosRoute
   PainelFinanceiroRoute: typeof PainelFinanceiroRoute
@@ -1341,7 +1372,7 @@ interface PainelRouteChildren {
 }
 
 const PainelRouteChildren: PainelRouteChildren = {
-  PainelCampanhasRoute: PainelCampanhasRoute,
+  PainelCampanhasRoute: PainelCampanhasRouteWithChildren,
   PainelConfiguracoesRoute: PainelConfiguracoesRoute,
   PainelContatosRoute: PainelContatosRoute,
   PainelFinanceiroRoute: PainelFinanceiroRoute,
