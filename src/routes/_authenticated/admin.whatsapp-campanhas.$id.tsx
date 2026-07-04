@@ -56,6 +56,7 @@ function Page() {
   const getTL = useServerFn(getCampaignTimeline);
   const getRec = useServerFn(getCampaignRecipients);
   const getReport = useServerFn(getCampaignFinalReport);
+  const getErrs = useServerFn(getCampaignErrors);
   const getPrev = useServerFn(getRecipientPreviews);
   const [previewSearch, setPreviewSearch] = useState("");
 
