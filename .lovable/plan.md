@@ -1,71 +1,104 @@
 
-# Plataforma WhatsApp Business — Disparos FR
+# Redesign SaaS + Wizard de Campanhas
 
-Escopo: entrega tudo em uma leva, evoluindo tabelas existentes. Token único global no Secret `WHATSAPP_ACCESS_TOKEN` (já configurado). Nada de burlar limites da Meta, nada de disparo sem opt-in, tokens nunca no frontend.
+Paleta **Cloud White (Stripe-like)** · **light-only** · entrega em uma leva.
+Nada é removido — só reagrupado, renomeado ou visualmente refinado.
 
-## 1. Banco de dados (evolução, sem quebrar dados atuais)
+---
 
-### Nova tabela
-- `whatsapp_wabas` — nome_interno, client_id, project_id, business_id, waba_id (único), status, observacoes, created_at.
+## 1. Design system (`src/styles.css`)
 
-### Evolução de tabelas existentes
-- `whatsapp_connections` (Números): adicionar `waba_ref_id → whatsapp_wabas.id`, `business_id`, `quality_rating`, `messaging_limit`, `display_name`, `nome_interno`.
-- `whatsapp_templates`: adicionar `waba_ref_id`, `meta_template_id`, `rejection_reason`, `submitted_at`, `reviewed_at`, `header_type`, `header_text`, `header_media_url`, `footer`, `buttons_json`, `variables_examples_json`, `history_json`.
-- `wa_campaigns`: adicionar `waba_ref_id` (número já existe via phone_number_id/nome_number).
-- `whatsapp_webhook_logs`: já existe — só usado como está.
-- `opt_outs`: já existe — webhook grava aqui.
+Novos tokens em `oklch`:
+- `--background` branco levíssimo, `--surface` #fafbfc, `--surface-2` #f4f6f9
+- `--border` #e5e7eb / `--border-strong` #d1d5db
+- `--primary` #3b82f6 (azul Stripe-like), `--primary-foreground` branco
+- `--success` #10b981 · `--warning` #f59e0b · `--danger` #ef4444 · `--info` #0ea5e9
+- Radius base 10px · sombra sutil `--shadow-card`, `--shadow-elevated`
+- Tipografia: **Inter Tight** (headings) + **Inter** (body), via `@fontsource`
+- Utilitários novos: `.card-premium`, `.stat-card`, `.data-table`, `.section-title`, `.pill`
 
-### Não criar
-- `whatsapp_tokens` — decidido usar Secret global (`WHATSAPP_ACCESS_TOKEN`). Painel mostra só "Token configurado (Secret)".
+Sem dark mode; removo troca de tema onde existir.
 
-Migrations com GRANT + RLS `admin`-only nas novas tabelas.
+## 2. Sidebar reagrupada (`src/components/admin/app-sidebar.tsx`)
 
-## 2. Módulos (rotas em `/admin/whatsapp-*`)
+Grupos exatamente como pediu:
 
-Reaproveita layout atual (`admin.whatsapp-*.tsx`).
+```
+Dashboard
+WhatsApp        WABAs · Números · Templates · Embedded Signup · Webhooks · Inbox · Logs
+Campanhas       Todas · Nova · Agendadas · Em andamento · Concluídas · Relatórios
+Clientes        Clientes · Projetos · Contatos · Listas · Tags · Segmentos
+Financeiro      Faturamento · Custos · Estoque · Fechamentos · Histórico
+Relatórios      Geral · Por cliente · Por campanha · Por número · Por template · Por responsável
+Sistema         Configurações · Permissões · Usuários · Tokens/Secrets · Logs
+```
 
-- **WABAs** (`/admin/whatsapp-wabas`) — CRUD, listar números/templates/campanhas vinculadas.
-- **Números** (evolui `admin.whatsapp-numeros`) — vincular a WABA, mostrar quality/limit, botão "Testar envio", "Ver campanhas", "Ver logs".
-- **Templates** (evolui `admin.whatsapp-templates`) — CRUD completo com header/body/footer/botões/variáveis+exemplos, preview, validação, **Enviar para aprovação**, **Consultar status**, duplicar, arquivar, histórico.
-- **Campanhas** (evolui `admin.whatsapp-campanhas`) — já usa WABA/número/template; adicionar seletor de WABA e filtro de templates aprovados dessa WABA. Mantém envio 40/s. Opt-in obrigatório: bloqueia contatos em `opt_outs`.
-- **Webhooks** (`/admin/whatsapp-webhooks`) — lista URLs de callback (mostra a URL pública fixa deste projeto), verify token, últimos eventos, logs, erros.
-- **Relatórios** (`/admin/whatsapp-relatorios`) — filtros por WABA/número/cliente/projeto/template/campanha/período; métricas enviados/accepted/delivered/read/failed/respostas/opt-outs/custo/receita/lucro/taxas.
-- **Embedded Signup** (`/admin/whatsapp-embedded-signup`) — placeholder com botão "Conectar WhatsApp" desabilitado + explicação e campos onde os IDs retornados serão salvos (estrutura pronta, integração Meta em fase posterior).
+Grupos expansíveis, item ativo destacado, mini-collapse com ícones. Rotas existentes são reaproveitadas; novas rotas de filtro (agendadas/em andamento/concluídas, relatórios segmentados) são páginas leves que reusam o listado atual com filtro pré-aplicado — sem duplicar módulos.
 
-## 3. Backend (server functions + rota pública)
+## 3. Dashboard novo (`/admin`)
 
-### `src/lib/wa-meta.functions.ts` (novo — API oficial Meta v20)
-- `submitTemplate({ wabaId, template })` — monta payload correto (components header/body/footer/buttons + `example`), chama `POST /{waba-id}/message_templates`, salva resposta completa em `whatsapp_webhook_logs`, atualiza `meta_template_id`+status.
-- `fetchTemplateStatus({ wabaId, metaTemplateId })` — `GET /{template-id}` e atualiza status/rejection_reason/reviewed_at.
-- `fetchWabaNumbers({ wabaId })` — `GET /{waba-id}/phone_numbers` (quality, limit, display_name).
-- `sendTestMessage({ phoneNumberId, to, templateName, language })` — envio de teste 1:1.
-- Tratamento de erro Meta com códigos: token inválido (190), sem permissão (10/200), nome duplicado (192xx), categoria inválida, variável sem sample, botão inválido, mídia inválida, fallback genérico. Mensagens em PT.
-- Todas as funções usam `process.env.WHATSAPP_ACCESS_TOKEN` (nunca vai ao client) e `.middleware([requireSupabaseAuth])` + checagem `has_role(admin)`.
+Substitui a home atual. 4 stat cards (Mensagens do mês, Taxa de entrega, Faturamento, Lucro) + 2 gráficos (envios/dia, entrega vs falha) + tabela "Campanhas em andamento" + painel "Alertas" (opt-outs recentes, tokens expirando, qualidade caindo, estoque baixo). Tudo alimentado por server fns já existentes (`wa-reports`, `wa-campaigns`).
 
-### Rota pública `/api/public/whatsapp-webhook` (novo)
-- `GET` — validação `hub.mode=subscribe` com `hub.verify_token` = `WHATSAPP_VERIFY_TOKEN` (novo secret gerado).
-- `POST` — grava payload bruto em `whatsapp_webhook_logs`, atualiza status em `campaign_recipients`/`message_logs` por `meta_message_id`, salva respostas no inbox, detecta opt-out (regex `sair|parar|cancelar|remover|não quero|nao quero`) e insere em `opt_outs`.
+## 4. Componentes premium reutilizáveis
 
-## 4. Segurança
-- Token só em Secret + server functions. Nenhum endpoint retorna o token.
-- RLS `admin`-only em WABAs, tokens (info), webhooks; leituras normais via `has_role`.
-- Opt-in: envio bloqueia recipient cujo telefone esteja em `opt_outs`.
-- Logs completos: toda ação sensível (submit template, envio, webhook) grava em `whatsapp_webhook_logs` ou `activity_logs`.
-- Nenhuma função para contornar rate/quality limits da Meta.
+- `StatCard`, `PageContainer`, `SectionHeader`, `EmptyState` (refinado), `DataTable` wrapper com zebra opcional, `StatusBadge` (mapeia todos os status: ativo/pendente/erro/aguardando_verificacao/aprovado/rejeitado/…), `Stepper` para wizards.
+- Aplicados em todas as telas existentes de WhatsApp/Clientes/Financeiro sem mexer na lógica.
 
-## 5. Sidebar / navegação
-Adicionar seção "WhatsApp Platform" agrupando: WABAs · Números · Templates · Campanhas · Webhooks · Relatórios · Embedded Signup.
+## 5. Wizard de Nova Campanha (`/admin/campanhas/nova`)
 
-## 6. Fora do escopo desta entrega (documentado no painel)
-- Embedded Signup real da Meta (só estrutura visual/DB).
-- Permissões finas por ação (usa hoje `admin` unificado).
-- White-label por cliente.
+Rota nova com `Stepper` de 7 etapas. Substitui só a criação — a listagem atual permanece.
+
+**E1 – Dados**: nome · cliente · projeto · responsável · data/hora · imediato/agendado
+**E2 – Público**: lista de contatos · filtro por tags · dedup automática · exclusão de opt-outs · contador de destinatários em tempo real (server fn `previewAudience`)
+**E3 – WhatsApp**: WABA → carrega números → carrega templates aprovados dessa WABA. Exibe qualidade, tier de limite, status, idioma, categoria, preview do template.
+**E4 – Variáveis** (o coração): para cada `{{n}}` do template, editor com tokens dinâmicos:
+- Campos disponíveis: `{nome}`, `{primeiro_nome}`, `{telefone}`, `{email}`, `{cliente}`, `{projeto}`, `{protocolo}`, `{codigo_comprovante}`, `{data}`, `{link}`, `{responsavel}`, `{empresa}` + **campos personalizados por campanha**
+- Sintaxe de fallback: `{primeiro_nome|cliente}` — se vazio usa o próximo, se todos vazios usa string literal final
+- Texto fixo + tokens: `"Olá {primeiro_nome|amigo}, como você está?"`
+- Preview em tempo real com contato exemplo (escolhido da lista)
+- Botão "Testar com um contato" (envia via server fn existente, aparece como mensagem única)
+- Validação: variáveis obrigatórias, contatos que não possuem o campo → aviso e opção "usar valor padrão"
+
+**E5 – Botões / URL dinâmica**: se o template tem botão URL com `{{1}}`, mesmo editor com tokens; suporta prefixo fixo + token (`comprovante/{codigo_comprovante}`)
+
+**E6 – Revisão**: card grande com prévia final da mensagem renderizada, botão renderizado, cliente, projeto, número, template, lista, total destinatários, estimativa de custo, estoque disponível, alertas (opt-outs removidos, contatos sem campos obrigatórios, contatos inválidos)
+
+**E7 – Envio**: cria a campanha (`insertCampaign` já existente), enfileira (`wa-queue.server`), tela de progresso com controles Iniciar/Pausar/Retomar/Cancelar e counters em tempo real (enviadas · aceitas · entregues · lidas · falhas · respostas)
+
+### Backend do wizard (novo `src/lib/wa-wizard.functions.ts`)
+
+- `previewAudience({ list_id, tag_ids, exclude_optouts })` → conta e amostra
+- `renderVariables({ template_id, mapping, contact_id })` → renderiza preview
+- `sendTestMessage({ number_id, template_id, mapping, contact_id })` → envio pontual
+- `createCampaignFromWizard({...})` → grava tudo em `wa_campaigns` (usa colunas existentes + novo `variables_mapping jsonb`)
+
+### Migration mínima
+
+- `ALTER TABLE wa_campaigns ADD COLUMN variables_mapping jsonb`, `ADD COLUMN button_url_mapping jsonb`, `ADD COLUMN responsavel_id uuid`
+- Novo helper SQL: `public.wa_render_variable(_template text, _contact jsonb, _mapping jsonb)` — puro, sem side effects (opcional; posso fazer só em TS)
+
+## 6. Novas rotas leves (filtros de listagem)
+
+Reusam a página `admin.whatsapp-campanhas.tsx` já existente com prop de filtro:
+- `/admin/campanhas/agendadas` · `/em-andamento` · `/concluidas` · `/relatorios`
+- `/admin/relatorios/geral` · `/por-cliente` · `/por-campanha` · `/por-numero` · `/por-template` · `/por-responsavel` — todos derivam do `wa-reports.functions.ts` com `groupBy` diferente
+- `/admin/sistema/permissoes` · `/usuarios` · `/tokens` · `/logs` — reusam `user_roles`, `profiles`, `activity_logs`, `secrets`
+
+Nada disso é módulo novo — só route file + `<CampanhasList filter={...} />`.
+
+## 7. Preservado
+
+- Todas as tabelas, RLS, tokens no backend, opt-in, opt-out, webhook `/api/public/whatsapp/webhook`, Embedded Signup da Fase 2, integrações da Meta.
+- Nenhum arquivo apagado sem substituto na sidebar.
 
 ## Ordem de execução
-1. Migration (whatsapp_wabas + colunas novas + índices + RLS + GRANT).
-2. Secret `WHATSAPP_VERIFY_TOKEN`.
-3. Backend: `wa-meta.functions.ts` + rota webhook pública.
-4. Telas: WABAs → Números (evolução) → Templates (evolução) → Campanhas (ajuste seletor) → Webhooks → Relatórios → Embedded Signup.
-5. Item de menu na sidebar.
 
-Confirma para eu começar?
+1. Design tokens + fontes + utilitários
+2. Componentes premium (StatCard, Stepper, StatusBadge, etc.)
+3. Sidebar reagrupada + rotas leves de filtro
+4. Dashboard novo
+5. Refino visual nas telas existentes (cards, tabelas, headers)
+6. Migration do wizard
+7. Backend do wizard (`wa-wizard.functions.ts`)
+8. Wizard 7 etapas (nova rota)
+9. Typecheck + verificação visual via preview
