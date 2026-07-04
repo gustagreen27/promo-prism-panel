@@ -83,34 +83,57 @@ function BillingSection() {
 
   const [price, setPrice] = useState("");
   const [minimum, setMinimum] = useState("");
+  const [minMessages, setMinMessages] = useState("");
   useEffect(() => {
     if (data) {
       setPrice(((data.default_price_cents ?? 15) / 100).toFixed(2).replace(".", ","));
       setMinimum(((data.minimum_deposit_cents ?? 15000) / 100).toFixed(2).replace(".", ","));
+      setMinMessages(String((data as any).default_minimum_messages ?? 2500));
     }
   }, [data]);
 
   const parse = (s: string) => Math.round(Number(s.replace(/\./g, "").replace(",", ".")) * 100);
 
   const save = useMutation({
-    mutationFn: () => updateBilling({ data: { default_price_cents: parse(price), minimum_deposit_cents: parse(minimum) } }),
+    mutationFn: () => updateBilling({ data: {
+      default_price_cents: parse(price),
+      minimum_deposit_cents: parse(minimum),
+      default_minimum_messages: Math.max(1, parseInt(minMessages || "0", 10)),
+    } }),
     onSuccess: () => { toast.success("Cobrança atualizada"); qc.invalidateQueries({ queryKey: ["billing-settings"] }); },
     onError: (e: any) => toast.error(e?.message ?? "Erro"),
   });
 
+  const priceCents = parse(price || "0");
+  const minMsgN = Math.max(0, parseInt(minMessages || "0", 10));
+  const minDepCents = parse(minimum || "0");
+  const requiredCents = Math.max(minDepCents, priceCents * minMsgN);
+  const fmtBRL = (c: number) => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
   return (
     <section className="rounded-xl border bg-card p-5">
       <h3 className="text-sm font-semibold">Cobrança (carteira SaaS)</h3>
-      <p className="text-xs text-muted-foreground">Valor cobrado do saldo do cliente por cada mensagem enviada, e valor mínimo de depósito.</p>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+      <p className="text-xs text-muted-foreground">
+        Cada mensagem enviada desconta do saldo do cliente. O depósito mínimo real será o maior valor entre o depósito mínimo global e (mínimo de mensagens × preço da mensagem).
+      </p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-3">
         <div>
           <Label>Preço por mensagem (R$)</Label>
           <Input inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0,15" />
         </div>
         <div>
-          <Label>Depósito mínimo (R$)</Label>
+          <Label>Depósito mínimo global (R$)</Label>
           <Input inputMode="decimal" value={minimum} onChange={(e) => setMinimum(e.target.value)} placeholder="150,00" />
         </div>
+        <div>
+          <Label>Mínimo padrão de mensagens</Label>
+          <Input inputMode="numeric" value={minMessages} onChange={(e) => setMinMessages(e.target.value.replace(/\D/g, ""))} placeholder="2500" />
+        </div>
+      </div>
+      <div className="mt-3 rounded-md bg-muted/40 p-3 text-xs text-muted-foreground">
+        Valor mínimo exigido para o cliente padrão:{" "}
+        <span className="font-semibold text-foreground">{fmtBRL(requiredCents)}</span>
+        {" "}({minMsgN.toLocaleString("pt-BR")} × {fmtBRL(priceCents)} vs mínimo global {fmtBRL(minDepCents)})
       </div>
       <div className="mt-3">
         <Button onClick={() => save.mutate()} disabled={save.isPending}>Salvar cobrança</Button>
