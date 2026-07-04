@@ -14,11 +14,19 @@
 
 export type Ctx = Record<string, string | number | null | undefined>;
 
-const TOKEN_RE = /\{([^{}]+)\}/g;
+// Matches either {token} or {{token}}. Purely-numeric tokens like {{1}} are
+// left untouched so Meta's own template variable syntax survives at higher
+// layers (fillMetaTemplate handles those separately).
+const TOKEN_RE = /\{\{?\s*([^{}]+?)\s*\}\}?/g;
 
 export function renderMapping(mapping: string, ctx: Ctx): string {
   if (!mapping) return "";
-  return mapping.replace(TOKEN_RE, (_m, expr: string) => resolveToken(expr, ctx));
+  return mapping.replace(TOKEN_RE, (match, expr: string) => {
+    const trimmed = expr.trim();
+    // Preserve Meta-style numeric placeholders untouched (e.g. {{1}}).
+    if (/^\d+$/.test(trimmed)) return match;
+    return resolveToken(trimmed, ctx);
+  });
 }
 
 function resolveToken(expr: string, ctx: Ctx): string {
