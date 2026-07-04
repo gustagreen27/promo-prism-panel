@@ -85,6 +85,14 @@ export async function finalizeCampaign(campaignId: string) {
       ? "partial"
       : "completed";
 
+  // Libera qualquer saldo ainda reservado para esta campanha
+  if ((camp as any).reservation_id) {
+    await supabaseAdmin.rpc("wallet_release_reservation" as any, {
+      _reservation_id: (camp as any).reservation_id,
+      _qty: null,
+    });
+  }
+
   const report = {
     summary: {
       name: camp.name,
