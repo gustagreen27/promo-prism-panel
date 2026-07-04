@@ -21,6 +21,7 @@ export type Database = {
           description: string | null
           id: string
           ip_address: string | null
+          metadata: Json
           module: string | null
           user_id: string | null
         }
@@ -30,6 +31,7 @@ export type Database = {
           description?: string | null
           id?: string
           ip_address?: string | null
+          metadata?: Json
           module?: string | null
           user_id?: string | null
         }
@@ -39,6 +41,7 @@ export type Database = {
           description?: string | null
           id?: string
           ip_address?: string | null
+          metadata?: Json
           module?: string | null
           user_id?: string | null
         }
@@ -1334,6 +1337,44 @@ export type Database = {
           },
         ]
       }
+      onboarding_checklist: {
+        Row: {
+          created_at: string
+          done: boolean
+          done_at: string | null
+          id: string
+          key: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          done?: boolean
+          done_at?: string | null
+          id?: string
+          key: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          done?: boolean
+          done_at?: string | null
+          id?: string
+          key?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_checklist_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       opt_outs: {
         Row: {
           client_id: string | null
@@ -1378,19 +1419,34 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
+          cnpj: string | null
           created_at: string
           email: string | null
+          full_name: string | null
           id: string
+          phone: string | null
+          updated_at: string
         }
         Insert: {
+          avatar_url?: string | null
+          cnpj?: string | null
           created_at?: string
           email?: string | null
+          full_name?: string | null
           id: string
+          phone?: string | null
+          updated_at?: string
         }
         Update: {
+          avatar_url?: string | null
+          cnpj?: string | null
           created_at?: string
           email?: string | null
+          full_name?: string | null
           id?: string
+          phone?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -3044,6 +3100,7 @@ export type Database = {
       }
     }
     Functions: {
+      get_my_context: { Args: never; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -3064,6 +3121,11 @@ export type Database = {
         Args: { _user: string; _ws: string }
         Returns: boolean
       }
+      log_auth_event: {
+        Args: { _metadata?: Json; _type: string }
+        Returns: undefined
+      }
+      seed_onboarding_checklist: { Args: { _ws: string }; Returns: undefined }
       user_workspace_ids: { Args: { _user: string }; Returns: string[] }
       wa_available_stock: {
         Args: { _client_id: string; _project_id: string }
