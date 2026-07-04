@@ -205,6 +205,16 @@ function Page() {
 
   const recipients = useMemo(() => parseRecipients(form.recipientsRaw), [form.recipientsRaw]);
 
+  const previewRecipient = recipients[0];
+  const previewContext = useMemo(
+    () => buildContext({ contact: { name: previewRecipient?.name ?? "", phone: previewRecipient?.phone ?? "" } }),
+    [previewRecipient?.name, previewRecipient?.phone],
+  );
+  const previewValue = (value: string, fallback: string) => {
+    const rendered = renderMapping(value ?? "", previewContext).trim();
+    return rendered || fallback;
+  };
+
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -315,7 +325,7 @@ function Page() {
     !!form.connectionId &&
     recipients.length > 0 &&
     !!form.imageUrl &&
-    (!!form.nomeCliente || recipients.every((r) => !!r.name)) &&
+    !!form.nomeCliente &&
     !!form.informacaoPrincipal &&
     !!form.mensagemComplementar &&
     !!form.textoAcao &&
@@ -335,20 +345,16 @@ function Page() {
       const { phone, name } = recipients[idx];
       setRows((rs) => rs.map((r) => (r.phone === phone ? { ...r, status: "sending" } : r)));
       try {
-        // Render per-recipient tokens like {nome}, {primeiro_nome}, {telefone} etc.
-        // If the {{1}} field is empty, fall back to the CSV name so old behavior still works.
+        // Render the complete configured value for each Meta variable per recipient.
         const ctx = buildContext({ contact: { name: name ?? "", phone } });
         const render = (v: string) => renderMapping(v ?? "", ctx);
-        const nomeClienteFinal = form.nomeCliente
-          ? render(form.nomeCliente)
-          : (name || "");
         const res: SendFrgc01Response = await sendFn({
           data: {
             connectionId: form.connectionId,
             to: phone,
             imageUrl: form.imageUrl,
             mediaType: form.mediaType,
-            nomeCliente: nomeClienteFinal,
+            nomeCliente: render(form.nomeCliente),
             informacaoPrincipal: render(form.informacaoPrincipal),
             mensagemComplementar: render(form.mensagemComplementar),
             textoAcao: render(form.textoAcao),
@@ -424,7 +430,7 @@ function Page() {
 
           <div className="space-y-2 md:col-span-2">
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <Label>Destinatários — um por linha. Use <code className="text-[11px]">Nome,Telefone</code> para personalizar {"{{1}}"}.</Label>
+              <Label>Destinatários — um por linha. Use <code className="text-[11px]">Nome,Telefone</code> para liberar o campo <code className="text-[11px]">{"{nome}"}</code>.</Label>
               <div className="flex gap-2">
                 <input
                   ref={csvInputRef}
@@ -471,7 +477,7 @@ function Page() {
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              {recipients.length} destinatário(s) detectados{recipients.some((r) => r.name) ? ` · ${recipients.filter((r) => r.name).length} com nome` : ""}. Quando houver nome, ele substitui {"{{1}}"} para aquele contato.
+              {recipients.length} destinatário(s) detectados{recipients.some((r) => r.name) ? ` · ${recipients.filter((r) => r.name).length} com nome` : ""}. O nome só é usado quando você escrever <code className="text-[11px]">{"{nome}"}</code> em algum campo de variável.
             </p>
           </div>
 
@@ -530,18 +536,18 @@ function Page() {
           </div>
 
           <div className="space-y-2 md:col-span-2 rounded-md border bg-muted/30 p-3">
-            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Corpo</div>
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Corpo — prévia renderizada</div>
             <div className="text-sm whitespace-pre-line leading-relaxed">
-              {`Olá ${form.nomeCliente || "{{1}}"}!\n\nInformamos que ${form.informacaoPrincipal || "{{2}}"}.\n\n${form.mensagemComplementar || "{{3}}"}.\n\nPara ${form.textoAcao || "{{4}}"}, clique no botão logo abaixo 👇`}
+              {`Olá ${previewValue(form.nomeCliente, "{{1}}")}!\n\nInformamos que ${previewValue(form.informacaoPrincipal, "{{2}}")}.\n\n${previewValue(form.mensagemComplementar, "{{3}}")}.\n\nPara ${previewValue(form.textoAcao, "{{4}}")}, clique no botão logo abaixo 👇`}
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label>{"{{1}} Nome do cliente (fallback)"}</Label>
+            <Label>{"{{1}} Valor completo da variável"}</Label>
             <Input
               value={form.nomeCliente}
               onChange={(e) => set("nomeCliente", e.target.value)}
-              placeholder="Usado quando a linha do destinatário não trouxer nome"
+              placeholder="{nome|Cliente}, como você está?"
             />
           </div>
 
