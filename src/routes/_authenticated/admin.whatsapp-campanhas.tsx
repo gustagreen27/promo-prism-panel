@@ -328,7 +328,7 @@ function Page() {
     setRows(initial);
     let okCount = 0;
     let failCount = 0;
-    const CONCURRENCY = 25;
+    const RATE_PER_SECOND = 40;
     const sendOne = async (idx: number) => {
       if (cancelRef.current) return;
       const { phone, name } = recipients[idx];
@@ -366,11 +366,26 @@ function Page() {
       }
     };
 
-    for (let i = 0; i < recipients.length; i += CONCURRENCY) {
+    // Dispara em rajadas de RATE_PER_SECOND por segundo (fire-and-forget dentro da janela),
+    // aguardando 1s entre o início de cada rajada para manter a taxa alvo.
+    const pending: Promise<void>[] = [];
+    for (let i = 0; i < recipients.length; i += RATE_PER_SECOND) {
       if (cancelRef.current) break;
-      const slice = Array.from({ length: Math.min(CONCURRENCY, recipients.length - i) }, (_, k) => i + k);
-      await Promise.all(slice.map(sendOne));
+      const windowStart = Date.now();
+      const slice = Array.from(
+        { length: Math.min(RATE_PER_SECOND, recipients.length - i) },
+        (_, k) => i + k,
+      );
+      for (const idx of slice) pending.push(sendOne(idx));
+      // Se ainda houver mais rajadas, aguarda o resto do segundo antes de disparar a próxima.
+      if (i + RATE_PER_SECOND < recipients.length) {
+        const elapsed = Date.now() - windowStart;
+        const wait = Math.max(0, 1000 - elapsed);
+        if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+      }
     }
+    // Aguarda todas as requisições em voo terminarem antes de finalizar.
+    await Promise.all(pending);
 
     setSending(false);
     toast[failCount === 0 ? "success" : "message"](`Envio concluído · ${okCount} ok · ${failCount} falha(s)`);
