@@ -23,11 +23,22 @@ export function renderMapping(mapping: string, ctx: Ctx): string {
 
 function resolveToken(expr: string, ctx: Ctx): string {
   const parts = expr.split("|").map((p) => p.trim()).filter(Boolean);
-  for (const p of parts) {
-    if (p.startsWith('"') && p.endsWith('"')) return p.slice(1, -1);
-    if (p.startsWith("'") && p.endsWith("'")) return p.slice(1, -1);
-    const v = ctx[p];
-    if (v !== null && v !== undefined && String(v).trim() !== "") return String(v);
+  for (let i = 0; i < parts.length; i++) {
+    const p = parts[i];
+    // Quoted literal: always used as-is.
+    if ((p.startsWith('"') && p.endsWith('"')) || (p.startsWith("'") && p.endsWith("'"))) {
+      return p.slice(1, -1);
+    }
+    // Bare token identifier (lowercase snake): look up in context.
+    const isIdent = /^[a-z_][a-z0-9_]*$/.test(p);
+    if (isIdent) {
+      const v = ctx[p];
+      if (v !== null && v !== undefined && String(v).trim() !== "") return String(v);
+      continue; // try next fallback
+    }
+    // Anything else (contains uppercase, spaces, punctuation, digits-first, etc.)
+    // is treated as a literal fallback — e.g. {nome|Cliente} or {nome|"Cliente"} or {nome|amigo cliente}.
+    return p;
   }
   return ""; // all empty
 }
