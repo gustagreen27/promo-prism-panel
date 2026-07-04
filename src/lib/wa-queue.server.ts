@@ -234,6 +234,16 @@ export async function processCampaignTick(
       await logEvent(campaignId, "error", "Número ou template inválido");
       return { processed: 0, done: true };
     }
+    // Load client / project / responsavel once for token context
+    const [clientRes, projectRes, respRes] = await Promise.all([
+      camp.client_id ? supabaseAdmin.from("clients").select("*").eq("id", camp.client_id).maybeSingle() : Promise.resolve({ data: null } as any),
+      camp.project_id ? supabaseAdmin.from("projects").select("*").eq("id", camp.project_id).maybeSingle() : Promise.resolve({ data: null } as any),
+      (camp as any).responsavel_id ? supabaseAdmin.from("profiles").select("*").eq("id", (camp as any).responsavel_id).maybeSingle() : Promise.resolve({ data: null } as any),
+    ]);
+    const clientRow = (clientRes as any).data ?? null;
+    const projectRow = (projectRes as any).data ?? null;
+    const responsavelRow = (respRes as any).data ?? null;
+
 
     // Quiet hours: skip tick, keep status=running (will retry next tick)
     if (isInQuietHours(new Date().toISOString(), camp.quiet_hours_start as any, camp.quiet_hours_end as any, (camp as any).timezone || "America/Sao_Paulo")) {
