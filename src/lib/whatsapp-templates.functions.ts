@@ -6,17 +6,23 @@ const optStr = (max: number) =>
   z.union([z.string().trim().max(max), z.literal(""), z.null()])
     .transform((v) => (v === "" || v == null ? null : v)).optional();
 
+const optUuid = z.union([z.string().uuid(), z.literal(""), z.null()])
+  .transform((v) => (v ? (v as string) : null)).optional();
+
 const fields = {
-  connection_id: z.union([z.string().uuid(), z.literal(""), z.null()]).transform((v) => (v ? (v as string) : null)).optional(),
+  connection_id: optUuid,
+  waba_ref_id: optUuid,
   name: z.string().trim().min(1).max(160),
   language: z.string().trim().min(2).max(10).default("pt_BR"),
   category: optStr(60),
   status: z.enum(["approved", "pending", "rejected", "paused", "disabled"]).default("approved"),
   header_type: optStr(20),
   header_text: optStr(1000),
+  header_media_url: optStr(1000),
   body: z.string().trim().max(4000).default(""),
   footer: optStr(200),
   variables: z.any().optional(),
+  variables_examples: z.any().optional(),
   buttons: z.any().optional(),
   meta_template_id: optStr(120),
 };
@@ -32,7 +38,7 @@ export const listTemplates = createServerFn({ method: "GET" })
     await assertAdmin(context);
     const { data, error } = await context.supabase
       .from("whatsapp_templates")
-      .select("*, connection:whatsapp_connections(id,name,display_phone)")
+      .select("*, connection:whatsapp_connections(id,name,display_phone), waba:whatsapp_wabas(id,nome_interno,waba_id)")
       .order("created_at", { ascending: false });
     if (error) throw error;
     return data ?? [];
