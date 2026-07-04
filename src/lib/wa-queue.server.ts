@@ -330,6 +330,12 @@ export async function processCampaignTick(
           .from("campaign_recipients")
           .update({ status: "opt_out", failed_reason: "Contato em opt-out" })
           .eq("id", r.id);
+        if ((camp as any).reservation_id) {
+          await supabaseAdmin.rpc("wallet_release_reservation" as any, {
+            _reservation_id: (camp as any).reservation_id,
+            _qty: 1,
+          });
+        }
         continue;
       }
 
