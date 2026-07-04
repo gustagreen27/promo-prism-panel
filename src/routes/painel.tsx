@@ -39,7 +39,7 @@ export const Route = createFileRoute("/painel")({
   component: PanelLayout,
 });
 
-const NAV = [
+const NAV: Array<{ to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean }> = [
   { to: "/painel", label: "Início", icon: LayoutDashboard, exact: true },
   { to: "/painel/campanhas", label: "Campanhas", icon: Send },
   { to: "/painel/contatos", label: "Contatos", icon: Users },
@@ -48,7 +48,7 @@ const NAV = [
   { to: "/painel/relatorios", label: "Relatórios", icon: BarChart3 },
   { to: "/painel/financeiro", label: "Financeiro", icon: CreditCard },
   { to: "/painel/configuracoes", label: "Configurações", icon: Settings },
-] as const;
+];
 
 function PanelLayout() {
   const { workspace } = Route.useRouteContext();
