@@ -1,10 +1,8 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
-  MessageSquare,
   Megaphone,
   Users,
-  Wallet,
   BarChart3,
   Settings,
   LogOut,
