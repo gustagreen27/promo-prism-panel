@@ -398,12 +398,20 @@ export async function processCampaignTick(
             attempt: attempts,
           })
           .eq("id", r.id);
-        // consume stock (1 msg per send)
-        await supabaseAdmin.rpc("wa_consume_stock" as any, {
-          _client_id: camp.client_id,
-          _project_id: camp.project_id,
-          _qty: 1,
-        });
+        // Cobrança: consome 1 unidade da reserva de saldo em R$ (novo modelo).
+        // Fallback: se a campanha ainda usa estoque legado, desconta do estoque.
+        if ((camp as any).reservation_id) {
+          await supabaseAdmin.rpc("wallet_consume_reservation" as any, {
+            _reservation_id: (camp as any).reservation_id,
+            _recipient_id: r.id,
+          });
+        } else {
+          await supabaseAdmin.rpc("wa_consume_stock" as any, {
+            _client_id: camp.client_id,
+            _project_id: camp.project_id,
+            _qty: 1,
+          });
+        }
       } else {
         failed++;
         lastError = result.error;
