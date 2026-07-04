@@ -189,6 +189,22 @@ function Page() {
               </DialogFooter>
             </>
           )}
+          {modal?.type === "minmsg" && (
+            <>
+              <DialogHeader><DialogTitle>Mínimo de mensagens — {modal.ws.name}</DialogTitle></DialogHeader>
+              <div>
+                <Label>Quantidade mínima (vazio = usar padrão global)</Label>
+                <Input inputMode="numeric" value={minMsgStr} onChange={(e) => setMinMsgStr(e.target.value.replace(/\D/g, ""))} placeholder="2500" />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  O depósito mínimo será o maior entre o mínimo global e (preço × mínimo de mensagens).
+                </p>
+              </div>
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setModal(null)}>Cancelar</Button>
+                <Button onClick={() => saveMinMsg.mutate()} disabled={saveMinMsg.isPending}>Salvar</Button>
+              </DialogFooter>
+            </>
+          )}
           {modal?.type === "adjust" && (
             <>
               <DialogHeader><DialogTitle>Ajuste de saldo — {modal.ws.name}</DialogTitle></DialogHeader>
