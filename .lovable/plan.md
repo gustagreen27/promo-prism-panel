@@ -1,99 +1,65 @@
-# Revisão de auth, cadastro, onboarding e proteção de rotas
+## 1. Configuração de preço por disparo
 
-## Diagnóstico do que já existe
+**Admin — nova tela `/admin/precificacao`** (dedicada, separada de Financeiro)
+- Card "Preço global padrão" editável: R$/mensagem, mínimo de mensagens, depósito mínimo (grava em `billing_settings`).
+- Lista de workspaces com preço padrão vs. custom, edição inline (reutiliza `adminSetCustomPrice` / `adminSetCustomMinimumMessages` já existentes).
+- Simulador: "Depósito X → Y disparos" com preço efetivo do workspace selecionado.
 
-- `/` — landing pública, OK
-- `/cadastro` — funciona, mas faltam: telefone/empresa validados, CNPJ, aceite dos termos, mostrar/ocultar senha, força da senha, tratamento de "email não confirmado"
-- `/login` — funciona, mas faltam: mostrar/ocultar senha, checar bloqueio (`workspaces.blocked_at`), respeitar `?redirect=`, aviso para email não confirmado
-- `/recuperar-senha` + `/reset-password` — OK, mas `/reset-password` deveria confirmar sessão de recovery antes de aceitar nova senha
-- `/painel` (client) — gate próprio via `beforeLoad`; se sem workspace, hoje redireciona para `/cadastro` (errado — usuário já cadastrado). Sidebar/header OK.
-- `/painel/` (home) — só placeholders, KPIs "—", checklist estático
-- `/_authenticated` (admin) — gate correto: manda cliente para `/painel`, mantém staff
-- Trigger `handle_new_user` já cria `profiles` + `workspaces` + `workspace_members(owner)` + `workspace_wallets` quando `company_name` vem no metadata. Falta: fallback quando não veio, `activity_logs` de auth, checagem de bloqueio.
+**Painel do cliente — `/painel/financeiro`**
+- Exibir preço efetivo (R$ 0,23 ou custom), quantos disparos o saldo atual comporta, e calculadora "quero enviar N mensagens → preciso de R$ X".
+- Badge "preço promocional" quando `custom_price_cents < default_price_cents`.
 
-## Fase 1 — Backend (1 migration)
+Cálculos já usam `wallet_effective_price()` — só melhorar a UI.
 
-- Adicionar coluna `phone`, `cnpj` em `profiles`; propagar do metadata no trigger `handle_new_user`
-- Novo enum `activity_type` para eventos de auth (`signup`, `login_success`, `login_failed`, `logout`, `password_reset_requested`, `password_reset_completed`, `blocked_access_attempt`) — reaproveita a tabela `activity_logs` existente
-- Função `public.get_my_context()` (SECURITY DEFINER) que retorna, em uma chamada, `{ user, profile, workspaces[], primary_workspace, roles[], is_staff, is_blocked, onboarding_status }` — evita 4 queries no `beforeLoad`
-- Função `public.log_auth_event(_type, _meta)` para registrar em `activity_logs`
-- Nova tabela `onboarding_checklist(workspace_id, key, done, done_at)` com steps padrão: `company_profile`, `import_contacts`, `request_template`, `add_balance`, `first_campaign`, seed automático no trigger que cria workspace
-- Fix do trigger: quando cadastro NÃO trouxer `company_name`, ainda criar workspace com nome derivado do email (evita usuário órfão que cai em loop `/cadastro`)
+## 2. Página pública da campanha com iframe fullscreen
 
-## Fase 2 — Server functions (`src/lib/auth.functions.ts`, novo)
+- `src/routes/$slug.tsx` passa a renderizar `<iframe>` fullscreen 100dvh × 100vw carregando `destination_url`, com sandbox e allow apropriados.
+- Preserva o tracking atual (registro em `campaign_clicks` no server-side antes do iframe montar) e injeta UTMs.
+- Fallback quando `iframe_compatible === false`: redirect direto para `destination_url` via `<meta refresh>` + botão manual.
+- SEO / OG tags continuam vindo de `head()` no servidor.
+- Sem chrome/header/footer — só o iframe.
 
-- `getMyContext()` — wrapper de `get_my_context()` para o painel/admin ler o essencial
-- `getOnboardingChecklist({workspace_id})` / `markOnboardingStep({workspace_id, key, done})`
-- `logAuthEvent({type, meta})` — chamada do lado client após signIn/signOut/signUp
-- `checkWorkspaceBlocked({workspace_id})` — retorna motivo + bloqueia navegação
+## 3. Mini-charts em tempo real por campanha
 
-## Fase 3 — UI de autenticação (5 telas polidas)
+Novo componente `<CampaignAnalytics campaignId={...} />` (usa `recharts`, já instalado) com:
+- KPIs no topo: cliques totais, únicos, CTR, países, dispositivos.
+- Line chart de cliques por hora (últimas 24h).
+- Donut: país (top 5), device (mobile/desktop/tablet), browser (top 5).
+- Tabela top 10 cidades.
 
-### `/cadastro`
-- Split layout premium: painel esquerdo com bullets de valor + logo, formulário à direita
-- Campos: nome, email, telefone (máscara BR), empresa, CNPJ (opcional), senha, confirmar senha
-- Barra de força de senha (fraca/média/forte) + regras visíveis
-- Checkbox obrigatório: "Li e aceito os [Termos] e a [Política de Privacidade]"
-- Botão olho para mostrar/ocultar senha
-- Tratamento explícito de: email já existe, email confirmação obrigatória (mostra tela "Confirme seu email"), erro de rede
-- Ao sucesso: `logAuthEvent('signup')` + `navigate('/painel')` (ou tela de "confirme email" se auth exigir)
+Fonte: `campaign_clicks` (26 colunas — já tem country, city, device, browser, user_agent). Nova server fn `getCampaignAnalytics(campaign_id, workspace_id)` com RLS por workspace.
 
-### `/login`
-- Mesmo layout premium, olho na senha, "Lembrar de mim"
-- Após entrar: chama `getMyContext`, decide rota (`is_staff → /admin`, `blocked → /login?reason=blocked`, `no_workspace → /painel` que faz onboarding, senão → `/painel` ou `search.redirect`)
-- Rate-limit local: desabilita botão 30s após 5 falhas seguidas
-- `logAuthEvent('login_success' | 'login_failed')`
+Refetch a cada 15 s + `postgres_changes` no channel realtime da tabela para atualização instantânea.
 
-### `/recuperar-senha`
-- Já OK, apenas polir visual e mostrar estado "enviado" com ilustração
+Embutido em:
+- `/admin/campaigns/$id` (cloaker) e `/admin/whatsapp-campanhas/$id` (WhatsApp).
+- `/painel/campanhas` — abrir modal/drawer de analytics ao clicar em uma campanha.
 
-### `/reset-password`
-- Validar que a sessão é de recovery (`supabase.auth.onAuthStateChange` `PASSWORD_RECOVERY`) antes de mostrar form; senão avisa "link expirado"
-- Após salvar: `logAuthEvent('password_reset_completed')` + navegar para `/painel`
+## 4. Sistema de notificações in-app
 
-### Nova `/auth/callback`
-- Rota pública que consome hash do Supabase (`?type=signup|recovery|magiclink`) e redireciona certo (fix do redirect atual que vai direto para `/painel` sem tratar recovery)
+**Backend (migração)**
+- Tabela `public.notifications` (workspace_id, user_id nullable, kind, title, body, link, severity, is_read, created_at) com RLS por workspace e realtime habilitado.
+- Trigger em `wa_campaigns`: notifica criação, mudanças de status (`scheduled`, `running`, `completed`, `failed`, `paused`).
+- Trigger em `campaign_clicks` de falha de coleta (quando `country IS NULL AND user_agent IS NOT NULL` marca warning agregado — via função `notify_click_collection_issue`).
+- Função `notify_workspace(_ws, _kind, _title, _body, _link, _severity)`.
 
-## Fase 4 — Painel do cliente
+**Frontend**
+- Componente `<NotificationsBell />` no header do painel: badge com contagem não-lidas, popover com últimas 20, marcar como lida, "ver todas".
+- Assinatura realtime em `notifications` filtrada por `workspace_id`, toast automático em novas notificações críticas.
+- Rota `/painel/notificacoes` para histórico completo.
 
-### `/painel` (layout)
-- Trocar 4 queries do `beforeLoad` por `getMyContext()`
-- Se `is_blocked`: mostra tela cheia de "Conta suspensa — fale com suporte" ao invés do painel
-- Se não tem workspace: mostra tela de "Complete seu cadastro" com form de nome da empresa e cria workspace via server fn (não redireciona para `/cadastro`)
-- Header: saudação, badge de saldo, avatar com menu (Configurações, Sair)
+## Ordem de execução (2 migrações + código)
 
-### `/painel/` (home)
-- KPIs reais: mensagens enviadas/entregues/lidas/falhas/respostas/opt-outs no mês, campanhas ativas — via server fn `getPanelHomeStats`
-- Checklist de onboarding dinâmica lida de `onboarding_checklist`, com CTA em cada item
-- Botões: "Criar campanha", "Importar contatos", "Solicitar template", "Solicitar liberação de número"
-- Empty state elegante para conta nova (sem contatos/campanhas)
+1. Migração 1: tabela `notifications` + triggers + realtime.
+2. Migração 2: (nenhuma outra — pricing já existe).
+3. Server fns novas: `getCampaignAnalytics`, `listMyNotifications`, `markNotificationRead`, `getBillingPreview`.
+4. Componentes: `CampaignAnalytics`, `NotificationsBell`, `PricingCalculator`.
+5. Rotas novas: `/admin/precificacao`, `/painel/notificacoes`.
+6. Refactor: `$slug.tsx`, `painel.financeiro.tsx`, headers do painel.
 
-## Fase 5 — Segurança e testes
+## Fora do escopo (para não inflar)
 
-- RLS auditada nas tabelas sensíveis (confirmar filtro por `workspace_id` em `contacts`, `contact_lists`, `campaign_recipients`, `whatsapp_templates`, `message_logs`, `wallet_transactions`, `deposits`, `wallet_reservations`, `onboarding_checklist`)
-- Página 404 personalizada (`__root notFoundComponent`) e error boundary global
-- Testes manuais via Playwright: signup → workspace criado → painel carrega → logout → login → cliente bloqueado no /admin → admin não vai para /painel indevidamente
-
-## Fora do escopo (não vou mexer)
-- Rotas do admin já existentes (só verifico que ainda funcionam)
-- Módulos de campanhas, templates, contatos, financeiro (mantidos como estão)
-- Ativação do Stripe (fica pendente)
-
-## Detalhes técnicos
-
-- Toda navegação com `<Link>` / `useNavigate` do TanStack Router
-- `beforeLoad` do `/painel` continua `ssr:false` (Supabase em localStorage)
-- Server fns novas em `src/lib/auth.functions.ts` (client-safe, `.functions.ts`)
-- Migration única com CREATE/ALTER + GRANTs + RLS + trigger update
-- Trigger `handle_new_user` é reescrito, não deletado (mantém compatibilidade com contas já criadas)
-- `activity_logs` já existe — só adiciono novos valores no enum se houver, senão uso `event_type text`
-
-## Perguntas antes de começar
-
-1. **Confirmação de email obrigatória?** Hoje o Supabase pode estar com "auto-confirm" ativo ou não. Se estiver desativado, o cadastro NÃO redireciona para `/painel` — mostra "Confirme seu email primeiro". Você quer:
-   - (a) Manter auto-confirm ativo (mais simples, entra direto — recomendo pra SaaS)
-   - (b) Exigir confirmação de email (mais seguro, mas atrito no cadastro)
-
-2. **CNPJ agora ou depois?** Torná-lo obrigatório no cadastro ou opcional (só coleta depois em `/painel/configuracoes`)?
-
-3. **Login social (Google)?** Adicionar botão "Entrar com Google" no login/cadastro nesta rodada, ou fica para depois?
+- Notificações por e-mail / push.
+- Editar preço por campanha individual (fica no nível workspace).
+- Heatmap geográfico com mapa — só top listas + donut.
+- Multi-idioma dos textos das notificações.
