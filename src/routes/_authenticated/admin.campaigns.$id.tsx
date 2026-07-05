@@ -24,6 +24,7 @@ import {
 } from "recharts";
 import { ArrowLeft, Pencil } from "lucide-react";
 import { IntentScoreBadge, StatusBadge } from "@/components/campaign-badges";
+import { CampaignAnalytics } from "@/components/CampaignAnalytics";
 
 export const Route = createFileRoute("/_authenticated/admin/campaigns/$id")({
   head: () => ({ meta: [{ title: "Métricas da campanha" }] }),
