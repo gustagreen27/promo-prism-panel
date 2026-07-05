@@ -374,7 +374,7 @@ function LandingPage() {
                 >
                   Criar minha conta
                 </Link>
-                <span className="text-gray-500 font-medium">Planos e valores em breve</span>
+                <span className="text-gray-500 font-medium">Sem cartão de crédito</span>
               </div>
             </div>
           </div>
