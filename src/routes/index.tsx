@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Plus,
 } from "lucide-react";
+import logoAsset from "@/assets/disparos-fr-logo.png.asset.json";
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -40,8 +41,8 @@ function LandingPage() {
       {/* Nav */}
       <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="text-xl font-bold tracking-tight">
-            Disparos <span className="text-emerald-600">FR</span>
+          <Link to="/" className="flex items-center">
+            <img src={logoAsset.url} alt="Disparos FR" className="h-9 w-auto object-contain" />
           </Link>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
             <a href="#recursos" className="hover:text-[#1d1d1f] transition-colors">Recursos</a>
@@ -376,6 +377,9 @@ function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-gray-100 py-10 text-center text-sm text-[#86868b]">
         <div className="max-w-7xl mx-auto px-6">
+          <div className="mb-4 flex justify-center">
+            <img src={logoAsset.url} alt="Disparos FR" className="h-8 w-auto object-contain opacity-80" />
+          </div>
           <p>© {new Date().getFullYear()} Disparos FR. Todos os direitos reservados.</p>
           <div className="mt-2 flex justify-center gap-6">
             <Link to="/politica-de-privacidade" className="hover:text-[#1d1d1f]">Política de privacidade</Link>

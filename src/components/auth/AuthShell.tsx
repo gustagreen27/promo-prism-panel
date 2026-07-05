@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { MessageSquare, ShieldCheck, Zap, BarChart3 } from "lucide-react";
+import { ShieldCheck, Zap, BarChart3 } from "lucide-react";
+import logoAsset from "@/assets/disparos-fr-logo.png.asset.json";
 import type { ReactNode } from "react";
 
 export function AuthShell({
@@ -24,11 +25,10 @@ export function AuthShell({
               "radial-gradient(circle at 20% 20%, rgba(255,255,255,0.15) 0, transparent 40%), radial-gradient(circle at 80% 80%, rgba(255,255,255,0.15) 0, transparent 40%)",
           }}
         />
-        <Link to="/" className="relative flex items-center gap-2 text-lg font-bold tracking-tight">
-          <span className="grid h-9 w-9 place-items-center rounded-lg bg-white/15 backdrop-blur">
-            <MessageSquare className="h-5 w-5" />
+        <Link to="/" className="relative flex items-center gap-2">
+          <span className="grid h-11 place-items-center rounded-lg bg-white/95 px-3 py-1.5 backdrop-blur">
+            <img src={logoAsset.url} alt="Disparos FR" className="h-7 w-auto object-contain" />
           </span>
-          Disparos FR
         </Link>
 
         <div className="relative space-y-8">
@@ -64,11 +64,8 @@ export function AuthShell({
       {/* Right form panel */}
       <div className="flex items-center justify-center px-4 py-10 sm:px-10">
         <div className="w-full max-w-md">
-          <Link to="/" className="mb-8 flex items-center justify-center gap-2 text-base font-bold lg:hidden">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground">
-              <MessageSquare className="h-4 w-4" />
-            </span>
-            Disparos FR
+          <Link to="/" className="mb-8 flex items-center justify-center lg:hidden">
+            <img src={logoAsset.url} alt="Disparos FR" className="h-9 w-auto object-contain" />
           </Link>
           <div className="space-y-2">
             <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
