@@ -260,3 +260,30 @@ function Page() {
     </div>
   );
 }
+
+function PriceCalculator({ unitPriceCents }: { unitPriceCents: number }) {
+  const [n, setN] = useState("5000");
+  const qty = parseInt(n, 10) || 0;
+  const totalCents = qty * unitPriceCents;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm">Calculadora de campanha</CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-4 sm:grid-cols-[1fr_auto_1fr] sm:items-end">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Quero enviar</Label>
+          <Input value={n} onChange={(e) => setN(e.target.value.replace(/\D/g, ""))} placeholder="5000" />
+          <div className="text-[11px] text-muted-foreground">mensagens</div>
+        </div>
+        <div className="text-center text-2xl font-light text-muted-foreground">=</div>
+        <div className="rounded-lg border bg-muted/30 p-4 text-center">
+          <div className="text-[11px] uppercase text-muted-foreground">Custo total</div>
+          <div className="mt-1 text-2xl font-bold text-primary tabular-nums">{fmt(totalCents)}</div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground">@ {fmt(unitPriceCents)} por disparo</div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
