@@ -151,6 +151,9 @@ function Page() {
         </Card>
       </div>
 
+      <PriceCalculator unitPriceCents={w?.unit_price_cents ?? 23} />
+
+
       <Card>
         <CardHeader><CardTitle>Depósitos</CardTitle></CardHeader>
         <CardContent>
