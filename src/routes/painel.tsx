@@ -82,22 +82,25 @@ function PanelChrome({ ctx }: { ctx: MyContext }) {
     .split(" ").map((s) => s[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
 
   return (
-    <div className="flex min-h-screen bg-muted/20">
-      <aside className="hidden w-60 shrink-0 border-r bg-background md:block">
-        <Link to="/painel" className="flex h-14 items-center gap-2 border-b px-4">
+    <div className="flex min-h-screen bg-app-canvas">
+      <aside className="hidden w-64 shrink-0 border-r border-sidebar-border bg-sidebar md:block">
+        <Link to="/painel" className="flex h-16 items-center gap-2 border-b border-sidebar-border px-5">
           <img src={logoAsset.url} alt="Disparos FR" className="h-8 w-auto object-contain" />
         </Link>
-        <div className="px-4 py-3">
-          <div className="truncate text-sm font-medium">{ws.name}</div>
-          <div className="text-xs text-muted-foreground">Plano {ws.plan}</div>
+        <div className="px-5 py-4">
+          <div className="truncate text-sm font-semibold text-foreground">{ws.name}</div>
+          <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            Plano {ws.plan}
+          </div>
         </div>
-        <nav className="space-y-0.5 px-2">
+        <nav className="space-y-0.5 px-3">
           {NAV.map((item) => {
             const active = item.exact ? pathname === item.to : pathname === item.to || pathname.startsWith(item.to + "/");
             return (
               <Link key={item.to} to={item.to as never}
-                className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm transition ${active ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>
-                <item.icon className="h-4 w-4" />
+                className={`group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition ${active ? "bg-accent text-accent-foreground shadow-xs" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
+                <item.icon className={`h-4 w-4 ${active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
                 {item.label}
               </Link>
             );
@@ -105,9 +108,9 @@ function PanelChrome({ ctx }: { ctx: MyContext }) {
         </nav>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background/80 px-4 backdrop-blur">
-          <div className="text-sm font-medium truncate">
-            Olá, {ctx.profile?.full_name?.split(" ")[0] ?? "seja bem-vindo"} 👋
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/60 bg-background/70 px-4 backdrop-blur-xl sm:px-6">
+          <div className="text-sm font-medium truncate text-foreground">
+            Olá, {ctx.profile?.full_name?.split(" ")[0] ?? "seja bem-vindo"} <span className="ml-1">👋</span>
           </div>
           <div className="flex items-center gap-2">
             <WalletBadge workspaceId={ws.id} />
