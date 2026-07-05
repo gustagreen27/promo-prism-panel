@@ -15,8 +15,9 @@ import { getMyWallet } from "@/lib/billing.functions";
 import { getMyContext, ensureWorkspace, logAuthEvent, type MyContext } from "@/lib/auth.functions";
 import {
   LayoutDashboard, Send, Users, FileText, BarChart3, CreditCard, Settings,
-  LogOut, Wallet, Building2, AlertTriangle, ChevronDown, UserCircle,
+  LogOut, Wallet, Building2, AlertTriangle, ChevronDown, UserCircle, Bell,
 } from "lucide-react";
+import { NotificationsBell } from "@/components/NotificationsBell";
 import logoAsset from "@/assets/disparos-fr-logo.png.asset.json";
 
 export const Route = createFileRoute("/painel")({
