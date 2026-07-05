@@ -43,14 +43,12 @@ function Page() {
   const [defMinMsgs, setDefMinMsgs] = useState("2500");
   const [defMinDep, setDefMinDep] = useState("150,00");
 
-  useMemo(() => {
+  useEffect(() => {
     if (settings) {
       setDefPrice(centsToStr(settings.default_price_cents));
       setDefMinMsgs(String(settings.default_minimum_messages ?? 2500));
       setDefMinDep(centsToStr(settings.minimum_deposit_cents));
     }
-    return null;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings?.default_price_cents, settings?.default_minimum_messages, settings?.minimum_deposit_cents]);
 
   const save = useMutation({
