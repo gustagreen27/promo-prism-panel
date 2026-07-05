@@ -142,13 +142,13 @@ function PanelHome() {
       </Card>
 
       <div>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Últimos 30 dias</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Últimos 30 dias</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {kpis.map((k) => (
-            <Card key={k.label}>
+            <Card key={k.label} className="transition hover:shadow-elegant">
               <CardContent className="p-4">
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">{k.label}</div>
-                <div className="mt-2 text-2xl font-bold tabular-nums">{k.value.toLocaleString("pt-BR")}</div>
+                <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{k.label}</div>
+                <div className="mt-2 text-2xl font-semibold tabular-nums tracking-tight">{k.value.toLocaleString("pt-BR")}</div>
               </CardContent>
             </Card>
           ))}
