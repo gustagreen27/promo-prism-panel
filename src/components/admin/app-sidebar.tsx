@@ -100,6 +100,7 @@ const GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: "Financeiro",
     items: [
+      { title: "Precificação", to: "/admin/precificacao", icon: BadgeDollarSign },
       { title: "Carteira SaaS", to: "/admin/financeiro", icon: BadgeDollarSign },
       { title: "Faturamento", to: "/admin/faturamento", icon: BadgeDollarSign },
       { title: "Custos", to: "/admin/custos", icon: TrendingDown },
