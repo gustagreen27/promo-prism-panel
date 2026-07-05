@@ -15,8 +15,9 @@ import { getMyWallet } from "@/lib/billing.functions";
 import { getMyContext, ensureWorkspace, logAuthEvent, type MyContext } from "@/lib/auth.functions";
 import {
   LayoutDashboard, Send, Users, FileText, BarChart3, CreditCard, Settings,
-  LogOut, Wallet, Building2, AlertTriangle, ChevronDown, UserCircle,
+  LogOut, Wallet, Building2, AlertTriangle, ChevronDown, UserCircle, Bell,
 } from "lucide-react";
+import { NotificationsBell } from "@/components/NotificationsBell";
 import logoAsset from "@/assets/disparos-fr-logo.png.asset.json";
 
 export const Route = createFileRoute("/painel")({
@@ -36,6 +37,7 @@ const NAV: Array<{ to: string; label: string; icon: typeof LayoutDashboard; exac
   { to: "/painel/templates", label: "Templates", icon: FileText },
   { to: "/painel/relatorios", label: "Relatórios", icon: BarChart3 },
   { to: "/painel/financeiro", label: "Financeiro", icon: CreditCard },
+  { to: "/painel/notificacoes", label: "Notificações", icon: Bell },
   { to: "/painel/configuracoes", label: "Configurações", icon: Settings },
 ];
 
@@ -114,6 +116,7 @@ function PanelChrome({ ctx }: { ctx: MyContext }) {
           </div>
           <div className="flex items-center gap-2">
             <WalletBadge workspaceId={ws.id} />
+            <NotificationsBell workspaceId={ws.id} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="gap-2">

@@ -22,6 +22,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PainelIndexRouteImport } from './routes/painel.index'
 import { Route as PainelTemplatesRouteImport } from './routes/painel.templates'
 import { Route as PainelRelatoriosRouteImport } from './routes/painel.relatorios'
+import { Route as PainelNotificacoesRouteImport } from './routes/painel.notificacoes'
 import { Route as PainelFinanceiroRouteImport } from './routes/painel.financeiro'
 import { Route as PainelContatosRouteImport } from './routes/painel.contatos'
 import { Route as PainelConfiguracoesRouteImport } from './routes/painel.configuracoes'
@@ -33,6 +34,7 @@ import { Route as AuthenticatedAdminWhatsappRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminUpsellRouteImport } from './routes/_authenticated/admin.upsell'
 import { Route as AuthenticatedAdminTvRouteImport } from './routes/_authenticated/admin.tv'
 import { Route as AuthenticatedAdminProjetosRouteImport } from './routes/_authenticated/admin.projetos'
+import { Route as AuthenticatedAdminPrecificacaoRouteImport } from './routes/_authenticated/admin.precificacao'
 import { Route as AuthenticatedAdminHistoricoRouteImport } from './routes/_authenticated/admin.historico'
 import { Route as AuthenticatedAdminFinanceiroRouteImport } from './routes/_authenticated/admin.financeiro'
 import { Route as AuthenticatedAdminFechamentoRouteImport } from './routes/_authenticated/admin.fechamento'
@@ -136,6 +138,11 @@ const PainelRelatoriosRoute = PainelRelatoriosRouteImport.update({
   path: '/relatorios',
   getParentRoute: () => PainelRoute,
 } as any)
+const PainelNotificacoesRoute = PainelNotificacoesRouteImport.update({
+  id: '/notificacoes',
+  path: '/notificacoes',
+  getParentRoute: () => PainelRoute,
+} as any)
 const PainelFinanceiroRoute = PainelFinanceiroRouteImport.update({
   id: '/financeiro',
   path: '/financeiro',
@@ -193,6 +200,12 @@ const AuthenticatedAdminProjetosRoute =
   AuthenticatedAdminProjetosRouteImport.update({
     id: '/admin/projetos',
     path: '/admin/projetos',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminPrecificacaoRoute =
+  AuthenticatedAdminPrecificacaoRouteImport.update({
+    id: '/admin/precificacao',
+    path: '/admin/precificacao',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAdminHistoricoRoute =
@@ -437,6 +450,7 @@ export interface FileRoutesByFullPath {
   '/painel/configuracoes': typeof PainelConfiguracoesRoute
   '/painel/contatos': typeof PainelContatosRoute
   '/painel/financeiro': typeof PainelFinanceiroRoute
+  '/painel/notificacoes': typeof PainelNotificacoesRoute
   '/painel/relatorios': typeof PainelRelatoriosRoute
   '/painel/templates': typeof PainelTemplatesRoute
   '/painel/': typeof PainelIndexRoute
@@ -452,6 +466,7 @@ export interface FileRoutesByFullPath {
   '/admin/fechamento': typeof AuthenticatedAdminFechamentoRoute
   '/admin/financeiro': typeof AuthenticatedAdminFinanceiroRoute
   '/admin/historico': typeof AuthenticatedAdminHistoricoRoute
+  '/admin/precificacao': typeof AuthenticatedAdminPrecificacaoRoute
   '/admin/projetos': typeof AuthenticatedAdminProjetosRoute
   '/admin/tv': typeof AuthenticatedAdminTvRoute
   '/admin/upsell': typeof AuthenticatedAdminUpsellRoute
@@ -499,6 +514,7 @@ export interface FileRoutesByTo {
   '/painel/configuracoes': typeof PainelConfiguracoesRoute
   '/painel/contatos': typeof PainelContatosRoute
   '/painel/financeiro': typeof PainelFinanceiroRoute
+  '/painel/notificacoes': typeof PainelNotificacoesRoute
   '/painel/relatorios': typeof PainelRelatoriosRoute
   '/painel/templates': typeof PainelTemplatesRoute
   '/painel': typeof PainelIndexRoute
@@ -514,6 +530,7 @@ export interface FileRoutesByTo {
   '/admin/fechamento': typeof AuthenticatedAdminFechamentoRoute
   '/admin/financeiro': typeof AuthenticatedAdminFinanceiroRoute
   '/admin/historico': typeof AuthenticatedAdminHistoricoRoute
+  '/admin/precificacao': typeof AuthenticatedAdminPrecificacaoRoute
   '/admin/projetos': typeof AuthenticatedAdminProjetosRoute
   '/admin/tv': typeof AuthenticatedAdminTvRoute
   '/admin/upsell': typeof AuthenticatedAdminUpsellRoute
@@ -564,6 +581,7 @@ export interface FileRoutesById {
   '/painel/configuracoes': typeof PainelConfiguracoesRoute
   '/painel/contatos': typeof PainelContatosRoute
   '/painel/financeiro': typeof PainelFinanceiroRoute
+  '/painel/notificacoes': typeof PainelNotificacoesRoute
   '/painel/relatorios': typeof PainelRelatoriosRoute
   '/painel/templates': typeof PainelTemplatesRoute
   '/painel/': typeof PainelIndexRoute
@@ -579,6 +597,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/fechamento': typeof AuthenticatedAdminFechamentoRoute
   '/_authenticated/admin/financeiro': typeof AuthenticatedAdminFinanceiroRoute
   '/_authenticated/admin/historico': typeof AuthenticatedAdminHistoricoRoute
+  '/_authenticated/admin/precificacao': typeof AuthenticatedAdminPrecificacaoRoute
   '/_authenticated/admin/projetos': typeof AuthenticatedAdminProjetosRoute
   '/_authenticated/admin/tv': typeof AuthenticatedAdminTvRoute
   '/_authenticated/admin/upsell': typeof AuthenticatedAdminUpsellRoute
@@ -629,6 +648,7 @@ export interface FileRouteTypes {
     | '/painel/configuracoes'
     | '/painel/contatos'
     | '/painel/financeiro'
+    | '/painel/notificacoes'
     | '/painel/relatorios'
     | '/painel/templates'
     | '/painel/'
@@ -644,6 +664,7 @@ export interface FileRouteTypes {
     | '/admin/fechamento'
     | '/admin/financeiro'
     | '/admin/historico'
+    | '/admin/precificacao'
     | '/admin/projetos'
     | '/admin/tv'
     | '/admin/upsell'
@@ -691,6 +712,7 @@ export interface FileRouteTypes {
     | '/painel/configuracoes'
     | '/painel/contatos'
     | '/painel/financeiro'
+    | '/painel/notificacoes'
     | '/painel/relatorios'
     | '/painel/templates'
     | '/painel'
@@ -706,6 +728,7 @@ export interface FileRouteTypes {
     | '/admin/fechamento'
     | '/admin/financeiro'
     | '/admin/historico'
+    | '/admin/precificacao'
     | '/admin/projetos'
     | '/admin/tv'
     | '/admin/upsell'
@@ -755,6 +778,7 @@ export interface FileRouteTypes {
     | '/painel/configuracoes'
     | '/painel/contatos'
     | '/painel/financeiro'
+    | '/painel/notificacoes'
     | '/painel/relatorios'
     | '/painel/templates'
     | '/painel/'
@@ -770,6 +794,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/fechamento'
     | '/_authenticated/admin/financeiro'
     | '/_authenticated/admin/historico'
+    | '/_authenticated/admin/precificacao'
     | '/_authenticated/admin/projetos'
     | '/_authenticated/admin/tv'
     | '/_authenticated/admin/upsell'
@@ -915,6 +940,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PainelRelatoriosRouteImport
       parentRoute: typeof PainelRoute
     }
+    '/painel/notificacoes': {
+      id: '/painel/notificacoes'
+      path: '/notificacoes'
+      fullPath: '/painel/notificacoes'
+      preLoaderRoute: typeof PainelNotificacoesRouteImport
+      parentRoute: typeof PainelRoute
+    }
     '/painel/financeiro': {
       id: '/painel/financeiro'
       path: '/financeiro'
@@ -990,6 +1022,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/projetos'
       fullPath: '/admin/projetos'
       preLoaderRoute: typeof AuthenticatedAdminProjetosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/precificacao': {
+      id: '/_authenticated/admin/precificacao'
+      path: '/admin/precificacao'
+      fullPath: '/admin/precificacao'
+      preLoaderRoute: typeof AuthenticatedAdminPrecificacaoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/admin/historico': {
@@ -1370,6 +1409,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminFechamentoRoute: typeof AuthenticatedAdminFechamentoRoute
   AuthenticatedAdminFinanceiroRoute: typeof AuthenticatedAdminFinanceiroRoute
   AuthenticatedAdminHistoricoRoute: typeof AuthenticatedAdminHistoricoRoute
+  AuthenticatedAdminPrecificacaoRoute: typeof AuthenticatedAdminPrecificacaoRoute
   AuthenticatedAdminProjetosRoute: typeof AuthenticatedAdminProjetosRoute
   AuthenticatedAdminTvRoute: typeof AuthenticatedAdminTvRoute
   AuthenticatedAdminUpsellRoute: typeof AuthenticatedAdminUpsellRoute
@@ -1397,6 +1437,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminFechamentoRoute: AuthenticatedAdminFechamentoRoute,
   AuthenticatedAdminFinanceiroRoute: AuthenticatedAdminFinanceiroRoute,
   AuthenticatedAdminHistoricoRoute: AuthenticatedAdminHistoricoRoute,
+  AuthenticatedAdminPrecificacaoRoute: AuthenticatedAdminPrecificacaoRoute,
   AuthenticatedAdminProjetosRoute: AuthenticatedAdminProjetosRoute,
   AuthenticatedAdminTvRoute: AuthenticatedAdminTvRoute,
   AuthenticatedAdminUpsellRoute: AuthenticatedAdminUpsellRoute,
@@ -1434,6 +1475,7 @@ interface PainelRouteChildren {
   PainelConfiguracoesRoute: typeof PainelConfiguracoesRoute
   PainelContatosRoute: typeof PainelContatosRoute
   PainelFinanceiroRoute: typeof PainelFinanceiroRoute
+  PainelNotificacoesRoute: typeof PainelNotificacoesRoute
   PainelRelatoriosRoute: typeof PainelRelatoriosRoute
   PainelTemplatesRoute: typeof PainelTemplatesRoute
   PainelIndexRoute: typeof PainelIndexRoute
@@ -1444,6 +1486,7 @@ const PainelRouteChildren: PainelRouteChildren = {
   PainelConfiguracoesRoute: PainelConfiguracoesRoute,
   PainelContatosRoute: PainelContatosRoute,
   PainelFinanceiroRoute: PainelFinanceiroRoute,
+  PainelNotificacoesRoute: PainelNotificacoesRoute,
   PainelRelatoriosRoute: PainelRelatoriosRoute,
   PainelTemplatesRoute: PainelTemplatesRoute,
   PainelIndexRoute: PainelIndexRoute,

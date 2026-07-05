@@ -24,6 +24,7 @@ import {
 } from "recharts";
 import { ArrowLeft, Pencil } from "lucide-react";
 import { IntentScoreBadge, StatusBadge } from "@/components/campaign-badges";
+import { CampaignAnalytics } from "@/components/CampaignAnalytics";
 
 export const Route = createFileRoute("/_authenticated/admin/campaigns/$id")({
   head: () => ({ meta: [{ title: "Métricas da campanha" }] }),
@@ -91,6 +92,7 @@ function CampaignDetail() {
 
   return (
     <div className="space-y-6">
+      <CampaignAnalytics campaignId={id} hours={24} />
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1 min-w-0">
           <Button variant="ghost" size="sm" asChild className="-ml-2">

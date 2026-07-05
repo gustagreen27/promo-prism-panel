@@ -1337,6 +1337,59 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          is_read: boolean
+          kind: string
+          link: string | null
+          metadata: Json
+          read_at: string | null
+          severity: string
+          title: string
+          user_id: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          kind: string
+          link?: string | null
+          metadata?: Json
+          read_at?: string | null
+          severity?: string
+          title: string
+          user_id?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          kind?: string
+          link?: string | null
+          metadata?: Json
+          read_at?: string | null
+          severity?: string
+          title?: string
+          user_id?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onboarding_checklist: {
         Row: {
           created_at: string
@@ -3124,6 +3177,18 @@ export type Database = {
       log_auth_event: {
         Args: { _metadata?: Json; _type: string }
         Returns: undefined
+      }
+      notify_workspace: {
+        Args: {
+          _body?: string
+          _kind: string
+          _link?: string
+          _metadata?: Json
+          _severity?: string
+          _title: string
+          _ws: string
+        }
+        Returns: string
       }
       seed_onboarding_checklist: { Args: { _ws: string }; Returns: undefined }
       user_workspace_ids: { Args: { _user: string }; Returns: string[] }
