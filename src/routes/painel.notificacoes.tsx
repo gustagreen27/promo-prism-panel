@@ -96,7 +96,7 @@ function Page() {
                     {n.body && <div className="mt-1 text-sm text-muted-foreground">{n.body}</div>}
                     <div className="mt-2 flex gap-3">
                       {n.link && (
-                        <Link to={n.link} className="text-xs font-medium text-primary hover:underline">
+                        <Link to={n.link as never} className="text-xs font-medium text-primary hover:underline">
                           Abrir
                         </Link>
                       )}

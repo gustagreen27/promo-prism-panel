@@ -147,7 +147,7 @@ export function NotificationsBell({ workspaceId }: { workspaceId?: string | null
                       <div className="mt-1.5 flex items-center gap-2">
                         {n.link && (
                           <Link
-                            to={n.link}
+                            to={n.link as never}
                             onClick={() => { if (!n.is_read) markOne.mutate(n.id); setOpen(false); }}
                             className="text-xs font-medium text-primary hover:underline"
                           >
