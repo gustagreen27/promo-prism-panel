@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MousePointerClick, Users, Globe2, Smartphone, Activity } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { getCampaignAnalytics } from "@/lib/analytics.functions";
+import { getCampaignRealtimeAnalytics } from "@/lib/analytics.functions";
 
 const COLORS = ["hsl(var(--primary))", "#8B5CF6", "#10B981", "#F59E0B", "#EF4444", "#6366F1"];
 
@@ -54,7 +54,7 @@ function Donut({ title, data }: { title: string; data: { key: string; count: num
 
 export function CampaignAnalytics({ campaignId, hours = 24 }: { campaignId: string; hours?: number }) {
   const qc = useQueryClient();
-  const fn = useServerFn(getCampaignAnalytics);
+  const fn = useServerFn(getCampaignRealtimeAnalytics);
 
   const { data, isLoading } = useQuery({
     queryKey: ["campaign-analytics", campaignId, hours],

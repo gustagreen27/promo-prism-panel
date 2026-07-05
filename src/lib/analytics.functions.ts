@@ -33,7 +33,7 @@ function tally<T>(rows: T[], pick: (r: T) => string | null | undefined): Bucket[
     .sort((a, b) => b.count - a.count)
 }
 
-export const getCampaignAnalytics = createServerFn({ method: 'POST' })
+export const getCampaignRealtimeAnalytics = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { campaign_id: string; hours?: number }) =>
     z.object({ campaign_id: z.string().uuid(), hours: z.number().int().min(1).max(720).default(24) }).parse(d),
