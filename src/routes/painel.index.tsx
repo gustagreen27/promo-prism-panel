@@ -60,21 +60,23 @@ function PanelHome() {
 
   return (
     <div className="space-y-8">
-      <div className="rounded-2xl border bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-6 sm:p-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="relative overflow-hidden rounded-2xl border bg-white p-6 shadow-elegant sm:p-8">
+        <div className="pointer-events-none absolute inset-0 bg-grid-subtle opacity-60" />
+        <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
+        <div className="relative flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
               <Sparkles className="h-3.5 w-3.5" /> Painel Disparos FR
             </div>
-            <h1 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">
-              {firstName ? `Bem-vindo, ${firstName}!` : "Bem-vindo!"}
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+              {firstName ? `Bem-vindo, ${firstName}.` : "Bem-vindo."}
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Este é o painel do <span className="font-medium text-foreground">{ws?.name}</span>. Complete os passos abaixo para começar a operar.
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Painel de <span className="font-medium text-foreground">{ws?.name}</span> · complete os passos abaixo para operar em minutos.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button asChild>
+            <Button asChild className="shadow-elegant">
               <Link to="/painel/campanhas/nova"><Send className="mr-2 h-4 w-4" /> Criar campanha</Link>
             </Button>
             <Button asChild variant="outline">
@@ -140,13 +142,13 @@ function PanelHome() {
       </Card>
 
       <div>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Últimos 30 dias</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Últimos 30 dias</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {kpis.map((k) => (
-            <Card key={k.label}>
+            <Card key={k.label} className="transition hover:shadow-elegant">
               <CardContent className="p-4">
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">{k.label}</div>
-                <div className="mt-2 text-2xl font-bold tabular-nums">{k.value.toLocaleString("pt-BR")}</div>
+                <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{k.label}</div>
+                <div className="mt-2 text-2xl font-semibold tabular-nums tracking-tight">{k.value.toLocaleString("pt-BR")}</div>
               </CardContent>
             </Card>
           ))}
