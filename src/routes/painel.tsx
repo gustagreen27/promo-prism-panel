@@ -116,6 +116,7 @@ function PanelChrome({ ctx }: { ctx: MyContext }) {
           </div>
           <div className="flex items-center gap-2">
             <WalletBadge workspaceId={ws.id} />
+            <NotificationsBell workspaceId={ws.id} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="gap-2">
