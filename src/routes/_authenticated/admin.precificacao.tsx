@@ -78,7 +78,6 @@ function Page() {
   return (
     <div className="space-y-6">
       <PageHeader
-        icon={DollarSign}
         title="Precificação"
         description="Preço padrão por disparo e overrides por workspace"
       />
