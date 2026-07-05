@@ -47,8 +47,9 @@ function LandingPage() {
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
             <a href="#recursos" className="hover:text-[#1d1d1f] transition-colors">Recursos</a>
             <a href="#como-funciona" className="hover:text-[#1d1d1f] transition-colors">Como funciona</a>
-            <a href="#planos" className="hover:text-[#1d1d1f] transition-colors">Planos</a>
+            <a href="#fluxo" className="hover:text-[#1d1d1f] transition-colors">Fluxo</a>
             <a href="#faq" className="hover:text-[#1d1d1f] transition-colors">FAQ</a>
+
           </div>
           <div className="flex items-center gap-4">
             <Link to="/login" className="text-sm font-medium hover:text-emerald-600 transition-colors">
