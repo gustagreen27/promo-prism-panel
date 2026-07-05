@@ -17,6 +17,7 @@ import {
   LayoutDashboard, Send, Users, FileText, BarChart3, CreditCard, Settings,
   LogOut, Wallet, Building2, AlertTriangle, ChevronDown, UserCircle,
 } from "lucide-react";
+import logoAsset from "@/assets/disparos-fr-logo.png.asset.json";
 
 export const Route = createFileRoute("/painel")({
   ssr: false,
@@ -83,10 +84,9 @@ function PanelChrome({ ctx }: { ctx: MyContext }) {
   return (
     <div className="flex min-h-screen bg-muted/20">
       <aside className="hidden w-60 shrink-0 border-r bg-background md:block">
-        <div className="flex h-14 items-center gap-2 border-b px-4 font-bold">
-          <span className="grid h-7 w-7 place-items-center rounded-md bg-primary text-primary-foreground text-sm">D</span>
-          Disparos FR
-        </div>
+        <Link to="/painel" className="flex h-14 items-center gap-2 border-b px-4">
+          <img src={logoAsset.url} alt="Disparos FR" className="h-8 w-auto object-contain" />
+        </Link>
         <div className="px-4 py-3">
           <div className="truncate text-sm font-medium">{ws.name}</div>
           <div className="text-xs text-muted-foreground">Plano {ws.plan}</div>
