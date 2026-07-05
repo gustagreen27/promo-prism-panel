@@ -243,58 +243,64 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* Planos */}
-      <section id="planos" className="py-32">
+      {/* Fluxo completo */}
+      <section id="fluxo" className="py-32">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-20">
-            <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">Planos que crescem com você</h2>
-            <p className="text-lg text-[#86868b] font-medium">Estrutura pronta para escalar. Valores anunciados em breve.</p>
+            <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 px-4 py-2 rounded-full mb-6">
+              <span className="w-2 h-2 bg-emerald-500 rounded-full" />
+              <span className="text-xs font-semibold tracking-wide uppercase">Plataforma completa</span>
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">Do contato ao resultado</h2>
+            <p className="text-lg text-[#86868b] font-medium max-w-2xl mx-auto">
+              Um fluxo integrado, ponta a ponta, para você operar campanhas oficiais no WhatsApp com controle total.
+            </p>
           </div>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
             {[
-              { name: "Starter", desc: "Para começar operações oficiais.", feats: ["1 número", "5k mensagens/mês", "1 usuário"] },
-              { name: "Growth", desc: "Para times em crescimento.", feats: ["2 números", "25k mensagens/mês", "5 usuários"], featured: true },
-              { name: "Scale", desc: "Para operações em escala.", feats: ["5 números", "100k mensagens/mês", "20 usuários"] },
-              { name: "Enterprise", desc: "Sob medida.", feats: ["Números ilimitados", "Volume sob consulta", "SLA dedicado"] },
-            ].map((p) => (
+              { i: Users, t: "Contatos", d: "Importe CSV, aplique tags e gerencie opt-in/opt-out." },
+              { i: FileCheck2, t: "Templates", d: "Crie e envie templates HSM para aprovação da Meta." },
+              { i: Zap, t: "Campanhas", d: "Agende disparos com filas inteligentes e variáveis dinâmicas." },
+              { i: MessageSquare, t: "Inbox", d: "Responda conversas com atribuição por operador." },
+              { i: BarChart3, t: "Relatórios", d: "Métricas em tempo real de entrega, leitura e conversão." },
+            ].map((s, idx) => (
               <div
-                key={p.name}
-                className={
-                  p.featured
-                    ? "rounded-3xl p-8 bg-[#1d1d1f] text-white shadow-xl"
-                    : "rounded-3xl p-8 bg-gray-50 border border-gray-100"
-                }
+                key={s.t}
+                className="relative rounded-3xl bg-gray-50 border border-gray-100 p-6 hover:border-emerald-200 hover:bg-white transition-all"
               >
-                <h3 className="text-xl font-bold mb-2">{p.name}</h3>
-                <p className={p.featured ? "text-gray-400 text-sm mb-6" : "text-[#86868b] text-sm mb-6"}>
-                  {p.desc}
-                </p>
-                <div className={p.featured ? "text-2xl font-bold mb-6 text-white/80" : "text-2xl font-bold mb-6 text-[#86868b]"}>
-                  Em breve
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-2xl bg-white border border-gray-100 flex items-center justify-center shadow-sm">
+                    <s.i className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <span className="text-xs font-bold text-[#86868b] tracking-widest">0{idx + 1}</span>
                 </div>
-                <ul className="space-y-3 mb-8">
-                  {p.feats.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-sm font-medium">
-                      <CheckCircle2 className={p.featured ? "w-4 h-4 text-emerald-400" : "w-4 h-4 text-emerald-600"} />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  to="/cadastro"
-                  className={
-                    p.featured
-                      ? "block text-center w-full py-3 rounded-2xl bg-white text-[#1d1d1f] font-semibold hover:bg-gray-100 transition-colors"
-                      : "block text-center w-full py-3 rounded-2xl bg-[#1d1d1f] text-white font-semibold hover:bg-black transition-colors"
-                  }
-                >
-                  Começar
-                </Link>
+                <div className="text-lg font-bold mb-2">{s.t}</div>
+                <p className="text-sm text-[#86868b] font-medium leading-relaxed">{s.d}</p>
               </div>
             ))}
           </div>
+
+          <div className="mt-16 rounded-3xl bg-gray-50 border border-gray-100 p-8 md:p-12 grid md:grid-cols-3 gap-8 items-center">
+            <div className="md:col-span-2">
+              <h3 className="text-2xl md:text-3xl font-bold tracking-tight mb-3">Multi-workspace, multi-número, multi-time</h3>
+              <p className="text-[#86868b] font-medium leading-relaxed">
+                Isolamento por workspace com RLS, permissões granulares por usuário e suporte a múltiplos números WhatsApp
+                Business por conta — tudo pronto para operações que precisam escalar sem perder o controle.
+              </p>
+            </div>
+            <div className="flex md:justify-end">
+              <Link
+                to="/cadastro"
+                className="px-6 py-3 bg-[#1d1d1f] text-white rounded-2xl font-semibold hover:bg-black transition-all hover:-translate-y-0.5 shadow-lg"
+              >
+                Testar gratuitamente
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
+
 
       {/* Segurança */}
       <section className="py-32 bg-gray-50">
