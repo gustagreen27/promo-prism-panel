@@ -2740,6 +2740,7 @@ export type Database = {
           history: Json | null
           id: string
           language: string
+          last_synced_at: string | null
           meta_template_id: string | null
           name: string
           raw: Json | null
@@ -2767,6 +2768,7 @@ export type Database = {
           history?: Json | null
           id?: string
           language?: string
+          last_synced_at?: string | null
           meta_template_id?: string | null
           name: string
           raw?: Json | null
@@ -2794,6 +2796,7 @@ export type Database = {
           history?: Json | null
           id?: string
           language?: string
+          last_synced_at?: string | null
           meta_template_id?: string | null
           name?: string
           raw?: Json | null
