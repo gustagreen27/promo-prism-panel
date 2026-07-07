@@ -116,6 +116,16 @@ function WizardPage() {
   const wabasFn = useServerFn(listWabas);
   const numbersFn = useServerFn(listNumbers);
   const templatesFn = useServerFn(listTemplates);
+  const syncTplFn = useServerFn(syncTemplatesByWaba);
+  const qc = useQueryClient();
+  const syncMut = useMutation({
+    mutationFn: (wabaRefId: string) => syncTplFn({ data: { waba_ref_id: wabaRefId } }),
+    onSuccess: (r: any) => {
+      toast.success(`Sincronizado: ${r.synced}/${r.total} template(s) atualizados da Meta.`);
+      qc.invalidateQueries({ queryKey: ["wa-templates"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao sincronizar templates"),
+  });
   const listsFn = useServerFn(listLists);
   const previewAud = useServerFn(previewAudience);
   const renderFn = useServerFn(renderPreview);
