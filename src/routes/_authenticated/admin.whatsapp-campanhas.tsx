@@ -413,6 +413,8 @@ function Page() {
         description="Disparo oficial em lote via WhatsApp Cloud API — mesmo formato do teste, com múltiplos destinatários."
       />
 
+      <QueueStatusPanel />
+
       <div className="rounded-lg border bg-card p-5 space-y-4 max-w-3xl">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2 md:col-span-2">
