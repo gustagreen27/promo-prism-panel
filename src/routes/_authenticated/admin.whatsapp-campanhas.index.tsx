@@ -191,8 +191,10 @@ function RecipientRow({ row }: { row: RowState }) {
 }
 
 function Page() {
+  const navigate = useNavigate();
   const listFn = useServerFn(listConnections);
   const sendFn = useServerFn(sendFrgc01);
+  const templatesFn = useServerFn(listTemplates);
   const [form, setForm] = useState<Form>(EMPTY);
   const [rows, setRows] = useState<RowState[]>([]);
   const [sending, setSending] = useState(false);
@@ -202,6 +204,18 @@ function Page() {
     queryKey: ["whatsapp-connections"],
     queryFn: () => listFn(),
   });
+
+  const { data: templates = [] } = useQuery({
+    queryKey: ["whatsapp-templates"],
+    queryFn: () => templatesFn(),
+  });
+
+  const approvedTemplates = useMemo(
+    () => (templates as any[]).filter((t) => t.status === "approved"),
+    [templates],
+  );
+  const frgc01 = approvedTemplates.find((t) => t.name === "frgc_01");
+  const [templateId, setTemplateId] = useState<string>(frgc01?.id ?? "__frgc01__");
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
 
