@@ -76,8 +76,14 @@ export const sendGenericTemplate = createServerFn({ method: "POST" })
 
     let templateName = String(tpl.name ?? "");
     let languageCode = String(tpl.language ?? "en");
-    let headerType = (tpl.header_type ?? "").toString().toUpperCase();
+    const rawComponents: any[] = Array.isArray((tpl as any).raw?.components) ? (tpl as any).raw.components : [];
+    const rawHeader = rawComponents.find((c: any) => String(c?.type ?? "").toUpperCase() === "HEADER");
+    let headerType = (String(tpl.header_type ?? "").toUpperCase() || String(rawHeader?.format ?? "").toUpperCase());
     let templateButtons = Array.isArray(tpl.buttons) ? (tpl.buttons as any[]) : [];
+    if (!templateButtons.length) {
+      const rawBtns = rawComponents.find((c: any) => String(c?.type ?? "").toUpperCase() === "BUTTONS");
+      if (Array.isArray(rawBtns?.buttons)) templateButtons = rawBtns.buttons;
+    }
 
     if (conn.waba_id) {
       try {
@@ -206,26 +212,37 @@ export const sendGenericTemplate = createServerFn({ method: "POST" })
       const result = await postToMeta(requestPayload);
       httpStatus = result.status;
       responseJson = result.json;
-      if (!result.ok && result.code === "132001" && languageCode.includes("_")) {
-        const retryPayload = {
-          ...requestPayload,
-          template: {
-            ...requestPayload.template,
-            language: { code: languageCode.split("_")[0] },
-          },
-        };
-        const retry = await postToMeta(retryPayload);
-        if (retry.ok) {
-          requestPayload.template.language.code = retryPayload.template.language.code;
-          languageCode = retryPayload.template.language.code;
-          httpStatus = retry.status;
-          responseJson = retry.json;
-          sendResult = { ok: true, id: retry.id };
-        } else {
-          sendResult = { ok: false, error: result.error, code: result.code };
-        }
-      } else if (result.ok) {
+      if (result.ok) {
         sendResult = { ok: true, id: result.id };
+      } else if (result.code === "132001") {
+        // Try common language variants (en ↔ en_US, pt ↔ pt_BR, es ↔ es_ES, etc.)
+        const base = languageCode.split("_")[0];
+        const variants = new Set<string>([
+          base,
+          `${base}_US`,
+          `${base}_BR`,
+          `${base}_ES`,
+          `${base}_GB`,
+          `${base}_PT`,
+        ]);
+        variants.delete(languageCode);
+        let recovered = false;
+        for (const alt of variants) {
+          const retry = await postToMeta({
+            ...requestPayload,
+            template: { ...requestPayload.template, language: { code: alt } },
+          });
+          if (retry.ok) {
+            requestPayload.template.language.code = alt;
+            languageCode = alt;
+            httpStatus = retry.status;
+            responseJson = retry.json;
+            sendResult = { ok: true, id: retry.id };
+            recovered = true;
+            break;
+          }
+        }
+        if (!recovered) sendResult = { ok: false, error: result.error, code: result.code };
       } else {
         sendResult = { ok: false, error: result.error, code: result.code };
       }
@@ -233,6 +250,8 @@ export const sendGenericTemplate = createServerFn({ method: "POST" })
       sendResult = { ok: false, error: e?.message ?? "Network error" };
     }
 
+    if (!sendResult) sendResult = { ok: false, error: "Unknown error" };
+    const finalResult = sendResult;
     const nowIso = new Date().toISOString();
     const logRow = {
       campaign_id: data.campaignId ?? null,
@@ -243,12 +262,12 @@ export const sendGenericTemplate = createServerFn({ method: "POST" })
       language_code: languageCode,
       request_payload: { ...requestPayload, _auth: "***" },
       response_payload: responseJson,
-      meta_message_id: sendResult.ok ? sendResult.id : null,
-      message_status: sendResult.ok ? "accepted" : "failed",
-      failed_reason: sendResult.ok ? null : sendResult.error,
-      error_code: sendResult.ok ? null : sendResult.code ?? null,
+      meta_message_id: finalResult.ok ? finalResult.id : null,
+      message_status: finalResult.ok ? "accepted" : "failed",
+      failed_reason: finalResult.ok ? null : finalResult.error,
+      error_code: finalResult.ok ? null : finalResult.code ?? null,
       http_status: httpStatus,
-      sent_at: sendResult.ok ? nowIso : null,
+      sent_at: finalResult.ok ? nowIso : null,
     };
     const { data: log } = await supabaseAdmin
       .from("message_logs")
@@ -256,8 +275,8 @@ export const sendGenericTemplate = createServerFn({ method: "POST" })
       .select("id")
       .single();
 
-    if (sendResult.ok) {
-      return { ok: true, metaMessageId: sendResult.id, status: "accepted", logId: log?.id ?? "" };
+    if (finalResult.ok) {
+      return { ok: true, metaMessageId: finalResult.id, status: "accepted", logId: log?.id ?? "" };
     }
     const explainError = (code?: string) => {
       const c = String(code ?? "");
@@ -270,8 +289,8 @@ export const sendGenericTemplate = createServerFn({ method: "POST" })
     };
     return {
       ok: false,
-      error: sendResult.error + (explainError(sendResult.code) ? ` — ${explainError(sendResult.code)}` : ""),
-      code: sendResult.code,
+      error: finalResult.error + (explainError(finalResult.code) ? ` — ${explainError(finalResult.code)}` : ""),
+      code: finalResult.code,
       logId: log?.id,
     };
   });

@@ -251,9 +251,21 @@ function Page() {
     () => (selectedTemplate ? metaVarsIn(selectedTemplate.body ?? "") : []),
     [selectedTemplate],
   );
-  const headerType = String(selectedTemplate?.header_type ?? "").toUpperCase();
+  const rawHeaderComponent = useMemo(
+    () => (selectedTemplate?.raw?.components ?? []).find(
+      (c: any) => String(c?.type ?? "").toUpperCase() === "HEADER",
+    ),
+    [selectedTemplate],
+  );
+  const headerType = (
+    String(selectedTemplate?.header_type ?? "").toUpperCase() ||
+    String(rawHeaderComponent?.format ?? "").toUpperCase()
+  );
   const headerNeedsMedia = headerType === "IMAGE" || headerType === "VIDEO" || headerType === "DOCUMENT";
-  const headerNeedsText = headerType === "TEXT" && metaVarsIn(String(selectedTemplate?.header_text ?? "")).length > 0;
+  const headerTextTemplate = String(
+    selectedTemplate?.header_text ?? (rawHeaderComponent?.text ?? ""),
+  );
+  const headerNeedsText = headerType === "TEXT" && metaVarsIn(headerTextTemplate).length > 0;
 
   const urlButtons = useMemo(() => {
     const rawButtonsComponent = (selectedTemplate?.raw?.components ?? []).find(
@@ -619,7 +631,7 @@ function Page() {
 
           {headerNeedsText && (
             <div className="space-y-2 md:col-span-2">
-              <Label>Variável do cabeçalho ({selectedTemplate?.header_text})</Label>
+              <Label>Variável do cabeçalho ({headerTextTemplate})</Label>
               <Input value={headerTextParam} onChange={(e) => setHeaderTextParam(e.target.value)} placeholder="{nome|Cliente}" />
             </div>
           )}
