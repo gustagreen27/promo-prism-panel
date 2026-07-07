@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { listTemplates, createTemplate, updateTemplate, deleteTemplate, syncTemplates } from "@/lib/whatsapp-templates.functions";
+import { listTemplates, createTemplate, updateTemplate, deleteTemplate, syncTemplates, syncAllTemplates } from "@/lib/whatsapp-templates.functions";
 import { submitTemplateForApproval, refreshTemplateStatus } from "@/lib/wa-meta.functions";
 import { listNumbers } from "@/lib/whatsapp-numbers.functions";
 import { listWabas } from "@/lib/wa-wabas.functions";
