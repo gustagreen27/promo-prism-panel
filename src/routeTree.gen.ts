@@ -20,6 +20,7 @@ import { Route as SlugRouteImport } from './routes/$slug'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PainelIndexRouteImport } from './routes/painel.index'
+import { Route as PainelWhatsappRouteImport } from './routes/painel.whatsapp'
 import { Route as PainelTemplatesRouteImport } from './routes/painel.templates'
 import { Route as PainelRelatoriosRouteImport } from './routes/painel.relatorios'
 import { Route as PainelNotificacoesRouteImport } from './routes/painel.notificacoes'
@@ -126,6 +127,11 @@ const IndexRoute = IndexRouteImport.update({
 const PainelIndexRoute = PainelIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => PainelRoute,
+} as any)
+const PainelWhatsappRoute = PainelWhatsappRouteImport.update({
+  id: '/whatsapp',
+  path: '/whatsapp',
   getParentRoute: () => PainelRoute,
 } as any)
 const PainelTemplatesRoute = PainelTemplatesRouteImport.update({
@@ -453,6 +459,7 @@ export interface FileRoutesByFullPath {
   '/painel/notificacoes': typeof PainelNotificacoesRoute
   '/painel/relatorios': typeof PainelRelatoriosRoute
   '/painel/templates': typeof PainelTemplatesRoute
+  '/painel/whatsapp': typeof PainelWhatsappRoute
   '/painel/': typeof PainelIndexRoute
   '/admin/agenda': typeof AuthenticatedAdminAgendaRoute
   '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
@@ -517,6 +524,7 @@ export interface FileRoutesByTo {
   '/painel/notificacoes': typeof PainelNotificacoesRoute
   '/painel/relatorios': typeof PainelRelatoriosRoute
   '/painel/templates': typeof PainelTemplatesRoute
+  '/painel/whatsapp': typeof PainelWhatsappRoute
   '/painel': typeof PainelIndexRoute
   '/admin/agenda': typeof AuthenticatedAdminAgendaRoute
   '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
@@ -584,6 +592,7 @@ export interface FileRoutesById {
   '/painel/notificacoes': typeof PainelNotificacoesRoute
   '/painel/relatorios': typeof PainelRelatoriosRoute
   '/painel/templates': typeof PainelTemplatesRoute
+  '/painel/whatsapp': typeof PainelWhatsappRoute
   '/painel/': typeof PainelIndexRoute
   '/_authenticated/admin/agenda': typeof AuthenticatedAdminAgendaRoute
   '/_authenticated/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
@@ -651,6 +660,7 @@ export interface FileRouteTypes {
     | '/painel/notificacoes'
     | '/painel/relatorios'
     | '/painel/templates'
+    | '/painel/whatsapp'
     | '/painel/'
     | '/admin/agenda'
     | '/admin/campanhas'
@@ -715,6 +725,7 @@ export interface FileRouteTypes {
     | '/painel/notificacoes'
     | '/painel/relatorios'
     | '/painel/templates'
+    | '/painel/whatsapp'
     | '/painel'
     | '/admin/agenda'
     | '/admin/campanhas'
@@ -781,6 +792,7 @@ export interface FileRouteTypes {
     | '/painel/notificacoes'
     | '/painel/relatorios'
     | '/painel/templates'
+    | '/painel/whatsapp'
     | '/painel/'
     | '/_authenticated/admin/agenda'
     | '/_authenticated/admin/campanhas'
@@ -924,6 +936,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/painel/'
       preLoaderRoute: typeof PainelIndexRouteImport
+      parentRoute: typeof PainelRoute
+    }
+    '/painel/whatsapp': {
+      id: '/painel/whatsapp'
+      path: '/whatsapp'
+      fullPath: '/painel/whatsapp'
+      preLoaderRoute: typeof PainelWhatsappRouteImport
       parentRoute: typeof PainelRoute
     }
     '/painel/templates': {
@@ -1478,6 +1497,7 @@ interface PainelRouteChildren {
   PainelNotificacoesRoute: typeof PainelNotificacoesRoute
   PainelRelatoriosRoute: typeof PainelRelatoriosRoute
   PainelTemplatesRoute: typeof PainelTemplatesRoute
+  PainelWhatsappRoute: typeof PainelWhatsappRoute
   PainelIndexRoute: typeof PainelIndexRoute
 }
 
@@ -1489,6 +1509,7 @@ const PainelRouteChildren: PainelRouteChildren = {
   PainelNotificacoesRoute: PainelNotificacoesRoute,
   PainelRelatoriosRoute: PainelRelatoriosRoute,
   PainelTemplatesRoute: PainelTemplatesRoute,
+  PainelWhatsappRoute: PainelWhatsappRoute,
   PainelIndexRoute: PainelIndexRoute,
 }
 

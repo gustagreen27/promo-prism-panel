@@ -10,6 +10,22 @@ async function assertAdmin(ctx: { supabase: any; userId: string }) {
   if (!data) throw new Error("Forbidden");
 }
 
+/** Returns whether the caller is admin and their primary workspace_id (owner/admin role). */
+async function resolveCaller(ctx: { supabase: any; userId: string }): Promise<{ isAdmin: boolean; workspaceId: string | null }> {
+  const [{ data: isAdmin }, ws] = await Promise.all([
+    ctx.supabase.rpc("has_role", { _user_id: ctx.userId, _role: "admin" }),
+    ctx.supabase
+      .from("workspace_members")
+      .select("workspace_id, role, workspaces!inner(created_at)")
+      .eq("user_id", ctx.userId)
+      .in("role", ["owner", "admin"])
+      .order("workspaces(created_at)", { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  return { isAdmin: !!isAdmin, workspaceId: (ws.data as any)?.workspace_id ?? null };
+}
+
 async function logStep(
   supabase: any,
   base: { waba_ref_id?: string | null; connection_id?: string | null; client_id?: string | null; project_id?: string | null },
@@ -35,7 +51,9 @@ async function logStep(
 export const getEmbeddedSignupConfig = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdmin(context);
+    // Any authenticated user (admin OR workspace owner) can bootstrap the SDK.
+    const caller = await resolveCaller(context);
+    if (!caller.isAdmin && !caller.workspaceId) throw new Error("Forbidden");
     const appId = process.env.META_APP_ID;
     const configId = process.env.META_ES_CONFIG_ID;
     if (!appId || !configId) {
@@ -63,15 +81,21 @@ export const completeEmbeddedSignup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => completeSchema.parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    const caller = await resolveCaller(context);
+    if (!caller.isAdmin && !caller.workspaceId) throw new Error("Forbidden");
+    // Non-admins are always scoped to their own workspace; admin passes client/project explicitly.
+    const scopedClientId = caller.isAdmin ? (data.client_id ?? null) : null;
+    const scopedProjectId = caller.isAdmin ? (data.project_id ?? null) : null;
+    const scopedWorkspaceId = caller.isAdmin ? null : caller.workspaceId;
+
     const supabase = context.supabase;
     const appId = process.env.META_APP_ID;
     const appSecret = process.env.META_APP_SECRET;
     if (!appId || !appSecret) throw new Error("META_APP_ID/META_APP_SECRET não configurados.");
 
     const baseLog = {
-      client_id: data.client_id ?? null,
-      project_id: data.project_id ?? null,
+      client_id: scopedClientId,
+      project_id: scopedProjectId,
       waba_ref_id: null as string | null,
       connection_id: null as string | null,
     };
@@ -138,8 +162,9 @@ export const completeEmbeddedSignup = createServerFn({ method: "POST" })
         onboarded_via: "embedded_signup",
         onboarded_at: new Date().toISOString(),
         status: "ativo",
-        client_id: data.client_id ?? null,
-        project_id: data.project_id ?? null,
+        client_id: scopedClientId,
+        project_id: scopedProjectId,
+        workspace_id: scopedWorkspaceId,
       }).eq("id", wabaRefId);
     } else {
       const ins = await supabase.from("whatsapp_wabas").insert({
@@ -151,8 +176,9 @@ export const completeEmbeddedSignup = createServerFn({ method: "POST" })
         onboarded_via: "embedded_signup",
         onboarded_at: new Date().toISOString(),
         status: "ativo",
-        client_id: data.client_id ?? null,
-        project_id: data.project_id ?? null,
+        client_id: scopedClientId,
+        project_id: scopedProjectId,
+        workspace_id: scopedWorkspaceId,
       }).select("id").single();
       if (ins.error) {
         await logStep(supabase, baseLog, "upsert_waba", "error", ins.error, ins.error.message);
@@ -184,8 +210,10 @@ export const completeEmbeddedSignup = createServerFn({ method: "POST" })
       graph_api_version: GRAPH_VERSION,
       provider: "meta_cloud",
       status: phJson?.code_verification_status === "VERIFIED" ? "ativo" : "aguardando_verificacao",
-      client_id: data.client_id ?? null,
-      project_id: data.project_id ?? null,
+      client_id: scopedClientId,
+      project_id: scopedProjectId,
+      workspace_id: scopedWorkspaceId,
+      visibility: caller.isAdmin ? "internal" : "workspace",
     };
 
     let connectionId: string;
@@ -231,4 +259,19 @@ export const listOnboardingLogs = createServerFn({ method: "GET" })
     const { data: rows, error } = await q;
     if (error) throw error;
     return rows ?? [];
+  });
+
+/** List the caller's workspace WhatsApp numbers (safe for the panel UI). */
+export const listMyWorkspaceNumbers = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const caller = await resolveCaller(context);
+    if (!caller.workspaceId) return [];
+    const { data, error } = await context.supabase
+      .from("whatsapp_connections")
+      .select("id,name,display_name,display_phone,phone_number_id,waba_id,status,quality_rating,messaging_limit,created_at")
+      .eq("workspace_id", caller.workspaceId)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data ?? [];
   });
