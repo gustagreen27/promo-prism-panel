@@ -20,12 +20,20 @@ export type SendFrgc01Response =
   | { ok: true; metaMessageId: string; status: string; logId: string }
   | { ok: false; error: string; code?: string; hint?: string; logId?: string };
 
-function explain(code?: string) {
+function explain(code?: string, msg?: string) {
   const c = String(code ?? "");
+  const m = String(msg ?? "").toLowerCase();
   if (c === "190") return "Access Token expirado ou inválido. Renove nas Configurações do WhatsApp.";
   if (c === "10" || c === "200") return "Permissões insuficientes no token (whatsapp_business_messaging).";
   if (c === "100") return "Parâmetros inválidos — verifique phone_number_id, número destino e variáveis.";
-  if (c === "132000" || c === "132001") return "Template inexistente ou não aprovado para este idioma (en).";
+  if (c === "132000") {
+    if (m.includes("number of parameters") || m.includes("parameters does not match")) {
+      return "Nº de variáveis enviadas ≠ do que o template aprovado no Meta espera. Sincronize os templates e revise o corpo.";
+    }
+    return "Template não encontrado no idioma enviado. Sincronize templates e confirme o idioma aprovado.";
+  }
+  if (c === "132001") return "Template inexistente ou não aprovado.";
+  if (c === "132015") return "Template pausado por baixa qualidade — aguarde ou submeta uma nova versão.";
   if (c === "131047") return "Fora da janela de 24h ou destinatário sem opt-in.";
   return undefined;
 }
