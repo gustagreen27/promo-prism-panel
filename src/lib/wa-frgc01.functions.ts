@@ -149,7 +149,7 @@ export const sendFrgc01 = createServerFn({ method: "POST" })
       to_phone: to,
       template_name: templateName,
 
-      language_code: "en",
+      language_code: languageCode,
       request_payload: requestPayload,
       response_payload: result.raw ?? null,
       meta_message_id: result.ok ? result.metaMessageId : null,
