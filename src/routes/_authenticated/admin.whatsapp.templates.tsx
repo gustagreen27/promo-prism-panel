@@ -55,6 +55,11 @@ function Page() {
     onSuccess: (r: any) => { toast.success(`${r.synced}/${r.total} templates sincronizados`); refresh(); },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao sincronizar"),
   });
+  const syncAllMut = useMutation({
+    mutationFn: () => syncAll({}),
+    onSuccess: (r: any) => { toast.success(`${r.synced}/${r.total} templates sincronizados em ${r.connections} conexão(ões)${r.failed ? ` (${r.failed} com falha)` : ""}`); refresh(); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao sincronizar"),
+  });
   const submitMut = useMutation({
     mutationFn: (id: string) => submitFn({ data: { template_id: id } }),
     onSuccess: () => { toast.success("Enviado para aprovação"); refresh(); },
