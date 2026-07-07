@@ -44,17 +44,36 @@ export const sendGenericTemplate = createServerFn({ method: "POST" })
 
     const { data: tpl, error: tErr } = await supabaseAdmin
       .from("whatsapp_templates")
-      .select("id, name, language, header_type, buttons, body")
+      .select("id, connection_id, waba_ref_id, meta_template_id, name, language, header_type, buttons, body, raw")
       .eq("id", data.templateId)
       .maybeSingle();
     if (tErr || !tpl) return { ok: false, error: "Template não encontrado" };
 
-    const { data: conn, error: cErr } = await supabaseAdmin
+    const { data: requestedConn, error: cErr } = await supabaseAdmin
       .from("whatsapp_connections")
-      .select("id, phone_number_id, access_token, graph_api_version")
+      .select("id, phone_number_id, access_token, graph_api_version, waba_id, waba_ref_id")
       .eq("id", data.connectionId)
       .maybeSingle();
-    if (cErr || !conn) return { ok: false, error: "Conexão WhatsApp não encontrada" };
+    if (cErr || !requestedConn) return { ok: false, error: "Conexão WhatsApp não encontrada" };
+
+    let conn = requestedConn;
+    if (tpl.waba_ref_id && requestedConn.waba_ref_id && tpl.waba_ref_id !== requestedConn.waba_ref_id) {
+      const { data: sameWabaConn } = await supabaseAdmin
+        .from("whatsapp_connections")
+        .select("id, phone_number_id, access_token, graph_api_version, waba_id, waba_ref_id")
+        .eq("waba_ref_id", tpl.waba_ref_id)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (sameWabaConn) conn = sameWabaConn;
+    } else if (tpl.connection_id && tpl.connection_id !== requestedConn.id && !tpl.waba_ref_id) {
+      const { data: templateConn } = await supabaseAdmin
+        .from("whatsapp_connections")
+        .select("id, phone_number_id, access_token, graph_api_version, waba_id, waba_ref_id")
+        .eq("id", tpl.connection_id)
+        .maybeSingle();
+      if (templateConn) conn = templateConn;
+    }
 
     const accessToken = conn.access_token || process.env.WHATSAPP_ACCESS_TOKEN;
     if (!conn.phone_number_id || !accessToken) {
@@ -65,10 +84,48 @@ export const sendGenericTemplate = createServerFn({ method: "POST" })
     const graphVersion = conn.graph_api_version || "v25.0";
     const url = `https://graph.facebook.com/${graphVersion}/${conn.phone_number_id}/messages`;
 
+    let templateName = String(tpl.name ?? "");
+    let languageCode = String(tpl.language ?? "en");
+    let headerType = (tpl.header_type ?? "").toString().toUpperCase();
+    let templateButtons = Array.isArray(tpl.buttons) ? (tpl.buttons as any[]) : [];
+
+    if (conn.waba_id) {
+      try {
+        const metaUrl = `https://graph.facebook.com/${graphVersion}/${conn.waba_id}/message_templates?limit=200&fields=name,status,language,category,components,parameter_format`;
+        const metaRes = await fetch(metaUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+        const metaJson: any = await metaRes.json().catch(() => ({}));
+        const metaTemplates = Array.isArray(metaJson?.data) ? metaJson.data : [];
+        const metaTemplate = metaTemplates.find((t: any) => tpl.meta_template_id && String(t.id) === String(tpl.meta_template_id))
+          ?? metaTemplates.find((t: any) => String(t?.name ?? "").toLowerCase() === templateName.toLowerCase() && String(t?.status ?? "").toUpperCase() === "APPROVED")
+          ?? metaTemplates.find((t: any) => String(t?.name ?? "").toLowerCase() === templateName.toLowerCase());
+        if (metaTemplate) {
+          templateName = String(metaTemplate.name ?? templateName);
+          languageCode = String(metaTemplate.language ?? languageCode);
+          const metaComponents = Array.isArray(metaTemplate.components) ? metaTemplate.components : [];
+          const metaHeader = metaComponents.find((c: any) => String(c?.type ?? "").toUpperCase() === "HEADER");
+          const metaButtons = metaComponents.find((c: any) => String(c?.type ?? "").toUpperCase() === "BUTTONS");
+          headerType = String(metaHeader?.format ?? headerType).toUpperCase();
+          templateButtons = Array.isArray(metaButtons?.buttons) ? metaButtons.buttons : templateButtons;
+          await supabaseAdmin
+            .from("whatsapp_templates")
+            .update({
+              name: templateName,
+              language: languageCode,
+              header_type: headerType ? headerType.toLowerCase() : null,
+              buttons: templateButtons,
+              raw: metaTemplate,
+              last_synced_at: new Date().toISOString(),
+            })
+            .eq("id", tpl.id);
+        }
+      } catch {
+        // If Meta lookup fails, keep the locally saved template and send normally.
+      }
+    }
+
     // Build components
     const components: any[] = [];
 
-    const headerType = (tpl.header_type ?? "").toString().toUpperCase();
     if (headerType === "IMAGE" && data.headerMediaUrl) {
       components.push({ type: "header", parameters: [{ type: "image", image: { link: data.headerMediaUrl } }] });
     } else if (headerType === "VIDEO" && data.headerMediaUrl) {
@@ -89,16 +146,20 @@ export const sendGenericTemplate = createServerFn({ method: "POST" })
       });
     }
 
-    // Buttons: iterate template.buttons and attach URL params where the button URL has {{n}}
-    const btns = (tpl.buttons ?? []) as any[];
+    // Buttons: attach URL params for dynamic URL buttons. Some older local rows missed the URL,
+    // so if the user supplied a parameter for a URL button we still send it.
+    const btns = templateButtons;
     for (let i = 0; i < btns.length; i++) {
       const b = btns[i] ?? {};
       const type = String(b.type ?? "").toLowerCase();
       if (type !== "url") continue;
       const urlTpl = String(b.url ?? "");
       const hasVar = /\{\{(\d+)\}\}/.test(urlTpl);
-      if (!hasVar) continue;
-      const param = data.buttonUrlParams[String(i)] ?? data.buttonUrlParams["0"];
+      const hasExample = Array.isArray(b.example) ? b.example.length > 0 : !!b.example;
+      const param = (data.buttonUrlParams[String(i)] ?? data.buttonUrlParams["0"] ?? "").trim();
+      if (!param && (hasVar || hasExample || !urlTpl)) {
+        return { ok: false, error: `Preencha a variável do botão "${b.text ?? `#${i + 1}`}".` };
+      }
       if (!param) continue;
       components.push({
         type: "button",
@@ -113,8 +174,8 @@ export const sendGenericTemplate = createServerFn({ method: "POST" })
       to,
       type: "template",
       template: {
-        name: tpl.name,
-        language: { code: tpl.language },
+        name: templateName,
+        language: { code: languageCode },
         ...(components.length ? { components } : {}),
       },
     };
@@ -122,29 +183,58 @@ export const sendGenericTemplate = createServerFn({ method: "POST" })
     let httpStatus = 0;
     let responseJson: any = null;
     let sendResult: { ok: true; id: string } | { ok: false; error: string; code?: string } | null = null;
-    try {
+    const postToMeta = async (payload: any) => {
       const res = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify(requestPayload),
+        body: JSON.stringify(payload),
       });
-      httpStatus = res.status;
-      responseJson = await res.json().catch(() => ({}));
+      const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const err = responseJson?.error;
-        sendResult = {
+        const err = json?.error;
+        return {
           ok: false,
           error: err?.message ?? `HTTP ${res.status}`,
           code: err?.code ? String(err.code) : String(res.status),
+          status: res.status,
+          json,
         };
+      }
+      const id = json?.messages?.[0]?.id;
+      return id
+        ? { ok: true, id, status: res.status, json }
+        : { ok: false, error: "No message id returned", status: res.status, json };
+    };
+
+    try {
+      const result = await postToMeta(requestPayload);
+      httpStatus = result.status;
+      responseJson = result.json;
+      if (!result.ok && result.code === "132001" && languageCode.includes("_")) {
+        const retryPayload = {
+          ...requestPayload,
+          template: {
+            ...requestPayload.template,
+            language: { code: languageCode.split("_")[0] },
+          },
+        };
+        const retry = await postToMeta(retryPayload);
+        if (retry.ok) {
+          requestPayload.template.language.code = retryPayload.template.language.code;
+          languageCode = retryPayload.template.language.code;
+          httpStatus = retry.status;
+          responseJson = retry.json;
+          sendResult = { ok: true, id: retry.id };
+        } else {
+          sendResult = { ok: false, error: result.error, code: result.code };
+        }
+      } else if (result.ok) {
+        sendResult = { ok: true, id: result.id };
       } else {
-        const id = responseJson?.messages?.[0]?.id;
-        sendResult = id
-          ? { ok: true, id }
-          : { ok: false, error: "No message id returned" };
+        sendResult = { ok: false, error: result.error, code: result.code };
       }
     } catch (e: any) {
       sendResult = { ok: false, error: e?.message ?? "Network error" };
@@ -156,8 +246,8 @@ export const sendGenericTemplate = createServerFn({ method: "POST" })
       recipient_id: data.recipientId ?? null,
       connection_id: conn.id,
       to_phone: to,
-      template_name: tpl.name,
-      language_code: tpl.language,
+      template_name: templateName,
+      language_code: languageCode,
       request_payload: { ...requestPayload, _auth: "***" },
       response_payload: responseJson,
       meta_message_id: sendResult.ok ? sendResult.id : null,
@@ -176,9 +266,18 @@ export const sendGenericTemplate = createServerFn({ method: "POST" })
     if (sendResult.ok) {
       return { ok: true, metaMessageId: sendResult.id, status: "accepted", logId: log?.id ?? "" };
     }
+    const explainError = (code?: string) => {
+      const c = String(code ?? "");
+      if (c === "190") return "Access Token expirado ou inválido.";
+      if (c === "10" || c === "200") return "Permissões insuficientes no token.";
+      if (c === "100") return "Parâmetros inválidos — verifique variáveis e destino.";
+      if (c === "132000" || c === "132001") return "Template inexistente ou não aprovado para este idioma.";
+      if (c === "131047") return "Fora da janela de 24h ou destinatário sem opt-in.";
+      return undefined;
+    };
     return {
       ok: false,
-      error: sendResult.error + (explain(sendResult.code) ? ` — ${explain(sendResult.code)}` : ""),
+      error: sendResult.error + (explainError(sendResult.code) ? ` — ${explainError(sendResult.code)}` : ""),
       code: sendResult.code,
       logId: log?.id,
     };
