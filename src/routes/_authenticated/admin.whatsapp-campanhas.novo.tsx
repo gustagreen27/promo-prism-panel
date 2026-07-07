@@ -451,14 +451,28 @@ function WizardPage() {
               )}
             </div>
             <div>
-              <Label>Template aprovado *</Label>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <Label>Template aprovado *</Label>
+                <Button
+                  type="button" size="sm" variant="ghost"
+                  disabled={!state.waba_ref_id || syncMut.isPending}
+                  onClick={() => state.waba_ref_id && syncMut.mutate(state.waba_ref_id)}
+                  title={state.waba_ref_id ? "Sincronizar templates da Meta (busca language real)" : "Selecione uma WABA primeiro"}
+                >
+                  <RefreshCw className={`mr-1 h-3.5 w-3.5 ${syncMut.isPending ? "animate-spin" : ""}`} />
+                  Sincronizar
+                </Button>
+              </div>
               <Select value={state.template_id ?? NONE} onValueChange={(v) => set("template_id", v === NONE ? null : v)}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={templatesOfWaba.length ? "Selecione" : "Nenhum template aprovado — clique em Sincronizar"} /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NONE}>—</SelectItem>
                   {templatesOfWaba.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name} ({t.language})</SelectItem>)}
                 </SelectContent>
               </Select>
+              {templatesOfWaba.length === 0 && state.waba_ref_id && (
+                <p className="mt-1 text-xs text-muted-foreground">Nenhum template aprovado vinculado a essa WABA. Clique em <b>Sincronizar</b> para importar da Meta.</p>
+              )}
               {selectedTemplate && (
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                   <StatusBadge status={selectedTemplate.status} />
