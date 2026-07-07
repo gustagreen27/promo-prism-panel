@@ -1,7 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
+import { listTemplates } from "@/lib/whatsapp-templates.functions";
 import { toast } from "sonner";
 import { Send, Upload, Loader2, Play, X, FileSpreadsheet } from "lucide-react";
 import {
