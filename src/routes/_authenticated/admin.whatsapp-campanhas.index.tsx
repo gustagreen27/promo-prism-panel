@@ -242,10 +242,19 @@ function Page() {
   const headerNeedsText = headerType === "TEXT" && metaVarsIn(String(selectedTemplate?.header_text ?? "")).length > 0;
 
   const urlButtons = useMemo(() => {
-    const btns = (selectedTemplate?.buttons ?? []) as any[];
+    const rawButtonsComponent = (selectedTemplate?.raw?.components ?? []).find(
+      (c: any) => String(c?.type ?? "").toUpperCase() === "BUTTONS",
+    );
+    const btns = (rawButtonsComponent?.buttons ?? selectedTemplate?.buttons ?? []) as any[];
     return btns
-      .map((b, i) => ({ i, url: String(b?.url ?? ""), type: String(b?.type ?? "").toLowerCase(), text: b?.text }))
-      .filter((b) => b.type === "url" && /\{\{(\d+)\}\}/.test(b.url));
+      .map((b, i) => ({
+        i,
+        url: String(b?.url ?? ""),
+        type: String(b?.type ?? "").toLowerCase(),
+        text: b?.text,
+        hasExample: Array.isArray(b?.example) ? b.example.length > 0 : !!b?.example,
+      }))
+      .filter((b) => b.type === "url" && (!b.url || b.hasExample || /\{\{(\d+)\}\}/.test(b.url)));
   }, [selectedTemplate]);
 
   const recipients = useMemo(() => parseRecipients(recipientsRaw), [recipientsRaw]);
@@ -607,11 +616,14 @@ function Page() {
 
           {urlButtons.map((b) => (
             <div key={b.i} className="space-y-2 md:col-span-2">
-              <Label>Botão "{b.text ?? `#${b.i + 1}`}" — parâmetro da URL <code className="text-[11px]">{b.url}</code></Label>
+              <Label>
+                Botão "{b.text ?? `#${b.i + 1}`}" — variável da URL
+                {b.url && <code className="ml-1 text-[11px]">{b.url}</code>}
+              </Label>
               <Input
                 value={buttonUrlMapping[String(b.i)] ?? ""}
                 onChange={(e) => setButtonUrlMapping((m) => ({ ...m, [String(b.i)]: e.target.value }))}
-                placeholder="confirmar/abc123"
+                placeholder='Ex.: {telefone} ou codigo-{nome|cliente}'
               />
             </div>
           ))}
