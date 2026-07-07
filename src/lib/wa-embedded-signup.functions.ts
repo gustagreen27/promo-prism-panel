@@ -10,6 +10,22 @@ async function assertAdmin(ctx: { supabase: any; userId: string }) {
   if (!data) throw new Error("Forbidden");
 }
 
+/** Returns whether the caller is admin and their primary workspace_id (owner/admin role). */
+async function resolveCaller(ctx: { supabase: any; userId: string }): Promise<{ isAdmin: boolean; workspaceId: string | null }> {
+  const [{ data: isAdmin }, ws] = await Promise.all([
+    ctx.supabase.rpc("has_role", { _user_id: ctx.userId, _role: "admin" }),
+    ctx.supabase
+      .from("workspace_members")
+      .select("workspace_id, role, workspaces!inner(created_at)")
+      .eq("user_id", ctx.userId)
+      .in("role", ["owner", "admin"])
+      .order("workspaces(created_at)", { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  return { isAdmin: !!isAdmin, workspaceId: (ws.data as any)?.workspace_id ?? null };
+}
+
 async function logStep(
   supabase: any,
   base: { waba_ref_id?: string | null; connection_id?: string | null; client_id?: string | null; project_id?: string | null },
