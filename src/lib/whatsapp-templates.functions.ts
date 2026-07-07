@@ -95,13 +95,17 @@ export const syncTemplates = createServerFn({ method: "POST" })
       .eq("id", data.connection_id)
       .single();
     if (cErr) throw cErr;
-    if (!conn?.waba_id || !conn?.access_token) {
-      throw new Error("Número não possui WABA ID ou Access Token configurados.");
+    if (!conn?.waba_id) {
+      throw new Error("Número não possui WABA ID configurado.");
+    }
+    const accessToken = conn.access_token || process.env.WHATSAPP_ACCESS_TOKEN;
+    if (!accessToken) {
+      throw new Error("Nenhum Access Token disponível (conexão sem token e WHATSAPP_ACCESS_TOKEN não configurado).");
     }
     const { syncTemplatesFromMeta } = await import("@/lib/wa-send.server");
     const list = await syncTemplatesFromMeta({
       wabaId: conn.waba_id,
-      accessToken: conn.access_token,
+      accessToken,
       graphVersion: conn.graph_api_version || "v21.0",
     });
 
@@ -175,6 +179,7 @@ export const syncTemplatesByWaba = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!accessToken) accessToken = conn?.access_token ?? null;
     if (conn?.graph_api_version) graphVersion = conn.graph_api_version;
+    if (!accessToken) accessToken = process.env.WHATSAPP_ACCESS_TOKEN ?? null;
     if (!accessToken) {
       throw new Error(
         "Nenhum Access Token disponível para esta WABA. Conclua o Embedded Signup ou cadastre um token na WABA/número.",
