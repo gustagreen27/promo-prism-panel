@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, Rocket, Send, Sparkles, AlertTriangle, CheckCircle2, Info, Plus, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Rocket, Send, Sparkles, AlertTriangle, CheckCircle2, Info, Plus, X, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { Stepper } from "@/components/admin/stepper";
 import { StatusBadge, AlertBadge } from "@/components/admin/status-badge";
@@ -19,7 +19,7 @@ import { listClients } from "@/lib/clients.functions";
 import { listProjects } from "@/lib/projects.functions";
 import { listWabas } from "@/lib/wa-wabas.functions";
 import { listNumbers } from "@/lib/whatsapp-numbers.functions";
-import { listTemplates } from "@/lib/whatsapp-templates.functions";
+import { listTemplates, syncTemplatesByWaba } from "@/lib/whatsapp-templates.functions";
 import { listLists } from "@/lib/contact-lists.functions";
 import { previewAudience, renderPreview, createCampaignFromWizard } from "@/lib/wa-wizard.functions";
 import { availableStock, buildRecipients, startWaCampaign } from "@/lib/wa-campaigns.functions";
@@ -116,6 +116,15 @@ function WizardPage() {
   const wabasFn = useServerFn(listWabas);
   const numbersFn = useServerFn(listNumbers);
   const templatesFn = useServerFn(listTemplates);
+  const syncTplFn = useServerFn(syncTemplatesByWaba);
+  const syncMut = useMutation({
+    mutationFn: (wabaRefId: string) => syncTplFn({ data: { waba_ref_id: wabaRefId } }),
+    onSuccess: (r: any) => {
+      toast.success(`Sincronizado: ${r.synced}/${r.total} template(s) atualizados da Meta.`);
+      qc.invalidateQueries({ queryKey: ["wa-templates"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao sincronizar templates"),
+  });
   const listsFn = useServerFn(listLists);
   const previewAud = useServerFn(previewAudience);
   const renderFn = useServerFn(renderPreview);
@@ -442,14 +451,28 @@ function WizardPage() {
               )}
             </div>
             <div>
-              <Label>Template aprovado *</Label>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <Label>Template aprovado *</Label>
+                <Button
+                  type="button" size="sm" variant="ghost"
+                  disabled={!state.waba_ref_id || syncMut.isPending}
+                  onClick={() => state.waba_ref_id && syncMut.mutate(state.waba_ref_id)}
+                  title={state.waba_ref_id ? "Sincronizar templates da Meta (busca language real)" : "Selecione uma WABA primeiro"}
+                >
+                  <RefreshCw className={`mr-1 h-3.5 w-3.5 ${syncMut.isPending ? "animate-spin" : ""}`} />
+                  Sincronizar
+                </Button>
+              </div>
               <Select value={state.template_id ?? NONE} onValueChange={(v) => set("template_id", v === NONE ? null : v)}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={templatesOfWaba.length ? "Selecione" : "Nenhum template aprovado — clique em Sincronizar"} /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NONE}>—</SelectItem>
                   {templatesOfWaba.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name} ({t.language})</SelectItem>)}
                 </SelectContent>
               </Select>
+              {templatesOfWaba.length === 0 && state.waba_ref_id && (
+                <p className="mt-1 text-xs text-muted-foreground">Nenhum template aprovado vinculado a essa WABA. Clique em <b>Sincronizar</b> para importar da Meta.</p>
+              )}
               {selectedTemplate && (
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                   <StatusBadge status={selectedTemplate.status} />
