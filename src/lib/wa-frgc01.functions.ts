@@ -79,6 +79,31 @@ export const sendFrgc01 = createServerFn({ method: "POST" })
         : "frgc_01";
 
     const to = data.to.replace(/\D/g, "");
+
+    // Descobre idioma + nº de variáveis do template real (evita erro Meta #132000).
+    let languageCode = "pt_BR";
+    let bodyVarCount = 4;
+    let includeButton = true;
+    try {
+      const { data: tplRow } = await supabaseAdmin
+        .from("whatsapp_templates")
+        .select("language, variables, buttons, status")
+        .eq("name", templateName)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (tplRow?.language) languageCode = tplRow.language as string;
+      if (Array.isArray((tplRow as any)?.variables)) {
+        bodyVarCount = Math.min(Math.max(((tplRow as any).variables as any[]).length, 0), 4);
+      }
+      const btns = (tplRow as any)?.buttons;
+      if (Array.isArray(btns)) {
+        includeButton = btns.some((b: any) => (b?.type ?? "").toString().toUpperCase() === "URL");
+      }
+    } catch {
+      // Ignora — usa defaults.
+    }
+
     const requestPayload = buildFrgc01Payload({
       phoneNumberId: conn.phone_number_id,
       accessToken: "***",
@@ -92,6 +117,9 @@ export const sendFrgc01 = createServerFn({ method: "POST" })
       textoAcao: data.textoAcao,
       urlParametro: data.urlParametro,
       templateName,
+      languageCode,
+      bodyVarCount,
+      includeButton,
     });
 
     const result = await sendWhatsAppTemplateFrgc01({
@@ -107,6 +135,9 @@ export const sendFrgc01 = createServerFn({ method: "POST" })
       textoAcao: data.textoAcao,
       urlParametro: data.urlParametro,
       templateName,
+      languageCode,
+      bodyVarCount,
+      includeButton,
     });
 
     const nowIso = new Date().toISOString();
