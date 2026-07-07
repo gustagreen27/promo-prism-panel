@@ -210,8 +210,10 @@ export const completeEmbeddedSignup = createServerFn({ method: "POST" })
       graph_api_version: GRAPH_VERSION,
       provider: "meta_cloud",
       status: phJson?.code_verification_status === "VERIFIED" ? "ativo" : "aguardando_verificacao",
-      client_id: data.client_id ?? null,
-      project_id: data.project_id ?? null,
+      client_id: scopedClientId,
+      project_id: scopedProjectId,
+      workspace_id: scopedWorkspaceId,
+      visibility: caller.isAdmin ? "internal" : "workspace",
     };
 
     let connectionId: string;
