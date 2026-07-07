@@ -48,6 +48,7 @@ import { Route as AuthenticatedAdminClientesRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminCampanhasAprovacaoRouteImport } from './routes/_authenticated/admin.campanhas-aprovacao'
 import { Route as AuthenticatedAdminCampanhasRouteImport } from './routes/_authenticated/admin.campanhas'
 import { Route as AuthenticatedAdminAgendaRouteImport } from './routes/_authenticated/admin.agenda'
+import { Route as AuthenticatedAdminWhatsappCampanhasIndexRouteImport } from './routes/_authenticated/admin.whatsapp-campanhas.index'
 import { Route as AuthenticatedAdminRelatoriosIndexRouteImport } from './routes/_authenticated/admin.relatorios.index'
 import { Route as ApiPublicWhatsappWebhookHealthRouteImport } from './routes/api/public/whatsapp/webhook-health'
 import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp/webhook'
@@ -286,6 +287,12 @@ const AuthenticatedAdminAgendaRoute =
     path: '/admin/agenda',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAdminWhatsappCampanhasIndexRoute =
+  AuthenticatedAdminWhatsappCampanhasIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAdminWhatsappCampanhasRoute,
+  } as any)
 const AuthenticatedAdminRelatoriosIndexRoute =
   AuthenticatedAdminRelatoriosIndexRouteImport.update({
     id: '/admin/relatorios/',
@@ -505,6 +512,7 @@ export interface FileRoutesByFullPath {
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
   '/api/public/whatsapp/webhook-health': typeof ApiPublicWhatsappWebhookHealthRoute
   '/admin/relatorios/': typeof AuthenticatedAdminRelatoriosIndexRoute
+  '/admin/whatsapp-campanhas/': typeof AuthenticatedAdminWhatsappCampanhasIndexRoute
   '/admin/campaigns/$id/edit': typeof AuthenticatedAdminCampaignsIdEditRoute
   '/admin/campaigns/$id/preview': typeof AuthenticatedAdminCampaignsIdPreviewRoute
 }
@@ -543,7 +551,6 @@ export interface FileRoutesByTo {
   '/admin/tv': typeof AuthenticatedAdminTvRoute
   '/admin/upsell': typeof AuthenticatedAdminUpsellRoute
   '/admin/whatsapp': typeof AuthenticatedAdminWhatsappRouteWithChildren
-  '/admin/whatsapp-campanhas': typeof AuthenticatedAdminWhatsappCampanhasRouteWithChildren
   '/painel/campanhas/nova': typeof PainelCampanhasNovaRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
@@ -570,6 +577,7 @@ export interface FileRoutesByTo {
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
   '/api/public/whatsapp/webhook-health': typeof ApiPublicWhatsappWebhookHealthRoute
   '/admin/relatorios': typeof AuthenticatedAdminRelatoriosIndexRoute
+  '/admin/whatsapp-campanhas': typeof AuthenticatedAdminWhatsappCampanhasIndexRoute
   '/admin/campaigns/$id/edit': typeof AuthenticatedAdminCampaignsIdEditRoute
   '/admin/campaigns/$id/preview': typeof AuthenticatedAdminCampaignsIdPreviewRoute
 }
@@ -638,6 +646,7 @@ export interface FileRoutesById {
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
   '/api/public/whatsapp/webhook-health': typeof ApiPublicWhatsappWebhookHealthRoute
   '/_authenticated/admin/relatorios/': typeof AuthenticatedAdminRelatoriosIndexRoute
+  '/_authenticated/admin/whatsapp-campanhas/': typeof AuthenticatedAdminWhatsappCampanhasIndexRoute
   '/_authenticated/admin/campaigns/$id/edit': typeof AuthenticatedAdminCampaignsIdEditRoute
   '/_authenticated/admin/campaigns/$id/preview': typeof AuthenticatedAdminCampaignsIdPreviewRoute
 }
@@ -706,6 +715,7 @@ export interface FileRouteTypes {
     | '/api/public/whatsapp/webhook'
     | '/api/public/whatsapp/webhook-health'
     | '/admin/relatorios/'
+    | '/admin/whatsapp-campanhas/'
     | '/admin/campaigns/$id/edit'
     | '/admin/campaigns/$id/preview'
   fileRoutesByTo: FileRoutesByTo
@@ -744,7 +754,6 @@ export interface FileRouteTypes {
     | '/admin/tv'
     | '/admin/upsell'
     | '/admin/whatsapp'
-    | '/admin/whatsapp-campanhas'
     | '/painel/campanhas/nova'
     | '/admin'
     | '/admin/campaigns/$id'
@@ -771,6 +780,7 @@ export interface FileRouteTypes {
     | '/api/public/whatsapp/webhook'
     | '/api/public/whatsapp/webhook-health'
     | '/admin/relatorios'
+    | '/admin/whatsapp-campanhas'
     | '/admin/campaigns/$id/edit'
     | '/admin/campaigns/$id/preview'
   id:
@@ -838,6 +848,7 @@ export interface FileRouteTypes {
     | '/api/public/whatsapp/webhook'
     | '/api/public/whatsapp/webhook-health'
     | '/_authenticated/admin/relatorios/'
+    | '/_authenticated/admin/whatsapp-campanhas/'
     | '/_authenticated/admin/campaigns/$id/edit'
     | '/_authenticated/admin/campaigns/$id/preview'
   fileRoutesById: FileRoutesById
@@ -1134,6 +1145,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminAgendaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin/whatsapp-campanhas/': {
+      id: '/_authenticated/admin/whatsapp-campanhas/'
+      path: '/'
+      fullPath: '/admin/whatsapp-campanhas/'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappCampanhasIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappCampanhasRoute
+    }
     '/_authenticated/admin/relatorios/': {
       id: '/_authenticated/admin/relatorios/'
       path: '/admin/relatorios'
@@ -1382,6 +1400,7 @@ const AuthenticatedAdminWhatsappRouteWithChildren =
 interface AuthenticatedAdminWhatsappCampanhasRouteChildren {
   AuthenticatedAdminWhatsappCampanhasIdRoute: typeof AuthenticatedAdminWhatsappCampanhasIdRoute
   AuthenticatedAdminWhatsappCampanhasNovoRoute: typeof AuthenticatedAdminWhatsappCampanhasNovoRoute
+  AuthenticatedAdminWhatsappCampanhasIndexRoute: typeof AuthenticatedAdminWhatsappCampanhasIndexRoute
 }
 
 const AuthenticatedAdminWhatsappCampanhasRouteChildren: AuthenticatedAdminWhatsappCampanhasRouteChildren =
@@ -1390,6 +1409,8 @@ const AuthenticatedAdminWhatsappCampanhasRouteChildren: AuthenticatedAdminWhatsa
       AuthenticatedAdminWhatsappCampanhasIdRoute,
     AuthenticatedAdminWhatsappCampanhasNovoRoute:
       AuthenticatedAdminWhatsappCampanhasNovoRoute,
+    AuthenticatedAdminWhatsappCampanhasIndexRoute:
+      AuthenticatedAdminWhatsappCampanhasIndexRoute,
   }
 
 const AuthenticatedAdminWhatsappCampanhasRouteWithChildren =
@@ -1535,13 +1556,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
