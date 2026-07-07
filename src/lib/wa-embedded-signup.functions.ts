@@ -51,7 +51,9 @@ async function logStep(
 export const getEmbeddedSignupConfig = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdmin(context);
+    // Any authenticated user (admin OR workspace owner) can bootstrap the SDK.
+    const caller = await resolveCaller(context);
+    if (!caller.isAdmin && !caller.workspaceId) throw new Error("Forbidden");
     const appId = process.env.META_APP_ID;
     const configId = process.env.META_ES_CONFIG_ID;
     if (!appId || !configId) {
