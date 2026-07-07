@@ -441,6 +441,35 @@ function Page() {
           </div>
 
           <div className="space-y-2 md:col-span-2">
+            <Label>Template aprovado</Label>
+            <Select
+              value={templateId}
+              onValueChange={(v) => {
+                setTemplateId(v);
+                const t = approvedTemplates.find((x: any) => x.id === v);
+                if (t && t.name !== "frgc_01") {
+                  toast.message(`Abrindo assistente com o template "${t.name}"…`);
+                  nav({ to: "/admin/whatsapp-campanhas/novo" });
+                }
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={approvedTemplates.length ? "Escolha o template" : "Nenhum template aprovado — cadastre em Templates"} />
+              </SelectTrigger>
+              <SelectContent>
+                {approvedTemplates.map((t: any) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name} ({t.language})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Esta tela é otimizada para o <code className="text-[11px]">frgc_01</code>. Para outros templates, você será levado ao assistente completo (<a className="underline" href="/admin/whatsapp-campanhas/novo">Nova campanha</a>) que suporta variáveis dinâmicas, listas de contatos e agendamento.
+            </p>
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <Label>Destinatários — um por linha. Use <code className="text-[11px]">Nome,Telefone</code> para liberar o campo <code className="text-[11px]">{"{nome}"}</code>.</Label>
               <div className="flex gap-2">
