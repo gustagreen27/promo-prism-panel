@@ -431,6 +431,45 @@ function Page() {
       <div className="rounded-lg border bg-card p-5 space-y-4 max-w-3xl">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2 md:col-span-2">
+            <Label>Template aprovado</Label>
+            <Select
+              value={templateId}
+              onValueChange={(v) => {
+                setTemplateId(v);
+                if (v === "__frgc01__" || (frgc01 && v === frgc01.id)) return;
+                const t = approvedTemplates.find((x) => x.id === v);
+                if (t) {
+                  navigate({
+                    to: "/admin/whatsapp-campanhas/novo",
+                    search: { templateId: t.id } as any,
+                  });
+                }
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={approvedTemplates.length ? "Escolha o template" : "Nenhum template aprovado — cadastre em Templates"} />
+              </SelectTrigger>
+              <SelectContent>
+                {frgc01 ? (
+                  <SelectItem value={frgc01.id}>frgc_01 ({frgc01.language}) — página atual</SelectItem>
+                ) : (
+                  <SelectItem value="__frgc01__">frgc_01 — página atual</SelectItem>
+                )}
+                {approvedTemplates
+                  .filter((t) => t.name !== "frgc_01")
+                  .map((t: any) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name} ({t.language})
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Esta tela está otimizada para o template <code>frgc_01</code>. Ao escolher outro template você será levado ao assistente completo.
+            </p>
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
             <Label>Conexão WhatsApp</Label>
             <Select value={form.connectionId} onValueChange={(v) => set("connectionId", v)}>
               <SelectTrigger><SelectValue placeholder="Escolha o número" /></SelectTrigger>
