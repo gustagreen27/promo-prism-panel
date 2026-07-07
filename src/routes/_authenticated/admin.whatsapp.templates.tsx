@@ -87,6 +87,7 @@ function Page() {
             </Button>
             <Button variant="secondary" disabled={syncAllMut.isPending} onClick={() => syncAllMut.mutate()}>
               <RefreshCw className={`mr-2 h-4 w-4 ${syncAllMut.isPending ? "animate-spin" : ""}`} />Sincronizar todos
+            </Button>
             <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
               <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Novo</Button></DialogTrigger>
               <FormDialog editing={editing} numbers={numbers} wabas={wabas} onSubmit={(p: any) => save.mutate(p)} saving={save.isPending} />
