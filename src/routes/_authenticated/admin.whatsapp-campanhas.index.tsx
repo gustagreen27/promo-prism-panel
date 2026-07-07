@@ -1,10 +1,9 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useRef, useState } from "react";
-import { listTemplates } from "@/lib/whatsapp-templates.functions";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Send, Upload, Loader2, Play, X, FileSpreadsheet } from "lucide-react";
+import { Upload, Loader2, Play, X, FileSpreadsheet } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -21,38 +20,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { listConnections } from "@/lib/whatsapp.functions";
-import { sendFrgc01, getMessageLogStatus, type SendFrgc01Response } from "@/lib/wa-frgc01.functions";
-
-import { renderMapping, buildContext } from "@/lib/wa-variables";
+import { listTemplates } from "@/lib/whatsapp-templates.functions";
+import { sendGenericTemplate, type SendGenericResponse } from "@/lib/wa-send-generic.functions";
+import { getMessageLogStatus } from "@/lib/wa-frgc01.functions";
+import { renderMapping, buildContext, metaVarsIn } from "@/lib/wa-variables";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp-campanhas/")({
-  head: () => ({ meta: [{ title: "Campanhas WhatsApp (frgc_01)" }] }),
+  head: () => ({ meta: [{ title: "Campanhas WhatsApp" }] }),
   component: Page,
 });
-
-type Form = {
-  connectionId: string;
-  recipientsRaw: string;
-  imageUrl: string;
-  mediaType: "image" | "video";
-  nomeCliente: string;
-  informacaoPrincipal: string;
-  mensagemComplementar: string;
-  textoAcao: string;
-  urlParametro: string;
-};
-
-const EMPTY: Form = {
-  connectionId: "",
-  recipientsRaw: "",
-  imageUrl: "https://metodovidacursos.com.br/og-cover.jpg",
-  mediaType: "image",
-  nomeCliente: "",
-  informacaoPrincipal: "",
-  mensagemComplementar: "",
-  textoAcao: "",
-  urlParametro: "",
-};
 
 const STATUS_STYLES: Record<string, string> = {
   pending: "bg-muted text-muted-foreground border-border",
@@ -88,7 +64,6 @@ function parseRecipients(raw: string): Recipient[] {
     if (!trimmed) continue;
     const parts = trimmed.split(/[,\t]/).map((s) => s.trim()).filter(Boolean);
     if (parts.length === 0) continue;
-    // If every field looks like a phone number, treat as list of phones (no names).
     const allPhones = parts.every((p) => normalizePhone(p).length >= 8);
     if (parts.length === 1 || allPhones) {
       for (const p of parts) {
@@ -99,7 +74,6 @@ function parseRecipients(raw: string): Recipient[] {
         }
       }
     } else {
-      // Mixed: last numeric-ish field is the phone, everything before it is the name.
       const phoneRaw = parts[parts.length - 1];
       const name = parts.slice(0, -1).join(" ").trim();
       const n = normalizePhone(phoneRaw);
@@ -191,20 +165,34 @@ function RecipientRow({ row }: { row: RowState }) {
 }
 
 function Page() {
-  const navigate = useNavigate();
   const listFn = useServerFn(listConnections);
-  const sendFn = useServerFn(sendFrgc01);
   const templatesFn = useServerFn(listTemplates);
-  const [form, setForm] = useState<Form>(EMPTY);
+  const sendFn = useServerFn(sendGenericTemplate);
+
+  const [templateId, setTemplateId] = useState<string>("");
+  const [connectionId, setConnectionId] = useState<string>("");
+  const [recipientsRaw, setRecipientsRaw] = useState("");
+  const [headerMediaUrl, setHeaderMediaUrl] = useState("");
+  const [headerTextParam, setHeaderTextParam] = useState("");
+  const [bodyMapping, setBodyMapping] = useState<Record<string, string>>({});
+  const [buttonUrlMapping, setButtonUrlMapping] = useState<Record<string, string>>({});
   const [rows, setRows] = useState<RowState[]>([]);
   const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const cancelRef = useRef(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
+  const [csvOpen, setCsvOpen] = useState(false);
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  const [csvRows, setCsvRows] = useState<string[][]>([]);
+  const [csvCol, setCsvCol] = useState<string>("0");
+  const [csvName, setCsvName] = useState<string>("");
+  const [dragOver, setDragOver] = useState(false);
 
   const { data: connections = [] } = useQuery({
     queryKey: ["whatsapp-connections"],
     queryFn: () => listFn(),
   });
-
   const { data: templates = [] } = useQuery({
     queryKey: ["whatsapp-templates"],
     queryFn: () => templatesFn(),
@@ -214,33 +202,72 @@ function Page() {
     () => (templates as any[]).filter((t) => t.status === "approved"),
     [templates],
   );
-  const frgc01 = approvedTemplates.find((t) => t.name === "frgc_01");
-  const [templateId, setTemplateId] = useState<string>(frgc01?.id ?? "__frgc01__");
+  const selectedTemplate = useMemo(
+    () => approvedTemplates.find((t) => t.id === templateId),
+    [approvedTemplates, templateId],
+  );
 
-  const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
+  // Auto-pick frgc_01 (or first) once templates load
+  useEffect(() => {
+    if (templateId || approvedTemplates.length === 0) return;
+    const preferred = approvedTemplates.find((t) => t.name === "frgc_01") ?? approvedTemplates[0];
+    setTemplateId(preferred.id);
+  }, [approvedTemplates, templateId]);
 
-  const recipients = useMemo(() => parseRecipients(form.recipientsRaw), [form.recipientsRaw]);
+  // Filter connections to those matching the template's WABA when possible
+  const filteredConnections = useMemo(() => {
+    if (!selectedTemplate?.waba_ref_id) return connections;
+    const same = (connections as any[]).filter((c) => c.waba_ref_id === selectedTemplate.waba_ref_id);
+    return same.length ? same : connections;
+  }, [connections, selectedTemplate]);
 
+  useEffect(() => {
+    if (!connectionId && filteredConnections.length) setConnectionId(filteredConnections[0].id);
+  }, [filteredConnections, connectionId]);
+
+  // Reset variable mappings when template changes
+  useEffect(() => {
+    setBodyMapping({});
+    setButtonUrlMapping({});
+    setHeaderMediaUrl("");
+    setHeaderTextParam("");
+  }, [templateId]);
+
+  const bodyVars = useMemo(
+    () => (selectedTemplate ? metaVarsIn(selectedTemplate.body ?? "") : []),
+    [selectedTemplate],
+  );
+  const headerType = String(selectedTemplate?.header_type ?? "").toUpperCase();
+  const headerNeedsMedia = headerType === "IMAGE" || headerType === "VIDEO" || headerType === "DOCUMENT";
+  const headerNeedsText = headerType === "TEXT" && metaVarsIn(String(selectedTemplate?.header_text ?? "")).length > 0;
+
+  const urlButtons = useMemo(() => {
+    const btns = (selectedTemplate?.buttons ?? []) as any[];
+    return btns
+      .map((b, i) => ({ i, url: String(b?.url ?? ""), type: String(b?.type ?? "").toLowerCase(), text: b?.text }))
+      .filter((b) => b.type === "url" && /\{\{(\d+)\}\}/.test(b.url));
+  }, [selectedTemplate]);
+
+  const recipients = useMemo(() => parseRecipients(recipientsRaw), [recipientsRaw]);
   const previewRecipient = recipients[0];
-  const previewContext = useMemo(
+  const previewCtx = useMemo(
     () => buildContext({ contact: { name: previewRecipient?.name ?? "", phone: previewRecipient?.phone ?? "" } }),
     [previewRecipient?.name, previewRecipient?.phone],
   );
-  const previewValue = (value: string, fallback: string) => {
-    const rendered = renderMapping(value ?? "", previewContext).trim();
+  const previewValue = (mapping: string, fallback: string) => {
+    const rendered = renderMapping(mapping ?? "", previewCtx).trim();
     return rendered || fallback;
   };
 
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-
-  const csvInputRef = useRef<HTMLInputElement>(null);
-  const [csvOpen, setCsvOpen] = useState(false);
-  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
-  const [csvRows, setCsvRows] = useState<string[][]>([]);
-  const [csvCol, setCsvCol] = useState<string>("0");
-  const [csvName, setCsvName] = useState<string>("");
-  const [dragOver, setDragOver] = useState(false);
+  const renderedBody = useMemo(() => {
+    if (!selectedTemplate) return "";
+    let out = String(selectedTemplate.body ?? "");
+    for (const n of bodyVars) {
+      const val = previewValue(bodyMapping[String(n)] ?? "", `{{${n}}}`);
+      out = out.replaceAll(`{{${n}}}`, val);
+    }
+    return out;
+  }, [selectedTemplate, bodyVars, bodyMapping, previewRecipient]);
 
   async function handleCsvFile(file: File) {
     const name = file.name.toLowerCase();
@@ -259,7 +286,6 @@ function Page() {
         toast.error("Arquivo vazio ou sem linhas de dados");
         return;
       }
-      // If single column and no phone-ish header, import directly
       if (headers.length <= 1) {
         const phones = rows.map((r) => r[0] ?? "").filter(Boolean);
         appendPhones(phones);
@@ -277,7 +303,7 @@ function Page() {
   }
 
   function appendPhones(raw: string[]) {
-    const existing = new Set(parseRecipients(form.recipientsRaw).map((r) => r.phone));
+    const existing = new Set(parseRecipients(recipientsRaw).map((r) => r.phone));
     const add: string[] = [];
     for (const r of raw) {
       const p = normalizePhone(r);
@@ -287,33 +313,28 @@ function Page() {
       }
     }
     if (add.length === 0) return;
-    const prefix = form.recipientsRaw && !form.recipientsRaw.endsWith("\n") ? "\n" : "";
-    set("recipientsRaw", form.recipientsRaw + prefix + add.join("\n"));
+    const prefix = recipientsRaw && !recipientsRaw.endsWith("\n") ? "\n" : "";
+    setRecipientsRaw(recipientsRaw + prefix + add.join("\n"));
   }
 
   function confirmCsvImport() {
     const idx = parseInt(csvCol, 10);
     const values = csvRows.map((r) => r[idx] ?? "").filter(Boolean);
-    const before = parseRecipients(form.recipientsRaw).length;
     appendPhones(values);
     setCsvOpen(false);
-    // recompute
-    setTimeout(() => {
-      const after = parseRecipients(form.recipientsRaw).length;
-      toast.success(`${Math.max(after - before, values.length)} número(s) adicionados`);
-    }, 0);
+    toast.success(`${values.length} número(s) processados`);
   }
 
   async function handleUpload(file: File) {
     const isImage = file.type.startsWith("image/");
     const isVideo = file.type.startsWith("video/");
     if (!isImage && !isVideo) {
-      toast.error("Selecione uma imagem (JPG, PNG, WEBP) ou vídeo (MP4, 3GP)");
+      toast.error("Selecione uma imagem ou vídeo");
       return;
     }
     const maxMb = isVideo ? 16 : 5;
     if (file.size > maxMb * 1024 * 1024) {
-      toast.error(`Arquivo muito grande (máx. ${maxMb} MB — recomendação Meta)`);
+      toast.error(`Arquivo muito grande (máx. ${maxMb} MB)`);
       return;
     }
     setUploading(true);
@@ -326,10 +347,10 @@ function Page() {
       if (upErr) throw upErr;
       const { data: signed, error: sErr } = await supabase.storage
         .from("campaign-images")
-        .createSignedUrl(path, 60 * 60 * 24 * 30); // 30 days
+        .createSignedUrl(path, 60 * 60 * 24 * 30);
       if (sErr || !signed?.signedUrl) throw sErr ?? new Error("Falha ao gerar URL");
-      setForm((f) => ({ ...f, imageUrl: signed.signedUrl, mediaType: isVideo ? "video" : "image" }));
-      toast.success(isVideo ? "Vídeo enviado" : "Imagem enviada");
+      setHeaderMediaUrl(signed.signedUrl);
+      toast.success("Mídia enviada");
     } catch (e: any) {
       toast.error(e?.message ?? "Falha no upload");
     } finally {
@@ -338,14 +359,13 @@ function Page() {
   }
 
   const canSubmit =
-    !!form.connectionId &&
+    !!templateId &&
+    !!connectionId &&
     recipients.length > 0 &&
-    !!form.imageUrl &&
-    !!form.nomeCliente &&
-    !!form.informacaoPrincipal &&
-    !!form.mensagemComplementar &&
-    !!form.textoAcao &&
-    !!form.urlParametro;
+    (!headerNeedsMedia || !!headerMediaUrl) &&
+    (!headerNeedsText || !!headerTextParam.trim()) &&
+    bodyVars.every((n) => (bodyMapping[String(n)] ?? "").trim().length > 0) &&
+    urlButtons.every((b) => (buttonUrlMapping[String(b.i)] ?? "").trim().length > 0);
 
   async function handleSend() {
     if (!canSubmit || sending) return;
@@ -356,25 +376,28 @@ function Page() {
     let okCount = 0;
     let failCount = 0;
     const RATE_PER_SECOND = 40;
+
     const sendOne = async (idx: number) => {
       if (cancelRef.current) return;
       const { phone, name } = recipients[idx];
       setRows((rs) => rs.map((r) => (r.phone === phone ? { ...r, status: "sending" } : r)));
       try {
-        // Render the complete configured value for each Meta variable per recipient.
         const ctx = buildContext({ contact: { name: name ?? "", phone } });
         const render = (v: string) => renderMapping(v ?? "", ctx);
-        const res: SendFrgc01Response = await sendFn({
+        const bodyParams: Record<string, string> = {};
+        for (const n of bodyVars) bodyParams[String(n)] = render(bodyMapping[String(n)] ?? "");
+        const buttonUrlParams: Record<string, string> = {};
+        for (const b of urlButtons) buttonUrlParams[String(b.i)] = render(buttonUrlMapping[String(b.i)] ?? "");
+
+        const res: SendGenericResponse = await sendFn({
           data: {
-            connectionId: form.connectionId,
+            connectionId,
+            templateId,
             to: phone,
-            imageUrl: form.imageUrl,
-            mediaType: form.mediaType,
-            nomeCliente: render(form.nomeCliente),
-            informacaoPrincipal: render(form.informacaoPrincipal),
-            mensagemComplementar: render(form.mensagemComplementar),
-            textoAcao: render(form.textoAcao),
-            urlParametro: render(form.urlParametro),
+            bodyParams,
+            buttonUrlParams,
+            headerMediaUrl: headerNeedsMedia ? headerMediaUrl : null,
+            headerTextParam: headerNeedsText ? render(headerTextParam) : null,
           },
         });
         if (res.ok) {
@@ -396,8 +419,6 @@ function Page() {
       }
     };
 
-    // Dispara em rajadas de RATE_PER_SECOND por segundo (fire-and-forget dentro da janela),
-    // aguardando 1s entre o início de cada rajada para manter a taxa alvo.
     const pending: Promise<void>[] = [];
     for (let i = 0; i < recipients.length; i += RATE_PER_SECOND) {
       if (cancelRef.current) break;
@@ -407,14 +428,12 @@ function Page() {
         (_, k) => i + k,
       );
       for (const idx of slice) pending.push(sendOne(idx));
-      // Se ainda houver mais rajadas, aguarda o resto do segundo antes de disparar a próxima.
       if (i + RATE_PER_SECOND < recipients.length) {
         const elapsed = Date.now() - windowStart;
         const wait = Math.max(0, 1000 - elapsed);
         if (wait > 0) await new Promise((r) => setTimeout(r, wait));
       }
     }
-    // Aguarda todas as requisições em voo terminarem antes de finalizar.
     await Promise.all(pending);
 
     setSending(false);
@@ -424,57 +443,39 @@ function Page() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Campanhas WhatsApp (frgc_01)"
-        description="Disparo oficial em lote via WhatsApp Cloud API — mesmo formato do teste, com múltiplos destinatários."
+        title="Campanhas WhatsApp"
+        description="Escolha qualquer template aprovado e dispare em lote via WhatsApp Cloud API."
       />
 
       <div className="rounded-lg border bg-card p-5 space-y-4 max-w-3xl">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2 md:col-span-2">
             <Label>Template aprovado</Label>
-            <Select
-              value={templateId}
-              onValueChange={(v) => {
-                setTemplateId(v);
-                if (v === "__frgc01__" || (frgc01 && v === frgc01.id)) return;
-                const t = approvedTemplates.find((x) => x.id === v);
-                if (t) {
-                  navigate({
-                    to: "/admin/whatsapp-campanhas/novo",
-                    search: { templateId: t.id } as any,
-                  });
-                }
-              }}
-            >
+            <Select value={templateId} onValueChange={setTemplateId}>
               <SelectTrigger>
                 <SelectValue placeholder={approvedTemplates.length ? "Escolha o template" : "Nenhum template aprovado — cadastre em Templates"} />
               </SelectTrigger>
               <SelectContent>
-                {frgc01 ? (
-                  <SelectItem value={frgc01.id}>frgc_01 ({frgc01.language}) — página atual</SelectItem>
-                ) : (
-                  <SelectItem value="__frgc01__">frgc_01 — página atual</SelectItem>
-                )}
-                {approvedTemplates
-                  .filter((t) => t.name !== "frgc_01")
-                  .map((t: any) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name} ({t.language})
-                    </SelectItem>
-                  ))}
+                {approvedTemplates.map((t: any) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name} <span className="text-muted-foreground">({t.language})</span>
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
-              Esta tela está otimizada para o template <code>frgc_01</code>. Ao escolher outro template você será levado ao assistente completo.
-            </p>
+            {selectedTemplate && (
+              <p className="text-xs text-muted-foreground">
+                {selectedTemplate.category ?? "—"} · header: {headerType || "nenhum"} · {bodyVars.length} variável(is) no corpo · {urlButtons.length} botão(ões) com URL dinâmica
+              </p>
+            )}
           </div>
 
           <div className="space-y-2 md:col-span-2">
             <Label>Conexão WhatsApp</Label>
-            <Select value={form.connectionId} onValueChange={(v) => set("connectionId", v)}>
+            <Select value={connectionId} onValueChange={setConnectionId}>
               <SelectTrigger><SelectValue placeholder="Escolha o número" /></SelectTrigger>
               <SelectContent>
-                {connections.map((c: any) => (
+                {filteredConnections.map((c: any) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.name} {c.display_phone ? `(${c.display_phone})` : ""}
                   </SelectItem>
@@ -483,11 +484,9 @@ function Page() {
             </Select>
           </div>
 
-
-
           <div className="space-y-2 md:col-span-2">
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <Label>Destinatários — um por linha. Use <code className="text-[11px]">Nome,Telefone</code> para liberar o campo <code className="text-[11px]">{"{nome}"}</code>.</Label>
+              <Label>Destinatários — um por linha. Use <code className="text-[11px]">Nome,Telefone</code> para liberar <code className="text-[11px]">{"{nome}"}</code>.</Label>
               <div className="flex gap-2">
                 <input
                   ref={csvInputRef}
@@ -503,8 +502,8 @@ function Page() {
                 <Button type="button" size="sm" variant="outline" onClick={() => csvInputRef.current?.click()}>
                   <FileSpreadsheet className="h-4 w-4 mr-2" /> Importar CSV
                 </Button>
-                {form.recipientsRaw && (
-                  <Button type="button" size="sm" variant="ghost" onClick={() => set("recipientsRaw", "")}>
+                {recipientsRaw && (
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setRecipientsRaw("")}>
                     Limpar
                   </Button>
                 )}
@@ -528,111 +527,102 @@ function Page() {
               <Textarea
                 rows={5}
                 className="font-mono text-xs"
-                value={form.recipientsRaw}
-                onChange={(e) => set("recipientsRaw", e.target.value)}
-                placeholder={"Gustavo,5562991301856\nMaria,5511999998888\n5562984817929\n\nDica: arraste um CSV aqui ou clique em Importar CSV"}
+                value={recipientsRaw}
+                onChange={(e) => setRecipientsRaw(e.target.value)}
+                placeholder={"Gustavo,5562991301856\nMaria,5511999998888\n5562984817929"}
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              {recipients.length} destinatário(s) detectados{recipients.some((r) => r.name) ? ` · ${recipients.filter((r) => r.name).length} com nome` : ""}. O nome só é usado quando você escrever <code className="text-[11px]">{"{nome}"}</code> em algum campo de variável.
+              {recipients.length} destinatário(s) detectados.
             </p>
           </div>
 
-
-          <div className="space-y-2 md:col-span-2">
-            <Label>Mídia do cabeçalho (imagem ou vídeo)</Label>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Input
-                value={form.imageUrl}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  const isVid = /\.(mp4|3gp|mov)(\?|$)/i.test(v);
-                  setForm((f) => ({ ...f, imageUrl: v, mediaType: isVid ? "video" : "image" }));
-                }}
-                placeholder="Cole uma URL pública ou envie um arquivo"
-              />
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp,video/mp4,video/3gpp,video/quicktime"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) handleUpload(f);
-                  e.target.value = "";
-                }}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                disabled={uploading}
-                onClick={() => fileRef.current?.click()}
-              >
-                {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
-                {uploading ? "Enviando…" : "Upload"}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Imagem até 5 MB (JPG/PNG/WEBP) · Vídeo até 16 MB (MP4/3GP). O template frgc_01 precisa aceitar o tipo escolhido.
-            </p>
-            {form.imageUrl && (
-              form.mediaType === "video" ? (
-                <video
-                  src={form.imageUrl}
-                  controls
-                  className="mt-2 max-h-48 rounded-md border bg-muted"
+          {headerNeedsMedia && (
+            <div className="space-y-2 md:col-span-2">
+              <Label>Mídia do cabeçalho ({headerType.toLowerCase()})</Label>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input
+                  value={headerMediaUrl}
+                  onChange={(e) => setHeaderMediaUrl(e.target.value)}
+                  placeholder="Cole uma URL pública ou envie um arquivo"
                 />
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept={headerType === "VIDEO" ? "video/mp4,video/3gpp,video/quicktime" : headerType === "DOCUMENT" ? "application/pdf" : "image/jpeg,image/png,image/webp"}
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleUpload(f);
+                    e.target.value = "";
+                  }}
+                />
+                <Button type="button" variant="outline" disabled={uploading} onClick={() => fileRef.current?.click()}>
+                  {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                  {uploading ? "Enviando…" : "Upload"}
+                </Button>
+              </div>
+              {headerMediaUrl && (headerType === "VIDEO" ? (
+                <video src={headerMediaUrl} controls className="mt-2 max-h-48 rounded-md border bg-muted" />
+              ) : headerType === "IMAGE" ? (
+                <img src={headerMediaUrl} alt="Preview" className="mt-2 max-h-40 rounded-md border object-contain bg-muted" />
               ) : (
-                <img
-                  src={form.imageUrl}
-                  alt="Preview do cabeçalho"
-                  className="mt-2 max-h-40 rounded-md border object-contain bg-muted"
-                />
-              )
-            )}
-          </div>
-
-          <div className="space-y-2 md:col-span-2 rounded-md border bg-muted/30 p-3">
-            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Corpo — prévia renderizada</div>
-            <div className="text-sm whitespace-pre-line leading-relaxed">
-              {`Olá ${previewValue(form.nomeCliente, "{{1}}")}!\n\nInformamos que ${previewValue(form.informacaoPrincipal, "{{2}}")}.\n\n${previewValue(form.mensagemComplementar, "{{3}}")}.\n\nPara ${previewValue(form.textoAcao, "{{4}}")}, clique no botão logo abaixo 👇`}
+                <a href={headerMediaUrl} target="_blank" rel="noreferrer" className="text-xs underline">Abrir documento</a>
+              ))}
             </div>
-          </div>
+          )}
 
-          <div className="space-y-2">
-            <Label>{"{{1}} Valor completo da variável"}</Label>
-            <Input
-              value={form.nomeCliente}
-              onChange={(e) => set("nomeCliente", e.target.value)}
-              placeholder="{nome|Cliente}, como você está?"
-            />
-          </div>
+          {headerNeedsText && (
+            <div className="space-y-2 md:col-span-2">
+              <Label>Variável do cabeçalho ({selectedTemplate?.header_text})</Label>
+              <Input value={headerTextParam} onChange={(e) => setHeaderTextParam(e.target.value)} placeholder="{nome|Cliente}" />
+            </div>
+          )}
 
-          <div className="space-y-2">
-            <Label>{"{{2}} Informação principal"}</Label>
-            <Input value={form.informacaoPrincipal} onChange={(e) => set("informacaoPrincipal", e.target.value)} />
-          </div>
+          {selectedTemplate && bodyVars.length === 0 && !headerNeedsText && (
+            <div className="space-y-2 md:col-span-2 rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
+              Este template não tem variáveis — nada a preencher.
+            </div>
+          )}
 
-          <div className="space-y-2">
-            <Label>{"{{3}} Mensagem complementar"}</Label>
-            <Input value={form.mensagemComplementar} onChange={(e) => set("mensagemComplementar", e.target.value)} />
-          </div>
+          {selectedTemplate && (
+            <div className="space-y-2 md:col-span-2 rounded-md border bg-muted/30 p-3">
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Corpo — prévia renderizada</div>
+              <div className="text-sm whitespace-pre-line leading-relaxed">
+                {renderedBody || selectedTemplate.body}
+              </div>
+            </div>
+          )}
 
-          <div className="space-y-2">
-            <Label>{"{{4}} Texto de ação"}</Label>
-            <Input value={form.textoAcao} onChange={(e) => set("textoAcao", e.target.value)} />
-          </div>
+          {bodyVars.map((n) => (
+            <div key={n} className="space-y-2 md:col-span-2">
+              <Label>{`{{${n}}} Valor da variável`}</Label>
+              <Input
+                value={bodyMapping[String(n)] ?? ""}
+                onChange={(e) => setBodyMapping((m) => ({ ...m, [String(n)]: e.target.value }))}
+                placeholder='Ex.: {nome|"Cliente"} — pode misturar texto e tokens'
+              />
+            </div>
+          ))}
 
-          <div className="space-y-2 md:col-span-2">
-            <Label>Parâmetro do botão (path após metodovidacursos.com.br/)</Label>
-            <Input value={form.urlParametro} onChange={(e) => set("urlParametro", e.target.value)} placeholder="confirmar/abc123" />
-          </div>
+          {urlButtons.map((b) => (
+            <div key={b.i} className="space-y-2 md:col-span-2">
+              <Label>Botão "{b.text ?? `#${b.i + 1}`}" — parâmetro da URL <code className="text-[11px]">{b.url}</code></Label>
+              <Input
+                value={buttonUrlMapping[String(b.i)] ?? ""}
+                onChange={(e) => setButtonUrlMapping((m) => ({ ...m, [String(b.i)]: e.target.value }))}
+                placeholder="confirmar/abc123"
+              />
+            </div>
+          ))}
         </div>
 
         <div className="flex flex-wrap gap-2">
           <Button disabled={!canSubmit || sending} onClick={handleSend}>
             {sending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
-            {sending ? `Enviando… (${rows.filter((r) => r.status === "sent" || r.status === "failed").length}/${rows.length})` : `Disparar para ${recipients.length} destinatário(s)`}
+            {sending
+              ? `Enviando… (${rows.filter((r) => r.status === "sent" || r.status === "failed").length}/${rows.length})`
+              : `Disparar para ${recipients.length} destinatário(s)`}
           </Button>
           {sending && (
             <Button variant="outline" onClick={() => { cancelRef.current = true; }}>
