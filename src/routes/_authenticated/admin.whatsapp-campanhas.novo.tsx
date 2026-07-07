@@ -117,7 +117,6 @@ function WizardPage() {
   const numbersFn = useServerFn(listNumbers);
   const templatesFn = useServerFn(listTemplates);
   const syncTplFn = useServerFn(syncTemplatesByWaba);
-  const qc = useQueryClient();
   const syncMut = useMutation({
     mutationFn: (wabaRefId: string) => syncTplFn({ data: { waba_ref_id: wabaRefId } }),
     onSuccess: (r: any) => {
