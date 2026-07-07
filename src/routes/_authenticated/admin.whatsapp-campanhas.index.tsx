@@ -1,7 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
+import { listTemplates } from "@/lib/whatsapp-templates.functions";
 import { toast } from "sonner";
 import { Send, Upload, Loader2, Play, X, FileSpreadsheet } from "lucide-react";
 import {
@@ -190,8 +191,10 @@ function RecipientRow({ row }: { row: RowState }) {
 }
 
 function Page() {
+  const navigate = useNavigate();
   const listFn = useServerFn(listConnections);
   const sendFn = useServerFn(sendFrgc01);
+  const templatesFn = useServerFn(listTemplates);
   const [form, setForm] = useState<Form>(EMPTY);
   const [rows, setRows] = useState<RowState[]>([]);
   const [sending, setSending] = useState(false);
@@ -201,6 +204,18 @@ function Page() {
     queryKey: ["whatsapp-connections"],
     queryFn: () => listFn(),
   });
+
+  const { data: templates = [] } = useQuery({
+    queryKey: ["whatsapp-templates"],
+    queryFn: () => templatesFn(),
+  });
+
+  const approvedTemplates = useMemo(
+    () => (templates as any[]).filter((t) => t.status === "approved"),
+    [templates],
+  );
+  const frgc01 = approvedTemplates.find((t) => t.name === "frgc_01");
+  const [templateId, setTemplateId] = useState<string>(frgc01?.id ?? "__frgc01__");
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -415,6 +430,45 @@ function Page() {
 
       <div className="rounded-lg border bg-card p-5 space-y-4 max-w-3xl">
         <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2 md:col-span-2">
+            <Label>Template aprovado</Label>
+            <Select
+              value={templateId}
+              onValueChange={(v) => {
+                setTemplateId(v);
+                if (v === "__frgc01__" || (frgc01 && v === frgc01.id)) return;
+                const t = approvedTemplates.find((x) => x.id === v);
+                if (t) {
+                  navigate({
+                    to: "/admin/whatsapp-campanhas/novo",
+                    search: { templateId: t.id } as any,
+                  });
+                }
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={approvedTemplates.length ? "Escolha o template" : "Nenhum template aprovado — cadastre em Templates"} />
+              </SelectTrigger>
+              <SelectContent>
+                {frgc01 ? (
+                  <SelectItem value={frgc01.id}>frgc_01 ({frgc01.language}) — página atual</SelectItem>
+                ) : (
+                  <SelectItem value="__frgc01__">frgc_01 — página atual</SelectItem>
+                )}
+                {approvedTemplates
+                  .filter((t) => t.name !== "frgc_01")
+                  .map((t: any) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name} ({t.language})
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Esta tela está otimizada para o template <code>frgc_01</code>. Ao escolher outro template você será levado ao assistente completo.
+            </p>
+          </div>
+
           <div className="space-y-2 md:col-span-2">
             <Label>Conexão WhatsApp</Label>
             <Select value={form.connectionId} onValueChange={(v) => set("connectionId", v)}>
