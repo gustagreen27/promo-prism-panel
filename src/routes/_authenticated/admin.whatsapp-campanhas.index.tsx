@@ -631,7 +631,7 @@ function Page() {
 
           {headerNeedsText && (
             <div className="space-y-2 md:col-span-2">
-              <Label>Variável do cabeçalho ({selectedTemplate?.header_text})</Label>
+              <Label>Variável do cabeçalho ({headerTextTemplate})</Label>
               <Input value={headerTextParam} onChange={(e) => setHeaderTextParam(e.target.value)} placeholder="{nome|Cliente}" />
             </div>
           )}
