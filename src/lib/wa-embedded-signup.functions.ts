@@ -81,15 +81,21 @@ export const completeEmbeddedSignup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => completeSchema.parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    const caller = await resolveCaller(context);
+    if (!caller.isAdmin && !caller.workspaceId) throw new Error("Forbidden");
+    // Non-admins are always scoped to their own workspace; admin passes client/project explicitly.
+    const scopedClientId = caller.isAdmin ? (data.client_id ?? null) : null;
+    const scopedProjectId = caller.isAdmin ? (data.project_id ?? null) : null;
+    const scopedWorkspaceId = caller.isAdmin ? null : caller.workspaceId;
+
     const supabase = context.supabase;
     const appId = process.env.META_APP_ID;
     const appSecret = process.env.META_APP_SECRET;
     if (!appId || !appSecret) throw new Error("META_APP_ID/META_APP_SECRET não configurados.");
 
     const baseLog = {
-      client_id: data.client_id ?? null,
-      project_id: data.project_id ?? null,
+      client_id: scopedClientId,
+      project_id: scopedProjectId,
       waba_ref_id: null as string | null,
       connection_id: null as string | null,
     };
