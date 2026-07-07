@@ -260,3 +260,18 @@ export const listOnboardingLogs = createServerFn({ method: "GET" })
     if (error) throw error;
     return rows ?? [];
   });
+
+/** List the caller's workspace WhatsApp numbers (safe for the panel UI). */
+export const listMyWorkspaceNumbers = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const caller = await resolveCaller(context);
+    if (!caller.workspaceId) return [];
+    const { data, error } = await context.supabase
+      .from("whatsapp_connections")
+      .select("id,name,display_name,display_phone,phone_number_id,waba_id,status,quality_rating,messaging_limit,created_at")
+      .eq("workspace_id", caller.workspaceId)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data ?? [];
+  });
