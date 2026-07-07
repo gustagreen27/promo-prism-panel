@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Upload, Loader2, Play, X, FileSpreadsheet } from "lucide-react";
+import { Upload, Loader2, Play, X, FileSpreadsheet, RefreshCw } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { listConnections } from "@/lib/whatsapp.functions";
-import { listTemplates } from "@/lib/whatsapp-templates.functions";
+import { listTemplates, syncTemplates, syncTemplatesByWaba } from "@/lib/whatsapp-templates.functions";
 import { sendGenericTemplate, type SendGenericResponse } from "@/lib/wa-send-generic.functions";
 import { getMessageLogStatus } from "@/lib/wa-frgc01.functions";
 import { renderMapping, buildContext, metaVarsIn } from "@/lib/wa-variables";
@@ -167,6 +167,8 @@ function RecipientRow({ row }: { row: RowState }) {
 function Page() {
   const listFn = useServerFn(listConnections);
   const templatesFn = useServerFn(listTemplates);
+  const syncTemplatesFn = useServerFn(syncTemplates);
+  const syncTemplatesByWabaFn = useServerFn(syncTemplatesByWaba);
   const sendFn = useServerFn(sendGenericTemplate);
 
   const [templateId, setTemplateId] = useState<string>("");
@@ -178,6 +180,7 @@ function Page() {
   const [buttonUrlMapping, setButtonUrlMapping] = useState<Record<string, string>>({});
   const [rows, setRows] = useState<RowState[]>([]);
   const [sending, setSending] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const cancelRef = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -193,7 +196,7 @@ function Page() {
     queryKey: ["whatsapp-connections"],
     queryFn: () => listFn(),
   });
-  const { data: templates = [] } = useQuery({
+  const { data: templates = [], refetch: refetchTemplates } = useQuery({
     queryKey: ["whatsapp-templates"],
     queryFn: () => templatesFn(),
   });
@@ -216,13 +219,24 @@ function Page() {
 
   // Filter connections to those matching the template's WABA when possible
   const filteredConnections = useMemo(() => {
+    if (selectedTemplate?.connection_id && !selectedTemplate?.waba_ref_id) {
+      const direct = (connections as any[]).filter((c) => c.id === selectedTemplate.connection_id);
+      if (direct.length) return direct;
+    }
     if (!selectedTemplate?.waba_ref_id) return connections;
     const same = (connections as any[]).filter((c) => c.waba_ref_id === selectedTemplate.waba_ref_id);
     return same.length ? same : connections;
   }, [connections, selectedTemplate]);
+  const selectedConnection = useMemo(
+    () => (connections as any[]).find((c) => c.id === connectionId),
+    [connections, connectionId],
+  );
 
   useEffect(() => {
-    if (!connectionId && filteredConnections.length) setConnectionId(filteredConnections[0].id);
+    if (!filteredConnections.length) return;
+    if (!connectionId || !filteredConnections.some((c: any) => c.id === connectionId)) {
+      setConnectionId(filteredConnections[0].id);
+    }
   }, [filteredConnections, connectionId]);
 
   // Reset variable mappings when template changes
@@ -242,10 +256,19 @@ function Page() {
   const headerNeedsText = headerType === "TEXT" && metaVarsIn(String(selectedTemplate?.header_text ?? "")).length > 0;
 
   const urlButtons = useMemo(() => {
-    const btns = (selectedTemplate?.buttons ?? []) as any[];
+    const rawButtonsComponent = (selectedTemplate?.raw?.components ?? []).find(
+      (c: any) => String(c?.type ?? "").toUpperCase() === "BUTTONS",
+    );
+    const btns = (rawButtonsComponent?.buttons ?? selectedTemplate?.buttons ?? []) as any[];
     return btns
-      .map((b, i) => ({ i, url: String(b?.url ?? ""), type: String(b?.type ?? "").toLowerCase(), text: b?.text }))
-      .filter((b) => b.type === "url" && /\{\{(\d+)\}\}/.test(b.url));
+      .map((b, i) => ({
+        i,
+        url: String(b?.url ?? ""),
+        type: String(b?.type ?? "").toLowerCase(),
+        text: b?.text,
+        hasExample: Array.isArray(b?.example) ? b.example.length > 0 : !!b?.example,
+      }))
+      .filter((b) => b.type === "url" && (!b.url || b.hasExample || /\{\{(\d+)\}\}/.test(b.url)));
   }, [selectedTemplate]);
 
   const recipients = useMemo(() => parseRecipients(recipientsRaw), [recipientsRaw]);
@@ -323,6 +346,22 @@ function Page() {
     appendPhones(values);
     setCsvOpen(false);
     toast.success(`${values.length} número(s) processados`);
+  }
+
+  async function handleSyncTemplates() {
+    if (!connectionId || syncing) return;
+    setSyncing(true);
+    try {
+      const result = selectedConnection?.waba_ref_id
+        ? await syncTemplatesByWabaFn({ data: { waba_ref_id: selectedConnection.waba_ref_id } })
+        : await syncTemplatesFn({ data: { connection_id: connectionId } });
+      await refetchTemplates();
+      toast.success(`Templates sincronizados · ${result.synced}/${result.total}`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao sincronizar templates");
+    } finally {
+      setSyncing(false);
+    }
   }
 
   async function handleUpload(file: File) {
@@ -451,18 +490,24 @@ function Page() {
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2 md:col-span-2">
             <Label>Template aprovado</Label>
-            <Select value={templateId} onValueChange={setTemplateId}>
-              <SelectTrigger>
-                <SelectValue placeholder={approvedTemplates.length ? "Escolha o template" : "Nenhum template aprovado — cadastre em Templates"} />
-              </SelectTrigger>
-              <SelectContent>
-                {approvedTemplates.map((t: any) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.name} <span className="text-muted-foreground">({t.language})</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Select value={templateId} onValueChange={setTemplateId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={approvedTemplates.length ? "Escolha o template" : "Nenhum template aprovado — cadastre em Templates"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {approvedTemplates.map((t: any) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name} <span className="text-muted-foreground">({t.language})</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button type="button" variant="outline" disabled={!connectionId || syncing} onClick={handleSyncTemplates}>
+                {syncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                Sincronizar
+              </Button>
+            </div>
             {selectedTemplate && (
               <p className="text-xs text-muted-foreground">
                 {selectedTemplate.category ?? "—"} · header: {headerType || "nenhum"} · {bodyVars.length} variável(is) no corpo · {urlButtons.length} botão(ões) com URL dinâmica
@@ -607,11 +652,14 @@ function Page() {
 
           {urlButtons.map((b) => (
             <div key={b.i} className="space-y-2 md:col-span-2">
-              <Label>Botão "{b.text ?? `#${b.i + 1}`}" — parâmetro da URL <code className="text-[11px]">{b.url}</code></Label>
+              <Label>
+                Botão "{b.text ?? `#${b.i + 1}`}" — variável da URL
+                {b.url && <code className="ml-1 text-[11px]">{b.url}</code>}
+              </Label>
               <Input
                 value={buttonUrlMapping[String(b.i)] ?? ""}
                 onChange={(e) => setButtonUrlMapping((m) => ({ ...m, [String(b.i)]: e.target.value }))}
-                placeholder="confirmar/abc123"
+                placeholder='Ex.: {telefone} ou codigo-{nome|cliente}'
               />
             </div>
           ))}
