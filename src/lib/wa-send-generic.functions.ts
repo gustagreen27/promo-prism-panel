@@ -212,26 +212,37 @@ export const sendGenericTemplate = createServerFn({ method: "POST" })
       const result = await postToMeta(requestPayload);
       httpStatus = result.status;
       responseJson = result.json;
-      if (!result.ok && result.code === "132001" && languageCode.includes("_")) {
-        const retryPayload = {
-          ...requestPayload,
-          template: {
-            ...requestPayload.template,
-            language: { code: languageCode.split("_")[0] },
-          },
-        };
-        const retry = await postToMeta(retryPayload);
-        if (retry.ok) {
-          requestPayload.template.language.code = retryPayload.template.language.code;
-          languageCode = retryPayload.template.language.code;
-          httpStatus = retry.status;
-          responseJson = retry.json;
-          sendResult = { ok: true, id: retry.id };
-        } else {
-          sendResult = { ok: false, error: result.error, code: result.code };
-        }
-      } else if (result.ok) {
+      if (result.ok) {
         sendResult = { ok: true, id: result.id };
+      } else if (result.code === "132001") {
+        // Try common language variants (en ↔ en_US, pt ↔ pt_BR, es ↔ es_ES, etc.)
+        const base = languageCode.split("_")[0];
+        const variants = new Set<string>([
+          base,
+          `${base}_US`,
+          `${base}_BR`,
+          `${base}_ES`,
+          `${base}_GB`,
+          `${base}_PT`,
+        ]);
+        variants.delete(languageCode);
+        let recovered = false;
+        for (const alt of variants) {
+          const retry = await postToMeta({
+            ...requestPayload,
+            template: { ...requestPayload.template, language: { code: alt } },
+          });
+          if (retry.ok) {
+            requestPayload.template.language.code = alt;
+            languageCode = alt;
+            httpStatus = retry.status;
+            responseJson = retry.json;
+            sendResult = { ok: true, id: retry.id };
+            recovered = true;
+            break;
+          }
+        }
+        if (!recovered) sendResult = { ok: false, error: result.error, code: result.code };
       } else {
         sendResult = { ok: false, error: result.error, code: result.code };
       }
