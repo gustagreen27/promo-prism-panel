@@ -183,7 +183,10 @@ export const sendGenericTemplate = createServerFn({ method: "POST" })
     let httpStatus = 0;
     let responseJson: any = null;
     let sendResult: { ok: true; id: string } | { ok: false; error: string; code?: string } | null = null;
-    const postToMeta = async (payload: any) => {
+    type MetaPostResult =
+      | { ok: true; id: string; status: number; json: any }
+      | { ok: false; error: string; code?: string; status: number; json: any };
+    const postToMeta = async (payload: any): Promise<MetaPostResult> => {
       const res = await fetch(url, {
         method: "POST",
         headers: {
