@@ -76,8 +76,14 @@ export const sendGenericTemplate = createServerFn({ method: "POST" })
 
     let templateName = String(tpl.name ?? "");
     let languageCode = String(tpl.language ?? "en");
-    let headerType = (tpl.header_type ?? "").toString().toUpperCase();
+    const rawComponents: any[] = Array.isArray((tpl as any).raw?.components) ? (tpl as any).raw.components : [];
+    const rawHeader = rawComponents.find((c: any) => String(c?.type ?? "").toUpperCase() === "HEADER");
+    let headerType = (String(tpl.header_type ?? "").toUpperCase() || String(rawHeader?.format ?? "").toUpperCase());
     let templateButtons = Array.isArray(tpl.buttons) ? (tpl.buttons as any[]) : [];
+    if (!templateButtons.length) {
+      const rawBtns = rawComponents.find((c: any) => String(c?.type ?? "").toUpperCase() === "BUTTONS");
+      if (Array.isArray(rawBtns?.buttons)) templateButtons = rawBtns.buttons;
+    }
 
     if (conn.waba_id) {
       try {
