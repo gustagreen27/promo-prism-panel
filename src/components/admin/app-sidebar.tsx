@@ -75,7 +75,7 @@ const GROUPS: { label: string; items: NavItem[] }[] = [
     label: "Campanhas Disparo",
     items: [
       { title: "Todas as campanhas", to: "/admin/whatsapp-campanhas", icon: Megaphone },
-      { title: "Nova campanha", to: "/admin/whatsapp-campanhas/novo", icon: Plus },
+      { title: "Nova campanha", to: "/admin/whatsapp-campanhas", icon: Plus },
       { title: "Agendadas", to: "/admin/whatsapp-campanhas", search: { status: "scheduled" }, icon: Clock },
       { title: "Em andamento", to: "/admin/whatsapp-campanhas", search: { status: "running" }, icon: PlayCircle },
       { title: "Concluídas", to: "/admin/whatsapp-campanhas", search: { status: "completed" }, icon: CheckCircle2 },

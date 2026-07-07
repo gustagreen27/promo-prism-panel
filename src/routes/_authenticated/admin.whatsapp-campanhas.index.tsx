@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
@@ -21,7 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { listConnections } from "@/lib/whatsapp.functions";
 import { sendFrgc01, getMessageLogStatus, type SendFrgc01Response } from "@/lib/wa-frgc01.functions";
-import { listTemplates } from "@/lib/whatsapp-templates.functions";
+
 import { renderMapping, buildContext } from "@/lib/wa-variables";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp-campanhas/")({
@@ -190,12 +190,9 @@ function RecipientRow({ row }: { row: RowState }) {
 }
 
 function Page() {
-  const nav = useNavigate();
   const listFn = useServerFn(listConnections);
   const sendFn = useServerFn(sendFrgc01);
-  const templatesFn = useServerFn(listTemplates);
   const [form, setForm] = useState<Form>(EMPTY);
-  const [templateId, setTemplateId] = useState<string>("");
   const [rows, setRows] = useState<RowState[]>([]);
   const [sending, setSending] = useState(false);
   const cancelRef = useRef(false);
@@ -204,14 +201,6 @@ function Page() {
     queryKey: ["whatsapp-connections"],
     queryFn: () => listFn(),
   });
-  const { data: templates = [] } = useQuery({
-    queryKey: ["wa-templates"],
-    queryFn: () => templatesFn(),
-  });
-  const approvedTemplates = useMemo(
-    () => (templates as any[]).filter((t) => t.status === "approved"),
-    [templates],
-  );
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -440,34 +429,7 @@ function Page() {
             </Select>
           </div>
 
-          <div className="space-y-2 md:col-span-2">
-            <Label>Template aprovado</Label>
-            <Select
-              value={templateId}
-              onValueChange={(v) => {
-                setTemplateId(v);
-                const t = approvedTemplates.find((x: any) => x.id === v);
-                if (t && t.name !== "frgc_01") {
-                  toast.message(`Abrindo assistente com o template "${t.name}"…`);
-                  nav({ to: "/admin/whatsapp-campanhas/novo" });
-                }
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={approvedTemplates.length ? "Escolha o template" : "Nenhum template aprovado — cadastre em Templates"} />
-              </SelectTrigger>
-              <SelectContent>
-                {approvedTemplates.map((t: any) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.name} ({t.language})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              Esta tela é otimizada para o <code className="text-[11px]">frgc_01</code>. Para outros templates, você será levado ao assistente completo (<a className="underline" href="/admin/whatsapp-campanhas/novo">Nova campanha</a>) que suporta variáveis dinâmicas, listas de contatos e agendamento.
-            </p>
-          </div>
+
 
           <div className="space-y-2 md:col-span-2">
             <div className="flex items-center justify-between gap-2 flex-wrap">
