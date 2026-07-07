@@ -22,16 +22,6 @@ export type SendGenericResponse =
   | { ok: true; metaMessageId: string; status: string; logId: string }
   | { ok: false; error: string; code?: string; logId?: string };
 
-function explain(code?: string) {
-  const c = String(code ?? "");
-  if (c === "190") return "Access Token expirado ou inválido.";
-  if (c === "10" || c === "200") return "Permissões insuficientes no token.";
-  if (c === "100") return "Parâmetros inválidos — verifique variáveis e destino.";
-  if (c === "132000" || c === "132001") return "Template inexistente ou não aprovado para este idioma.";
-  if (c === "131047") return "Fora da janela de 24h ou destinatário sem opt-in.";
-  return undefined;
-}
-
 export const sendGenericTemplate = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => InputSchema.parse(d))
