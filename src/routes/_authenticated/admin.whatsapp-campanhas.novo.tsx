@@ -19,7 +19,7 @@ import { listClients } from "@/lib/clients.functions";
 import { listProjects } from "@/lib/projects.functions";
 import { listWabas } from "@/lib/wa-wabas.functions";
 import { listNumbers } from "@/lib/whatsapp-numbers.functions";
-import { listTemplates } from "@/lib/whatsapp-templates.functions";
+import { listTemplates, syncTemplatesByWaba } from "@/lib/whatsapp-templates.functions";
 import { listLists } from "@/lib/contact-lists.functions";
 import { previewAudience, renderPreview, createCampaignFromWizard } from "@/lib/wa-wizard.functions";
 import { availableStock, buildRecipients, startWaCampaign } from "@/lib/wa-campaigns.functions";
