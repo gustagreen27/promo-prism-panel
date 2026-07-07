@@ -47,7 +47,7 @@ export const sendGenericTemplate = createServerFn({ method: "POST" })
     if (cErr || !requestedConn) return { ok: false, error: "Conexão WhatsApp não encontrada" };
 
     let conn = requestedConn;
-    if (tpl.waba_ref_id && requestedConn.waba_ref_id && tpl.waba_ref_id !== requestedConn.waba_ref_id) {
+    if (tpl.waba_ref_id && requestedConn.waba_ref_id !== tpl.waba_ref_id) {
       const { data: sameWabaConn } = await supabaseAdmin
         .from("whatsapp_connections")
         .select("id, phone_number_id, access_token, graph_api_version, waba_id, waba_ref_id")

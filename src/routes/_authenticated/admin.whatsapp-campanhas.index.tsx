@@ -219,6 +219,10 @@ function Page() {
 
   // Filter connections to those matching the template's WABA when possible
   const filteredConnections = useMemo(() => {
+    if (selectedTemplate?.connection_id && !selectedTemplate?.waba_ref_id) {
+      const direct = (connections as any[]).filter((c) => c.id === selectedTemplate.connection_id);
+      if (direct.length) return direct;
+    }
     if (!selectedTemplate?.waba_ref_id) return connections;
     const same = (connections as any[]).filter((c) => c.waba_ref_id === selectedTemplate.waba_ref_id);
     return same.length ? same : connections;
@@ -229,7 +233,10 @@ function Page() {
   );
 
   useEffect(() => {
-    if (!connectionId && filteredConnections.length) setConnectionId(filteredConnections[0].id);
+    if (!filteredConnections.length) return;
+    if (!connectionId || !filteredConnections.some((c: any) => c.id === connectionId)) {
+      setConnectionId(filteredConnections[0].id);
+    }
   }, [filteredConnections, connectionId]);
 
   // Reset variable mappings when template changes
