@@ -250,6 +250,8 @@ export const sendGenericTemplate = createServerFn({ method: "POST" })
       sendResult = { ok: false, error: e?.message ?? "Network error" };
     }
 
+    if (!sendResult) sendResult = { ok: false, error: "Unknown error" };
+    const finalResult = sendResult;
     const nowIso = new Date().toISOString();
     const logRow = {
       campaign_id: data.campaignId ?? null,
