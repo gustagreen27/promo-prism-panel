@@ -20,12 +20,20 @@ export type SendFrgc01Response =
   | { ok: true; metaMessageId: string; status: string; logId: string }
   | { ok: false; error: string; code?: string; hint?: string; logId?: string };
 
-function explain(code?: string) {
+function explain(code?: string, msg?: string) {
   const c = String(code ?? "");
+  const m = String(msg ?? "").toLowerCase();
   if (c === "190") return "Access Token expirado ou inválido. Renove nas Configurações do WhatsApp.";
   if (c === "10" || c === "200") return "Permissões insuficientes no token (whatsapp_business_messaging).";
   if (c === "100") return "Parâmetros inválidos — verifique phone_number_id, número destino e variáveis.";
-  if (c === "132000" || c === "132001") return "Template inexistente ou não aprovado para este idioma (en).";
+  if (c === "132000") {
+    if (m.includes("number of parameters") || m.includes("parameters does not match")) {
+      return "Nº de variáveis enviadas ≠ do que o template aprovado no Meta espera. Sincronize os templates e revise o corpo.";
+    }
+    return "Template não encontrado no idioma enviado. Sincronize templates e confirme o idioma aprovado.";
+  }
+  if (c === "132001") return "Template inexistente ou não aprovado.";
+  if (c === "132015") return "Template pausado por baixa qualidade — aguarde ou submeta uma nova versão.";
   if (c === "131047") return "Fora da janela de 24h ou destinatário sem opt-in.";
   return undefined;
 }
@@ -71,6 +79,31 @@ export const sendFrgc01 = createServerFn({ method: "POST" })
         : "frgc_01";
 
     const to = data.to.replace(/\D/g, "");
+
+    // Descobre idioma + nº de variáveis do template real (evita erro Meta #132000).
+    let languageCode = "pt_BR";
+    let bodyVarCount = 4;
+    let includeButton = true;
+    try {
+      const { data: tplRow } = await supabaseAdmin
+        .from("whatsapp_templates")
+        .select("language, variables, buttons, status")
+        .eq("name", templateName)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (tplRow?.language) languageCode = tplRow.language as string;
+      if (Array.isArray((tplRow as any)?.variables)) {
+        bodyVarCount = Math.min(Math.max(((tplRow as any).variables as any[]).length, 0), 4);
+      }
+      const btns = (tplRow as any)?.buttons;
+      if (Array.isArray(btns)) {
+        includeButton = btns.some((b: any) => (b?.type ?? "").toString().toUpperCase() === "URL");
+      }
+    } catch {
+      // Ignora — usa defaults.
+    }
+
     const requestPayload = buildFrgc01Payload({
       phoneNumberId: conn.phone_number_id,
       accessToken: "***",
@@ -84,6 +117,9 @@ export const sendFrgc01 = createServerFn({ method: "POST" })
       textoAcao: data.textoAcao,
       urlParametro: data.urlParametro,
       templateName,
+      languageCode,
+      bodyVarCount,
+      includeButton,
     });
 
     const result = await sendWhatsAppTemplateFrgc01({
@@ -99,6 +135,9 @@ export const sendFrgc01 = createServerFn({ method: "POST" })
       textoAcao: data.textoAcao,
       urlParametro: data.urlParametro,
       templateName,
+      languageCode,
+      bodyVarCount,
+      includeButton,
     });
 
     const nowIso = new Date().toISOString();
@@ -110,7 +149,7 @@ export const sendFrgc01 = createServerFn({ method: "POST" })
       to_phone: to,
       template_name: templateName,
 
-      language_code: "en",
+      language_code: languageCode,
       request_payload: requestPayload,
       response_payload: result.raw ?? null,
       meta_message_id: result.ok ? result.metaMessageId : null,
@@ -157,7 +196,7 @@ export const sendFrgc01 = createServerFn({ method: "POST" })
       ok: false,
       error: result.error,
       code: result.code,
-      hint: explain(result.code),
+      hint: explain(result.code, result.error),
       logId: log?.id,
     };
   });

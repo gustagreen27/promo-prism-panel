@@ -134,6 +134,16 @@ export type SendFrgc01Input = {
   textoAcao: string;
   urlParametro: string;
   templateName?: string;
+  /** Language code from the approved template (e.g. "pt_BR", "en"). Defaults to "pt_BR". */
+  languageCode?: string;
+  /**
+   * Number of body variables the approved template expects (1..4).
+   * Truncates or ignores extra local fields to match Meta's definition
+   * and avoid error #132000 (param count mismatch). Default 4.
+   */
+  bodyVarCount?: number;
+  /** If false, do not send the URL button component (some templates don't have it). Default true. */
+  includeButton?: boolean;
 };
 
 export type SendFrgc01Result =
@@ -148,6 +158,31 @@ export function buildFrgc01Payload(input: SendFrgc01Input) {
       : { type: "image", image: { link: input.imageUrl } };
   const templateName =
     input.templateName ?? (mediaType === "video" ? "fdsda_01" : "frgc_01");
+  const language = input.languageCode || "pt_BR";
+  const varCount = Math.min(Math.max(input.bodyVarCount ?? 4, 0), 4);
+  const includeButton = input.includeButton !== false;
+
+  const allBodyParams = [
+    { type: "text", text: input.nomeCliente },
+    { type: "text", text: input.informacaoPrincipal },
+    { type: "text", text: input.mensagemComplementar },
+    { type: "text", text: input.textoAcao },
+  ].slice(0, varCount);
+
+  const components: any[] = [
+    { type: "header", parameters: [headerParam] },
+  ];
+  if (allBodyParams.length > 0) {
+    components.push({ type: "body", parameters: allBodyParams });
+  }
+  if (includeButton && input.urlParametro) {
+    components.push({
+      type: "button",
+      sub_type: "url",
+      index: "0",
+      parameters: [{ type: "text", text: input.urlParametro }],
+    });
+  }
 
   return {
     messaging_product: "whatsapp",
@@ -155,28 +190,8 @@ export function buildFrgc01Payload(input: SendFrgc01Input) {
     type: "template",
     template: {
       name: templateName,
-      language: { code: "en" },
-      components: [
-        {
-          type: "header",
-          parameters: [headerParam],
-        },
-        {
-          type: "body",
-          parameters: [
-            { type: "text", text: input.nomeCliente },
-            { type: "text", text: input.informacaoPrincipal },
-            { type: "text", text: input.mensagemComplementar },
-            { type: "text", text: input.textoAcao },
-          ],
-        },
-        {
-          type: "button",
-          sub_type: "url",
-          index: "0",
-          parameters: [{ type: "text", text: input.urlParametro }],
-        },
-      ],
+      language: { code: language },
+      components,
     },
   };
 }
