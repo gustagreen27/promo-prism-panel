@@ -262,12 +262,12 @@ export const sendGenericTemplate = createServerFn({ method: "POST" })
       language_code: languageCode,
       request_payload: { ...requestPayload, _auth: "***" },
       response_payload: responseJson,
-      meta_message_id: sendResult.ok ? sendResult.id : null,
-      message_status: sendResult.ok ? "accepted" : "failed",
-      failed_reason: sendResult.ok ? null : sendResult.error,
-      error_code: sendResult.ok ? null : sendResult.code ?? null,
+      meta_message_id: finalResult.ok ? finalResult.id : null,
+      message_status: finalResult.ok ? "accepted" : "failed",
+      failed_reason: finalResult.ok ? null : finalResult.error,
+      error_code: finalResult.ok ? null : finalResult.code ?? null,
       http_status: httpStatus,
-      sent_at: sendResult.ok ? nowIso : null,
+      sent_at: finalResult.ok ? nowIso : null,
     };
     const { data: log } = await supabaseAdmin
       .from("message_logs")
@@ -275,8 +275,8 @@ export const sendGenericTemplate = createServerFn({ method: "POST" })
       .select("id")
       .single();
 
-    if (sendResult.ok) {
-      return { ok: true, metaMessageId: sendResult.id, status: "accepted", logId: log?.id ?? "" };
+    if (finalResult.ok) {
+      return { ok: true, metaMessageId: finalResult.id, status: "accepted", logId: log?.id ?? "" };
     }
     const explainError = (code?: string) => {
       const c = String(code ?? "");
@@ -289,8 +289,8 @@ export const sendGenericTemplate = createServerFn({ method: "POST" })
     };
     return {
       ok: false,
-      error: sendResult.error + (explainError(sendResult.code) ? ` — ${explainError(sendResult.code)}` : ""),
-      code: sendResult.code,
+      error: finalResult.error + (explainError(finalResult.code) ? ` — ${explainError(finalResult.code)}` : ""),
+      code: finalResult.code,
       logId: log?.id,
     };
   });
