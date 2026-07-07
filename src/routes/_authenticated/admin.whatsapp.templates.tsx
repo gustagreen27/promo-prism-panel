@@ -31,6 +31,7 @@ function Page() {
   const update = useServerFn(updateTemplate);
   const remove = useServerFn(deleteTemplate);
   const sync = useServerFn(syncTemplates);
+  const syncAll = useServerFn(syncAllTemplates);
   const submitFn = useServerFn(submitTemplateForApproval);
   const refreshStatusFn = useServerFn(refreshTemplateStatus);
   const wabasFn = useServerFn(listWabas);
