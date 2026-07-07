@@ -1,0 +1,2 @@
+ALTER TABLE public.whatsapp_templates ADD COLUMN IF NOT EXISTS last_synced_at timestamptz;
+CREATE INDEX IF NOT EXISTS idx_whatsapp_templates_last_synced_at ON public.whatsapp_templates(last_synced_at DESC);

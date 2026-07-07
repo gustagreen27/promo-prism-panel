@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { listTemplates, createTemplate, updateTemplate, deleteTemplate, syncTemplates } from "@/lib/whatsapp-templates.functions";
+import { listTemplates, createTemplate, updateTemplate, deleteTemplate, syncTemplates, syncAllTemplates } from "@/lib/whatsapp-templates.functions";
 import { submitTemplateForApproval, refreshTemplateStatus } from "@/lib/wa-meta.functions";
 import { listNumbers } from "@/lib/whatsapp-numbers.functions";
 import { listWabas } from "@/lib/wa-wabas.functions";
@@ -31,6 +31,7 @@ function Page() {
   const update = useServerFn(updateTemplate);
   const remove = useServerFn(deleteTemplate);
   const sync = useServerFn(syncTemplates);
+  const syncAll = useServerFn(syncAllTemplates);
   const submitFn = useServerFn(submitTemplateForApproval);
   const refreshStatusFn = useServerFn(refreshTemplateStatus);
   const wabasFn = useServerFn(listWabas);
@@ -52,6 +53,11 @@ function Page() {
   const syncMut = useMutation({
     mutationFn: (id: string) => sync({ data: { connection_id: id } }),
     onSuccess: (r: any) => { toast.success(`${r.synced}/${r.total} templates sincronizados`); refresh(); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao sincronizar"),
+  });
+  const syncAllMut = useMutation({
+    mutationFn: () => syncAll({}),
+    onSuccess: (r: any) => { toast.success(`${r.synced}/${r.total} templates sincronizados em ${r.connections} conexão(ões)${r.failed ? ` (${r.failed} com falha)` : ""}`); refresh(); },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao sincronizar"),
   });
   const submitMut = useMutation({
@@ -78,6 +84,9 @@ function Page() {
             </Select>
             <Button variant="outline" disabled={!syncConn || syncMut.isPending} onClick={() => syncMut.mutate(syncConn)}>
               <RefreshCw className="mr-2 h-4 w-4" />Sincronizar
+            </Button>
+            <Button variant="secondary" disabled={syncAllMut.isPending} onClick={() => syncAllMut.mutate()}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${syncAllMut.isPending ? "animate-spin" : ""}`} />Sincronizar todos
             </Button>
             <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
               <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Novo</Button></DialogTrigger>
