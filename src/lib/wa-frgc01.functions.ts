@@ -196,7 +196,7 @@ export const sendFrgc01 = createServerFn({ method: "POST" })
       ok: false,
       error: result.error,
       code: result.code,
-      hint: explain(result.code),
+      hint: explain(result.code, result.error),
       logId: log?.id,
     };
   });
