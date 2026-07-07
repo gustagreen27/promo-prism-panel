@@ -2072,45 +2072,6 @@ export type Database = {
           },
         ]
       }
-      wa_queue_tick_logs: {
-        Row: {
-          created_at: string
-          duration_ms: number
-          id: string
-          last_error: string | null
-          processed_campaigns: number
-          promoted_count: number
-          ran_at: string
-          results: Json
-          total_failed: number
-          total_sent: number
-        }
-        Insert: {
-          created_at?: string
-          duration_ms?: number
-          id?: string
-          last_error?: string | null
-          processed_campaigns?: number
-          promoted_count?: number
-          ran_at?: string
-          results?: Json
-          total_failed?: number
-          total_sent?: number
-        }
-        Update: {
-          created_at?: string
-          duration_ms?: number
-          id?: string
-          last_error?: string | null
-          processed_campaigns?: number
-          promoted_count?: number
-          ran_at?: string
-          results?: Json
-          total_failed?: number
-          total_sent?: number
-        }
-        Relationships: []
-      }
       wallet_reservations: {
         Row: {
           campaign_id: string | null
@@ -2779,7 +2740,6 @@ export type Database = {
           history: Json | null
           id: string
           language: string
-          last_synced_at: string | null
           meta_template_id: string | null
           name: string
           raw: Json | null
@@ -2807,7 +2767,6 @@ export type Database = {
           history?: Json | null
           id?: string
           language?: string
-          last_synced_at?: string | null
           meta_template_id?: string | null
           name: string
           raw?: Json | null
@@ -2835,7 +2794,6 @@ export type Database = {
           history?: Json | null
           id?: string
           language?: string
-          last_synced_at?: string | null
           meta_template_id?: string | null
           name?: string
           raw?: Json | null

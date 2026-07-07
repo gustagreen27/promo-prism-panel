@@ -22,7 +22,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { listConnections } from "@/lib/whatsapp.functions";
 import { sendFrgc01, getMessageLogStatus, type SendFrgc01Response } from "@/lib/wa-frgc01.functions";
 import { renderMapping, buildContext } from "@/lib/wa-variables";
-import { QueueStatusPanel } from "@/components/admin/QueueStatusPanel";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp-campanhas")({
   head: () => ({ meta: [{ title: "Campanhas WhatsApp (frgc_01)" }] }),
@@ -412,8 +411,6 @@ function Page() {
         title="Campanhas WhatsApp (frgc_01)"
         description="Disparo oficial em lote via WhatsApp Cloud API — mesmo formato do teste, com múltiplos destinatários."
       />
-
-      <QueueStatusPanel />
 
       <div className="rounded-lg border bg-card p-5 space-y-4 max-w-3xl">
         <div className="grid gap-4 md:grid-cols-2">

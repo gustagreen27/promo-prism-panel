@@ -98,16 +98,49 @@ export const syncTemplates = createServerFn({ method: "POST" })
     if (!conn?.waba_id || !conn?.access_token) {
       throw new Error("Número não possui WABA ID ou Access Token configurados.");
     }
-    const { syncConnectionTemplates } = await import("@/lib/wa-templates-sync.server");
-    const r = await syncConnectionTemplates(context.supabase, conn);
-    if (!r.ok) throw new Error(r.error || "Falha ao sincronizar");
-    return { synced: r.synced, total: r.total };
-  });
+    const { syncTemplatesFromMeta } = await import("@/lib/wa-send.server");
+    const list = await syncTemplatesFromMeta({
+      wabaId: conn.waba_id,
+      accessToken: conn.access_token,
+      graphVersion: conn.graph_api_version || "v21.0",
+    });
 
-export const syncAllTemplates = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    await assertAdmin(context);
-    const { syncAllConnections } = await import("@/lib/wa-templates-sync.server");
-    return await syncAllConnections(context.supabase);
+    let upserted = 0;
+    for (const t of list) {
+      const body = (t.components || []).find((c: any) => c.type === "BODY");
+      const header = (t.components || []).find((c: any) => c.type === "HEADER");
+      const footer = (t.components || []).find((c: any) => c.type === "FOOTER");
+      const buttons = (t.components || []).find((c: any) => c.type === "BUTTONS");
+      const variables =
+        body?.text?.match(/\{\{\d+\}\}/g)?.map((v: string) => v.replace(/[{}]/g, "")) ?? [];
+
+      const statusMap: Record<string, string> = {
+        APPROVED: "approved",
+        PENDING: "pending",
+        REJECTED: "rejected",
+        PAUSED: "paused",
+        DISABLED: "disabled",
+      };
+
+      const { error } = await context.supabase.from("whatsapp_templates").upsert(
+        {
+          connection_id: data.connection_id,
+          meta_template_id: t.id ?? null,
+          name: t.name,
+          language: t.language,
+          category: t.category,
+          status: (statusMap[t.status] || "pending") as "approved" | "pending" | "rejected" | "paused" | "disabled",
+          header_type: header?.format?.toLowerCase() ?? null,
+          header_text: header?.text ?? null,
+          body: body?.text ?? "",
+          footer: footer?.text ?? null,
+          variables,
+          buttons: buttons?.buttons ?? [],
+          raw: t,
+        },
+        { onConflict: "connection_id,name,language" }
+      );
+      if (!error) upserted++;
+    }
+    return { synced: upserted, total: list.length };
   });
