@@ -179,6 +179,7 @@ export const syncTemplatesByWaba = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!accessToken) accessToken = conn?.access_token ?? null;
     if (conn?.graph_api_version) graphVersion = conn.graph_api_version;
+    if (!accessToken) accessToken = process.env.WHATSAPP_ACCESS_TOKEN ?? null;
     if (!accessToken) {
       throw new Error(
         "Nenhum Access Token disponível para esta WABA. Conclua o Embedded Signup ou cadastre um token na WABA/número.",
