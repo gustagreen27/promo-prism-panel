@@ -162,8 +162,9 @@ export const completeEmbeddedSignup = createServerFn({ method: "POST" })
         onboarded_via: "embedded_signup",
         onboarded_at: new Date().toISOString(),
         status: "ativo",
-        client_id: data.client_id ?? null,
-        project_id: data.project_id ?? null,
+        client_id: scopedClientId,
+        project_id: scopedProjectId,
+        workspace_id: scopedWorkspaceId,
       }).eq("id", wabaRefId);
     } else {
       const ins = await supabase.from("whatsapp_wabas").insert({
@@ -175,8 +176,9 @@ export const completeEmbeddedSignup = createServerFn({ method: "POST" })
         onboarded_via: "embedded_signup",
         onboarded_at: new Date().toISOString(),
         status: "ativo",
-        client_id: data.client_id ?? null,
-        project_id: data.project_id ?? null,
+        client_id: scopedClientId,
+        project_id: scopedProjectId,
+        workspace_id: scopedWorkspaceId,
       }).select("id").single();
       if (ins.error) {
         await logStep(supabase, baseLog, "upsert_waba", "error", ins.error, ins.error.message);
