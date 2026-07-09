@@ -46,12 +46,12 @@ export const importWabasFromBusiness = createServerFn({ method: "POST" })
     let created = 0, updated = 0;
     for (const w of wabas) {
       const { data: existing } = await context.supabase
-        .from("whatsapp_wabas").select("id").eq("waba_id", w.id).maybeSingle();
+        .from("whatsapp_wabas").select("id, nome_interno").eq("waba_id", w.id).maybeSingle();
       if (existing) {
         await context.supabase.from("whatsapp_wabas").update({
-          nome_interno: w.name || existing.nome_interno || `WABA ${w.id}`,
+          nome_interno: w.name || (existing as any).nome_interno || `WABA ${w.id}`,
           business_id: data.business_id,
-        }).eq("id", existing.id);
+        }).eq("id", (existing as any).id);
         updated++;
       } else {
         await context.supabase.from("whatsapp_wabas").insert({
