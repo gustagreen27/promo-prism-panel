@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, RefreshCw, Send, ClipboardCheck } from "lucide-react";
+import { Plus, Trash2, Pencil, RefreshCw, Send, ClipboardCheck, Copy } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { listTemplates, createTemplate, updateTemplate, deleteTemplate, syncTemplates } from "@/lib/whatsapp-templates.functions";
 import { submitTemplateForApproval, refreshTemplateStatus } from "@/lib/wa-meta.functions";
+import { duplicateTemplate } from "@/lib/wa-meta-api.functions";
 import { listNumbers } from "@/lib/whatsapp-numbers.functions";
 import { listWabas } from "@/lib/wa-wabas.functions";
 
@@ -33,6 +34,7 @@ function Page() {
   const sync = useServerFn(syncTemplates);
   const submitFn = useServerFn(submitTemplateForApproval);
   const refreshStatusFn = useServerFn(refreshTemplateStatus);
+  const dupFn = useServerFn(duplicateTemplate);
   const wabasFn = useServerFn(listWabas);
   const qc = useQueryClient();
   const { data: rows = [], isLoading } = useQuery({ queryKey: ["wa-templates"], queryFn: () => listFn() });
@@ -62,6 +64,11 @@ function Page() {
   const refreshMut = useMutation({
     mutationFn: (id: string) => refreshStatusFn({ data: { template_id: id } }),
     onSuccess: (r: any) => { toast.success(`Status: ${r.status}`); refresh(); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro"),
+  });
+  const dupMut = useMutation({
+    mutationFn: (id: string) => dupFn({ data: { template_id: id } }),
+    onSuccess: () => { toast.success("Template duplicado"); refresh(); },
     onError: (e: any) => toast.error(e?.message ?? "Erro"),
   });
 
@@ -108,6 +115,7 @@ function Page() {
                 <TableCell className="text-right">
                   <Button size="icon" variant="ghost" title="Enviar para aprovação" disabled={submitMut.isPending || !r.waba_ref_id} onClick={() => submitMut.mutate(r.id)}><Send className="h-4 w-4" /></Button>
                   <Button size="icon" variant="ghost" title="Consultar status" disabled={refreshMut.isPending || !r.waba_ref_id} onClick={() => refreshMut.mutate(r.id)}><ClipboardCheck className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" title="Duplicar" disabled={dupMut.isPending} onClick={() => dupMut.mutate(r.id)}><Copy className="h-4 w-4" /></Button>
                   <Button size="icon" variant="ghost" onClick={() => { setEditing(r); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                   <Button size="icon" variant="ghost" onClick={() => confirm("Remover?") && del.mutate(r.id)}><Trash2 className="h-4 w-4" /></Button>
                 </TableCell>

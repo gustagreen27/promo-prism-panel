@@ -156,3 +156,115 @@ export async function fetchWabaPhoneNumbers(wabaId: string, tokenOverride?: stri
   }
   return (json.data ?? []) as any[];
 }
+
+// ── Token diagnostics ────────────────────────────────────────────────────────
+export async function debugAccessToken(tokenOverride?: string | null): Promise<
+  MetaOk<{ app_id?: string; user_id?: string; type?: string; expires_at?: number; is_valid?: boolean; scopes: string[] }>
+  | MetaError
+> {
+  const token = tokenOverride || process.env.WHATSAPP_ACCESS_TOKEN;
+  if (!token) return { ok: false, error: "WHATSAPP_ACCESS_TOKEN não configurado." };
+  const appToken = process.env.META_APP_ID && process.env.META_APP_SECRET
+    ? `${process.env.META_APP_ID}|${process.env.META_APP_SECRET}`
+    : token;
+  const url = `${GRAPH}/debug_token?input_token=${encodeURIComponent(token)}&access_token=${encodeURIComponent(appToken)}`;
+  const res = await fetch(url, { method: "GET" });
+  const json: any = await res.json().catch(() => ({}));
+  if (!res.ok) return { ok: false, ...humanizeMetaError(json, res.status), raw: json, httpStatus: res.status };
+  const d = json?.data ?? {};
+  return {
+    ok: true,
+    raw: json,
+    data: {
+      app_id: d.app_id,
+      user_id: d.user_id,
+      type: d.type,
+      expires_at: d.expires_at,
+      is_valid: d.is_valid,
+      scopes: Array.isArray(d.scopes) ? d.scopes : [],
+    },
+  };
+}
+
+export async function listOwnedWabas(businessId: string, tokenOverride?: string | null) {
+  const url = `/${businessId}/owned_whatsapp_business_accounts?fields=id,name,timezone_id,message_template_namespace,currency,account_review_status`;
+  const res = await metaFetch(url, { method: "GET" }, tokenOverride);
+  const json: any = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const h = humanizeMetaError(json, res.status);
+    throw new Error(h.error);
+  }
+  return (json.data ?? []) as any[];
+}
+
+export async function createWabaOnMeta(input: {
+  businessId: string;
+  name: string;
+  timezoneId?: string;
+  currency?: string;
+  tokenOverride?: string | null;
+}): Promise<MetaOk<{ id: string }> | MetaError> {
+  const body: any = { name: input.name };
+  if (input.timezoneId) body.timezone_id = input.timezoneId;
+  if (input.currency) body.currency = input.currency;
+  const res = await metaFetch(`/${input.businessId}/whatsapp_business_accounts`, {
+    method: "POST", body: JSON.stringify(body),
+  }, input.tokenOverride);
+  const json: any = await res.json().catch(() => ({}));
+  if (!res.ok) return { ok: false, ...humanizeMetaError(json, res.status), raw: json, httpStatus: res.status };
+  return { ok: true, data: { id: json.id }, raw: json };
+}
+
+export async function addPhoneToWaba(input: {
+  wabaId: string;
+  cc: string;
+  phone_number: string;
+  verified_name: string;
+  tokenOverride?: string | null;
+}): Promise<MetaOk<{ id: string }> | MetaError> {
+  const res = await metaFetch(`/${input.wabaId}/phone_numbers`, {
+    method: "POST",
+    body: JSON.stringify({ cc: input.cc, phone_number: input.phone_number, verified_name: input.verified_name }),
+  }, input.tokenOverride);
+  const json: any = await res.json().catch(() => ({}));
+  if (!res.ok) return { ok: false, ...humanizeMetaError(json, res.status), raw: json, httpStatus: res.status };
+  return { ok: true, data: { id: json.id }, raw: json };
+}
+
+export async function requestPhoneCode(input: {
+  phoneNumberId: string;
+  code_method: "SMS" | "VOICE";
+  language?: string;
+  tokenOverride?: string | null;
+}): Promise<MetaOk<any> | MetaError> {
+  const res = await metaFetch(`/${input.phoneNumberId}/request_code`, {
+    method: "POST",
+    body: JSON.stringify({ code_method: input.code_method, language: input.language ?? "pt_BR" }),
+  }, input.tokenOverride);
+  const json: any = await res.json().catch(() => ({}));
+  if (!res.ok) return { ok: false, ...humanizeMetaError(json, res.status), raw: json, httpStatus: res.status };
+  return { ok: true, data: json, raw: json };
+}
+
+export async function verifyPhoneCode(input: {
+  phoneNumberId: string; code: string; tokenOverride?: string | null;
+}): Promise<MetaOk<any> | MetaError> {
+  const res = await metaFetch(`/${input.phoneNumberId}/verify_code`, {
+    method: "POST", body: JSON.stringify({ code: input.code }),
+  }, input.tokenOverride);
+  const json: any = await res.json().catch(() => ({}));
+  if (!res.ok) return { ok: false, ...humanizeMetaError(json, res.status), raw: json, httpStatus: res.status };
+  return { ok: true, data: json, raw: json };
+}
+
+export async function registerPhone(input: {
+  phoneNumberId: string; pin: string; tokenOverride?: string | null;
+}): Promise<MetaOk<any> | MetaError> {
+  const res = await metaFetch(`/${input.phoneNumberId}/register`, {
+    method: "POST",
+    body: JSON.stringify({ messaging_product: "whatsapp", pin: input.pin }),
+  }, input.tokenOverride);
+  const json: any = await res.json().catch(() => ({}));
+  if (!res.ok) return { ok: false, ...humanizeMetaError(json, res.status), raw: json, httpStatus: res.status };
+  return { ok: true, data: json, raw: json };
+}

@@ -65,6 +65,7 @@ const GROUPS: { label: string; items: NavItem[] }[] = [
       { title: "WABAs", to: "/admin/whatsapp/wabas", icon: Briefcase },
       { title: "Números", to: "/admin/whatsapp/numeros", icon: Hash },
       { title: "Templates", to: "/admin/whatsapp/templates", icon: FileText },
+      { title: "Conexões", to: "/admin/whatsapp/conexoes", icon: Link2 },
       { title: "Embedded Signup", to: "/admin/whatsapp/embedded-signup", icon: Sparkles },
       { title: "Webhooks", to: "/admin/whatsapp/webhooks", icon: Webhook },
       { title: "Inbox", to: "/admin/whatsapp/inbox", icon: Inbox },

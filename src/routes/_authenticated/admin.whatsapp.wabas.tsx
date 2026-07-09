@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, Eye, RefreshCw } from "lucide-react";
+import { Plus, Trash2, Pencil, Eye, RefreshCw, ShieldCheck, Cloud, Download } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { listWabas, createWaba, updateWaba, deleteWaba, getWabaChildren } from "@/lib/wa-wabas.functions";
 import { syncWabaNumbers, syncAllWabas } from "@/lib/wa-meta-sync.functions";
+import { debugToken, createWabaViaApi, importWabasFromBusiness } from "@/lib/wa-meta-api.functions";
 import { listClients } from "@/lib/clients.functions";
 import { listProjects } from "@/lib/projects.functions";
 import { EmbeddedSignupButton } from "@/components/admin/whatsapp/embedded-signup-button";
@@ -33,6 +34,9 @@ function Page() {
   const childrenFn = useServerFn(getWabaChildren);
   const syncOne = useServerFn(syncWabaNumbers);
   const syncAll = useServerFn(syncAllWabas);
+  const debugFn = useServerFn(debugToken);
+  const createApiFn = useServerFn(createWabaViaApi);
+  const importFn = useServerFn(importWabasFromBusiness);
   const clientsFn = useServerFn(listClients);
   const projectsFn = useServerFn(listProjects);
   const qc = useQueryClient();
@@ -44,6 +48,10 @@ function Page() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [viewing, setViewing] = useState<any>(null);
+  const [diagOpen, setDiagOpen] = useState(false);
+  const [diag, setDiag] = useState<any>(null);
+  const [apiOpen, setApiOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["wa-wabas"] });
   const save = useMutation({
@@ -73,6 +81,21 @@ function Page() {
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao sincronizar"),
   });
+  const diagMut = useMutation({
+    mutationFn: () => debugFn(),
+    onSuccess: (r: any) => { setDiag(r); setDiagOpen(true); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro no diagnóstico"),
+  });
+  const apiCreateMut = useMutation({
+    mutationFn: (p: any) => createApiFn({ data: p }),
+    onSuccess: () => { toast.success("WABA criada na Meta"); setApiOpen(false); refresh(); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro"),
+  });
+  const importBmMut = useMutation({
+    mutationFn: (p: any) => importFn({ data: p }),
+    onSuccess: (r: any) => { toast.success(`${r.created} nova(s), ${r.updated} atualizada(s)`); setImportOpen(false); refresh(); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro"),
+  });
 
   return (
     <>
@@ -80,14 +103,23 @@ function Page() {
         title="WABAs"
         description="Contas oficiais do WhatsApp Business (WhatsApp Business Accounts)."
         actions={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" disabled={syncAllMut.isPending} onClick={() => syncAllMut.mutate()}>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button variant="outline" size="sm" disabled={diagMut.isPending} onClick={() => diagMut.mutate()}>
+              <ShieldCheck className="mr-2 h-4 w-4" />Testar token
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+              <Download className="mr-2 h-4 w-4" />Importar do BM
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setApiOpen(true)}>
+              <Cloud className="mr-2 h-4 w-4" />Criar via API
+            </Button>
+            <Button variant="outline" size="sm" disabled={syncAllMut.isPending} onClick={() => syncAllMut.mutate()}>
               <RefreshCw className={`mr-2 h-4 w-4 ${syncAllMut.isPending ? "animate-spin" : ""}`} />
               Sincronizar tudo
             </Button>
             <EmbeddedSignupButton onCompleted={() => refresh()} />
             <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
-              <DialogTrigger asChild><Button variant="outline"><Plus className="mr-2 h-4 w-4" />Cadastro manual</Button></DialogTrigger>
+              <DialogTrigger asChild><Button variant="outline" size="sm"><Plus className="mr-2 h-4 w-4" />Cadastro manual</Button></DialogTrigger>
               <FormDialog editing={editing} clients={clients} projects={projects} onSubmit={(p: any) => save.mutate(p)} saving={save.isPending} />
             </Dialog>
           </div>
@@ -137,7 +169,95 @@ function Page() {
           {viewing && <Children id={viewing.id} fetcher={childrenFn} />}
         </DialogContent>
       </Dialog>
+
+      <Dialog open={diagOpen} onOpenChange={setDiagOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Diagnóstico do token Meta</DialogTitle></DialogHeader>
+          {diag ? (
+            <div className="space-y-2 text-sm">
+              <div><b>App ID:</b> {diag.app_id ?? "—"}</div>
+              <div><b>Tipo:</b> {diag.type ?? "—"}</div>
+              <div><b>Válido:</b> {diag.is_valid ? "sim" : "não"}</div>
+              <div><b>Expira em:</b> {diag.expires_at ? new Date(diag.expires_at * 1000).toLocaleString("pt-BR") : "nunca"}</div>
+              <div><b>Escopos:</b> <div className="flex flex-wrap gap-1 mt-1">{diag.scopes.map((s: string) => <Badge key={s} variant="outline">{s}</Badge>)}</div></div>
+              {diag.missing_scopes?.length ? (
+                <div className="rounded-md border border-destructive/30 bg-destructive/5 p-2 mt-2">
+                  <b className="text-destructive">Faltam permissões:</b>
+                  <div className="flex flex-wrap gap-1 mt-1">{diag.missing_scopes.map((s: string) => <Badge key={s} variant="destructive">{s}</Badge>)}</div>
+                </div>
+              ) : <div className="text-emerald-600 font-medium">Token OK — todas as permissões presentes.</div>}
+            </div>
+          ) : <div className="text-sm text-muted-foreground">Sem dados.</div>}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={apiOpen} onOpenChange={setApiOpen}>
+        <CreateApiDialog clients={clients} projects={projects} saving={apiCreateMut.isPending} onSubmit={(p: any) => apiCreateMut.mutate(p)} />
+      </Dialog>
+
+      <Dialog open={importOpen} onOpenChange={setImportOpen}>
+        <ImportBmDialog clients={clients} projects={projects} saving={importBmMut.isPending} onSubmit={(p: any) => importBmMut.mutate(p)} />
+      </Dialog>
     </>
+  );
+}
+
+function CreateApiDialog({ clients, projects, saving, onSubmit }: any) {
+  const [form, setForm] = useState<any>({ business_id: "", name: "", timezone_id: "25", currency: "BRL", client_id: "", project_id: "" });
+  const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
+  return (
+    <DialogContent className="max-w-xl">
+      <DialogHeader><DialogTitle>Criar WABA via Graph API</DialogTitle></DialogHeader>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="sm:col-span-2"><Label>Business Manager ID *</Label><Input value={form.business_id} onChange={(e) => set("business_id", e.target.value)} placeholder="1234567890" /></div>
+        <div className="sm:col-span-2"><Label>Nome da WABA *</Label><Input value={form.name} onChange={(e) => set("name", e.target.value)} /></div>
+        <div><Label>Timezone ID</Label><Input value={form.timezone_id} onChange={(e) => set("timezone_id", e.target.value)} placeholder="25 = America/Sao_Paulo" /></div>
+        <div><Label>Moeda</Label><Input value={form.currency} onChange={(e) => set("currency", e.target.value)} placeholder="BRL" /></div>
+        <div><Label>Cliente</Label>
+          <Select value={form.client_id} onValueChange={(v) => set("client_id", v)}>
+            <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+            <SelectContent>{clients.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div><Label>Projeto</Label>
+          <Select value={form.project_id} onValueChange={(v) => set("project_id", v)}>
+            <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+            <SelectContent>{projects.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+      </div>
+      <DialogFooter>
+        <Button disabled={saving || !form.business_id || !form.name} onClick={() => onSubmit(form)}>Criar na Meta</Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+}
+
+function ImportBmDialog({ clients, projects, saving, onSubmit }: any) {
+  const [form, setForm] = useState<any>({ business_id: "", client_id: "", project_id: "" });
+  const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
+  return (
+    <DialogContent className="max-w-xl">
+      <DialogHeader><DialogTitle>Importar WABAs do Business Manager</DialogTitle></DialogHeader>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="sm:col-span-2"><Label>Business Manager ID *</Label><Input value={form.business_id} onChange={(e) => set("business_id", e.target.value)} placeholder="1234567890" /></div>
+        <div><Label>Vincular ao cliente (opcional)</Label>
+          <Select value={form.client_id} onValueChange={(v) => set("client_id", v)}>
+            <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+            <SelectContent>{clients.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div><Label>Projeto (opcional)</Label>
+          <Select value={form.project_id} onValueChange={(v) => set("project_id", v)}>
+            <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+            <SelectContent>{projects.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+      </div>
+      <DialogFooter>
+        <Button disabled={saving || !form.business_id} onClick={() => onSubmit(form)}>Importar</Button>
+      </DialogFooter>
+    </DialogContent>
   );
 }
 

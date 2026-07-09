@@ -3102,7 +3102,10 @@ export type Database = {
           block_reason: string | null
           blocked_at: string | null
           created_at: string
+          default_connection_id: string | null
           id: string
+          meta_business_id: string | null
+          meta_business_name: string | null
           name: string
           owner_id: string | null
           plan: string
@@ -3116,7 +3119,10 @@ export type Database = {
           block_reason?: string | null
           blocked_at?: string | null
           created_at?: string
+          default_connection_id?: string | null
           id?: string
+          meta_business_id?: string | null
+          meta_business_name?: string | null
           name: string
           owner_id?: string | null
           plan?: string
@@ -3130,7 +3136,10 @@ export type Database = {
           block_reason?: string | null
           blocked_at?: string | null
           created_at?: string
+          default_connection_id?: string | null
           id?: string
+          meta_business_id?: string | null
+          meta_business_name?: string | null
           name?: string
           owner_id?: string | null
           plan?: string
@@ -3139,7 +3148,22 @@ export type Database = {
           status?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "workspaces_default_connection_id_fkey"
+            columns: ["default_connection_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_numbers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workspaces_default_connection_id_fkey"
+            columns: ["default_connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
