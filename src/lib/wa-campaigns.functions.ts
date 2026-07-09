@@ -298,12 +298,24 @@ export const scheduleQuickSend = createServerFn({ method: "POST" })
       .single();
     if (cErr) throw cErr;
 
-    const rows = uniqueRecipients.map((r) => ({
-      campaign_id: campRow.id,
-      phone: r.phone.replace(/\D/g, ""),
-      variables: r.name ? { nome: r.name } : {},
-      status: "pending" as const,
-    }));
+    const rows = uniqueRecipients.map((r) => {
+      const vars: Record<string, string> = {};
+      if (r.name) vars.nome = r.name;
+      if (r.extras) {
+        for (const [k, v] of Object.entries(r.extras)) {
+          if (v === null || v === undefined || String(v).trim() === "") continue;
+          vars[k] = String(v);
+          vars[k.toLowerCase()] = String(v);
+        }
+      }
+      return {
+        campaign_id: campRow.id,
+        phone: r.phone.replace(/\D/g, ""),
+        variables: vars,
+        status: "pending" as const,
+      };
+    });
+
     for (let i = 0; i < rows.length; i += 1000) {
       const { error: rErr } = await context.supabase
         .from("campaign_recipients")
