@@ -3,7 +3,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Upload, Loader2, Play, X, FileSpreadsheet, RefreshCw, Settings2 } from "lucide-react";
+import { Upload, Loader2, Play, X, FileSpreadsheet, RefreshCw, Settings2, Pause, CheckCircle2, CircleDashed, AlertCircle } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import {
@@ -182,6 +183,12 @@ function Page() {
   const [buttonUrlMapping, setButtonUrlMapping] = useState<Record<string, string>>({});
   const [rows, setRows] = useState<RowState[]>([]);
   const [sending, setSending] = useState(false);
+  const [paused, setPaused] = useState(false);
+  type RunStatus = "idle" | "running" | "paused" | "finished" | "cancelled";
+  const [runStatus, setRunStatus] = useState<RunStatus>("idle");
+  const [runStartedAt, setRunStartedAt] = useState<number | null>(null);
+  const [runEndedAt, setRunEndedAt] = useState<number | null>(null);
+  const [nowTick, setNowTick] = useState(Date.now());
   const [syncing, setSyncing] = useState(false);
   const [uploading, setUploading] = useState(false);
   // Send throttling
@@ -194,6 +201,7 @@ function Page() {
   const [batchSize, setBatchSize] = useState(10);           // pause every N sends
   const [batchPauseSec, setBatchPauseSec] = useState(60);   // seconds
   const cancelRef = useRef(false);
+  const pausedRef = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
   const [csvOpen, setCsvOpen] = useState(false);
@@ -452,7 +460,12 @@ function Page() {
   async function handleSend() {
     if (!canSubmit || sending || !selectedTemplate) return;
     cancelRef.current = false;
+    pausedRef.current = false;
+    setPaused(false);
     setSending(true);
+    setRunStatus("running");
+    setRunStartedAt(Date.now());
+    setRunEndedAt(null);
     const initial: RowState[] = recipients.map((r) => ({ phone: r.phone, name: r.name, status: "pending" }));
     setRows(initial);
     let okCount = 0;
@@ -511,9 +524,16 @@ function Page() {
     };
 
     const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const waitWhilePaused = async () => {
+      while (pausedRef.current && !cancelRef.current) {
+        await wait(200);
+      }
+    };
     const conns = selectedConnections;
 
     for (let i = 0; i < recipients.length; i++) {
+      if (cancelRef.current) break;
+      await waitWhilePaused();
       if (cancelRef.current) break;
       const conn = conns[i % conns.length];
       await sendOne(i, conn);
@@ -532,8 +552,19 @@ function Page() {
     }
 
     setSending(false);
+    setPaused(false);
+    pausedRef.current = false;
+    setRunEndedAt(Date.now());
+    setRunStatus(cancelRef.current ? "cancelled" : "finished");
     toast[failCount === 0 ? "success" : "message"](`Envio concluído · ${okCount} ok · ${failCount} falha(s)`);
   }
+
+  // Tick clock while running so ETA/elapsed refresh
+  useEffect(() => {
+    if (!sending) return;
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [sending]);
 
   return (
     <div className="space-y-6">
@@ -874,26 +905,106 @@ function Page() {
               ? `Enviando… (${rows.filter((r) => r.status === "sent" || r.status === "failed").length}/${rows.length})`
               : `Disparar para ${recipients.length} destinatário(s)`}
           </Button>
+          {sending && !paused && (
+            <Button variant="outline" onClick={() => { pausedRef.current = true; setPaused(true); setRunStatus("paused"); }}>
+              <Pause className="h-4 w-4 mr-2" /> Pausar
+            </Button>
+          )}
+          {sending && paused && (
+            <Button variant="outline" onClick={() => { pausedRef.current = false; setPaused(false); setRunStatus("running"); }}>
+              <Play className="h-4 w-4 mr-2" /> Retomar
+            </Button>
+          )}
           {sending && (
-            <Button variant="outline" onClick={() => { cancelRef.current = true; }}>
+            <Button variant="outline" onClick={() => { cancelRef.current = true; pausedRef.current = false; setPaused(false); }}>
               <X className="h-4 w-4 mr-2" /> Cancelar
             </Button>
           )}
           {rows.length > 0 && !sending && (
-            <Button variant="ghost" onClick={() => setRows([])}>Limpar resultados</Button>
+            <Button variant="ghost" onClick={() => { setRows([]); setRunStatus("idle"); setRunStartedAt(null); setRunEndedAt(null); }}>Limpar resultados</Button>
           )}
         </div>
 
-        {rows.length > 0 && (
-          <div className="space-y-2 pt-2">
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Status por destinatário
+        {rows.length > 0 && (() => {
+          const done = rows.filter((r) => r.status === "sent" || r.status === "failed").length;
+          const okN = rows.filter((r) => r.status === "sent").length;
+          const failN = rows.filter((r) => r.status === "failed").length;
+          const sendingN = rows.filter((r) => r.status === "sending").length;
+          const total = rows.length;
+          const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+          const elapsedMs = runStartedAt ? (runEndedAt ?? nowTick) - runStartedAt : 0;
+          const rate = elapsedMs > 0 ? done / (elapsedMs / 1000) : 0;
+          const remaining = total - done;
+          const etaSec = rate > 0 && remaining > 0 && runStatus === "running" ? remaining / rate : 0;
+          const fmt = (s: number) => {
+            if (!s || !isFinite(s)) return "—";
+            if (s < 60) return `${Math.round(s)}s`;
+            if (s < 3600) return `${Math.floor(s / 60)}m ${Math.round(s % 60)}s`;
+            return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
+          };
+          const statusMeta: Record<RunStatus, { label: string; cls: string; icon: any }> = {
+            idle:      { label: "Aguardando",  cls: "bg-muted text-muted-foreground border-border",           icon: CircleDashed },
+            running:   { label: "Em andamento", cls: "bg-emerald-500/15 text-emerald-700 border-emerald-500/40", icon: Loader2 },
+            paused:    { label: "Pausado",      cls: "bg-amber-500/15 text-amber-700 border-amber-500/40",     icon: Pause },
+            finished:  { label: "Finalizado",   cls: "bg-blue-500/15 text-blue-700 border-blue-500/40",         icon: CheckCircle2 },
+            cancelled: { label: "Cancelado",    cls: "bg-red-500/15 text-red-700 border-red-500/40",           icon: AlertCircle },
+          };
+          const meta = statusMeta[runStatus];
+          const Icon = meta.icon;
+          return (
+            <div className="space-y-3 pt-2">
+              <div className="rounded-lg border bg-card p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${meta.cls}`}>
+                      <Icon className={`h-3.5 w-3.5 ${runStatus === "running" ? "animate-spin" : ""}`} />
+                      {meta.label}
+                    </span>
+                    <span className="text-sm font-medium">{done}/{total}</span>
+                    <span className="text-xs text-muted-foreground">({pct}%)</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span>Ritmo: {rate > 0 ? `${(rate * 60).toFixed(1)} msg/min` : "—"}</span>
+                    <span>Decorrido: {fmt(elapsedMs / 1000)}</span>
+                    {runStatus === "running" && <span>ETA: {fmt(etaSec)}</span>}
+                  </div>
+                </div>
+
+                <Progress value={pct} className="h-2" />
+
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center">
+                  <div className="rounded-md border bg-background px-2 py-1.5">
+                    <div className="text-[10px] uppercase text-muted-foreground">Total</div>
+                    <div className="text-sm font-semibold">{total}</div>
+                  </div>
+                  <div className="rounded-md border bg-background px-2 py-1.5">
+                    <div className="text-[10px] uppercase text-muted-foreground">Enviando</div>
+                    <div className="text-sm font-semibold text-amber-600">{sendingN}</div>
+                  </div>
+                  <div className="rounded-md border bg-background px-2 py-1.5">
+                    <div className="text-[10px] uppercase text-muted-foreground">Enviadas</div>
+                    <div className="text-sm font-semibold text-emerald-600">{okN}</div>
+                  </div>
+                  <div className="rounded-md border bg-background px-2 py-1.5">
+                    <div className="text-[10px] uppercase text-muted-foreground">Falharam</div>
+                    <div className="text-sm font-semibold text-red-600">{failN}</div>
+                  </div>
+                  <div className="rounded-md border bg-background px-2 py-1.5">
+                    <div className="text-[10px] uppercase text-muted-foreground">Pendentes</div>
+                    <div className="text-sm font-semibold">{total - done - sendingN}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Status por destinatário
+              </div>
+              <div className="space-y-1.5 max-h-96 overflow-auto">
+                {rows.map((r) => <RecipientRow key={r.phone} row={r} />)}
+              </div>
             </div>
-            <div className="space-y-1.5">
-              {rows.map((r) => <RecipientRow key={r.phone} row={r} />)}
-            </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
 
       <Dialog open={csvOpen} onOpenChange={setCsvOpen}>
