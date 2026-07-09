@@ -212,26 +212,33 @@ function Page() {
     () => (templates as any[]).filter((t) => t.status === "approved"),
     [templates],
   );
-  const selectedConnection = useMemo(
-    () => (connections as any[]).find((c) => c.id === connectionId),
-    [connections, connectionId],
+  const selectedConnections = useMemo(
+    () => (connections as any[]).filter((c) => connectionIds.includes(c.id)),
+    [connections, connectionIds],
   );
+  const primaryConnection = selectedConnections[0];
 
   // Auto-pick first connection once connections load
   useEffect(() => {
-    if (connectionId || (connections as any[]).length === 0) return;
-    setConnectionId((connections as any[])[0].id);
-  }, [connections, connectionId]);
+    if (connectionIds.length > 0 || (connections as any[]).length === 0) return;
+    setConnectionIds([(connections as any[])[0].id]);
+  }, [connections, connectionIds]);
 
-  // Filter templates to those matching the selected connection's WABA
+  // Filter templates to those available on ALL selected WABAs (by name+language).
+  // Fall back to primary WABA's templates if intersection is empty.
   const filteredTemplates = useMemo(() => {
-    if (!selectedConnection?.waba_ref_id) return approvedTemplates;
-    const same = approvedTemplates.filter(
-      (t: any) => t.waba_ref_id === selectedConnection.waba_ref_id
-        || t.connection_id === selectedConnection.id,
+    if (selectedConnections.length === 0) return approvedTemplates;
+    const wabaIds = Array.from(new Set(selectedConnections.map((c: any) => c.waba_ref_id).filter(Boolean)));
+    if (wabaIds.length === 0) return approvedTemplates;
+    // Group by name+language
+    const primaryWaba = primaryConnection?.waba_ref_id;
+    const primaryList = approvedTemplates.filter((t: any) => t.waba_ref_id === primaryWaba);
+    if (wabaIds.length === 1) return primaryList.length ? primaryList : approvedTemplates;
+    const intersection = primaryList.filter((t: any) =>
+      wabaIds.every((w) => approvedTemplates.some((x: any) => x.waba_ref_id === w && x.name === t.name && x.language === t.language)),
     );
-    return same.length ? same : approvedTemplates;
-  }, [approvedTemplates, selectedConnection]);
+    return intersection.length ? intersection : primaryList;
+  }, [approvedTemplates, selectedConnections, primaryConnection]);
 
   const selectedTemplate = useMemo(
     () => filteredTemplates.find((t: any) => t.id === templateId),
