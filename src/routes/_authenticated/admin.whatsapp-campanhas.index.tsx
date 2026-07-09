@@ -522,8 +522,12 @@ function Page() {
       // Batch pause
       if (batchEnabled && batchSize > 0 && (i + 1) % batchSize === 0) {
         await wait(Math.max(0, batchPauseSec) * 1000);
-      } else if (intervalSec > 0) {
-        await wait(intervalSec * 1000);
+      } else {
+        const delayMs =
+          rateMode === "perSecond" ? (perSecond > 0 ? Math.round(1000 / perSecond) : 0)
+          : rateMode === "perMinute" ? (perMinute > 0 ? Math.round(60000 / perMinute) : 0)
+          : Math.round(intervalSec * 1000);
+        if (delayMs > 0) await wait(delayMs);
       }
     }
 
