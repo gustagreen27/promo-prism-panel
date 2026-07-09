@@ -67,6 +67,7 @@ import { Route as AuthenticatedAdminWhatsappLiberacoesRouteImport } from './rout
 import { Route as AuthenticatedAdminWhatsappInboxRouteImport } from './routes/_authenticated/admin.whatsapp.inbox'
 import { Route as AuthenticatedAdminWhatsappEmbeddedSignupRouteImport } from './routes/_authenticated/admin.whatsapp.embedded-signup'
 import { Route as AuthenticatedAdminWhatsappConfiguracoesRouteImport } from './routes/_authenticated/admin.whatsapp.configuracoes'
+import { Route as AuthenticatedAdminWhatsappConexoesRouteImport } from './routes/_authenticated/admin.whatsapp.conexoes'
 import { Route as AuthenticatedAdminWhatsappCampanhasNovoRouteImport } from './routes/_authenticated/admin.whatsapp-campanhas.novo'
 import { Route as AuthenticatedAdminWhatsappCampanhasIdRouteImport } from './routes/_authenticated/admin.whatsapp-campanhas.$id'
 import { Route as AuthenticatedAdminRelatoriosNewRouteImport } from './routes/_authenticated/admin.relatorios.new'
@@ -401,6 +402,12 @@ const AuthenticatedAdminWhatsappConfiguracoesRoute =
     path: '/configuracoes',
     getParentRoute: () => AuthenticatedAdminWhatsappRoute,
   } as any)
+const AuthenticatedAdminWhatsappConexoesRoute =
+  AuthenticatedAdminWhatsappConexoesRouteImport.update({
+    id: '/conexoes',
+    path: '/conexoes',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
 const AuthenticatedAdminWhatsappCampanhasNovoRoute =
   AuthenticatedAdminWhatsappCampanhasNovoRouteImport.update({
     id: '/novo',
@@ -502,6 +509,7 @@ export interface FileRoutesByFullPath {
   '/admin/relatorios/new': typeof AuthenticatedAdminRelatoriosNewRoute
   '/admin/whatsapp-campanhas/$id': typeof AuthenticatedAdminWhatsappCampanhasIdRoute
   '/admin/whatsapp-campanhas/novo': typeof AuthenticatedAdminWhatsappCampanhasNovoRoute
+  '/admin/whatsapp/conexoes': typeof AuthenticatedAdminWhatsappConexoesRoute
   '/admin/whatsapp/configuracoes': typeof AuthenticatedAdminWhatsappConfiguracoesRoute
   '/admin/whatsapp/embedded-signup': typeof AuthenticatedAdminWhatsappEmbeddedSignupRoute
   '/admin/whatsapp/inbox': typeof AuthenticatedAdminWhatsappInboxRoute
@@ -568,6 +576,7 @@ export interface FileRoutesByTo {
   '/admin/relatorios/new': typeof AuthenticatedAdminRelatoriosNewRoute
   '/admin/whatsapp-campanhas/$id': typeof AuthenticatedAdminWhatsappCampanhasIdRoute
   '/admin/whatsapp-campanhas/novo': typeof AuthenticatedAdminWhatsappCampanhasNovoRoute
+  '/admin/whatsapp/conexoes': typeof AuthenticatedAdminWhatsappConexoesRoute
   '/admin/whatsapp/configuracoes': typeof AuthenticatedAdminWhatsappConfiguracoesRoute
   '/admin/whatsapp/embedded-signup': typeof AuthenticatedAdminWhatsappEmbeddedSignupRoute
   '/admin/whatsapp/inbox': typeof AuthenticatedAdminWhatsappInboxRoute
@@ -638,6 +647,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/relatorios/new': typeof AuthenticatedAdminRelatoriosNewRoute
   '/_authenticated/admin/whatsapp-campanhas/$id': typeof AuthenticatedAdminWhatsappCampanhasIdRoute
   '/_authenticated/admin/whatsapp-campanhas/novo': typeof AuthenticatedAdminWhatsappCampanhasNovoRoute
+  '/_authenticated/admin/whatsapp/conexoes': typeof AuthenticatedAdminWhatsappConexoesRoute
   '/_authenticated/admin/whatsapp/configuracoes': typeof AuthenticatedAdminWhatsappConfiguracoesRoute
   '/_authenticated/admin/whatsapp/embedded-signup': typeof AuthenticatedAdminWhatsappEmbeddedSignupRoute
   '/_authenticated/admin/whatsapp/inbox': typeof AuthenticatedAdminWhatsappInboxRoute
@@ -708,6 +718,7 @@ export interface FileRouteTypes {
     | '/admin/relatorios/new'
     | '/admin/whatsapp-campanhas/$id'
     | '/admin/whatsapp-campanhas/novo'
+    | '/admin/whatsapp/conexoes'
     | '/admin/whatsapp/configuracoes'
     | '/admin/whatsapp/embedded-signup'
     | '/admin/whatsapp/inbox'
@@ -774,6 +785,7 @@ export interface FileRouteTypes {
     | '/admin/relatorios/new'
     | '/admin/whatsapp-campanhas/$id'
     | '/admin/whatsapp-campanhas/novo'
+    | '/admin/whatsapp/conexoes'
     | '/admin/whatsapp/configuracoes'
     | '/admin/whatsapp/embedded-signup'
     | '/admin/whatsapp/inbox'
@@ -843,6 +855,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/relatorios/new'
     | '/_authenticated/admin/whatsapp-campanhas/$id'
     | '/_authenticated/admin/whatsapp-campanhas/novo'
+    | '/_authenticated/admin/whatsapp/conexoes'
     | '/_authenticated/admin/whatsapp/configuracoes'
     | '/_authenticated/admin/whatsapp/embedded-signup'
     | '/_authenticated/admin/whatsapp/inbox'
@@ -1292,6 +1305,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminWhatsappConfiguracoesRouteImport
       parentRoute: typeof AuthenticatedAdminWhatsappRoute
     }
+    '/_authenticated/admin/whatsapp/conexoes': {
+      id: '/_authenticated/admin/whatsapp/conexoes'
+      path: '/conexoes'
+      fullPath: '/admin/whatsapp/conexoes'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappConexoesRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
     '/_authenticated/admin/whatsapp-campanhas/novo': {
       id: '/_authenticated/admin/whatsapp-campanhas/novo'
       path: '/novo'
@@ -1374,6 +1394,7 @@ const AuthenticatedAdminContatosRouteWithChildren =
   )
 
 interface AuthenticatedAdminWhatsappRouteChildren {
+  AuthenticatedAdminWhatsappConexoesRoute: typeof AuthenticatedAdminWhatsappConexoesRoute
   AuthenticatedAdminWhatsappConfiguracoesRoute: typeof AuthenticatedAdminWhatsappConfiguracoesRoute
   AuthenticatedAdminWhatsappEmbeddedSignupRoute: typeof AuthenticatedAdminWhatsappEmbeddedSignupRoute
   AuthenticatedAdminWhatsappInboxRoute: typeof AuthenticatedAdminWhatsappInboxRoute
@@ -1390,6 +1411,8 @@ interface AuthenticatedAdminWhatsappRouteChildren {
 
 const AuthenticatedAdminWhatsappRouteChildren: AuthenticatedAdminWhatsappRouteChildren =
   {
+    AuthenticatedAdminWhatsappConexoesRoute:
+      AuthenticatedAdminWhatsappConexoesRoute,
     AuthenticatedAdminWhatsappConfiguracoesRoute:
       AuthenticatedAdminWhatsappConfiguracoesRoute,
     AuthenticatedAdminWhatsappEmbeddedSignupRoute:

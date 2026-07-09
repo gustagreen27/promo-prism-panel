@@ -64,8 +64,8 @@ function Page() {
             <WorkspaceCard
               key={w.id}
               w={w}
-              onSaveBiz={(p) => bizMut.mutate({ workspace_id: w.id, ...p })}
-              onSaveDefault={(cid) => defMut.mutate({ workspace_id: w.id, connection_id: cid })}
+              onSaveBiz={(p: { meta_business_id: string | null; meta_business_name: string | null }) => bizMut.mutate({ workspace_id: w.id, ...p })}
+              onSaveDefault={(cid: string | null) => defMut.mutate({ workspace_id: w.id, connection_id: cid })}
               saving={bizMut.isPending || defMut.isPending}
             />
           ))}
