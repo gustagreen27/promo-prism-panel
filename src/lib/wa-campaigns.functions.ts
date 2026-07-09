@@ -239,7 +239,12 @@ export const scheduleQuickSend = createServerFn({ method: "POST" })
       connection_id: z.string().uuid(),
       template_id: z.string().uuid(),
       scheduled_at: z.string().min(1),
-      recipients: z.array(z.object({ phone: z.string().min(4), name: z.string().optional().nullable() })).min(1),
+      recipients: z.array(z.object({
+        phone: z.string().min(4),
+        name: z.string().optional().nullable(),
+        extras: z.record(z.string()).optional().nullable(),
+      })).min(1),
+
       body_mapping: z.record(z.string()).optional().default({}),
       button_url_mapping: z.record(z.string()).optional().default({}),
       header_media_url: z.string().optional().nullable(),
