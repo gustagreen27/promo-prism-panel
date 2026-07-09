@@ -66,6 +66,11 @@ function Page() {
     onSuccess: (r: any) => { toast.success(`Status: ${r.status}`); refresh(); },
     onError: (e: any) => toast.error(e?.message ?? "Erro"),
   });
+  const dupMut = useMutation({
+    mutationFn: (id: string) => dupFn({ data: { template_id: id } }),
+    onSuccess: () => { toast.success("Template duplicado"); refresh(); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro"),
+  });
 
   return (
     <>
