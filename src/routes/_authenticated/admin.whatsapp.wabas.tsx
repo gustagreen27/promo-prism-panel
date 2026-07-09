@@ -169,7 +169,95 @@ function Page() {
           {viewing && <Children id={viewing.id} fetcher={childrenFn} />}
         </DialogContent>
       </Dialog>
+
+      <Dialog open={diagOpen} onOpenChange={setDiagOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Diagnóstico do token Meta</DialogTitle></DialogHeader>
+          {diag ? (
+            <div className="space-y-2 text-sm">
+              <div><b>App ID:</b> {diag.app_id ?? "—"}</div>
+              <div><b>Tipo:</b> {diag.type ?? "—"}</div>
+              <div><b>Válido:</b> {diag.is_valid ? "sim" : "não"}</div>
+              <div><b>Expira em:</b> {diag.expires_at ? new Date(diag.expires_at * 1000).toLocaleString("pt-BR") : "nunca"}</div>
+              <div><b>Escopos:</b> <div className="flex flex-wrap gap-1 mt-1">{diag.scopes.map((s: string) => <Badge key={s} variant="outline">{s}</Badge>)}</div></div>
+              {diag.missing_scopes?.length ? (
+                <div className="rounded-md border border-destructive/30 bg-destructive/5 p-2 mt-2">
+                  <b className="text-destructive">Faltam permissões:</b>
+                  <div className="flex flex-wrap gap-1 mt-1">{diag.missing_scopes.map((s: string) => <Badge key={s} variant="destructive">{s}</Badge>)}</div>
+                </div>
+              ) : <div className="text-emerald-600 font-medium">Token OK — todas as permissões presentes.</div>}
+            </div>
+          ) : <div className="text-sm text-muted-foreground">Sem dados.</div>}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={apiOpen} onOpenChange={setApiOpen}>
+        <CreateApiDialog clients={clients} projects={projects} saving={apiCreateMut.isPending} onSubmit={(p: any) => apiCreateMut.mutate(p)} />
+      </Dialog>
+
+      <Dialog open={importOpen} onOpenChange={setImportOpen}>
+        <ImportBmDialog clients={clients} projects={projects} saving={importBmMut.isPending} onSubmit={(p: any) => importBmMut.mutate(p)} />
+      </Dialog>
     </>
+  );
+}
+
+function CreateApiDialog({ clients, projects, saving, onSubmit }: any) {
+  const [form, setForm] = useState<any>({ business_id: "", name: "", timezone_id: "25", currency: "BRL", client_id: "", project_id: "" });
+  const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
+  return (
+    <DialogContent className="max-w-xl">
+      <DialogHeader><DialogTitle>Criar WABA via Graph API</DialogTitle></DialogHeader>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="sm:col-span-2"><Label>Business Manager ID *</Label><Input value={form.business_id} onChange={(e) => set("business_id", e.target.value)} placeholder="1234567890" /></div>
+        <div className="sm:col-span-2"><Label>Nome da WABA *</Label><Input value={form.name} onChange={(e) => set("name", e.target.value)} /></div>
+        <div><Label>Timezone ID</Label><Input value={form.timezone_id} onChange={(e) => set("timezone_id", e.target.value)} placeholder="25 = America/Sao_Paulo" /></div>
+        <div><Label>Moeda</Label><Input value={form.currency} onChange={(e) => set("currency", e.target.value)} placeholder="BRL" /></div>
+        <div><Label>Cliente</Label>
+          <Select value={form.client_id} onValueChange={(v) => set("client_id", v)}>
+            <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+            <SelectContent>{clients.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div><Label>Projeto</Label>
+          <Select value={form.project_id} onValueChange={(v) => set("project_id", v)}>
+            <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+            <SelectContent>{projects.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+      </div>
+      <DialogFooter>
+        <Button disabled={saving || !form.business_id || !form.name} onClick={() => onSubmit(form)}>Criar na Meta</Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+}
+
+function ImportBmDialog({ clients, projects, saving, onSubmit }: any) {
+  const [form, setForm] = useState<any>({ business_id: "", client_id: "", project_id: "" });
+  const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
+  return (
+    <DialogContent className="max-w-xl">
+      <DialogHeader><DialogTitle>Importar WABAs do Business Manager</DialogTitle></DialogHeader>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="sm:col-span-2"><Label>Business Manager ID *</Label><Input value={form.business_id} onChange={(e) => set("business_id", e.target.value)} placeholder="1234567890" /></div>
+        <div><Label>Vincular ao cliente (opcional)</Label>
+          <Select value={form.client_id} onValueChange={(v) => set("client_id", v)}>
+            <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+            <SelectContent>{clients.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div><Label>Projeto (opcional)</Label>
+          <Select value={form.project_id} onValueChange={(v) => set("project_id", v)}>
+            <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+            <SelectContent>{projects.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+      </div>
+      <DialogFooter>
+        <Button disabled={saving || !form.business_id} onClick={() => onSubmit(form)}>Importar</Button>
+      </DialogFooter>
+    </DialogContent>
   );
 }
 
