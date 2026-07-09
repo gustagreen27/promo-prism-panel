@@ -457,19 +457,28 @@ function Page() {
     bodyVars.every((n) => (bodyMapping[String(n)] ?? "").trim().length > 0) &&
     urlButtons.every((b) => (buttonUrlMapping[String(b.i)] ?? "").trim().length > 0);
 
-  async function handleSend() {
-    if (!canSubmit || sending || !selectedTemplate) return;
+  async function handleSend(opts?: { resume?: boolean }) {
+    const resume = !!opts?.resume;
+    if (sending || !selectedTemplate) return;
+    if (!resume && !canSubmit) return;
+    if (resume && rows.length === 0) return;
+
     cancelRef.current = false;
     pausedRef.current = false;
     setPaused(false);
     setSending(true);
     setRunStatus("running");
-    setRunStartedAt(Date.now());
     setRunEndedAt(null);
-    const initial: RowState[] = recipients.map((r) => ({ phone: r.phone, name: r.name, status: "pending" }));
-    setRows(initial);
-    let okCount = 0;
-    let failCount = 0;
+    if (!resume) setRunStartedAt(Date.now());
+
+    // Base rows: on resume, keep sent/failed and re-queue "sending" as pending.
+    const baseRows: RowState[] = resume
+      ? rows.map((r) => (r.status === "sending" ? { ...r, status: "pending" } : r))
+      : recipients.map((r) => ({ phone: r.phone, name: r.name, status: "pending" as const }));
+    setRows(baseRows);
+
+    let okCount = baseRows.filter((r) => r.status === "sent").length;
+    let failCount = baseRows.filter((r) => r.status === "failed").length;
 
     // Build per-WABA template map so we can pick the right template.id per connection.
     const tplByWaba = new Map<string, any>();
@@ -479,9 +488,8 @@ function Page() {
       }
     }
 
-    const sendOne = async (idx: number, conn: any) => {
+    const sendOne = async (phone: string, name: string | undefined, conn: any) => {
       if (cancelRef.current) return;
-      const { phone, name } = recipients[idx];
       setRows((rs) => rs.map((r) => (r.phone === phone ? { ...r, status: "sending" } : r)));
       try {
         const ctx = buildContext({ contact: { name: name ?? "", phone } });
@@ -530,17 +538,22 @@ function Page() {
       }
     };
     const conns = selectedConnections;
+    // Preserve global index for round-robin fairness across resumes.
+    const pending = baseRows
+      .map((r, i) => ({ phone: r.phone, name: r.name, status: r.status, _i: i }))
+      .filter((r) => r.status === "pending");
 
-    for (let i = 0; i < recipients.length; i++) {
+    for (let k = 0; k < pending.length; k++) {
       if (cancelRef.current) break;
       await waitWhilePaused();
       if (cancelRef.current) break;
-      const conn = conns[i % conns.length];
-      await sendOne(i, conn);
-      const isLast = i === recipients.length - 1;
+      const p = pending[k];
+      const conn = conns[p._i % conns.length];
+      await sendOne(p.phone, p.name, conn);
+      const isLast = k === pending.length - 1;
       if (isLast) break;
       // Batch pause
-      if (batchEnabled && batchSize > 0 && (i + 1) % batchSize === 0) {
+      if (batchEnabled && batchSize > 0 && (k + 1) % batchSize === 0) {
         await wait(Math.max(0, batchPauseSec) * 1000);
       } else {
         const delayMs =
@@ -565,6 +578,85 @@ function Page() {
     const id = setInterval(() => setNowTick(Date.now()), 1000);
     return () => clearInterval(id);
   }, [sending]);
+
+  // ---- Persistência do estado de execução (localStorage) ----
+  const STORAGE_KEY = "wa-campanhas-run-v1";
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const s = JSON.parse(raw);
+      if (Array.isArray(s.connectionIds)) setConnectionIds(s.connectionIds);
+      if (typeof s.templateId === "string") setTemplateId(s.templateId);
+      if (typeof s.recipientsRaw === "string") setRecipientsRaw(s.recipientsRaw);
+      if (typeof s.headerMediaUrl === "string") setHeaderMediaUrl(s.headerMediaUrl);
+      if (typeof s.headerTextParam === "string") setHeaderTextParam(s.headerTextParam);
+      if (s.bodyMapping && typeof s.bodyMapping === "object") setBodyMapping(s.bodyMapping);
+      if (s.buttonUrlMapping && typeof s.buttonUrlMapping === "object") setButtonUrlMapping(s.buttonUrlMapping);
+      if (s.rateMode) setRateMode(s.rateMode);
+      if (typeof s.intervalSec === "number") setIntervalSec(s.intervalSec);
+      if (typeof s.perSecond === "number") setPerSecond(s.perSecond);
+      if (typeof s.perMinute === "number") setPerMinute(s.perMinute);
+      if (typeof s.batchEnabled === "boolean") setBatchEnabled(s.batchEnabled);
+      if (typeof s.batchSize === "number") setBatchSize(s.batchSize);
+      if (typeof s.batchPauseSec === "number") setBatchPauseSec(s.batchPauseSec);
+      if (Array.isArray(s.rows)) {
+        setRows(s.rows.map((r: RowState) => (r.status === "sending" ? { ...r, status: "pending" } : r)));
+      }
+      if (typeof s.runStartedAt === "number") setRunStartedAt(s.runStartedAt);
+      if (typeof s.runEndedAt === "number") setRunEndedAt(s.runEndedAt);
+      // Execução em andamento no momento do reload → tratar como pausada para permitir retomar.
+      if (s.runStatus === "running" || s.runStatus === "paused") {
+        setRunStatus("paused");
+        setPaused(true);
+        pausedRef.current = true;
+      } else if (s.runStatus) {
+        setRunStatus(s.runStatus);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          connectionIds, templateId, recipientsRaw, headerMediaUrl, headerTextParam,
+          bodyMapping, buttonUrlMapping,
+          rateMode, intervalSec, perSecond, perMinute, batchEnabled, batchSize, batchPauseSec,
+          rows, runStatus, runStartedAt, runEndedAt,
+        }),
+      );
+    } catch {}
+  }, [
+    connectionIds, templateId, recipientsRaw, headerMediaUrl, headerTextParam,
+    bodyMapping, buttonUrlMapping,
+    rateMode, intervalSec, perSecond, perMinute, batchEnabled, batchSize, batchPauseSec,
+    rows, runStatus, runStartedAt, runEndedAt,
+  ]);
+
+  // Aviso ao fechar/recarregar durante execução ativa
+  useEffect(() => {
+    if (!sending) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [sending]);
+
+  const canResume =
+    !sending &&
+    runStatus === "paused" &&
+    rows.length > 0 &&
+    rows.some((r) => r.status === "pending" || r.status === "sending") &&
+    !!selectedTemplate &&
+    connectionIds.length > 0;
 
   return (
     <div className="space-y-6">
@@ -899,12 +991,18 @@ function Page() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button disabled={!canSubmit || sending} onClick={handleSend}>
+          <Button disabled={!canSubmit || sending} onClick={() => handleSend()}>
             {sending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
             {sending
               ? `Enviando… (${rows.filter((r) => r.status === "sent" || r.status === "failed").length}/${rows.length})`
               : `Disparar para ${recipients.length} destinatário(s)`}
           </Button>
+          {canResume && (
+            <Button variant="default" onClick={() => handleSend({ resume: true })}>
+              <Play className="h-4 w-4 mr-2" />
+              Retomar disparo ({rows.filter((r) => r.status === "pending" || r.status === "sending").length} pendentes)
+            </Button>
+          )}
           {sending && !paused && (
             <Button variant="outline" onClick={() => { pausedRef.current = true; setPaused(true); setRunStatus("paused"); }}>
               <Pause className="h-4 w-4 mr-2" /> Pausar
@@ -921,7 +1019,10 @@ function Page() {
             </Button>
           )}
           {rows.length > 0 && !sending && (
-            <Button variant="ghost" onClick={() => { setRows([]); setRunStatus("idle"); setRunStartedAt(null); setRunEndedAt(null); }}>Limpar resultados</Button>
+            <Button variant="ghost" onClick={() => {
+              setRows([]); setRunStatus("idle"); setRunStartedAt(null); setRunEndedAt(null);
+              try { localStorage.removeItem("wa-campanhas-run-v1"); } catch {}
+            }}>Limpar resultados</Button>
           )}
         </div>
 
