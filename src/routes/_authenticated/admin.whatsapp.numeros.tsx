@@ -33,14 +33,17 @@ function Page() {
   const syncAll = useServerFn(syncAllWabas);
   const clientsFn = useServerFn(listClients);
   const projectsFn = useServerFn(listProjects);
+  const wabasFn = useServerFn(listWabas);
   const qc = useQueryClient();
 
   const { data: rows = [], isLoading } = useQuery({ queryKey: ["wa-numbers"], queryFn: () => listFn() });
   const { data: clients = [] } = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
   const { data: projects = [] } = useQuery({ queryKey: ["projects"], queryFn: () => projectsFn() });
+  const { data: wabas = [] } = useQuery({ queryKey: ["wa-wabas"], queryFn: () => wabasFn() });
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
+  const [apiOpen, setApiOpen] = useState(false);
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["wa-numbers"] });
   const saveMut = useMutation({
