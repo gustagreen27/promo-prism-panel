@@ -805,7 +805,7 @@ function Page() {
               )}
               <div className="space-y-1">
                 <Label className="text-[10px] uppercase text-muted-foreground">Lote</Label>
-                <Input type="number" min={1} value={batchSize} disabled={!batchEnabled} onChange={(e) => setBatchSize(Math.max(1, Number(e.target.value) || 1))} />
+                <Input type="number" min={1} value={batchSize} onChange={(e) => { setBatchSize(Math.max(1, Number(e.target.value) || 1)); if (!batchEnabled) setBatchEnabled(true); }} />
               </div>
               <div className="space-y-1">
                 <Label className="text-[10px] uppercase text-muted-foreground">Pausa (s)</Label>
