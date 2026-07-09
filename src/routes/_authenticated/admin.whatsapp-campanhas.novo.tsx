@@ -262,6 +262,15 @@ function WizardPage() {
     onError: (e: any) => toast.error(e?.message ?? "Erro ao iniciar"),
   });
 
+  const scheduleMut = useMutation({
+    mutationFn: () => scheduleFn({ data: { id: campaignId!, scheduled_at: new Date(state.scheduled_at!).toISOString() } }),
+    onSuccess: (r: any) => {
+      toast.success(`Agendado para ${new Date(r.scheduled_at).toLocaleString("pt-BR")}`);
+      nav({ to: "/admin/whatsapp-campanhas/$id", params: { id: campaignId! } });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao agendar"),
+  });
+
   return (
     <div className="space-y-6">
       <PageHeader
