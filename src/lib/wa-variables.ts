@@ -37,10 +37,10 @@ function resolveToken(expr: string, ctx: Ctx): string {
     if ((p.startsWith('"') && p.endsWith('"')) || (p.startsWith("'") && p.endsWith("'"))) {
       return p.slice(1, -1);
     }
-    // Bare token identifier (lowercase snake): look up in context.
-    const isIdent = /^[a-z_][a-z0-9_]*$/.test(p);
+    // Bare token identifier (letters/digits/underscore): look up in context (case-insensitive).
+    const isIdent = /^[A-Za-z_][A-Za-z0-9_]*$/.test(p);
     if (isIdent) {
-      const v = ctx[p];
+      const v = ctx[p] ?? ctx[p.toLowerCase()] ?? ctx[p.toUpperCase()];
       if (v !== null && v !== undefined && String(v).trim() !== "") return String(v);
       continue; // try next fallback
     }
