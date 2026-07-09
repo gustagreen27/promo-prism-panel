@@ -185,9 +185,13 @@ function Page() {
   const [syncing, setSyncing] = useState(false);
   const [uploading, setUploading] = useState(false);
   // Send throttling
-  const [intervalSec, setIntervalSec] = useState(10);       // seconds between messages
+  type RateMode = "interval" | "perSecond" | "perMinute";
+  const [rateMode, setRateMode] = useState<RateMode>("interval");
+  const [intervalSec, setIntervalSec] = useState(10);       // interval between messages
+  const [perSecond, setPerSecond] = useState(1);            // messages per second
+  const [perMinute, setPerMinute] = useState(6);            // messages per minute
   const [batchEnabled, setBatchEnabled] = useState(false);
-  const [batchSize, setBatchSize] = useState(10);            // pause every N sends
+  const [batchSize, setBatchSize] = useState(10);           // pause every N sends
   const [batchPauseSec, setBatchPauseSec] = useState(60);   // seconds
   const cancelRef = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
