@@ -22,7 +22,7 @@ import { listNumbers } from "@/lib/whatsapp-numbers.functions";
 import { listTemplates, syncTemplatesByWaba } from "@/lib/whatsapp-templates.functions";
 import { listLists } from "@/lib/contact-lists.functions";
 import { previewAudience, renderPreview, createCampaignFromWizard } from "@/lib/wa-wizard.functions";
-import { availableStock, buildRecipients, startWaCampaign } from "@/lib/wa-campaigns.functions";
+import { availableStock, buildRecipients, startWaCampaign, scheduleWaCampaign } from "@/lib/wa-campaigns.functions";
 import { DEFAULT_TOKENS, metaVarsIn } from "@/lib/wa-variables";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp-campanhas/novo")({
