@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, RefreshCw } from "lucide-react";
+import { Plus, Trash2, Pencil, RefreshCw, Cloud, PhoneCall, ShieldCheck, KeyRound } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { listNumbers, createNumber, updateNumber, deleteNumber } from "@/lib/whatsapp-numbers.functions";
 import { syncAllWabas } from "@/lib/wa-meta-sync.functions";
+import { addNumberToWaba, requestNumberCode, verifyNumberCode, registerNumberOnCloud } from "@/lib/wa-meta-api.functions";
+import { listWabas } from "@/lib/wa-wabas.functions";
 import { listClients } from "@/lib/clients.functions";
 import { listProjects } from "@/lib/projects.functions";
 
