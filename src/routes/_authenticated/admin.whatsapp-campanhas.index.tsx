@@ -192,11 +192,13 @@ function guessPhoneColumn(headers: string[]): number {
 type RowState = {
   phone: string;
   name?: string;
+  extras?: Record<string, string>;
   status: "pending" | "sending" | "sent" | "failed";
   logId?: string;
   metaMessageId?: string;
   error?: string;
 };
+
 
 function RecipientRow({ row }: { row: RowState }) {
   const statusFn = useServerFn(getMessageLogStatus);
