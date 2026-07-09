@@ -235,6 +235,23 @@ export const completeEmbeddedSignup = createServerFn({ method: "POST" })
     baseLog.connection_id = connectionId;
     await logStep(supabase, baseLog, "upsert_connection", "ok", { connection_id: connectionId, status: connPayload.status });
 
+    // 7) auto-sync full WABA (best-effort) — traz eventuais outros números da mesma WABA
+    try {
+      const { _syncOneWabaInternal } = await import("@/lib/wa-meta-sync.functions");
+      const syncStats = await _syncOneWabaInternal(supabase, {
+        id: wabaRefId,
+        waba_id: data.waba_id,
+        business_id: businessId,
+        access_token: accessToken,
+        client_id: scopedClientId,
+        project_id: scopedProjectId,
+        workspace_id: scopedWorkspaceId,
+      });
+      await logStep(supabase, baseLog, "post_onboarding_sync", "ok", syncStats);
+    } catch (e: any) {
+      await logStep(supabase, baseLog, "post_onboarding_sync", "error", null, e?.message);
+    }
+
     return {
       ok: true,
       waba_ref_id: wabaRefId,
