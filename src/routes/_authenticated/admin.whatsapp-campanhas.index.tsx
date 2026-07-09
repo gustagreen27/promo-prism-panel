@@ -617,7 +617,7 @@ function Page() {
     const conns = selectedConnections;
     // Preserve global index for round-robin fairness across resumes.
     const pending = baseRows
-      .map((r, i) => ({ phone: r.phone, name: r.name, status: r.status, _i: i }))
+      .map((r, i) => ({ phone: r.phone, name: r.name, extras: r.extras, status: r.status, _i: i }))
       .filter((r) => r.status === "pending");
 
     // Batch size = quantos enviar em paralelo por lote. Se desabilitado, envia 1 por vez.
@@ -630,8 +630,9 @@ function Page() {
       // Dispara todos do lote em paralelo
       await Promise.all(chunk.map((p) => {
         const conn = conns[p._i % conns.length];
-        return sendOne(p.phone, p.name, conn);
+        return sendOne(p.phone, p.name, p.extras, conn);
       }));
+
       const isLast = k + chunkSize >= pending.length;
       if (isLast) break;
       // Espera entre lotes: pausa configurada ou intervalo pela taxa
