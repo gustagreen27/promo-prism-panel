@@ -34,6 +34,9 @@ function Page() {
   const childrenFn = useServerFn(getWabaChildren);
   const syncOne = useServerFn(syncWabaNumbers);
   const syncAll = useServerFn(syncAllWabas);
+  const debugFn = useServerFn(debugToken);
+  const createApiFn = useServerFn(createWabaViaApi);
+  const importFn = useServerFn(importWabasFromBusiness);
   const clientsFn = useServerFn(listClients);
   const projectsFn = useServerFn(listProjects);
   const qc = useQueryClient();
