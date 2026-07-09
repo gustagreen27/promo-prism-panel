@@ -549,7 +549,8 @@ function Page() {
     // Base rows: on resume, keep sent/failed and re-queue "sending" as pending.
     const baseRows: RowState[] = resume
       ? rows.map((r) => (r.status === "sending" ? { ...r, status: "pending" } : r))
-      : recipients.map((r) => ({ phone: r.phone, name: r.name, status: "pending" as const }));
+      : recipients.map((r) => ({ phone: r.phone, name: r.name, extras: r.extras, status: "pending" as const }));
+
     setRows(baseRows);
 
     let okCount = baseRows.filter((r) => r.status === "sent").length;
