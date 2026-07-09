@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { listTemplates, createTemplate, updateTemplate, deleteTemplate, syncTemplates } from "@/lib/whatsapp-templates.functions";
 import { submitTemplateForApproval, refreshTemplateStatus } from "@/lib/wa-meta.functions";
+import { duplicateTemplate } from "@/lib/wa-meta-api.functions";
 import { listNumbers } from "@/lib/whatsapp-numbers.functions";
 import { listWabas } from "@/lib/wa-wabas.functions";
 
