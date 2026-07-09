@@ -592,13 +592,55 @@ function Page() {
               <div className="text-sm font-semibold">Configurações de envio</div>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs">Intervalo entre envios (s)</Label>
-                <span className="text-xs font-medium">{intervalSec} {intervalSec === 1 ? "Segundo" : "Segundos"}</span>
-              </div>
-              <Slider min={0} max={120} step={1} value={[intervalSec]} onValueChange={(v) => setIntervalSec(v[0] ?? 0)} />
+            {/* Rate mode selector */}
+            <div className="flex gap-1 rounded-md bg-background p-1 border">
+              {([
+                { k: "interval", label: "Intervalo (s)" },
+                { k: "perSecond", label: "Msg/segundo" },
+                { k: "perMinute", label: "Msg/minuto" },
+              ] as { k: RateMode; label: string }[]).map((opt) => (
+                <button
+                  key={opt.k}
+                  type="button"
+                  onClick={() => setRateMode(opt.k)}
+                  className={`flex-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
+                    rateMode === opt.k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
+
+            {rateMode === "interval" && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">Intervalo entre envios (s)</Label>
+                  <span className="text-xs font-medium">{intervalSec} {intervalSec === 1 ? "Segundo" : "Segundos"}</span>
+                </div>
+                <Slider min={0} max={120} step={1} value={[intervalSec]} onValueChange={(v) => setIntervalSec(v[0] ?? 0)} />
+              </div>
+            )}
+
+            {rateMode === "perSecond" && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">Mensagens por segundo</Label>
+                  <span className="text-xs font-medium">{perSecond} msg/s</span>
+                </div>
+                <Slider min={1} max={80} step={1} value={[perSecond]} onValueChange={(v) => setPerSecond(v[0] ?? 1)} />
+              </div>
+            )}
+
+            {rateMode === "perMinute" && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">Mensagens por minuto</Label>
+                  <span className="text-xs font-medium">{perMinute} msg/min</span>
+                </div>
+                <Slider min={1} max={600} step={1} value={[perMinute]} onValueChange={(v) => setPerMinute(v[0] ?? 1)} />
+              </div>
+            )}
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -619,11 +661,25 @@ function Page() {
               <Slider min={0} max={600} step={5} value={[batchPauseSec]} disabled={!batchEnabled} onValueChange={(v) => setBatchPauseSec(v[0] ?? 0)} />
             </div>
 
-            <div className="grid grid-cols-3 gap-3 pt-2 border-t">
-              <div className="space-y-1">
-                <Label className="text-[10px] uppercase text-muted-foreground">Intervalo (s)</Label>
-                <Input type="number" min={0} step={0.5} value={intervalSec} onChange={(e) => setIntervalSec(Math.max(0, Number(e.target.value) || 0))} />
-              </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t">
+              {rateMode === "interval" && (
+                <div className="space-y-1">
+                  <Label className="text-[10px] uppercase text-muted-foreground">Intervalo (s)</Label>
+                  <Input type="number" min={0} step={0.5} value={intervalSec} onChange={(e) => setIntervalSec(Math.max(0, Number(e.target.value) || 0))} />
+                </div>
+              )}
+              {rateMode === "perSecond" && (
+                <div className="space-y-1">
+                  <Label className="text-[10px] uppercase text-muted-foreground">Msg/segundo</Label>
+                  <Input type="number" min={1} value={perSecond} onChange={(e) => setPerSecond(Math.max(1, Number(e.target.value) || 1))} />
+                </div>
+              )}
+              {rateMode === "perMinute" && (
+                <div className="space-y-1">
+                  <Label className="text-[10px] uppercase text-muted-foreground">Msg/minuto</Label>
+                  <Input type="number" min={1} value={perMinute} onChange={(e) => setPerMinute(Math.max(1, Number(e.target.value) || 1))} />
+                </div>
+              )}
               <div className="space-y-1">
                 <Label className="text-[10px] uppercase text-muted-foreground">Lote</Label>
                 <Input type="number" min={1} value={batchSize} disabled={!batchEnabled} onChange={(e) => setBatchSize(Math.max(1, Number(e.target.value) || 1))} />
@@ -634,11 +690,24 @@ function Page() {
               </div>
             </div>
 
-            <p className="text-[11px] text-muted-foreground">
-              Ritmo estimado: {intervalSec > 0 ? `~${(60 / Math.max(intervalSec, 0.5)).toFixed(1)} msg/min` : "sem intervalo (o mais rápido possível)"}
-              {batchEnabled && ` · pausa de ${batchPauseSec}s a cada ${batchSize} envios`}
-              {connectionIds.length > 1 && ` · dividido entre ${connectionIds.length} número(s)`}
-            </p>
+            {(() => {
+              const rate =
+                rateMode === "perSecond" ? perSecond
+                : rateMode === "perMinute" ? perMinute / 60
+                : intervalSec > 0 ? 1 / intervalSec : Infinity;
+              const perMin = rate === Infinity ? "máx." : (rate * 60).toFixed(1);
+              const totalSec = recipients.length && rate > 0 ? recipients.length / rate : 0;
+              const eta = totalSec ? (totalSec >= 60 ? `${(totalSec/60).toFixed(1)} min` : `${totalSec.toFixed(0)} s`) : "—";
+              const perConn = connectionIds.length > 0 ? Math.ceil(recipients.length / connectionIds.length) : 0;
+              return (
+                <p className="text-[11px] text-muted-foreground">
+                  Ritmo: ~{perMin} msg/min
+                  {batchEnabled && ` · pausa de ${batchPauseSec}s a cada ${batchSize} envios`}
+                  {connectionIds.length > 1 && ` · dividido entre ${connectionIds.length} WABAs (~${perConn} por número)`}
+                  {recipients.length > 0 && ` · ETA ${eta}`}
+                </p>
+              );
+            })()}
           </div>
 
           <div className="space-y-2 md:col-span-2">
