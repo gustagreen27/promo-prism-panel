@@ -229,6 +229,86 @@ export const unscheduleWaCampaign = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// Cria uma campanha agendada a partir do fluxo "disparo rápido" da tela /admin/whatsapp-campanhas.
+// Persiste tudo no backend (números, template, destinatários, mapeamentos) e o cron promove no horário.
+export const scheduleQuickSend = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      name: z.string().trim().min(1).max(160).optional(),
+      connection_id: z.string().uuid(),
+      template_id: z.string().uuid(),
+      scheduled_at: z.string().min(1),
+      recipients: z.array(z.object({ phone: z.string().min(4), name: z.string().optional().nullable() })).min(1),
+      body_mapping: z.record(z.string()).optional().default({}),
+      button_url_mapping: z.record(z.string()).optional().default({}),
+      header_media_url: z.string().optional().nullable(),
+      header_text_param: z.string().optional().nullable(),
+      send_rate_per_min: z.number().int().min(1).max(2400).optional(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const when = new Date(data.scheduled_at);
+    if (Number.isNaN(when.getTime())) throw new Error("Data/hora inválida.");
+    if (when.getTime() < Date.now() - 60_000) throw new Error("A data/hora deve ser futura.");
+
+    // Monta template_variables no nível da campanha (compartilhado a todos os destinatários).
+    const templateVars: Record<string, string> = { ...(data.body_mapping ?? {}) };
+    for (const [k, v] of Object.entries(data.button_url_mapping ?? {})) {
+      // Convenção do worker: primeiro botão via _button_url_param (buttonIndex = k)
+      templateVars._button_url_param = String(v);
+      templateVars._button_index = String(k);
+      break; // pega o primeiro para o padrão do worker
+    }
+    if (data.header_media_url) templateVars._header_image_url = data.header_media_url;
+    if (data.header_text_param) templateVars._header_text_param = data.header_text_param;
+
+    const defaultName = data.name?.trim() ||
+      `Disparo agendado ${when.toLocaleString("pt-BR")}`;
+
+    // Dedupe destinatários por telefone
+    const seen = new Set<string>();
+    const uniqueRecipients = data.recipients.filter((r) => {
+      const p = r.phone.replace(/\D/g, "");
+      if (!p || seen.has(p)) return false;
+      seen.add(p);
+      return true;
+    });
+
+    const { data: campRow, error: cErr } = await context.supabase
+      .from("wa_campaigns")
+      .insert({
+        name: defaultName,
+        connection_id: data.connection_id,
+        template_id: data.template_id,
+        template_variables: templateVars,
+        status: "scheduled",
+        scheduled_at: when.toISOString(),
+        send_rate_per_min: data.send_rate_per_min ?? 30,
+        total_recipients: uniqueRecipients.length,
+        created_by: context.userId,
+      })
+      .select("id")
+      .single();
+    if (cErr) throw cErr;
+
+    const rows = uniqueRecipients.map((r) => ({
+      campaign_id: campRow.id,
+      phone: r.phone.replace(/\D/g, ""),
+      variables: r.name ? { nome: r.name } : {},
+      status: "pending" as const,
+    }));
+    for (let i = 0; i < rows.length; i += 1000) {
+      const { error: rErr } = await context.supabase
+        .from("campaign_recipients")
+        .insert(rows.slice(i, i + 1000));
+      if (rErr) throw rErr;
+    }
+
+    return { ok: true, id: campRow.id, scheduled_at: when.toISOString(), total: uniqueRecipients.length };
+  });
+
 export const pauseWaCampaign = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
