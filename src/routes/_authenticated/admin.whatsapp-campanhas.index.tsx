@@ -205,39 +205,42 @@ function Page() {
     () => (templates as any[]).filter((t) => t.status === "approved"),
     [templates],
   );
-  const selectedTemplate = useMemo(
-    () => approvedTemplates.find((t) => t.id === templateId),
-    [approvedTemplates, templateId],
-  );
-
-  // Auto-pick frgc_01 (or first) once templates load
-  useEffect(() => {
-    if (templateId || approvedTemplates.length === 0) return;
-    const preferred = approvedTemplates.find((t) => t.name === "frgc_01") ?? approvedTemplates[0];
-    setTemplateId(preferred.id);
-  }, [approvedTemplates, templateId]);
-
-  // Filter connections to those matching the template's WABA when possible
-  const filteredConnections = useMemo(() => {
-    if (selectedTemplate?.connection_id && !selectedTemplate?.waba_ref_id) {
-      const direct = (connections as any[]).filter((c) => c.id === selectedTemplate.connection_id);
-      if (direct.length) return direct;
-    }
-    if (!selectedTemplate?.waba_ref_id) return connections;
-    const same = (connections as any[]).filter((c) => c.waba_ref_id === selectedTemplate.waba_ref_id);
-    return same.length ? same : connections;
-  }, [connections, selectedTemplate]);
   const selectedConnection = useMemo(
     () => (connections as any[]).find((c) => c.id === connectionId),
     [connections, connectionId],
   );
 
+  // Auto-pick first connection once connections load
   useEffect(() => {
-    if (!filteredConnections.length) return;
-    if (!connectionId || !filteredConnections.some((c: any) => c.id === connectionId)) {
-      setConnectionId(filteredConnections[0].id);
+    if (connectionId || (connections as any[]).length === 0) return;
+    setConnectionId((connections as any[])[0].id);
+  }, [connections, connectionId]);
+
+  // Filter templates to those matching the selected connection's WABA
+  const filteredTemplates = useMemo(() => {
+    if (!selectedConnection?.waba_ref_id) return approvedTemplates;
+    const same = approvedTemplates.filter(
+      (t: any) => t.waba_ref_id === selectedConnection.waba_ref_id
+        || t.connection_id === selectedConnection.id,
+    );
+    return same.length ? same : approvedTemplates;
+  }, [approvedTemplates, selectedConnection]);
+
+  const selectedTemplate = useMemo(
+    () => filteredTemplates.find((t: any) => t.id === templateId),
+    [filteredTemplates, templateId],
+  );
+
+  // Auto-pick frgc_01 (or first) from filtered templates
+  useEffect(() => {
+    if (filteredTemplates.length === 0) {
+      if (templateId) setTemplateId("");
+      return;
     }
-  }, [filteredConnections, connectionId]);
+    if (templateId && filteredTemplates.some((t: any) => t.id === templateId)) return;
+    const preferred = filteredTemplates.find((t: any) => t.name === "frgc_01") ?? filteredTemplates[0];
+    setTemplateId(preferred.id);
+  }, [filteredTemplates, templateId]);
 
   // Reset variable mappings when template changes
   useEffect(() => {
@@ -501,44 +504,50 @@ function Page() {
       <div className="rounded-lg border bg-card p-5 space-y-4 max-w-3xl">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2 md:col-span-2">
-            <Label>Template aprovado</Label>
+            <Label>Conexão WhatsApp (número)</Label>
             <div className="flex flex-col gap-2 sm:flex-row">
-              <Select value={templateId} onValueChange={setTemplateId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={approvedTemplates.length ? "Escolha o template" : "Nenhum template aprovado — cadastre em Templates"} />
-                </SelectTrigger>
+              <Select value={connectionId} onValueChange={setConnectionId}>
+                <SelectTrigger><SelectValue placeholder="Escolha o número" /></SelectTrigger>
                 <SelectContent>
-                  {approvedTemplates.map((t: any) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name} <span className="text-muted-foreground">({t.language})</span>
+                  {(connections as any[]).map((c: any) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name} {c.display_phone ? `(${c.display_phone})` : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Button type="button" variant="outline" disabled={!connectionId || syncing} onClick={handleSyncTemplates}>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!connectionId || syncing}
+                onClick={handleSyncTemplates}
+                title="Sincronizar templates da WABA deste número"
+              >
                 {syncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-                Sincronizar
+                Sincronizar templates
               </Button>
             </div>
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <Label>Template aprovado</Label>
+            <Select value={templateId} onValueChange={setTemplateId}>
+              <SelectTrigger>
+                <SelectValue placeholder={filteredTemplates.length ? "Escolha o template" : "Nenhum template aprovado para este número — clique em Sincronizar"} />
+              </SelectTrigger>
+              <SelectContent>
+                {filteredTemplates.map((t: any) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name} <span className="text-muted-foreground">({t.language})</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {selectedTemplate && (
               <p className="text-xs text-muted-foreground">
                 {selectedTemplate.category ?? "—"} · header: {headerType || "nenhum"} · {bodyVars.length} variável(is) no corpo · {urlButtons.length} botão(ões) com URL dinâmica
               </p>
             )}
-          </div>
-
-          <div className="space-y-2 md:col-span-2">
-            <Label>Conexão WhatsApp</Label>
-            <Select value={connectionId} onValueChange={setConnectionId}>
-              <SelectTrigger><SelectValue placeholder="Escolha o número" /></SelectTrigger>
-              <SelectContent>
-                {filteredConnections.map((c: any) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name} {c.display_phone ? `(${c.display_phone})` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
 
           <div className="space-y-2 md:col-span-2">
