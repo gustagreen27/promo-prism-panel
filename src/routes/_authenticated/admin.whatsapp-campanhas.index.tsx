@@ -27,6 +27,8 @@ import { listTemplates, syncTemplates, syncTemplatesByWaba } from "@/lib/whatsap
 import { sendGenericTemplate, type SendGenericResponse } from "@/lib/wa-send-generic.functions";
 import { getMessageLogStatus } from "@/lib/wa-frgc01.functions";
 import { renderMapping, buildContext, metaVarsIn } from "@/lib/wa-variables";
+import { scheduleQuickSend, unscheduleWaCampaign, listWaCampaigns } from "@/lib/wa-campaigns.functions";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp-campanhas/")({
   head: () => ({ meta: [{ title: "Campanhas WhatsApp" }] }),
