@@ -81,6 +81,21 @@ function Page() {
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao sincronizar"),
   });
+  const diagMut = useMutation({
+    mutationFn: () => debugFn(),
+    onSuccess: (r: any) => { setDiag(r); setDiagOpen(true); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro no diagnóstico"),
+  });
+  const apiCreateMut = useMutation({
+    mutationFn: (p: any) => createApiFn({ data: p }),
+    onSuccess: () => { toast.success("WABA criada na Meta"); setApiOpen(false); refresh(); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro"),
+  });
+  const importBmMut = useMutation({
+    mutationFn: (p: any) => importFn({ data: p }),
+    onSuccess: (r: any) => { toast.success(`${r.created} nova(s), ${r.updated} atualizada(s)`); setImportOpen(false); refresh(); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro"),
+  });
 
   return (
     <>
