@@ -203,8 +203,7 @@ function Page() {
   const [batchSize, setBatchSize] = useState(10);           // pause every N sends
   const [batchPauseSec, setBatchPauseSec] = useState(60);   // seconds
   const [scheduledAt, setScheduledAt] = useState<string>(""); // datetime-local string
-  const [scheduledFor, setScheduledFor] = useState<number | null>(null); // epoch ms
-  const scheduleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [scheduleName, setScheduleName] = useState<string>("");
   const cancelRef = useRef(false);
   const pausedRef = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
