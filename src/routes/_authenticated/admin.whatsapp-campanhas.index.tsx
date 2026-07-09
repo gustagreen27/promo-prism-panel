@@ -755,7 +755,7 @@ function Page() {
         connection_id: connectionIds[0]!,
         template_id: templateId,
         scheduled_at: new Date(scheduledAt).toISOString(),
-        recipients: recipients.map((r) => ({ phone: r.phone, name: r.name ?? null })),
+        recipients: recipients.map((r) => ({ phone: r.phone, name: r.name ?? null, extras: r.extras ?? null })),
         body_mapping: bodyMapping,
         button_url_mapping: buttonUrlMapping,
         header_media_url: headerMediaUrl || null,
