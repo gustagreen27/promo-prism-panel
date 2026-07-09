@@ -2214,6 +2214,7 @@ export type Database = {
           api_key: string | null
           business_id: string | null
           client_id: string | null
+          code_verification_status: string | null
           created_at: string
           daily_cap: number | null
           daily_limit: number | null
@@ -2221,7 +2222,10 @@ export type Database = {
           display_phone: string | null
           graph_api_version: string | null
           id: string
+          last_seen_at: string | null
+          last_synced_at: string | null
           messaging_limit: string | null
+          meta_sync_status: string
           name: string
           nome_interno: string | null
           notes: string | null
@@ -2234,6 +2238,7 @@ export type Database = {
           quality_visible_to_client: boolean
           status: string
           updated_at: string
+          verified_name: string | null
           verify_token: string | null
           visibility: string
           waba_id: string | null
@@ -2246,6 +2251,7 @@ export type Database = {
           api_key?: string | null
           business_id?: string | null
           client_id?: string | null
+          code_verification_status?: string | null
           created_at?: string
           daily_cap?: number | null
           daily_limit?: number | null
@@ -2253,7 +2259,10 @@ export type Database = {
           display_phone?: string | null
           graph_api_version?: string | null
           id?: string
+          last_seen_at?: string | null
+          last_synced_at?: string | null
           messaging_limit?: string | null
+          meta_sync_status?: string
           name: string
           nome_interno?: string | null
           notes?: string | null
@@ -2266,6 +2275,7 @@ export type Database = {
           quality_visible_to_client?: boolean
           status?: string
           updated_at?: string
+          verified_name?: string | null
           verify_token?: string | null
           visibility?: string
           waba_id?: string | null
@@ -2278,6 +2288,7 @@ export type Database = {
           api_key?: string | null
           business_id?: string | null
           client_id?: string | null
+          code_verification_status?: string | null
           created_at?: string
           daily_cap?: number | null
           daily_limit?: number | null
@@ -2285,7 +2296,10 @@ export type Database = {
           display_phone?: string | null
           graph_api_version?: string | null
           id?: string
+          last_seen_at?: string | null
+          last_synced_at?: string | null
           messaging_limit?: string | null
+          meta_sync_status?: string
           name?: string
           nome_interno?: string | null
           notes?: string | null
@@ -2298,6 +2312,7 @@ export type Database = {
           quality_visible_to_client?: boolean
           status?: string
           updated_at?: string
+          verified_name?: string | null
           verify_token?: string | null
           visibility?: string
           waba_id?: string | null
@@ -2888,6 +2903,8 @@ export type Database = {
           client_id: string | null
           created_at: string
           id: string
+          last_sync_error: string | null
+          last_synced_at: string | null
           nome_interno: string
           observacoes: string | null
           onboarded_at: string | null
@@ -2905,6 +2922,8 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           id?: string
+          last_sync_error?: string | null
+          last_synced_at?: string | null
           nome_interno: string
           observacoes?: string | null
           onboarded_at?: string | null
@@ -2922,6 +2941,8 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           id?: string
+          last_sync_error?: string | null
+          last_synced_at?: string | null
           nome_interno?: string
           observacoes?: string | null
           onboarded_at?: string | null
