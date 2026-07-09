@@ -504,44 +504,50 @@ function Page() {
       <div className="rounded-lg border bg-card p-5 space-y-4 max-w-3xl">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2 md:col-span-2">
-            <Label>Template aprovado</Label>
+            <Label>Conexão WhatsApp (número)</Label>
             <div className="flex flex-col gap-2 sm:flex-row">
-              <Select value={templateId} onValueChange={setTemplateId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={approvedTemplates.length ? "Escolha o template" : "Nenhum template aprovado — cadastre em Templates"} />
-                </SelectTrigger>
+              <Select value={connectionId} onValueChange={setConnectionId}>
+                <SelectTrigger><SelectValue placeholder="Escolha o número" /></SelectTrigger>
                 <SelectContent>
-                  {approvedTemplates.map((t: any) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name} <span className="text-muted-foreground">({t.language})</span>
+                  {(connections as any[]).map((c: any) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name} {c.display_phone ? `(${c.display_phone})` : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Button type="button" variant="outline" disabled={!connectionId || syncing} onClick={handleSyncTemplates}>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!connectionId || syncing}
+                onClick={handleSyncTemplates}
+                title="Sincronizar templates da WABA deste número"
+              >
                 {syncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-                Sincronizar
+                Sincronizar templates
               </Button>
             </div>
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <Label>Template aprovado</Label>
+            <Select value={templateId} onValueChange={setTemplateId}>
+              <SelectTrigger>
+                <SelectValue placeholder={filteredTemplates.length ? "Escolha o template" : "Nenhum template aprovado para este número — clique em Sincronizar"} />
+              </SelectTrigger>
+              <SelectContent>
+                {filteredTemplates.map((t: any) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name} <span className="text-muted-foreground">({t.language})</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {selectedTemplate && (
               <p className="text-xs text-muted-foreground">
                 {selectedTemplate.category ?? "—"} · header: {headerType || "nenhum"} · {bodyVars.length} variável(is) no corpo · {urlButtons.length} botão(ões) com URL dinâmica
               </p>
             )}
-          </div>
-
-          <div className="space-y-2 md:col-span-2">
-            <Label>Conexão WhatsApp</Label>
-            <Select value={connectionId} onValueChange={setConnectionId}>
-              <SelectTrigger><SelectValue placeholder="Escolha o número" /></SelectTrigger>
-              <SelectContent>
-                {filteredConnections.map((c: any) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name} {c.display_phone ? `(${c.display_phone})` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
 
           <div className="space-y-2 md:col-span-2">
