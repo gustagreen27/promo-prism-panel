@@ -48,6 +48,10 @@ function Page() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [viewing, setViewing] = useState<any>(null);
+  const [diagOpen, setDiagOpen] = useState(false);
+  const [diag, setDiag] = useState<any>(null);
+  const [apiOpen, setApiOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["wa-wabas"] });
   const save = useMutation({
