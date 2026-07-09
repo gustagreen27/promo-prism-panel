@@ -103,14 +103,23 @@ function Page() {
         title="WABAs"
         description="Contas oficiais do WhatsApp Business (WhatsApp Business Accounts)."
         actions={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" disabled={syncAllMut.isPending} onClick={() => syncAllMut.mutate()}>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button variant="outline" size="sm" disabled={diagMut.isPending} onClick={() => diagMut.mutate()}>
+              <ShieldCheck className="mr-2 h-4 w-4" />Testar token
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+              <Download className="mr-2 h-4 w-4" />Importar do BM
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setApiOpen(true)}>
+              <Cloud className="mr-2 h-4 w-4" />Criar via API
+            </Button>
+            <Button variant="outline" size="sm" disabled={syncAllMut.isPending} onClick={() => syncAllMut.mutate()}>
               <RefreshCw className={`mr-2 h-4 w-4 ${syncAllMut.isPending ? "animate-spin" : ""}`} />
               Sincronizar tudo
             </Button>
             <EmbeddedSignupButton onCompleted={() => refresh()} />
             <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
-              <DialogTrigger asChild><Button variant="outline"><Plus className="mr-2 h-4 w-4" />Cadastro manual</Button></DialogTrigger>
+              <DialogTrigger asChild><Button variant="outline" size="sm"><Plus className="mr-2 h-4 w-4" />Cadastro manual</Button></DialogTrigger>
               <FormDialog editing={editing} clients={clients} projects={projects} onSubmit={(p: any) => save.mutate(p)} saving={save.isPending} />
             </Dialog>
           </div>
