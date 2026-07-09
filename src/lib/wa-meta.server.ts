@@ -29,8 +29,8 @@ function humanizeMetaError(json: any, status: number): { error: string; code?: s
   return { code, error: `${msg}${sub}` };
 }
 
-async function metaFetch(path: string, init: RequestInit): Promise<Response> {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+async function metaFetch(path: string, init: RequestInit, tokenOverride?: string | null): Promise<Response> {
+  const token = tokenOverride || process.env.WHATSAPP_ACCESS_TOKEN;
   if (!token) throw new Error("WHATSAPP_ACCESS_TOKEN não configurado.");
   return fetch(`${GRAPH}${path}`, {
     ...init,
@@ -143,8 +143,12 @@ export async function fetchTemplateStatusFromMeta(input: {
   return { ok: true, data: match, raw: json };
 }
 
-export async function fetchWabaPhoneNumbers(wabaId: string) {
-  const res = await metaFetch(`/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating,messaging_limit_tier,code_verification_status`, { method: "GET" });
+export async function fetchWabaPhoneNumbers(wabaId: string, tokenOverride?: string | null) {
+  const res = await metaFetch(
+    `/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating,messaging_limit_tier,code_verification_status,status,name_status`,
+    { method: "GET" },
+    tokenOverride,
+  );
   const json: any = await res.json().catch(() => ({}));
   if (!res.ok) {
     const h = humanizeMetaError(json, res.status);
