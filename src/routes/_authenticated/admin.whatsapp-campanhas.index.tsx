@@ -809,7 +809,7 @@ function Page() {
               </div>
               <div className="space-y-1">
                 <Label className="text-[10px] uppercase text-muted-foreground">Pausa (s)</Label>
-                <Input type="number" min={0} value={batchPauseSec} disabled={!batchEnabled} onChange={(e) => setBatchPauseSec(Math.max(0, Number(e.target.value) || 0))} />
+                <Input type="number" min={0} value={batchPauseSec} onChange={(e) => { setBatchPauseSec(Math.max(0, Number(e.target.value) || 0)); if (!batchEnabled) setBatchEnabled(true); }} />
               </div>
             </div>
 
