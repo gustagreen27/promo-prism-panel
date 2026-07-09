@@ -686,7 +686,6 @@ function Page() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scheduledFor]);
 
-  const scheduleClockTick = useMemo(() => nowTick, [nowTick]);
   useEffect(() => {
     if (!scheduledFor) return;
     const id = setInterval(() => setNowTick(Date.now()), 1000);
