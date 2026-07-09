@@ -174,7 +174,7 @@ function Page() {
   const sendFn = useServerFn(sendGenericTemplate);
 
   const [templateId, setTemplateId] = useState<string>("");
-  const [connectionId, setConnectionId] = useState<string>("");
+  const [connectionIds, setConnectionIds] = useState<string[]>([]);
   const [recipientsRaw, setRecipientsRaw] = useState("");
   const [headerMediaUrl, setHeaderMediaUrl] = useState("");
   const [headerTextParam, setHeaderTextParam] = useState("");
@@ -184,6 +184,11 @@ function Page() {
   const [sending, setSending] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [uploading, setUploading] = useState(false);
+  // Send throttling
+  const [intervalSec, setIntervalSec] = useState(10);       // seconds between messages
+  const [batchEnabled, setBatchEnabled] = useState(false);
+  const [batchSize, setBatchSize] = useState(10);            // pause every N sends
+  const [batchPauseSec, setBatchPauseSec] = useState(60);   // seconds
   const cancelRef = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
