@@ -632,6 +632,7 @@ function Page() {
           bodyMapping, buttonUrlMapping,
           rateMode, intervalSec, perSecond, perMinute, batchEnabled, batchSize, batchPauseSec,
           rows, runStatus, runStartedAt, runEndedAt,
+          scheduledFor,
         }),
       );
     } catch {}
@@ -640,6 +641,7 @@ function Page() {
     bodyMapping, buttonUrlMapping,
     rateMode, intervalSec, perSecond, perMinute, batchEnabled, batchSize, batchPauseSec,
     rows, runStatus, runStartedAt, runEndedAt,
+    scheduledFor,
   ]);
 
   // Aviso ao fechar/recarregar durante execução ativa
