@@ -396,24 +396,34 @@ function Page() {
   async function handleSyncTemplates() {
     if (connectionIds.length === 0 || syncing) return;
     setSyncing(true);
+    // Iterate per SELECTED connection, in order: Conta 01, depois Conta 02, ...
+    // Dedupe by WABA (mesma WABA = mesmos templates) mantendo a ordem original.
+    const seenWabas = new Set<string>();
+    const steps: { label: string; conn: any }[] = [];
+    selectedConnections.forEach((c: any, i: number) => {
+      const key = c.waba_ref_id || c.id;
+      if (seenWabas.has(key)) return;
+      seenWabas.add(key);
+      const nick = c.nome_interno || c.display_name || c.name || c.display_phone || `Número ${i + 1}`;
+      steps.push({ label: `Conta ${String(i + 1).padStart(2, "0")} · ${nick}`, conn: c });
+    });
+    let total = 0, synced = 0;
     try {
-      const wabaIds = Array.from(new Set(selectedConnections.map((c: any) => c.waba_ref_id).filter(Boolean)));
-      let total = 0, synced = 0;
-      if (wabaIds.length > 0) {
-        for (const w of wabaIds) {
-          const r = await syncTemplatesByWabaFn({ data: { waba_ref_id: w as string } });
+      for (let i = 0; i < steps.length; i++) {
+        const { label, conn } = steps[i];
+        toast.info(`Sincronizando ${label} (${i + 1}/${steps.length})…`);
+        try {
+          const r = conn.waba_ref_id
+            ? await syncTemplatesByWabaFn({ data: { waba_ref_id: conn.waba_ref_id } })
+            : await syncTemplatesFn({ data: { connection_id: conn.id } });
           total += r.total; synced += r.synced;
-        }
-      } else {
-        for (const cid of connectionIds) {
-          const r = await syncTemplatesFn({ data: { connection_id: cid } });
-          total += r.total; synced += r.synced;
+          toast.success(`${label} · ${r.synced}/${r.total}`);
+        } catch (e: any) {
+          toast.error(`${label} · falha: ${e?.message ?? "erro"}`);
         }
       }
       await refetchTemplates();
-      toast.success(`Templates sincronizados · ${synced}/${total}`);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Falha ao sincronizar templates");
+      if (steps.length > 1) toast.success(`Concluído · ${synced}/${total} em ${steps.length} conta(s)`);
     } finally {
       setSyncing(false);
     }
