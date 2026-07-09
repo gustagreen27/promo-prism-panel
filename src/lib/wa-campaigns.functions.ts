@@ -182,6 +182,53 @@ export const startWaCampaign = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const scheduleWaCampaign = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ id: z.string().uuid(), scheduled_at: z.string().min(1) }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const when = new Date(data.scheduled_at);
+    if (Number.isNaN(when.getTime())) throw new Error("Data/hora inválida.");
+    if (when.getTime() < Date.now() - 60_000) throw new Error("A data/hora deve ser futura.");
+
+    const { data: camp } = await context.supabase.from("wa_campaigns").select("*").eq("id", data.id).single();
+    if (!camp) throw new Error("Campanha não encontrada");
+    if (!camp.connection_id || !camp.template_id) throw new Error("Configure número e template antes de agendar.");
+    if (!camp.total_recipients) throw new Error("Gere a fila de destinatários antes de agendar.");
+
+    const { data: avail } = await context.supabase.rpc("wa_available_stock" as any, {
+      _client_id: camp.client_id,
+      _project_id: camp.project_id,
+    });
+    const available = Number(avail ?? 0);
+    if (available < camp.total_recipients) {
+      throw new Error(`Estoque insuficiente: ${available} disponíveis, ${camp.total_recipients} necessárias.`);
+    }
+
+    const { error } = await context.supabase
+      .from("wa_campaigns")
+      .update({ status: "scheduled", scheduled_at: when.toISOString(), started_at: null, finished_at: null })
+      .eq("id", data.id);
+    if (error) throw error;
+    return { ok: true, scheduled_at: when.toISOString() };
+  });
+
+export const unscheduleWaCampaign = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { error } = await context.supabase
+      .from("wa_campaigns")
+      .update({ status: "draft", scheduled_at: null })
+      .eq("id", data.id)
+      .eq("status", "scheduled");
+    if (error) throw error;
+    return { ok: true };
+  });
+
 export const pauseWaCampaign = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))

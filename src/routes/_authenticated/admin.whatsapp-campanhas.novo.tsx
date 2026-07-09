@@ -22,7 +22,7 @@ import { listNumbers } from "@/lib/whatsapp-numbers.functions";
 import { listTemplates, syncTemplatesByWaba } from "@/lib/whatsapp-templates.functions";
 import { listLists } from "@/lib/contact-lists.functions";
 import { previewAudience, renderPreview, createCampaignFromWizard } from "@/lib/wa-wizard.functions";
-import { availableStock, buildRecipients, startWaCampaign } from "@/lib/wa-campaigns.functions";
+import { availableStock, buildRecipients, startWaCampaign, scheduleWaCampaign } from "@/lib/wa-campaigns.functions";
 import { DEFAULT_TOKENS, metaVarsIn } from "@/lib/wa-variables";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp-campanhas/novo")({
@@ -132,6 +132,7 @@ function WizardPage() {
   const createFn = useServerFn(createCampaignFromWizard);
   const buildFn = useServerFn(buildRecipients);
   const startFn = useServerFn(startWaCampaign);
+  const scheduleFn = useServerFn(scheduleWaCampaign);
 
   const { data: clients = [] } = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
   const { data: projects = [] } = useQuery({ queryKey: ["projects"], queryFn: () => projectsFn() });
@@ -259,6 +260,15 @@ function WizardPage() {
       nav({ to: "/admin/whatsapp-campanhas/$id", params: { id: campaignId! } });
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao iniciar"),
+  });
+
+  const scheduleMut = useMutation({
+    mutationFn: () => scheduleFn({ data: { id: campaignId!, scheduled_at: new Date(state.scheduled_at!).toISOString() } }),
+    onSuccess: (r: any) => {
+      toast.success(`Agendado para ${new Date(r.scheduled_at).toLocaleString("pt-BR")}`);
+      nav({ to: "/admin/whatsapp-campanhas/$id", params: { id: campaignId! } });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao agendar"),
   });
 
   return (
@@ -619,9 +629,15 @@ function WizardPage() {
                   Campanha criada. Destinatários enfileirados.
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button onClick={() => startMut.mutate()} disabled={startMut.isPending}>
-                    <Send className="mr-2 h-4 w-4" /> Iniciar envio agora
-                  </Button>
+                  {state.imediato ? (
+                    <Button onClick={() => startMut.mutate()} disabled={startMut.isPending}>
+                      <Send className="mr-2 h-4 w-4" /> Iniciar envio agora
+                    </Button>
+                  ) : (
+                    <Button onClick={() => scheduleMut.mutate()} disabled={scheduleMut.isPending || !state.scheduled_at}>
+                      <Send className="mr-2 h-4 w-4" /> Agendar para {state.scheduled_at ? new Date(state.scheduled_at).toLocaleString("pt-BR") : "—"}
+                    </Button>
+                  )}
                   <Button variant="outline" onClick={() => nav({ to: "/admin/whatsapp-campanhas/$id", params: { id: campaignId } })}>
                     Abrir campanha
                   </Button>
