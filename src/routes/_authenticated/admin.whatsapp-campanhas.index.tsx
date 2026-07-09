@@ -378,14 +378,24 @@ function Page() {
   }
 
   async function handleSyncTemplates() {
-    if (!connectionId || syncing) return;
+    if (connectionIds.length === 0 || syncing) return;
     setSyncing(true);
     try {
-      const result = selectedConnection?.waba_ref_id
-        ? await syncTemplatesByWabaFn({ data: { waba_ref_id: selectedConnection.waba_ref_id } })
-        : await syncTemplatesFn({ data: { connection_id: connectionId } });
+      const wabaIds = Array.from(new Set(selectedConnections.map((c: any) => c.waba_ref_id).filter(Boolean)));
+      let total = 0, synced = 0;
+      if (wabaIds.length > 0) {
+        for (const w of wabaIds) {
+          const r = await syncTemplatesByWabaFn({ data: { waba_ref_id: w as string } });
+          total += r.total; synced += r.synced;
+        }
+      } else {
+        for (const cid of connectionIds) {
+          const r = await syncTemplatesFn({ data: { connection_id: cid } });
+          total += r.total; synced += r.synced;
+        }
+      }
       await refetchTemplates();
-      toast.success(`Templates sincronizados · ${result.synced}/${result.total}`);
+      toast.success(`Templates sincronizados · ${synced}/${total}`);
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao sincronizar templates");
     } finally {
