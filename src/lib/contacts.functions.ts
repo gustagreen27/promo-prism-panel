@@ -135,16 +135,47 @@ export const importContactsCsv = createServerFn({ method: "POST" })
       "phone", "telefone", "Telefone", "celular", "Celular",
       "name", "nome", "Nome",
       "email", "Email", "e-mail", "E-mail",
+      "cpf", "CPF", "Cpf",
     ]);
+
+    const normalizeCpf = (raw: unknown): string | null => {
+      const digits = String(raw ?? "").replace(/\D+/g, "");
+      if (!digits) return null;
+      if (digits.length !== 11) return null;
+      if (/^(\d)\1{10}$/.test(digits)) return null;
+      const calc = (base: string, factor: number) => {
+        let sum = 0;
+        for (let i = 0; i < base.length; i++) sum += parseInt(base[i], 10) * (factor - i);
+        const mod = (sum * 10) % 11;
+        return mod === 10 ? 0 : mod;
+      };
+      const d1 = calc(digits.slice(0, 9), 10);
+      const d2 = calc(digits.slice(0, 10), 11);
+      if (d1 !== parseInt(digits[9], 10) || d2 !== parseInt(digits[10], 10)) return null;
+      return digits;
+    };
+
     for (const row of data.rows) {
       const rawPhone = row.phone || row.telefone || row.Telefone || row.celular || row.Celular;
       const name = row.name || row.nome || row.Nome || null;
       const email = row.email || row.Email || row["e-mail"] || row["E-mail"] || null;
       const phone = normalizeBrPhone(String(rawPhone ?? ""));
-      if (!phone) { invalid++; report.invalidRows.push({ phone: rawPhone, name }); continue; }
+      if (!phone) { invalid++; report.invalidRows.push({ phone: rawPhone, name, reason: "telefone inválido" }); continue; }
       if (seen.has(phone)) { duplicated++; report.duplicates.push(phone); continue; }
       seen.add(phone);
-      // Capture any extra CSV columns (e.g. CPF, protocolo) into metadata so
+
+      const rawCpf = row.cpf ?? row.CPF ?? row.Cpf;
+      let normalizedCpf: string | null = null;
+      if (rawCpf !== undefined && rawCpf !== null && String(rawCpf).trim() !== "") {
+        normalizedCpf = normalizeCpf(rawCpf);
+        if (!normalizedCpf) {
+          invalid++;
+          report.invalidRows.push({ phone, name, cpf: rawCpf, reason: "CPF inválido" });
+          continue;
+        }
+      }
+
+      // Capture any extra CSV columns (e.g. protocolo) into metadata so
       // template variables like {CPF} can resolve to their values.
       const metadata: Record<string, any> = {};
       for (const [k, v] of Object.entries(row)) {
@@ -152,6 +183,10 @@ export const importContactsCsv = createServerFn({ method: "POST" })
         if (v === null || v === undefined || String(v).trim() === "") continue;
         metadata[k] = v;
         metadata[k.toLowerCase()] = v;
+      }
+      if (normalizedCpf) {
+        metadata.CPF = normalizedCpf;
+        metadata.cpf = normalizedCpf;
       }
       toInsert.push({
         phone,
@@ -166,6 +201,7 @@ export const importContactsCsv = createServerFn({ method: "POST" })
       });
       valid++;
     }
+
 
     if (toInsert.length) {
       // upsert ignoring duplicates by phone+client constraint
