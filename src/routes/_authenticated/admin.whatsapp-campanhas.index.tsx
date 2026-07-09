@@ -773,7 +773,7 @@ function Page() {
                 </Label>
                 <span className="text-xs font-medium">{batchSize} Contatos</span>
               </div>
-              <Slider min={1} max={500} step={1} value={[batchSize]} disabled={!batchEnabled} onValueChange={(v) => setBatchSize(v[0] ?? 1)} />
+              <Slider min={1} max={500} step={1} value={[batchSize]} onValueChange={(v) => { setBatchSize(v[0] ?? 1); if (!batchEnabled) setBatchEnabled(true); }} />
             </div>
 
             <div className="space-y-2">
@@ -781,7 +781,7 @@ function Page() {
                 <Label className="text-xs">Tempo de pausa em (s)</Label>
                 <span className="text-xs font-medium">{batchPauseSec} Segundos</span>
               </div>
-              <Slider min={0} max={600} step={5} value={[batchPauseSec]} disabled={!batchEnabled} onValueChange={(v) => setBatchPauseSec(v[0] ?? 0)} />
+              <Slider min={0} max={600} step={5} value={[batchPauseSec]} onValueChange={(v) => { setBatchPauseSec(v[0] ?? 0); if (!batchEnabled) setBatchEnabled(true); }} />
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t">
@@ -805,11 +805,11 @@ function Page() {
               )}
               <div className="space-y-1">
                 <Label className="text-[10px] uppercase text-muted-foreground">Lote</Label>
-                <Input type="number" min={1} value={batchSize} disabled={!batchEnabled} onChange={(e) => setBatchSize(Math.max(1, Number(e.target.value) || 1))} />
+                <Input type="number" min={1} value={batchSize} onChange={(e) => { setBatchSize(Math.max(1, Number(e.target.value) || 1)); if (!batchEnabled) setBatchEnabled(true); }} />
               </div>
               <div className="space-y-1">
                 <Label className="text-[10px] uppercase text-muted-foreground">Pausa (s)</Label>
-                <Input type="number" min={0} value={batchPauseSec} disabled={!batchEnabled} onChange={(e) => setBatchPauseSec(Math.max(0, Number(e.target.value) || 0))} />
+                <Input type="number" min={0} value={batchPauseSec} onChange={(e) => { setBatchPauseSec(Math.max(0, Number(e.target.value) || 0)); if (!batchEnabled) setBatchEnabled(true); }} />
               </div>
             </div>
 
