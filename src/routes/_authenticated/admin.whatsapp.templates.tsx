@@ -34,6 +34,7 @@ function Page() {
   const sync = useServerFn(syncTemplates);
   const submitFn = useServerFn(submitTemplateForApproval);
   const refreshStatusFn = useServerFn(refreshTemplateStatus);
+  const dupFn = useServerFn(duplicateTemplate);
   const wabasFn = useServerFn(listWabas);
   const qc = useQueryClient();
   const { data: rows = [], isLoading } = useQuery({ queryKey: ["wa-templates"], queryFn: () => listFn() });
