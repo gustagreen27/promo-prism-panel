@@ -661,6 +661,38 @@ function Page() {
     return () => window.removeEventListener("beforeunload", handler);
   }, [sending]);
 
+  // Agendamento: dispara handleSend() quando chegar a hora (aba precisa estar aberta).
+  useEffect(() => {
+    if (scheduleTimerRef.current) { clearTimeout(scheduleTimerRef.current); scheduleTimerRef.current = null; }
+    if (!scheduledFor) return;
+    const delay = scheduledFor - Date.now();
+    if (delay <= 0) {
+      // Se já passou (aba reaberta depois), dispara imediatamente se ainda houver destinatários e nada estiver enviando.
+      if (!sending && canSubmit) {
+        setScheduledFor(null); setScheduledAt("");
+        toast.info("Agendamento vencido — iniciando envio agora");
+        handleSend();
+      }
+      return;
+    }
+    scheduleTimerRef.current = setTimeout(() => {
+      setScheduledFor(null); setScheduledAt("");
+      if (sending) { toast.message("Agendamento ignorado: já há envio em andamento"); return; }
+      if (!canSubmit) { toast.error("Agendamento cancelado: configuração incompleta"); return; }
+      toast.success("Iniciando envio agendado");
+      handleSend();
+    }, delay);
+    return () => { if (scheduleTimerRef.current) clearTimeout(scheduleTimerRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scheduledFor]);
+
+  const scheduleClockTick = useMemo(() => nowTick, [nowTick]);
+  useEffect(() => {
+    if (!scheduledFor) return;
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [scheduledFor]);
+
   const canResume =
     !sending &&
     runStatus === "paused" &&
