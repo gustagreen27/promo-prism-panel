@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { listWabas, createWaba, updateWaba, deleteWaba, getWabaChildren } from "@/lib/wa-wabas.functions";
-import { importWabaNumbers } from "@/lib/wa-meta.functions";
+import { syncWabaNumbers, syncAllWabas } from "@/lib/wa-meta-sync.functions";
 import { listClients } from "@/lib/clients.functions";
 import { listProjects } from "@/lib/projects.functions";
 import { EmbeddedSignupButton } from "@/components/admin/whatsapp/embedded-signup-button";
@@ -31,7 +31,8 @@ function Page() {
   const update = useServerFn(updateWaba);
   const remove = useServerFn(deleteWaba);
   const childrenFn = useServerFn(getWabaChildren);
-  const importNumbers = useServerFn(importWabaNumbers);
+  const syncOne = useServerFn(syncWabaNumbers);
+  const syncAll = useServerFn(syncAllWabas);
   const clientsFn = useServerFn(listClients);
   const projectsFn = useServerFn(listProjects);
   const qc = useQueryClient();
@@ -56,9 +57,21 @@ function Page() {
     onError: (e: any) => toast.error(e?.message ?? "Erro"),
   });
   const importMut = useMutation({
-    mutationFn: (id: string) => importNumbers({ data: { waba_ref_id: id } }),
-    onSuccess: (r: any) => { toast.success(`${r.imported}/${r.total} números importados`); refresh(); },
-    onError: (e: any) => toast.error(e?.message ?? "Erro ao importar da Meta"),
+    mutationFn: (id: string) => syncOne({ data: { waba_ref_id: id } }),
+    onSuccess: (r: any) => {
+      toast.success(`${r.created} novos · ${r.updated} atualizados · ${r.marked_missing} sumidos`);
+      refresh();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao sincronizar"),
+  });
+  const syncAllMut = useMutation({
+    mutationFn: () => syncAll(),
+    onSuccess: (r: any) => {
+      const t = r?.totals;
+      toast.success(`${t?.wabas ?? 0} WABAs · ${t?.created ?? 0} novos · ${t?.updated ?? 0} atualizados${t?.errors ? ` · ${t.errors} erro(s)` : ""}`);
+      refresh();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao sincronizar"),
   });
 
   return (
@@ -68,6 +81,10 @@ function Page() {
         description="Contas oficiais do WhatsApp Business (WhatsApp Business Accounts)."
         actions={
           <div className="flex items-center gap-2">
+            <Button variant="outline" disabled={syncAllMut.isPending} onClick={() => syncAllMut.mutate()}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${syncAllMut.isPending ? "animate-spin" : ""}`} />
+              Sincronizar tudo
+            </Button>
             <EmbeddedSignupButton onCompleted={() => refresh()} />
             <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
               <DialogTrigger asChild><Button variant="outline"><Plus className="mr-2 h-4 w-4" />Cadastro manual</Button></DialogTrigger>
