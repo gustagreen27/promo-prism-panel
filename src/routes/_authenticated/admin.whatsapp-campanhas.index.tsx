@@ -620,12 +620,6 @@ function Page() {
       } else if (s.runStatus) {
         setRunStatus(s.runStatus);
       }
-      if (typeof s.scheduledFor === "number" && s.scheduledFor > Date.now()) {
-        setScheduledFor(s.scheduledFor);
-        const d = new Date(s.scheduledFor);
-        const pad = (n: number) => String(n).padStart(2, "0");
-        setScheduledAt(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
-      }
     } catch {}
   }, []);
 
@@ -639,7 +633,6 @@ function Page() {
           bodyMapping, buttonUrlMapping,
           rateMode, intervalSec, perSecond, perMinute, batchEnabled, batchSize, batchPauseSec,
           rows, runStatus, runStartedAt, runEndedAt,
-          scheduledFor,
         }),
       );
     } catch {}
@@ -648,7 +641,6 @@ function Page() {
     bodyMapping, buttonUrlMapping,
     rateMode, intervalSec, perSecond, perMinute, batchEnabled, batchSize, batchPauseSec,
     rows, runStatus, runStartedAt, runEndedAt,
-    scheduledFor,
   ]);
 
   // Aviso ao fechar/recarregar durante execução ativa
@@ -662,36 +654,23 @@ function Page() {
     return () => window.removeEventListener("beforeunload", handler);
   }, [sending]);
 
-  // Agendamento: dispara handleSend() quando chegar a hora (aba precisa estar aberta).
+  // Agendamentos ativos (backend, sobrevivem a reload)
+  const qc = useQueryClient();
+  const listCampFn = useServerFn(listWaCampaigns);
+  const scheduleFn = useServerFn(scheduleQuickSend);
+  const unscheduleFn = useServerFn(unscheduleWaCampaign);
+  const scheduledCampsQ = useQuery({
+    queryKey: ["wa-campaigns", "scheduled"],
+    queryFn: async () => {
+      const all = await listCampFn();
+      return (all as any[]).filter((c) => c.status === "scheduled").sort((a, b) => String(a.scheduled_at).localeCompare(String(b.scheduled_at)));
+    },
+    refetchInterval: 15_000,
+  });
   useEffect(() => {
-    if (scheduleTimerRef.current) { clearTimeout(scheduleTimerRef.current); scheduleTimerRef.current = null; }
-    if (!scheduledFor) return;
-    const delay = scheduledFor - Date.now();
-    if (delay <= 0) {
-      // Se já passou (aba reaberta depois), dispara imediatamente se ainda houver destinatários e nada estiver enviando.
-      if (!sending && canSubmit) {
-        setScheduledFor(null); setScheduledAt("");
-        toast.info("Agendamento vencido — iniciando envio agora");
-        handleSend();
-      }
-      return;
-    }
-    scheduleTimerRef.current = setTimeout(() => {
-      setScheduledFor(null); setScheduledAt("");
-      if (sending) { toast.message("Agendamento ignorado: já há envio em andamento"); return; }
-      if (!canSubmit) { toast.error("Agendamento cancelado: configuração incompleta"); return; }
-      toast.success("Iniciando envio agendado");
-      handleSend();
-    }, delay);
-    return () => { if (scheduleTimerRef.current) clearTimeout(scheduleTimerRef.current); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scheduledFor]);
-
-  useEffect(() => {
-    if (!scheduledFor) return;
     const id = setInterval(() => setNowTick(Date.now()), 1000);
     return () => clearInterval(id);
-  }, [scheduledFor]);
+  }, []);
 
   const canResume =
     !sending &&
