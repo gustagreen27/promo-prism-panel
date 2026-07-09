@@ -459,7 +459,12 @@ function Page() {
   async function handleSend() {
     if (!canSubmit || sending || !selectedTemplate) return;
     cancelRef.current = false;
+    pausedRef.current = false;
+    setPaused(false);
     setSending(true);
+    setRunStatus("running");
+    setRunStartedAt(Date.now());
+    setRunEndedAt(null);
     const initial: RowState[] = recipients.map((r) => ({ phone: r.phone, name: r.name, status: "pending" }));
     setRows(initial);
     let okCount = 0;
@@ -518,9 +523,16 @@ function Page() {
     };
 
     const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const waitWhilePaused = async () => {
+      while (pausedRef.current && !cancelRef.current) {
+        await wait(200);
+      }
+    };
     const conns = selectedConnections;
 
     for (let i = 0; i < recipients.length; i++) {
+      if (cancelRef.current) break;
+      await waitWhilePaused();
       if (cancelRef.current) break;
       const conn = conns[i % conns.length];
       await sendOne(i, conn);
@@ -539,8 +551,19 @@ function Page() {
     }
 
     setSending(false);
+    setPaused(false);
+    pausedRef.current = false;
+    setRunEndedAt(Date.now());
+    setRunStatus(cancelRef.current ? "cancelled" : "finished");
     toast[failCount === 0 ? "success" : "message"](`Envio concluído · ${okCount} ok · ${failCount} falha(s)`);
   }
+
+  // Tick clock while running so ETA/elapsed refresh
+  useEffect(() => {
+    if (!sending) return;
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [sending]);
 
   return (
     <div className="space-y-6">
