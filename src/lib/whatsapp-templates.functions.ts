@@ -187,11 +187,21 @@ export const syncTemplatesByWaba = createServerFn({ method: "POST" })
     }
 
     const { syncTemplatesFromMeta } = await import("@/lib/wa-send.server");
-    const list = await syncTemplatesFromMeta({
-      wabaId: waba.waba_id,
-      accessToken,
-      graphVersion,
-    });
+    let list: any[];
+    try {
+      list = await syncTemplatesFromMeta({
+        wabaId: waba.waba_id,
+        accessToken,
+        graphVersion,
+      });
+    } catch (e: any) {
+      const msg = e?.message ?? "Falha ao consultar templates na Meta";
+      await context.supabase
+        .from("whatsapp_wabas")
+        .update({ last_sync_error: msg, last_synced_at: new Date().toISOString() })
+        .eq("id", data.waba_ref_id);
+      return { total: 0, synced: 0, error: msg } as any;
+    }
 
     const statusMap: Record<string, string> = {
       APPROVED: "approved",
