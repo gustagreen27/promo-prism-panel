@@ -438,7 +438,7 @@ function Page() {
 
   const canSubmit =
     !!templateId &&
-    !!connectionId &&
+    connectionIds.length > 0 &&
     recipients.length > 0 &&
     (!headerNeedsMedia || !!headerMediaUrl) &&
     (!headerNeedsText || !!headerTextParam.trim()) &&
@@ -446,16 +446,23 @@ function Page() {
     urlButtons.every((b) => (buttonUrlMapping[String(b.i)] ?? "").trim().length > 0);
 
   async function handleSend() {
-    if (!canSubmit || sending) return;
+    if (!canSubmit || sending || !selectedTemplate) return;
     cancelRef.current = false;
     setSending(true);
     const initial: RowState[] = recipients.map((r) => ({ phone: r.phone, name: r.name, status: "pending" }));
     setRows(initial);
     let okCount = 0;
     let failCount = 0;
-    const RATE_PER_SECOND = 40;
 
-    const sendOne = async (idx: number) => {
+    // Build per-WABA template map so we can pick the right template.id per connection.
+    const tplByWaba = new Map<string, any>();
+    for (const t of approvedTemplates) {
+      if (t.name === selectedTemplate.name && t.language === selectedTemplate.language && t.waba_ref_id) {
+        tplByWaba.set(t.waba_ref_id, t);
+      }
+    }
+
+    const sendOne = async (idx: number, conn: any) => {
       if (cancelRef.current) return;
       const { phone, name } = recipients[idx];
       setRows((rs) => rs.map((r) => (r.phone === phone ? { ...r, status: "sending" } : r)));
@@ -467,10 +474,12 @@ function Page() {
         const buttonUrlParams: Record<string, string> = {};
         for (const b of urlButtons) buttonUrlParams[String(b.i)] = render(buttonUrlMapping[String(b.i)] ?? "");
 
+        const tplForConn = (conn.waba_ref_id && tplByWaba.get(conn.waba_ref_id)) || selectedTemplate;
+
         const res: SendGenericResponse = await sendFn({
           data: {
-            connectionId,
-            templateId,
+            connectionId: conn.id,
+            templateId: tplForConn.id,
             to: phone,
             bodyParams,
             buttonUrlParams,
@@ -497,22 +506,22 @@ function Page() {
       }
     };
 
-    const pending: Promise<void>[] = [];
-    for (let i = 0; i < recipients.length; i += RATE_PER_SECOND) {
+    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const conns = selectedConnections;
+
+    for (let i = 0; i < recipients.length; i++) {
       if (cancelRef.current) break;
-      const windowStart = Date.now();
-      const slice = Array.from(
-        { length: Math.min(RATE_PER_SECOND, recipients.length - i) },
-        (_, k) => i + k,
-      );
-      for (const idx of slice) pending.push(sendOne(idx));
-      if (i + RATE_PER_SECOND < recipients.length) {
-        const elapsed = Date.now() - windowStart;
-        const wait = Math.max(0, 1000 - elapsed);
-        if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+      const conn = conns[i % conns.length];
+      await sendOne(i, conn);
+      const isLast = i === recipients.length - 1;
+      if (isLast) break;
+      // Batch pause
+      if (batchEnabled && batchSize > 0 && (i + 1) % batchSize === 0) {
+        await wait(Math.max(0, batchPauseSec) * 1000);
+      } else if (intervalSec > 0) {
+        await wait(intervalSec * 1000);
       }
     }
-    await Promise.all(pending);
 
     setSending(false);
     toast[failCount === 0 ? "success" : "message"](`Envio concluído · ${okCount} ok · ${failCount} falha(s)`);
