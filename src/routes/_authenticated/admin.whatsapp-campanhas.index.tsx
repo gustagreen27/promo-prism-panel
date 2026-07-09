@@ -781,7 +781,7 @@ function Page() {
                 <Label className="text-xs">Tempo de pausa em (s)</Label>
                 <span className="text-xs font-medium">{batchPauseSec} Segundos</span>
               </div>
-              <Slider min={0} max={600} step={5} value={[batchPauseSec]} disabled={!batchEnabled} onValueChange={(v) => setBatchPauseSec(v[0] ?? 0)} />
+              <Slider min={0} max={600} step={5} value={[batchPauseSec]} onValueChange={(v) => { setBatchPauseSec(v[0] ?? 0); if (!batchEnabled) setBatchEnabled(true); }} />
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t">
