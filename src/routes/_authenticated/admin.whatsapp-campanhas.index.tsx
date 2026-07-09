@@ -619,6 +619,12 @@ function Page() {
       } else if (s.runStatus) {
         setRunStatus(s.runStatus);
       }
+      if (typeof s.scheduledFor === "number" && s.scheduledFor > Date.now()) {
+        setScheduledFor(s.scheduledFor);
+        const d = new Date(s.scheduledFor);
+        const pad = (n: number) => String(n).padStart(2, "0");
+        setScheduledAt(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+      }
     } catch {}
   }, []);
 
