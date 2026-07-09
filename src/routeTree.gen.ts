@@ -52,6 +52,7 @@ import { Route as AuthenticatedAdminWhatsappCampanhasIndexRouteImport } from './
 import { Route as AuthenticatedAdminRelatoriosIndexRouteImport } from './routes/_authenticated/admin.relatorios.index'
 import { Route as ApiPublicWhatsappWebhookHealthRouteImport } from './routes/api/public/whatsapp/webhook-health'
 import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp/webhook'
+import { Route as ApiPublicWhatsappSyncNumbersRouteImport } from './routes/api/public/whatsapp/sync-numbers'
 import { Route as ApiPublicWhatsappQueueTickRouteImport } from './routes/api/public/whatsapp/queue-tick'
 import { Route as ApiPublicCiSplatRouteImport } from './routes/api/public/ci.$'
 import { Route as AuthenticatedAdminWhatsappWebhooksRouteImport } from './routes/_authenticated/admin.whatsapp.webhooks'
@@ -311,6 +312,12 @@ const ApiPublicWhatsappWebhookRoute =
     path: '/api/public/whatsapp/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicWhatsappSyncNumbersRoute =
+  ApiPublicWhatsappSyncNumbersRouteImport.update({
+    id: '/api/public/whatsapp/sync-numbers',
+    path: '/api/public/whatsapp/sync-numbers',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicWhatsappQueueTickRoute =
   ApiPublicWhatsappQueueTickRouteImport.update({
     id: '/api/public/whatsapp/queue-tick',
@@ -509,6 +516,7 @@ export interface FileRoutesByFullPath {
   '/admin/whatsapp/webhooks': typeof AuthenticatedAdminWhatsappWebhooksRoute
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
   '/api/public/whatsapp/queue-tick': typeof ApiPublicWhatsappQueueTickRoute
+  '/api/public/whatsapp/sync-numbers': typeof ApiPublicWhatsappSyncNumbersRoute
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
   '/api/public/whatsapp/webhook-health': typeof ApiPublicWhatsappWebhookHealthRoute
   '/admin/relatorios/': typeof AuthenticatedAdminRelatoriosIndexRoute
@@ -574,6 +582,7 @@ export interface FileRoutesByTo {
   '/admin/whatsapp/webhooks': typeof AuthenticatedAdminWhatsappWebhooksRoute
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
   '/api/public/whatsapp/queue-tick': typeof ApiPublicWhatsappQueueTickRoute
+  '/api/public/whatsapp/sync-numbers': typeof ApiPublicWhatsappSyncNumbersRoute
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
   '/api/public/whatsapp/webhook-health': typeof ApiPublicWhatsappWebhookHealthRoute
   '/admin/relatorios': typeof AuthenticatedAdminRelatoriosIndexRoute
@@ -643,6 +652,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/whatsapp/webhooks': typeof AuthenticatedAdminWhatsappWebhooksRoute
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
   '/api/public/whatsapp/queue-tick': typeof ApiPublicWhatsappQueueTickRoute
+  '/api/public/whatsapp/sync-numbers': typeof ApiPublicWhatsappSyncNumbersRoute
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
   '/api/public/whatsapp/webhook-health': typeof ApiPublicWhatsappWebhookHealthRoute
   '/_authenticated/admin/relatorios/': typeof AuthenticatedAdminRelatoriosIndexRoute
@@ -712,6 +722,7 @@ export interface FileRouteTypes {
     | '/admin/whatsapp/webhooks'
     | '/api/public/ci/$'
     | '/api/public/whatsapp/queue-tick'
+    | '/api/public/whatsapp/sync-numbers'
     | '/api/public/whatsapp/webhook'
     | '/api/public/whatsapp/webhook-health'
     | '/admin/relatorios/'
@@ -777,6 +788,7 @@ export interface FileRouteTypes {
     | '/admin/whatsapp/webhooks'
     | '/api/public/ci/$'
     | '/api/public/whatsapp/queue-tick'
+    | '/api/public/whatsapp/sync-numbers'
     | '/api/public/whatsapp/webhook'
     | '/api/public/whatsapp/webhook-health'
     | '/admin/relatorios'
@@ -845,6 +857,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/whatsapp/webhooks'
     | '/api/public/ci/$'
     | '/api/public/whatsapp/queue-tick'
+    | '/api/public/whatsapp/sync-numbers'
     | '/api/public/whatsapp/webhook'
     | '/api/public/whatsapp/webhook-health'
     | '/_authenticated/admin/relatorios/'
@@ -866,6 +879,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   ApiPublicCiSplatRoute: typeof ApiPublicCiSplatRoute
   ApiPublicWhatsappQueueTickRoute: typeof ApiPublicWhatsappQueueTickRoute
+  ApiPublicWhatsappSyncNumbersRoute: typeof ApiPublicWhatsappSyncNumbersRoute
   ApiPublicWhatsappWebhookRoute: typeof ApiPublicWhatsappWebhookRoute
   ApiPublicWhatsappWebhookHealthRoute: typeof ApiPublicWhatsappWebhookHealthRoute
 }
@@ -1171,6 +1185,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/whatsapp/webhook'
       fullPath: '/api/public/whatsapp/webhook'
       preLoaderRoute: typeof ApiPublicWhatsappWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/whatsapp/sync-numbers': {
+      id: '/api/public/whatsapp/sync-numbers'
+      path: '/api/public/whatsapp/sync-numbers'
+      fullPath: '/api/public/whatsapp/sync-numbers'
+      preLoaderRoute: typeof ApiPublicWhatsappSyncNumbersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/whatsapp/queue-tick': {
@@ -1550,6 +1571,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   ApiPublicCiSplatRoute: ApiPublicCiSplatRoute,
   ApiPublicWhatsappQueueTickRoute: ApiPublicWhatsappQueueTickRoute,
+  ApiPublicWhatsappSyncNumbersRoute: ApiPublicWhatsappSyncNumbersRoute,
   ApiPublicWhatsappWebhookRoute: ApiPublicWhatsappWebhookRoute,
   ApiPublicWhatsappWebhookHealthRoute: ApiPublicWhatsappWebhookHealthRoute,
 }

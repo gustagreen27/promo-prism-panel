@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil } from "lucide-react";
+import { Plus, Trash2, Pencil, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { listNumbers, createNumber, updateNumber, deleteNumber } from "@/lib/whatsapp-numbers.functions";
+import { syncAllWabas } from "@/lib/wa-meta-sync.functions";
 import { listClients } from "@/lib/clients.functions";
 import { listProjects } from "@/lib/projects.functions";
 
@@ -27,6 +28,7 @@ function Page() {
   const create = useServerFn(createNumber);
   const update = useServerFn(updateNumber);
   const remove = useServerFn(deleteNumber);
+  const syncAll = useServerFn(syncAllWabas);
   const clientsFn = useServerFn(listClients);
   const projectsFn = useServerFn(listProjects);
   const qc = useQueryClient();
@@ -48,6 +50,15 @@ function Page() {
     mutationFn: (id: string) => remove({ data: { id } }),
     onSuccess: () => { toast.success("Removido"); refresh(); },
   });
+  const syncMut = useMutation({
+    mutationFn: () => syncAll(),
+    onSuccess: (r: any) => {
+      const t = r?.totals;
+      toast.success(`Sync: ${t?.created ?? 0} novos, ${t?.updated ?? 0} atualizados, ${t?.marked_missing ?? 0} sumidos${t?.errors ? `, ${t.errors} erro(s)` : ""}`);
+      refresh();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao sincronizar"),
+  });
 
   return (
     <>
@@ -55,10 +66,16 @@ function Page() {
         title="Números WhatsApp Cloud API"
         description="Configure os números oficiais Meta usados pelos disparos."
         actions={
-          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
-            <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Novo número</Button></DialogTrigger>
-            <FormDialog editing={editing} clients={clients} projects={projects} onSubmit={(p: any) => saveMut.mutate(p)} saving={saveMut.isPending} />
-          </Dialog>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" disabled={syncMut.isPending} onClick={() => syncMut.mutate()}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${syncMut.isPending ? "animate-spin" : ""}`} />
+              Sincronizar agora
+            </Button>
+            <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
+              <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Novo número</Button></DialogTrigger>
+              <FormDialog editing={editing} clients={clients} projects={projects} onSubmit={(p: any) => saveMut.mutate(p)} saving={saveMut.isPending} />
+            </Dialog>
+          </div>
         }
       />
       <div className="rounded-xl border bg-card">
