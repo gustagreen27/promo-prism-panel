@@ -199,25 +199,5 @@ export const syncAllWabas = createServerFn({ method: "POST" })
     return { totals, results };
   });
 
-/** Helper server-only para o cron (bypassa createServerFn RPC). */
-export async function _internalSyncAll() {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: wabas, error } = await supabaseAdmin
-    .from("whatsapp_wabas")
-    .select("id, waba_id, business_id, access_token, client_id, project_id, workspace_id, status")
-    .neq("status", "suspenso");
-  if (error) throw error;
-  const results: SyncStats[] = [];
-  for (const w of wabas ?? []) {
-    try {
-      results.push(await syncOneWaba(supabaseAdmin, w as any));
-    } catch (e: any) {
-      results.push({
-        waba_ref_id: w.id, waba_id: w.waba_id,
-        total_from_meta: 0, created: 0, updated: 0, marked_missing: 0,
-        error: e?.message ?? "erro",
-      });
-    }
-  }
-  return results;
-}
+export { syncOneWaba as _syncOneWabaInternal };
+
