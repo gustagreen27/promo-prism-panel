@@ -991,12 +991,18 @@ function Page() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button disabled={!canSubmit || sending} onClick={handleSend}>
+          <Button disabled={!canSubmit || sending} onClick={() => handleSend()}>
             {sending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
             {sending
               ? `Enviando… (${rows.filter((r) => r.status === "sent" || r.status === "failed").length}/${rows.length})`
               : `Disparar para ${recipients.length} destinatário(s)`}
           </Button>
+          {canResume && (
+            <Button variant="default" onClick={() => handleSend({ resume: true })}>
+              <Play className="h-4 w-4 mr-2" />
+              Retomar disparo ({rows.filter((r) => r.status === "pending" || r.status === "sending").length} pendentes)
+            </Button>
+          )}
           {sending && !paused && (
             <Button variant="outline" onClick={() => { pausedRef.current = true; setPaused(true); setRunStatus("paused"); }}>
               <Pause className="h-4 w-4 mr-2" /> Pausar
@@ -1013,7 +1019,10 @@ function Page() {
             </Button>
           )}
           {rows.length > 0 && !sending && (
-            <Button variant="ghost" onClick={() => { setRows([]); setRunStatus("idle"); setRunStartedAt(null); setRunEndedAt(null); }}>Limpar resultados</Button>
+            <Button variant="ghost" onClick={() => {
+              setRows([]); setRunStatus("idle"); setRunStartedAt(null); setRunEndedAt(null);
+              try { localStorage.removeItem("wa-campanhas-run-v1"); } catch {}
+            }}>Limpar resultados</Button>
           )}
         </div>
 
