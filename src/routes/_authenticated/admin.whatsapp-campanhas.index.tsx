@@ -537,29 +537,100 @@ function Page() {
       <div className="rounded-lg border bg-card p-5 space-y-4 max-w-3xl">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2 md:col-span-2">
-            <Label>Conexão WhatsApp (número)</Label>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Select value={connectionId} onValueChange={setConnectionId}>
-                <SelectTrigger><SelectValue placeholder="Escolha o número" /></SelectTrigger>
-                <SelectContent>
-                  {(connections as any[]).map((c: any) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name} {c.display_phone ? `(${c.display_phone})` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <Label>Conexões WhatsApp (marque um ou mais números para dividir os disparos)</Label>
               <Button
                 type="button"
                 variant="outline"
-                disabled={!connectionId || syncing}
+                size="sm"
+                disabled={connectionIds.length === 0 || syncing}
                 onClick={handleSyncTemplates}
-                title="Sincronizar templates da WABA deste número"
+                title="Sincronizar templates das WABAs selecionadas"
               >
                 {syncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
                 Sincronizar templates
               </Button>
             </div>
+            <div className="rounded-md border divide-y max-h-56 overflow-auto">
+              {(connections as any[]).length === 0 && (
+                <div className="p-3 text-sm text-muted-foreground">Nenhuma conexão disponível.</div>
+              )}
+              {(connections as any[]).map((c: any) => {
+                const checked = connectionIds.includes(c.id);
+                return (
+                  <label key={c.id} className="flex items-center gap-3 px-3 py-2 text-sm cursor-pointer hover:bg-muted/40">
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={(v) => {
+                        setConnectionIds((prev) => v ? Array.from(new Set([...prev, c.id])) : prev.filter((x) => x !== c.id));
+                      }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{c.name}</div>
+                      <div className="text-xs text-muted-foreground truncate">{c.display_phone ?? c.phone ?? ""}</div>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {connectionIds.length} número(s) selecionado(s). Os disparos serão distribuídos em rodízio (round-robin).
+            </p>
+          </div>
+
+          <div className="space-y-3 md:col-span-2 rounded-md border bg-muted/20 p-4">
+            <div className="flex items-center gap-2">
+              <Settings2 className="h-4 w-4 text-muted-foreground" />
+              <div className="text-sm font-semibold">Configurações de envio</div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">Intervalo entre envios (s)</Label>
+                <span className="text-xs font-medium">{intervalSec} {intervalSec === 1 ? "Segundo" : "Segundos"}</span>
+              </div>
+              <Slider min={0} max={120} step={1} value={[intervalSec]} onValueChange={(v) => setIntervalSec(v[0] ?? 0)} />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs flex items-center gap-2">
+                  <Checkbox checked={batchEnabled} onCheckedChange={(v) => setBatchEnabled(!!v)} />
+                  Pausa (a cada X envios)
+                </Label>
+                <span className="text-xs font-medium">{batchSize} Contatos</span>
+              </div>
+              <Slider min={1} max={500} step={1} value={[batchSize]} disabled={!batchEnabled} onValueChange={(v) => setBatchSize(v[0] ?? 1)} />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">Tempo de pausa em (s)</Label>
+                <span className="text-xs font-medium">{batchPauseSec} Segundos</span>
+              </div>
+              <Slider min={0} max={600} step={5} value={[batchPauseSec]} disabled={!batchEnabled} onValueChange={(v) => setBatchPauseSec(v[0] ?? 0)} />
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 pt-2 border-t">
+              <div className="space-y-1">
+                <Label className="text-[10px] uppercase text-muted-foreground">Intervalo (s)</Label>
+                <Input type="number" min={0} step={0.5} value={intervalSec} onChange={(e) => setIntervalSec(Math.max(0, Number(e.target.value) || 0))} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] uppercase text-muted-foreground">Lote</Label>
+                <Input type="number" min={1} value={batchSize} disabled={!batchEnabled} onChange={(e) => setBatchSize(Math.max(1, Number(e.target.value) || 1))} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] uppercase text-muted-foreground">Pausa (s)</Label>
+                <Input type="number" min={0} value={batchPauseSec} disabled={!batchEnabled} onChange={(e) => setBatchPauseSec(Math.max(0, Number(e.target.value) || 0))} />
+              </div>
+            </div>
+
+            <p className="text-[11px] text-muted-foreground">
+              Ritmo estimado: {intervalSec > 0 ? `~${(60 / Math.max(intervalSec, 0.5)).toFixed(1)} msg/min` : "sem intervalo (o mais rápido possível)"}
+              {batchEnabled && ` · pausa de ${batchPauseSec}s a cada ${batchSize} envios`}
+              {connectionIds.length > 1 && ` · dividido entre ${connectionIds.length} número(s)`}
+            </p>
           </div>
 
           <div className="space-y-2 md:col-span-2">
