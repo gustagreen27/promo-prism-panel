@@ -881,7 +881,7 @@ function Page() {
               return (
                 <p className="text-[11px] text-muted-foreground">
                   Ritmo: ~{perMin} msg/min
-                  {batchEnabled && ` · pausa de ${batchPauseSec}s a cada ${batchSize} envios`}
+                  {batchEnabled && ` · lotes de ${batchSize} em paralelo, pausa ${batchPauseSec}s entre lotes`}
                   {connectionIds.length > 1 && ` · dividido entre ${connectionIds.length} WABAs (~${perConn} por número)`}
                   {recipients.length > 0 && ` · ETA ${eta}`}
                 </p>
