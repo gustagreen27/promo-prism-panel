@@ -773,7 +773,7 @@ function Page() {
                 </Label>
                 <span className="text-xs font-medium">{batchSize} Contatos</span>
               </div>
-              <Slider min={1} max={500} step={1} value={[batchSize]} disabled={!batchEnabled} onValueChange={(v) => setBatchSize(v[0] ?? 1)} />
+              <Slider min={1} max={500} step={1} value={[batchSize]} onValueChange={(v) => { setBatchSize(v[0] ?? 1); if (!batchEnabled) setBatchEnabled(true); }} />
             </div>
 
             <div className="space-y-2">
