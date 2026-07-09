@@ -1035,6 +1035,49 @@ function Page() {
             <p className="text-xs text-muted-foreground">
               {recipients.length} destinatário(s) detectados.
             </p>
+            {(() => {
+              const cols = new Set<string>();
+              for (const r of recipients) {
+                if (!r.extras) continue;
+                for (const k of Object.keys(r.extras)) {
+                  if (k === k.toLowerCase() && Object.prototype.hasOwnProperty.call(r.extras, k.toUpperCase())) continue;
+                  cols.add(k);
+                }
+              }
+              const uniqueCols = Array.from(cols).filter((k, _, arr) => {
+                // prefer original-case version; drop the lowercase duplicate if the original exists
+                if (k === k.toLowerCase() && arr.includes(k.toUpperCase())) return false;
+                return true;
+              });
+              if (uniqueCols.length === 0) return null;
+              return (
+                <div className="space-y-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/5 px-3 py-2">
+                  <div className="text-xs font-medium text-emerald-700">
+                    Colunas extras reconhecidas do CSV:
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {uniqueCols.map((c) => (
+                      <span key={c} className="inline-flex items-center rounded border border-emerald-500/40 bg-background px-1.5 py-0.5 font-mono text-[11px] text-emerald-700">
+                        {c}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Use nas variáveis do template como{" "}
+                    {uniqueCols.slice(0, 3).map((c, i) => (
+                      <span key={c}>
+                        {i > 0 && ", "}
+                        <code className="font-mono">{`{${c.toLowerCase()}}`}</code>
+                        {" ou "}
+                        <code className="font-mono">{`{${c.toUpperCase()}}`}</code>
+                      </span>
+                    ))}
+                    {uniqueCols.length > 3 && " …"}
+                  </div>
+                </div>
+              );
+            })()}
+
           </div>
 
           {headerNeedsMedia && (
