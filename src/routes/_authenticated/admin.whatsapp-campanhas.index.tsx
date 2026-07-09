@@ -242,18 +242,18 @@ function Page() {
 
   // Filter templates to those available on ALL selected WABAs (by name+language).
   // Fall back to primary WABA's templates if intersection is empty.
+  // Mostra APENAS templates aprovados das WABAs dos números selecionados.
+  // Se múltiplos números, usa interseção por name+language (template precisa existir em todas).
   const filteredTemplates = useMemo(() => {
-    if (selectedConnections.length === 0) return approvedTemplates;
+    if (selectedConnections.length === 0) return [];
     const wabaIds = Array.from(new Set(selectedConnections.map((c: any) => c.waba_ref_id).filter(Boolean)));
-    if (wabaIds.length === 0) return approvedTemplates;
-    // Group by name+language
+    if (wabaIds.length === 0) return [];
     const primaryWaba = primaryConnection?.waba_ref_id;
     const primaryList = approvedTemplates.filter((t: any) => t.waba_ref_id === primaryWaba);
-    if (wabaIds.length === 1) return primaryList.length ? primaryList : approvedTemplates;
-    const intersection = primaryList.filter((t: any) =>
+    if (wabaIds.length === 1) return primaryList;
+    return primaryList.filter((t: any) =>
       wabaIds.every((w) => approvedTemplates.some((x: any) => x.waba_ref_id === w && x.name === t.name && x.language === t.language)),
     );
-    return intersection.length ? intersection : primaryList;
   }, [approvedTemplates, selectedConnections, primaryConnection]);
 
   const selectedTemplate = useMemo(
