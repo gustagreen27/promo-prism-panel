@@ -379,9 +379,10 @@ function Page() {
   const recipients = useMemo(() => parseRecipients(recipientsRaw), [recipientsRaw]);
   const previewRecipient = recipients[0];
   const previewCtx = useMemo(
-    () => buildContext({ contact: { name: previewRecipient?.name ?? "", phone: previewRecipient?.phone ?? "" } }),
-    [previewRecipient?.name, previewRecipient?.phone],
+    () => buildContext({ contact: { name: previewRecipient?.name ?? "", phone: previewRecipient?.phone ?? "", metadata: previewRecipient?.extras ?? {} } }),
+    [previewRecipient?.name, previewRecipient?.phone, previewRecipient?.extras],
   );
+
   const previewValue = (mapping: string, fallback: string) => {
     const rendered = renderMapping(mapping ?? "", previewCtx).trim();
     return rendered || fallback;
