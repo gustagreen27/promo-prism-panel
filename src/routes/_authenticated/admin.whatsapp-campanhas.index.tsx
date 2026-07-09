@@ -547,25 +547,27 @@ function Page() {
       .map((r, i) => ({ phone: r.phone, name: r.name, status: r.status, _i: i }))
       .filter((r) => r.status === "pending");
 
-    for (let k = 0; k < pending.length; k++) {
+    // Batch size = quantos enviar em paralelo por lote. Se desabilitado, envia 1 por vez.
+    const chunkSize = batchEnabled && batchSize > 0 ? batchSize : 1;
+    for (let k = 0; k < pending.length; k += chunkSize) {
       if (cancelRef.current) break;
       await waitWhilePaused();
       if (cancelRef.current) break;
-      const p = pending[k];
-      const conn = conns[p._i % conns.length];
-      await sendOne(p.phone, p.name, conn);
-      const isLast = k === pending.length - 1;
+      const chunk = pending.slice(k, k + chunkSize);
+      // Dispara todos do lote em paralelo
+      await Promise.all(chunk.map((p) => {
+        const conn = conns[p._i % conns.length];
+        return sendOne(p.phone, p.name, conn);
+      }));
+      const isLast = k + chunkSize >= pending.length;
       if (isLast) break;
-      // Batch pause
-      if (batchEnabled && batchSize > 0 && (k + 1) % batchSize === 0) {
-        await wait(Math.max(0, batchPauseSec) * 1000);
-      } else {
-        const delayMs =
-          rateMode === "perSecond" ? (perSecond > 0 ? Math.round(1000 / perSecond) : 0)
+      // Espera entre lotes: pausa configurada ou intervalo pela taxa
+      const delayMs = batchEnabled
+        ? Math.max(0, batchPauseSec) * 1000
+        : (rateMode === "perSecond" ? (perSecond > 0 ? Math.round(1000 / perSecond) : 0)
           : rateMode === "perMinute" ? (perMinute > 0 ? Math.round(60000 / perMinute) : 0)
-          : Math.round(intervalSec * 1000);
-        if (delayMs > 0) await wait(delayMs);
-      }
+          : Math.round(intervalSec * 1000));
+      if (delayMs > 0) await wait(delayMs);
     }
 
     setSending(false);
