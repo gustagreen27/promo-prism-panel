@@ -672,6 +672,38 @@ function Page() {
     return () => clearInterval(id);
   }, []);
 
+  const scheduleMut = useMutation({
+    mutationFn: () => scheduleFn({
+      data: {
+        name: scheduleName.trim() || undefined,
+        connection_id: connectionIds[0]!,
+        template_id: templateId,
+        scheduled_at: new Date(scheduledAt).toISOString(),
+        recipients: recipients.map((r) => ({ phone: r.phone, name: r.name ?? null })),
+        body_mapping: bodyMapping,
+        button_url_mapping: buttonUrlMapping,
+        header_media_url: headerMediaUrl || null,
+        header_text_param: headerTextParam || null,
+        send_rate_per_min: rateMode === "perMinute" ? perMinute : rateMode === "perSecond" ? perSecond * 60 : Math.max(1, Math.round(60 / Math.max(1, intervalSec))),
+      },
+    }),
+    onSuccess: (r: any) => {
+      toast.success(`Agendado para ${new Date(r.scheduled_at).toLocaleString("pt-BR")} · ${r.total} destinatário(s)`);
+      setScheduledAt(""); setScheduleName("");
+      qc.invalidateQueries({ queryKey: ["wa-campaigns", "scheduled"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao agendar"),
+  });
+
+  const unscheduleMut = useMutation({
+    mutationFn: (id: string) => unscheduleFn({ data: { id } }),
+    onSuccess: () => {
+      toast.message("Agendamento cancelado");
+      qc.invalidateQueries({ queryKey: ["wa-campaigns", "scheduled"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao cancelar"),
+  });
+
   const canResume =
     !sending &&
     runStatus === "paused" &&
