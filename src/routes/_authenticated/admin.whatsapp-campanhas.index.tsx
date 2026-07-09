@@ -1048,69 +1048,81 @@ function Page() {
           )}
         </div>
 
-        {/* Agendamento */}
+        {/* Agendamento (backend) */}
         <div className="rounded-lg border bg-card p-4 space-y-3">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div>
-              <div className="text-sm font-semibold">Agendar envio</div>
-              <div className="text-xs text-muted-foreground">
-                Escolha data e hora. A aba deve permanecer aberta no horário para iniciar automaticamente.
-              </div>
+          <div>
+            <div className="text-sm font-semibold">Agendar envio</div>
+            <div className="text-xs text-muted-foreground">
+              O agendamento é salvo no servidor. Você pode fechar a aba, atualizar a página ou programar outros disparos —
+              o worker inicia automaticamente no horário.
             </div>
-            {scheduledFor && (() => {
-              const remain = Math.max(0, scheduledFor - nowTick);
-              const s = Math.floor(remain / 1000);
-              const hh = Math.floor(s / 3600);
-              const mm = Math.floor((s % 3600) / 60);
-              const ss = s % 60;
-              const label = hh > 0 ? `${hh}h ${mm}m ${ss}s` : mm > 0 ? `${mm}m ${ss}s` : `${ss}s`;
-              return (
-                <span className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold bg-indigo-500/15 text-indigo-700 border-indigo-500/40">
-                  <CircleDashed className="h-3.5 w-3.5" />
-                  Agendado — faltam {label}
-                </span>
-              );
-            })()}
           </div>
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="flex-1 min-w-[220px]">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+            <div>
+              <Label className="text-xs">Nome (opcional)</Label>
+              <Input
+                value={scheduleName}
+                onChange={(e) => setScheduleName(e.target.value)}
+                placeholder="Ex.: Ativação outubro"
+                disabled={sending}
+              />
+            </div>
+            <div>
               <Label className="text-xs">Data e hora</Label>
               <Input
                 type="datetime-local"
                 value={scheduledAt}
-                disabled={!!scheduledFor || sending}
                 onChange={(e) => setScheduledAt(e.target.value)}
+                disabled={sending}
               />
             </div>
-            {!scheduledFor ? (
-              <Button
-                variant="outline"
-                disabled={!canSubmit || sending || !scheduledAt}
-                onClick={() => {
-                  const t = new Date(scheduledAt).getTime();
-                  if (!Number.isFinite(t)) { toast.error("Data/hora inválida"); return; }
-                  if (t <= Date.now()) { toast.error("Escolha uma data/hora futura"); return; }
-                  setScheduledFor(t);
-                  toast.success(`Envio agendado para ${new Date(t).toLocaleString("pt-BR")}`);
-                }}
-              >
-                <Play className="h-4 w-4 mr-2" />
-                Agendar
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  if (scheduleTimerRef.current) { clearTimeout(scheduleTimerRef.current); scheduleTimerRef.current = null; }
-                  setScheduledFor(null); setScheduledAt("");
-                  toast.message("Agendamento cancelado");
-                }}
-              >
-                <X className="h-4 w-4 mr-2" />
-                Cancelar agendamento
-              </Button>
-            )}
+            <Button
+              variant="outline"
+              disabled={!canSubmit || sending || !scheduledAt || scheduleMut.isPending}
+              onClick={() => scheduleMut.mutate()}
+            >
+              {scheduleMut.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
+              Agendar {recipients.length ? `(${recipients.length})` : ""}
+            </Button>
           </div>
+
+          {/* Lista de agendamentos ativos */}
+          {(scheduledCampsQ.data?.length ?? 0) > 0 && (
+            <div className="border-t pt-3 space-y-2">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Agendamentos ativos</div>
+              <div className="space-y-1.5">
+                {scheduledCampsQ.data!.map((c: any) => {
+                  const when = new Date(c.scheduled_at).getTime();
+                  const remain = Math.max(0, when - nowTick);
+                  const s = Math.floor(remain / 1000);
+                  const hh = Math.floor(s / 3600);
+                  const mm = Math.floor((s % 3600) / 60);
+                  const ss = s % 60;
+                  const label = remain <= 0
+                    ? "iniciando…"
+                    : hh > 0 ? `${hh}h ${mm}m ${ss}s` : mm > 0 ? `${mm}m ${ss}s` : `${ss}s`;
+                  return (
+                    <div key={c.id} className="flex items-center justify-between gap-2 rounded-md border bg-background/40 px-3 py-2 text-sm">
+                      <div className="min-w-0">
+                        <div className="truncate font-medium">{c.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(c.scheduled_at).toLocaleString("pt-BR")} · {c.total_recipients} destinatário(s) · faltam {label}
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => unscheduleMut.mutate(c.id)}
+                        disabled={unscheduleMut.isPending}
+                      >
+                        <X className="h-4 w-4 mr-1" /> Cancelar
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {rows.length > 0 && (() => {
