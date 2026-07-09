@@ -182,6 +182,12 @@ function Page() {
   const [buttonUrlMapping, setButtonUrlMapping] = useState<Record<string, string>>({});
   const [rows, setRows] = useState<RowState[]>([]);
   const [sending, setSending] = useState(false);
+  const [paused, setPaused] = useState(false);
+  type RunStatus = "idle" | "running" | "paused" | "finished" | "cancelled";
+  const [runStatus, setRunStatus] = useState<RunStatus>("idle");
+  const [runStartedAt, setRunStartedAt] = useState<number | null>(null);
+  const [runEndedAt, setRunEndedAt] = useState<number | null>(null);
+  const [nowTick, setNowTick] = useState(Date.now());
   const [syncing, setSyncing] = useState(false);
   const [uploading, setUploading] = useState(false);
   // Send throttling
@@ -194,6 +200,7 @@ function Page() {
   const [batchSize, setBatchSize] = useState(10);           // pause every N sends
   const [batchPauseSec, setBatchPauseSec] = useState(60);   // seconds
   const cancelRef = useRef(false);
+  const pausedRef = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
   const [csvOpen, setCsvOpen] = useState(false);
