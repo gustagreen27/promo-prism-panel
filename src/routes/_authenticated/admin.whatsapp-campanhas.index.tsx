@@ -205,39 +205,42 @@ function Page() {
     () => (templates as any[]).filter((t) => t.status === "approved"),
     [templates],
   );
-  const selectedTemplate = useMemo(
-    () => approvedTemplates.find((t) => t.id === templateId),
-    [approvedTemplates, templateId],
-  );
-
-  // Auto-pick frgc_01 (or first) once templates load
-  useEffect(() => {
-    if (templateId || approvedTemplates.length === 0) return;
-    const preferred = approvedTemplates.find((t) => t.name === "frgc_01") ?? approvedTemplates[0];
-    setTemplateId(preferred.id);
-  }, [approvedTemplates, templateId]);
-
-  // Filter connections to those matching the template's WABA when possible
-  const filteredConnections = useMemo(() => {
-    if (selectedTemplate?.connection_id && !selectedTemplate?.waba_ref_id) {
-      const direct = (connections as any[]).filter((c) => c.id === selectedTemplate.connection_id);
-      if (direct.length) return direct;
-    }
-    if (!selectedTemplate?.waba_ref_id) return connections;
-    const same = (connections as any[]).filter((c) => c.waba_ref_id === selectedTemplate.waba_ref_id);
-    return same.length ? same : connections;
-  }, [connections, selectedTemplate]);
   const selectedConnection = useMemo(
     () => (connections as any[]).find((c) => c.id === connectionId),
     [connections, connectionId],
   );
 
+  // Auto-pick first connection once connections load
   useEffect(() => {
-    if (!filteredConnections.length) return;
-    if (!connectionId || !filteredConnections.some((c: any) => c.id === connectionId)) {
-      setConnectionId(filteredConnections[0].id);
+    if (connectionId || (connections as any[]).length === 0) return;
+    setConnectionId((connections as any[])[0].id);
+  }, [connections, connectionId]);
+
+  // Filter templates to those matching the selected connection's WABA
+  const filteredTemplates = useMemo(() => {
+    if (!selectedConnection?.waba_ref_id) return approvedTemplates;
+    const same = approvedTemplates.filter(
+      (t: any) => t.waba_ref_id === selectedConnection.waba_ref_id
+        || t.connection_id === selectedConnection.id,
+    );
+    return same.length ? same : approvedTemplates;
+  }, [approvedTemplates, selectedConnection]);
+
+  const selectedTemplate = useMemo(
+    () => filteredTemplates.find((t: any) => t.id === templateId),
+    [filteredTemplates, templateId],
+  );
+
+  // Auto-pick frgc_01 (or first) from filtered templates
+  useEffect(() => {
+    if (filteredTemplates.length === 0) {
+      if (templateId) setTemplateId("");
+      return;
     }
-  }, [filteredConnections, connectionId]);
+    if (templateId && filteredTemplates.some((t: any) => t.id === templateId)) return;
+    const preferred = filteredTemplates.find((t: any) => t.name === "frgc_01") ?? filteredTemplates[0];
+    setTemplateId(preferred.id);
+  }, [filteredTemplates, templateId]);
 
   // Reset variable mappings when template changes
   useEffect(() => {
