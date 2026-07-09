@@ -59,15 +59,72 @@ function normalizePhone(v: string): string {
   return v.replace(/\D/g, "");
 }
 
-type Recipient = { phone: string; name?: string };
+type Recipient = { phone: string; name?: string; extras?: Record<string, string> };
+
+const PHONE_HEADER_RE = /^(phone|telefone|celular|whatsapp|whats|mobile|numero|número|contact|fone)$/i;
+const NAME_HEADER_RE = /^(nome|name|contato)$/i;
+
+function splitCsvLine(line: string, delim: string): string[] {
+  const out: string[] = [];
+  let field = "";
+  let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (inQ) {
+      if (c === '"') {
+        if (line[i + 1] === '"') { field += '"'; i++; } else { inQ = false; }
+      } else field += c;
+    } else {
+      if (c === '"') inQ = true;
+      else if (c === delim) { out.push(field); field = ""; }
+      else field += c;
+    }
+  }
+  out.push(field);
+  return out.map((s) => s.trim());
+}
 
 function parseRecipients(raw: string): Recipient[] {
+  const clean = raw.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
+  const lines = clean.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+  if (lines.length === 0) return [];
+
+  const delim = detectDelimiter(lines[0]);
+  const firstParts = splitCsvLine(lines[0], delim);
+  const hasPhoneHeader = firstParts.some((p) => PHONE_HEADER_RE.test(p));
+  const anyNonPhone = firstParts.some((p) => normalizePhone(p).length < 8);
+
+  // CSV mode: header row detected (e.g. "Nome,Telefone,CPF,CIDADE")
+  if (hasPhoneHeader && anyNonPhone && lines.length >= 1) {
+    const headers = firstParts;
+    const phoneIdx = headers.findIndex((h) => PHONE_HEADER_RE.test(h));
+    const nameIdx = headers.findIndex((h) => NAME_HEADER_RE.test(h));
+    const seen = new Set<string>();
+    const out: Recipient[] = [];
+    for (let li = 1; li < lines.length; li++) {
+      const parts = splitCsvLine(lines[li], delim);
+      const n = normalizePhone(parts[phoneIdx] ?? "");
+      if (n.length < 8 || seen.has(n)) continue;
+      seen.add(n);
+      const extras: Record<string, string> = {};
+      headers.forEach((h, i) => {
+        if (i === phoneIdx) return;
+        const v = (parts[i] ?? "").trim();
+        if (!v) return;
+        extras[h] = v;
+        extras[h.toLowerCase()] = v;
+      });
+      const name = nameIdx >= 0 ? (parts[nameIdx] ?? "").trim() : "";
+      out.push({ phone: n, name: name || undefined, extras: Object.keys(extras).length ? extras : undefined });
+    }
+    return out;
+  }
+
+  // Fallback: legacy "Nome,Telefone" or bare-phone-per-line format.
   const seen = new Set<string>();
   const out: Recipient[] = [];
-  for (const line of raw.split(/[\n;]+/)) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-    const parts = trimmed.split(/[,\t]/).map((s) => s.trim()).filter(Boolean);
+  for (const line of lines) {
+    const parts = line.split(/[,\t;]/).map((s) => s.trim()).filter(Boolean);
     if (parts.length === 0) continue;
     const allPhones = parts.every((p) => normalizePhone(p).length >= 8);
     if (parts.length === 1 || allPhones) {
@@ -90,6 +147,7 @@ function parseRecipients(raw: string): Recipient[] {
   }
   return out;
 }
+
 
 function detectDelimiter(sample: string): string {
   const counts: Record<string, number> = { ",": 0, ";": 0, "\t": 0, "|": 0 };
@@ -134,11 +192,13 @@ function guessPhoneColumn(headers: string[]): number {
 type RowState = {
   phone: string;
   name?: string;
+  extras?: Record<string, string>;
   status: "pending" | "sending" | "sent" | "failed";
   logId?: string;
   metaMessageId?: string;
   error?: string;
 };
+
 
 function RecipientRow({ row }: { row: RowState }) {
   const statusFn = useServerFn(getMessageLogStatus);
@@ -319,9 +379,10 @@ function Page() {
   const recipients = useMemo(() => parseRecipients(recipientsRaw), [recipientsRaw]);
   const previewRecipient = recipients[0];
   const previewCtx = useMemo(
-    () => buildContext({ contact: { name: previewRecipient?.name ?? "", phone: previewRecipient?.phone ?? "" } }),
-    [previewRecipient?.name, previewRecipient?.phone],
+    () => buildContext({ contact: { name: previewRecipient?.name ?? "", phone: previewRecipient?.phone ?? "", metadata: previewRecipient?.extras ?? {} } }),
+    [previewRecipient?.name, previewRecipient?.phone, previewRecipient?.extras],
   );
+
   const previewValue = (mapping: string, fallback: string) => {
     const rendered = renderMapping(mapping ?? "", previewCtx).trim();
     return rendered || fallback;
@@ -488,7 +549,8 @@ function Page() {
     // Base rows: on resume, keep sent/failed and re-queue "sending" as pending.
     const baseRows: RowState[] = resume
       ? rows.map((r) => (r.status === "sending" ? { ...r, status: "pending" } : r))
-      : recipients.map((r) => ({ phone: r.phone, name: r.name, status: "pending" as const }));
+      : recipients.map((r) => ({ phone: r.phone, name: r.name, extras: r.extras, status: "pending" as const }));
+
     setRows(baseRows);
 
     let okCount = baseRows.filter((r) => r.status === "sent").length;
@@ -502,12 +564,13 @@ function Page() {
       }
     }
 
-    const sendOne = async (phone: string, name: string | undefined, conn: any) => {
+    const sendOne = async (phone: string, name: string | undefined, extras: Record<string, string> | undefined, conn: any) => {
       if (cancelRef.current) return;
       setRows((rs) => rs.map((r) => (r.phone === phone ? { ...r, status: "sending" } : r)));
       try {
-        const ctx = buildContext({ contact: { name: name ?? "", phone } });
+        const ctx = buildContext({ contact: { name: name ?? "", phone, metadata: extras ?? {} } });
         const render = (v: string) => renderMapping(v ?? "", ctx);
+
         const bodyParams: Record<string, string> = {};
         for (const n of bodyVars) bodyParams[String(n)] = render(bodyMapping[String(n)] ?? "");
         const buttonUrlParams: Record<string, string> = {};
@@ -554,7 +617,7 @@ function Page() {
     const conns = selectedConnections;
     // Preserve global index for round-robin fairness across resumes.
     const pending = baseRows
-      .map((r, i) => ({ phone: r.phone, name: r.name, status: r.status, _i: i }))
+      .map((r, i) => ({ phone: r.phone, name: r.name, extras: r.extras, status: r.status, _i: i }))
       .filter((r) => r.status === "pending");
 
     // Batch size = quantos enviar em paralelo por lote. Se desabilitado, envia 1 por vez.
@@ -567,8 +630,9 @@ function Page() {
       // Dispara todos do lote em paralelo
       await Promise.all(chunk.map((p) => {
         const conn = conns[p._i % conns.length];
-        return sendOne(p.phone, p.name, conn);
+        return sendOne(p.phone, p.name, p.extras, conn);
       }));
+
       const isLast = k + chunkSize >= pending.length;
       if (isLast) break;
       // Espera entre lotes: pausa configurada ou intervalo pela taxa
@@ -691,7 +755,7 @@ function Page() {
         connection_id: connectionIds[0]!,
         template_id: templateId,
         scheduled_at: new Date(scheduledAt).toISOString(),
-        recipients: recipients.map((r) => ({ phone: r.phone, name: r.name ?? null })),
+        recipients: recipients.map((r) => ({ phone: r.phone, name: r.name ?? null, extras: r.extras ?? null })),
         body_mapping: bodyMapping,
         button_url_mapping: buttonUrlMapping,
         header_media_url: headerMediaUrl || null,

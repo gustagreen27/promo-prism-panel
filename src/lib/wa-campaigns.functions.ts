@@ -239,7 +239,12 @@ export const scheduleQuickSend = createServerFn({ method: "POST" })
       connection_id: z.string().uuid(),
       template_id: z.string().uuid(),
       scheduled_at: z.string().min(1),
-      recipients: z.array(z.object({ phone: z.string().min(4), name: z.string().optional().nullable() })).min(1),
+      recipients: z.array(z.object({
+        phone: z.string().min(4),
+        name: z.string().optional().nullable(),
+        extras: z.record(z.string()).optional().nullable(),
+      })).min(1),
+
       body_mapping: z.record(z.string()).optional().default({}),
       button_url_mapping: z.record(z.string()).optional().default({}),
       header_media_url: z.string().optional().nullable(),
@@ -293,12 +298,24 @@ export const scheduleQuickSend = createServerFn({ method: "POST" })
       .single();
     if (cErr) throw cErr;
 
-    const rows = uniqueRecipients.map((r) => ({
-      campaign_id: campRow.id,
-      phone: r.phone.replace(/\D/g, ""),
-      variables: r.name ? { nome: r.name } : {},
-      status: "pending" as const,
-    }));
+    const rows = uniqueRecipients.map((r) => {
+      const vars: Record<string, string> = {};
+      if (r.name) vars.nome = r.name;
+      if (r.extras) {
+        for (const [k, v] of Object.entries(r.extras)) {
+          if (v === null || v === undefined || String(v).trim() === "") continue;
+          vars[k] = String(v);
+          vars[k.toLowerCase()] = String(v);
+        }
+      }
+      return {
+        campaign_id: campRow.id,
+        phone: r.phone.replace(/\D/g, ""),
+        variables: vars,
+        status: "pending" as const,
+      };
+    });
+
     for (let i = 0; i < rows.length; i += 1000) {
       const { error: rErr } = await context.supabase
         .from("campaign_recipients")
