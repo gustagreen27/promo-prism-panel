@@ -200,6 +200,9 @@ function Page() {
   const [batchEnabled, setBatchEnabled] = useState(false);
   const [batchSize, setBatchSize] = useState(10);           // pause every N sends
   const [batchPauseSec, setBatchPauseSec] = useState(60);   // seconds
+  const [scheduledAt, setScheduledAt] = useState<string>(""); // datetime-local string
+  const [scheduledFor, setScheduledFor] = useState<number | null>(null); // epoch ms
+  const scheduleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelRef = useRef(false);
   const pausedRef = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -616,6 +619,12 @@ function Page() {
       } else if (s.runStatus) {
         setRunStatus(s.runStatus);
       }
+      if (typeof s.scheduledFor === "number" && s.scheduledFor > Date.now()) {
+        setScheduledFor(s.scheduledFor);
+        const d = new Date(s.scheduledFor);
+        const pad = (n: number) => String(n).padStart(2, "0");
+        setScheduledAt(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+      }
     } catch {}
   }, []);
 
@@ -629,6 +638,7 @@ function Page() {
           bodyMapping, buttonUrlMapping,
           rateMode, intervalSec, perSecond, perMinute, batchEnabled, batchSize, batchPauseSec,
           rows, runStatus, runStartedAt, runEndedAt,
+          scheduledFor,
         }),
       );
     } catch {}
@@ -637,6 +647,7 @@ function Page() {
     bodyMapping, buttonUrlMapping,
     rateMode, intervalSec, perSecond, perMinute, batchEnabled, batchSize, batchPauseSec,
     rows, runStatus, runStartedAt, runEndedAt,
+    scheduledFor,
   ]);
 
   // Aviso ao fechar/recarregar durante execução ativa
@@ -649,6 +660,37 @@ function Page() {
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [sending]);
+
+  // Agendamento: dispara handleSend() quando chegar a hora (aba precisa estar aberta).
+  useEffect(() => {
+    if (scheduleTimerRef.current) { clearTimeout(scheduleTimerRef.current); scheduleTimerRef.current = null; }
+    if (!scheduledFor) return;
+    const delay = scheduledFor - Date.now();
+    if (delay <= 0) {
+      // Se já passou (aba reaberta depois), dispara imediatamente se ainda houver destinatários e nada estiver enviando.
+      if (!sending && canSubmit) {
+        setScheduledFor(null); setScheduledAt("");
+        toast.info("Agendamento vencido — iniciando envio agora");
+        handleSend();
+      }
+      return;
+    }
+    scheduleTimerRef.current = setTimeout(() => {
+      setScheduledFor(null); setScheduledAt("");
+      if (sending) { toast.message("Agendamento ignorado: já há envio em andamento"); return; }
+      if (!canSubmit) { toast.error("Agendamento cancelado: configuração incompleta"); return; }
+      toast.success("Iniciando envio agendado");
+      handleSend();
+    }, delay);
+    return () => { if (scheduleTimerRef.current) clearTimeout(scheduleTimerRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scheduledFor]);
+
+  useEffect(() => {
+    if (!scheduledFor) return;
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [scheduledFor]);
 
   const canResume =
     !sending &&
@@ -1024,6 +1066,71 @@ function Page() {
               try { localStorage.removeItem("wa-campanhas-run-v1"); } catch {}
             }}>Limpar resultados</Button>
           )}
+        </div>
+
+        {/* Agendamento */}
+        <div className="rounded-lg border bg-card p-4 space-y-3">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div>
+              <div className="text-sm font-semibold">Agendar envio</div>
+              <div className="text-xs text-muted-foreground">
+                Escolha data e hora. A aba deve permanecer aberta no horário para iniciar automaticamente.
+              </div>
+            </div>
+            {scheduledFor && (() => {
+              const remain = Math.max(0, scheduledFor - nowTick);
+              const s = Math.floor(remain / 1000);
+              const hh = Math.floor(s / 3600);
+              const mm = Math.floor((s % 3600) / 60);
+              const ss = s % 60;
+              const label = hh > 0 ? `${hh}h ${mm}m ${ss}s` : mm > 0 ? `${mm}m ${ss}s` : `${ss}s`;
+              return (
+                <span className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold bg-indigo-500/15 text-indigo-700 border-indigo-500/40">
+                  <CircleDashed className="h-3.5 w-3.5" />
+                  Agendado — faltam {label}
+                </span>
+              );
+            })()}
+          </div>
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="flex-1 min-w-[220px]">
+              <Label className="text-xs">Data e hora</Label>
+              <Input
+                type="datetime-local"
+                value={scheduledAt}
+                disabled={!!scheduledFor || sending}
+                onChange={(e) => setScheduledAt(e.target.value)}
+              />
+            </div>
+            {!scheduledFor ? (
+              <Button
+                variant="outline"
+                disabled={!canSubmit || sending || !scheduledAt}
+                onClick={() => {
+                  const t = new Date(scheduledAt).getTime();
+                  if (!Number.isFinite(t)) { toast.error("Data/hora inválida"); return; }
+                  if (t <= Date.now()) { toast.error("Escolha uma data/hora futura"); return; }
+                  setScheduledFor(t);
+                  toast.success(`Envio agendado para ${new Date(t).toLocaleString("pt-BR")}`);
+                }}
+              >
+                <Play className="h-4 w-4 mr-2" />
+                Agendar
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (scheduleTimerRef.current) { clearTimeout(scheduleTimerRef.current); scheduleTimerRef.current = null; }
+                  setScheduledFor(null); setScheduledAt("");
+                  toast.message("Agendamento cancelado");
+                }}
+              >
+                <X className="h-4 w-4 mr-2" />
+                Cancelar agendamento
+              </Button>
+            )}
+          </div>
         </div>
 
         {rows.length > 0 && (() => {
