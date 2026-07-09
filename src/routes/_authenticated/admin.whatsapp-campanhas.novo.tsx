@@ -629,9 +629,15 @@ function WizardPage() {
                   Campanha criada. Destinatários enfileirados.
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button onClick={() => startMut.mutate()} disabled={startMut.isPending}>
-                    <Send className="mr-2 h-4 w-4" /> Iniciar envio agora
-                  </Button>
+                  {state.imediato ? (
+                    <Button onClick={() => startMut.mutate()} disabled={startMut.isPending}>
+                      <Send className="mr-2 h-4 w-4" /> Iniciar envio agora
+                    </Button>
+                  ) : (
+                    <Button onClick={() => scheduleMut.mutate()} disabled={scheduleMut.isPending || !state.scheduled_at}>
+                      <Send className="mr-2 h-4 w-4" /> Agendar para {state.scheduled_at ? new Date(state.scheduled_at).toLocaleString("pt-BR") : "—"}
+                    </Button>
+                  )}
                   <Button variant="outline" onClick={() => nav({ to: "/admin/whatsapp-campanhas/$id", params: { id: campaignId } })}>
                     Abrir campanha
                   </Button>
