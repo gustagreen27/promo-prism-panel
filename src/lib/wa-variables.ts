@@ -37,10 +37,10 @@ function resolveToken(expr: string, ctx: Ctx): string {
     if ((p.startsWith('"') && p.endsWith('"')) || (p.startsWith("'") && p.endsWith("'"))) {
       return p.slice(1, -1);
     }
-    // Bare token identifier (lowercase snake): look up in context.
-    const isIdent = /^[a-z_][a-z0-9_]*$/.test(p);
+    // Bare token identifier (letters/digits/underscore): look up in context (case-insensitive).
+    const isIdent = /^[A-Za-z_][A-Za-z0-9_]*$/.test(p);
     if (isIdent) {
-      const v = ctx[p];
+      const v = ctx[p] ?? ctx[p.toLowerCase()] ?? ctx[p.toUpperCase()];
       if (v !== null && v !== undefined && String(v).trim() !== "") return String(v);
       continue; // try next fallback
     }
@@ -92,6 +92,13 @@ export function buildContext(input: {
   const resp = input.responsavel ?? {};
   const nome = c.name ?? "";
   const first = nome ? String(nome).split(/\s+/)[0] : "";
+  const extraFields: Record<string, any> = { ...(c.custom ?? {}), ...(c.metadata ?? {}), ...(input.extra ?? {}) };
+  // Duplicate every extra field with a lowercased key so `{CPF}`, `{cpf}` and `{Cpf}` all resolve.
+  const normalizedExtras: Record<string, any> = {};
+  for (const [k, v] of Object.entries(extraFields)) {
+    normalizedExtras[k] = v;
+    normalizedExtras[k.toLowerCase()] = v;
+  }
   return {
     nome,
     primeiro_nome: first,
@@ -99,14 +106,13 @@ export function buildContext(input: {
     email: c.email ?? "",
     cliente: cli.name ?? "",
     projeto: proj.name ?? "",
-    protocolo: c.protocolo ?? c.custom?.protocolo ?? "",
-    codigo_comprovante: c.codigo_comprovante ?? c.custom?.codigo_comprovante ?? "",
+    protocolo: c.protocolo ?? c.custom?.protocolo ?? c.metadata?.protocolo ?? "",
+    codigo_comprovante: c.codigo_comprovante ?? c.custom?.codigo_comprovante ?? c.metadata?.codigo_comprovante ?? "",
     data: new Date().toLocaleDateString("pt-BR"),
     link: camp.link ?? "",
     responsavel: resp.name ?? resp.email ?? "",
     empresa: cli.name ?? "",
-    ...(c.custom ?? {}),
-    ...(input.extra ?? {}),
+    ...normalizedExtras,
   };
 }
 

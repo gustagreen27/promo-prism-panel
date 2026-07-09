@@ -367,7 +367,7 @@ export const getRecipientPreviews = createServerFn({ method: "GET" })
 
     const { data: recs } = await supabase
       .from("campaign_recipients")
-      .select("id,phone,status,contact:contacts(id,name,email,phone,custom)")
+      .select("id,phone,status,contact:contacts(id,name,email,phone,metadata)")
       .eq("campaign_id", data.id)
       .order("created_at", { ascending: true })
       .limit(data.limit);

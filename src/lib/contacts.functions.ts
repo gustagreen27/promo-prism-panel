@@ -131,14 +131,28 @@ export const importContactsCsv = createServerFn({ method: "POST" })
     const seen = new Set<string>();
     const toInsert: any[] = [];
 
+    const KNOWN_KEYS = new Set([
+      "phone", "telefone", "Telefone", "celular", "Celular",
+      "name", "nome", "Nome",
+      "email", "Email", "e-mail", "E-mail",
+    ]);
     for (const row of data.rows) {
       const rawPhone = row.phone || row.telefone || row.Telefone || row.celular || row.Celular;
       const name = row.name || row.nome || row.Nome || null;
-      const email = row.email || row.Email || null;
+      const email = row.email || row.Email || row["e-mail"] || row["E-mail"] || null;
       const phone = normalizeBrPhone(String(rawPhone ?? ""));
       if (!phone) { invalid++; report.invalidRows.push({ phone: rawPhone, name }); continue; }
       if (seen.has(phone)) { duplicated++; report.duplicates.push(phone); continue; }
       seen.add(phone);
+      // Capture any extra CSV columns (e.g. CPF, protocolo) into metadata so
+      // template variables like {CPF} can resolve to their values.
+      const metadata: Record<string, any> = {};
+      for (const [k, v] of Object.entries(row)) {
+        if (KNOWN_KEYS.has(k)) continue;
+        if (v === null || v === undefined || String(v).trim() === "") continue;
+        metadata[k] = v;
+        metadata[k.toLowerCase()] = v;
+      }
       toInsert.push({
         phone,
         name,
@@ -148,6 +162,7 @@ export const importContactsCsv = createServerFn({ method: "POST" })
         source: data.source,
         opt_in: data.opt_in,
         opt_in_at: data.opt_in ? new Date().toISOString() : null,
+        metadata: Object.keys(metadata).length ? metadata : {},
       });
       valid++;
     }
