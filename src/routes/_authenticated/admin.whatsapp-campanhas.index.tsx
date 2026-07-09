@@ -120,7 +120,13 @@ function parseRecipients(raw: string): Recipient[] {
     return out;
   }
 
-  // Fallback: legacy "Nome,Telefone" or bare-phone-per-line format.
+  // Fallback: legacy formats without a header row.
+  // Supported positional layouts (per line, comma/tab/semicolon separated):
+  //   - bare phone
+  //   - "Nome, Telefone"
+  //   - "Nome, Telefone, CPF"
+  //   - "Nome, Telefone, CPF, CIDADE" (+ extra columns → extra5, extra6, ...)
+  const POSITIONAL_HEADERS = ["nome", "telefone", "cpf", "cidade"];
   const seen = new Set<string>();
   const out: Recipient[] = [];
   for (const line of lines) {
@@ -135,15 +141,35 @@ function parseRecipients(raw: string): Recipient[] {
           out.push({ phone: n });
         }
       }
-    } else {
-      const phoneRaw = parts[parts.length - 1];
-      const name = parts.slice(0, -1).join(" ").trim();
-      const n = normalizePhone(phoneRaw);
-      if (n.length >= 8 && !seen.has(n)) {
-        seen.add(n);
-        out.push({ phone: n, name: name || undefined });
-      }
+      continue;
     }
+    // Locate phone column: prefer position 1 (Nome,Telefone,...), else any phone-like column.
+    let phoneIdx = normalizePhone(parts[1] ?? "").length >= 8
+      ? 1
+      : parts.findIndex((p) => normalizePhone(p).length >= 8);
+    if (phoneIdx < 0) continue;
+    const n = normalizePhone(parts[phoneIdx]);
+    if (n.length < 8 || seen.has(n)) continue;
+    seen.add(n);
+    const extras: Record<string, string> = {};
+    let name = "";
+    parts.forEach((v, i) => {
+      const val = v.trim();
+      if (!val) return;
+      const header = POSITIONAL_HEADERS[i] ?? `extra${i + 1}`;
+      if (i === phoneIdx) return;
+      if (header === "nome") {
+        name = val;
+        return;
+      }
+      extras[header] = val;
+      extras[header.toUpperCase()] = val;
+    });
+    out.push({
+      phone: n,
+      name: name || undefined,
+      extras: Object.keys(extras).length ? extras : undefined,
+    });
   }
   return out;
 }
