@@ -115,6 +115,7 @@ function Page() {
                 <TableCell className="text-right">
                   <Button size="icon" variant="ghost" title="Enviar para aprovação" disabled={submitMut.isPending || !r.waba_ref_id} onClick={() => submitMut.mutate(r.id)}><Send className="h-4 w-4" /></Button>
                   <Button size="icon" variant="ghost" title="Consultar status" disabled={refreshMut.isPending || !r.waba_ref_id} onClick={() => refreshMut.mutate(r.id)}><ClipboardCheck className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" title="Duplicar" disabled={dupMut.isPending} onClick={() => dupMut.mutate(r.id)}><Copy className="h-4 w-4" /></Button>
                   <Button size="icon" variant="ghost" onClick={() => { setEditing(r); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                   <Button size="icon" variant="ghost" onClick={() => confirm("Remover?") && del.mutate(r.id)}><Trash2 className="h-4 w-4" /></Button>
                 </TableCell>
