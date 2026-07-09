@@ -71,13 +71,16 @@ function Page() {
         title="Números WhatsApp Cloud API"
         description="Configure os números oficiais Meta usados pelos disparos."
         actions={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" disabled={syncMut.isPending} onClick={() => syncMut.mutate()}>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button variant="outline" size="sm" disabled={syncMut.isPending} onClick={() => syncMut.mutate()}>
               <RefreshCw className={`mr-2 h-4 w-4 ${syncMut.isPending ? "animate-spin" : ""}`} />
               Sincronizar agora
             </Button>
+            <Button size="sm" onClick={() => setApiOpen(true)}>
+              <Cloud className="mr-2 h-4 w-4" />Adicionar via API
+            </Button>
             <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
-              <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Novo número</Button></DialogTrigger>
+              <DialogTrigger asChild><Button variant="outline" size="sm"><Plus className="mr-2 h-4 w-4" />Cadastro manual</Button></DialogTrigger>
               <FormDialog editing={editing} clients={clients} projects={projects} onSubmit={(p: any) => saveMut.mutate(p)} saving={saveMut.isPending} />
             </Dialog>
           </div>
