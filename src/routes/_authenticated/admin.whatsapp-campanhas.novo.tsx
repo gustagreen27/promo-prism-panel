@@ -132,6 +132,7 @@ function WizardPage() {
   const createFn = useServerFn(createCampaignFromWizard);
   const buildFn = useServerFn(buildRecipients);
   const startFn = useServerFn(startWaCampaign);
+  const scheduleFn = useServerFn(scheduleWaCampaign);
 
   const { data: clients = [] } = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
   const { data: projects = [] } = useQuery({ queryKey: ["projects"], queryFn: () => projectsFn() });
