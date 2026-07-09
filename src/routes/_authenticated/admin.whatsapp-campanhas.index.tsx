@@ -564,12 +564,13 @@ function Page() {
       }
     }
 
-    const sendOne = async (phone: string, name: string | undefined, conn: any) => {
+    const sendOne = async (phone: string, name: string | undefined, extras: Record<string, string> | undefined, conn: any) => {
       if (cancelRef.current) return;
       setRows((rs) => rs.map((r) => (r.phone === phone ? { ...r, status: "sending" } : r)));
       try {
-        const ctx = buildContext({ contact: { name: name ?? "", phone } });
+        const ctx = buildContext({ contact: { name: name ?? "", phone, metadata: extras ?? {} } });
         const render = (v: string) => renderMapping(v ?? "", ctx);
+
         const bodyParams: Record<string, string> = {};
         for (const n of bodyVars) bodyParams[String(n)] = render(bodyMapping[String(n)] ?? "");
         const buttonUrlParams: Record<string, string> = {};
