@@ -3,7 +3,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Upload, Loader2, Play, X, FileSpreadsheet, RefreshCw, Settings2 } from "lucide-react";
+import { Upload, Loader2, Play, X, FileSpreadsheet, RefreshCw, Settings2, Pause, CheckCircle2, CircleDashed, AlertCircle } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import {
