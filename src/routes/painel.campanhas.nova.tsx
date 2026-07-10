@@ -3,29 +3,28 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import {
-  listMyNumbers,
-  listMyTemplates,
-  getMyBalance,
-  createClientCampaign,
-  startClientCampaign,
+  listMyNumbers, listMyTemplates, getMyBalance, createClientCampaign, startClientCampaign,
 } from "@/lib/client-panel.functions";
 import { linkEventToCampaign } from "@/lib/calendar.functions";
 import { checkSchedulingConflict } from "@/lib/wa-schedule.functions";
 import { supabase } from "@/integrations/supabase/client";
 import {
   CalendarClock, CheckCircle2, Plus, AlertTriangle, ArrowLeft, ArrowRight,
-  Phone, MessageSquareText, Users, Sliders, ClipboardCheck, Send, Save, Clock, Signal, Wifi, WifiOff, Loader2,
+  Phone, MessageSquareText, Save, Clock, Signal, Wifi, WifiOff, Loader2,
+  Send, Pause, Play, Ban, XOctagon, Timer, Users2, Activity, PhoneCall, Sliders,
+  BarChart3,
 } from "lucide-react";
 import { Stepper, type WizardStep } from "@/components/campaigns/wizard/Stepper";
 import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
-import { ContactPicker } from "@/components/campaigns/wizard/ContactPicker";
+import { ContactsStep, type ContactSelValue } from "@/components/campaigns/wizard/ContactsStep";
 import { cn } from "@/lib/utils";
 
 const searchSchema = z.object({
@@ -57,12 +56,11 @@ const TIMEZONES = [
 ];
 
 const STEPS: WizardStep[] = [
-  { id: 1, label: "Número", short: "Número" },
-  { id: 2, label: "Template", short: "Template" },
-  { id: 3, label: "Contatos", short: "Contatos" },
-  { id: 4, label: "Configuração", short: "Configuração" },
-  { id: 5, label: "Revisão", short: "Revisão" },
-  { id: 6, label: "Envio", short: "Envio" },
+  { id: 1, label: "Contatos", short: "Contatos" },
+  { id: 2, label: "Ações", short: "Ações" },
+  { id: 3, label: "Revisão", short: "Revisão" },
+  { id: 4, label: "Envio", short: "Envio" },
+  { id: 5, label: "Resultados", short: "Resultados" },
 ];
 
 function Page() {
@@ -77,19 +75,17 @@ function Page() {
   const fnLink = useServerFn(linkEventToCampaign);
   const fnConflict = useServerFn(checkSchedulingConflict);
 
-  // Draft persistence key
   const DRAFT_KEY = `wa_wizard_draft_${workspaceId}`;
-
   const toLocal = (iso?: string) => (iso ? new Date(iso).toISOString().slice(0, 16) : "");
 
-  // Wizard state
+  // Wizard
   const [step, setStep] = useState(1);
   const [maxReached, setMaxReached] = useState(1);
   const [name, setName] = useState("");
   const [connectionId, setConnectionId] = useState<string>("");
   const [templateId, setTemplateId] = useState<string>("");
-  const [contactSel, setContactSel] = useState<{ list_id: string; list_name?: string; total?: number; valid?: number } | null>(null);
-  const [rate, setRate] = useState({ send_rate_per_min: 30, batch_size: 25, jitter_ms: 500 });
+  const [contactSel, setContactSel] = useState<ContactSelValue | null>(null);
+  const [rate, setRate] = useState({ interval_s: 10, pause_every: 10, pause_duration_s: 60 });
   const [mode, setMode] = useState<Mode>(scheduled_for ? "schedule" : "now");
   const [scheduledAt, setScheduledAt] = useState<string>(toLocal(scheduled_for));
   const [timezone, setTimezone] = useState<string>(Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo");
@@ -101,11 +97,17 @@ function Page() {
   const [balance, setBalance] = useState<{ available: number; unit_price_cents?: number } | null>(null);
   const [conflicts, setConflicts] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const [successCampaignId, setSuccessCampaignId] = useState<string | null>(null);
-  const [draftRestored, setDraftRestored] = useState(false);
+  const [campaignId, setCampaignId] = useState<string | null>(null);
   const [showRestore, setShowRestore] = useState(false);
+  const [draftRestored, setDraftRestored] = useState(false);
 
-  // -------------------- Load reference data --------------------
+  // Live progress
+  const [progress, setProgress] = useState<{
+    status: string; total: number; sent: number; delivered: number; failed: number;
+    pending: number; processing: number;
+  } | null>(null);
+
+  // -------- Load reference data --------
   useEffect(() => {
     (async () => {
       const [n, b] = await Promise.all([
@@ -125,7 +127,7 @@ function Page() {
       .catch(() => setTemplates([]));
   }, [connectionId, workspaceId, fnListTemplates]);
 
-  // -------------------- Draft: restore on mount --------------------
+  // -------- Draft persistence --------
   useEffect(() => {
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
@@ -157,10 +159,8 @@ function Page() {
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
     setShowRestore(false);
   }
-
-  // -------------------- Draft: auto-save --------------------
   useEffect(() => {
-    if (successCampaignId) return; // não persiste após envio
+    if (campaignId) return;
     const t = setTimeout(() => {
       try {
         localStorage.setItem(DRAFT_KEY, JSON.stringify({
@@ -170,9 +170,9 @@ function Page() {
       } catch { /* ignore */ }
     }, 400);
     return () => clearTimeout(t);
-  }, [name, connectionId, templateId, contactSel, rate, mode, scheduledAt, timezone, step, maxReached, successCampaignId, DRAFT_KEY]);
+  }, [name, connectionId, templateId, contactSel, rate, mode, scheduledAt, timezone, step, maxReached, campaignId, DRAFT_KEY]);
 
-  // -------------------- Live conflict check --------------------
+  // -------- Conflict check --------
   useEffect(() => {
     setConflicts([]);
     if (mode !== "schedule" || !connectionId || !scheduledAt) return;
@@ -184,56 +184,69 @@ function Page() {
     return () => clearTimeout(t);
   }, [mode, connectionId, scheduledAt, workspaceId, fnConflict]);
 
-  // -------------------- Derived --------------------
+  // -------- Live progress polling --------
+  useEffect(() => {
+    if (!campaignId || step < 4) return;
+    let alive = true;
+    async function tick() {
+      const { data } = await supabase
+        .from("wa_campaigns")
+        .select("status,progress,total_recipients")
+        .eq("id", campaignId!)
+        .maybeSingle();
+      if (!alive || !data) return;
+      const p = (data.progress as any) ?? {};
+      setProgress({
+        status: data.status,
+        total: data.total_recipients ?? 0,
+        sent: p.sent ?? 0,
+        delivered: p.delivered ?? 0,
+        failed: p.failed ?? 0,
+        pending: p.pending ?? 0,
+        processing: p.processing ?? 0,
+      });
+    }
+    tick();
+    const id = setInterval(tick, 3000);
+    return () => { alive = false; clearInterval(id); };
+  }, [campaignId, step]);
+
+  // -------- Derived --------
   const selectedNumber = useMemo(() => numbers.find((n) => n.id === connectionId), [numbers, connectionId]);
   const selectedTemplate = useMemo(() => templates.find((t) => t.id === templateId), [templates, templateId]);
   const validContacts = contactSel?.valid ?? 0;
-
   const estimatedDurationMin = useMemo(() => {
-    if (!validContacts || !rate.send_rate_per_min) return 0;
-    return Math.ceil(validContacts / rate.send_rate_per_min);
-  }, [validContacts, rate.send_rate_per_min]);
+    if (!validContacts || !rate.interval_s) return 0;
+    return Math.ceil((validContacts * rate.interval_s) / 60);
+  }, [validContacts, rate.interval_s]);
+  const estimatedCostCents = useMemo(() => (balance?.unit_price_cents ?? 15) * validContacts, [balance, validContacts]);
 
-  const estimatedCostCents = useMemo(() => {
-    return (balance?.unit_price_cents ?? 15) * validContacts;
-  }, [balance, validContacts]);
-
-  // -------------------- Navigation helpers --------------------
+  // -------- Navigation --------
   const canAdvance = useCallback((from: number): boolean => {
-    if (from === 1) return !!connectionId;
-    if (from === 2) return !!templateId;
-    if (from === 3) return !!contactSel?.list_id;
-    if (from === 4) return rate.send_rate_per_min > 0 && rate.batch_size > 0;
-    if (from === 5) return !!name.trim();
+    if (from === 1) return !!contactSel?.list_id;
+    if (from === 2) return !!connectionId && !!templateId && rate.interval_s > 0;
+    if (from === 3) return !!name.trim();
     return true;
-  }, [connectionId, templateId, contactSel, rate, name]);
+  }, [contactSel, connectionId, templateId, rate, name]);
 
-  function goTo(id: number) {
-    if (id <= maxReached) setStep(id);
-  }
+  function goTo(id: number) { if (id <= maxReached) setStep(id); }
   function next() {
     if (!canAdvance(step)) { toast.error("Preencha os campos obrigatórios"); return; }
     const nxt = Math.min(step + 1, STEPS.length);
     setStep(nxt);
     setMaxReached((m) => Math.max(m, nxt));
   }
-  function back() {
-    setStep((s) => Math.max(1, s - 1));
-  }
+  function back() { setStep((s) => Math.max(1, s - 1)); }
 
-  // -------------------- Submit --------------------
+  // -------- Submit --------
   async function handleSubmit(finalMode: Mode) {
     if (!name.trim() || !connectionId || !templateId || !contactSel?.list_id) {
       toast.error("Faltam informações. Volte às etapas anteriores.");
       return;
     }
-    if (finalMode === "schedule" && !scheduledAt) {
-      toast.error("Informe a data/hora do agendamento");
-      return;
-    }
+    if (finalMode === "schedule" && !scheduledAt) { toast.error("Informe a data/hora do agendamento"); return; }
     if (finalMode === "schedule" && conflicts.length > 0 && !forceConflict) {
-      toast.error("Existe conflito de horário. Marque 'forçar' para prosseguir.");
-      return;
+      toast.error("Existe conflito de horário. Marque 'forçar' para prosseguir."); return;
     }
     setSubmitting(true);
     try {
@@ -250,26 +263,31 @@ function Page() {
       if (event_id) {
         try { await fnLink({ data: { event_id, campaign_id: campaign.id } }); } catch { /* non-fatal */ }
       }
+      const sendRatePerMin = Math.max(1, Math.round(60 / Math.max(1, rate.interval_s)));
       await supabase.from("wa_campaigns").update({
         timezone,
-        send_rate_per_min: rate.send_rate_per_min,
-        batch_size: rate.batch_size,
-        jitter_ms: rate.jitter_ms,
+        send_rate_per_min: sendRatePerMin,
+        batch_size: rate.pause_every,
+        jitter_ms: rate.pause_duration_s * 1000,
         status: finalMode === "schedule" ? "scheduled" : "draft",
       }).eq("id", campaign.id);
 
       if (finalMode === "now") {
         const r = await fnStart({ data: { campaign_id: campaign.id } });
-        toast.success(r.status === "queued"
-          ? "Campanha na fila! O envio acontecerá em segundo plano."
-          : "Aguardando aprovação interna.");
+        toast.success(r.status === "queued" ? "Campanha na fila!" : "Aguardando aprovação.");
       } else if (finalMode === "schedule") {
         toast.success("Campanha agendada.");
       } else {
         toast.success("Rascunho salvo.");
       }
       try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
-      setSuccessCampaignId(campaign.id);
+      setCampaignId(campaign.id);
+      if (finalMode === "now") {
+        // Stay on step 4 to show live progress
+      } else {
+        // Jump straight to Resultados card
+        setStep(5); setMaxReached(5);
+      }
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Erro ao criar campanha");
     } finally {
@@ -277,29 +295,52 @@ function Page() {
     }
   }
 
+  // -------- Pause / cancel --------
+  async function pauseCampaign() {
+    if (!campaignId) return;
+    const { error } = await supabase.from("wa_campaigns")
+      .update({ status: "paused", paused_at: new Date().toISOString() })
+      .eq("id", campaignId);
+    if (error) toast.error(error.message); else toast.success("Campanha pausada");
+  }
+  async function resumeCampaign() {
+    if (!campaignId) return;
+    const { error } = await supabase.from("wa_campaigns")
+      .update({ status: "running", resumed_at: new Date().toISOString() })
+      .eq("id", campaignId);
+    if (error) toast.error(error.message); else toast.success("Campanha retomada");
+  }
+  async function cancelCampaign(force = false) {
+    if (!campaignId) return;
+    if (!force && !confirm("Cancelar esta campanha? Contatos pendentes não serão enviados.")) return;
+    await supabase.from("campaign_recipients")
+      .update({ status: "cancelled" })
+      .eq("campaign_id", campaignId)
+      .eq("status", "pending");
+    const { error } = await supabase.from("wa_campaigns")
+      .update({ status: "cancelled", canceled_at: new Date().toISOString(), finished_at: new Date().toISOString() })
+      .eq("id", campaignId);
+    if (error) toast.error(error.message); else toast.success(force ? "Cancelamento forçado" : "Campanha cancelada");
+  }
+
   function resetForNext() {
-    setSuccessCampaignId(null);
+    setCampaignId(null); setProgress(null);
     setStep(1); setMaxReached(1);
     setName(""); setTemplateId(""); setContactSel(null);
     setMode("now"); setScheduledAt(""); setConflicts([]); setForceConflict(false);
   }
 
-  // -------------------- Render --------------------
+  const isDone = progress && ["completed", "partial", "cancelled", "error"].includes(progress.status);
+
   return (
     <>
-      {/* Header sticky com stepper */}
       <Card className="mb-4">
         <CardContent className="space-y-4 pt-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex-1">
               <Label className="text-xs">Nome da campanha</Label>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Ex: Boas-vindas de Outubro"
-                className="mt-1"
-                maxLength={160}
-              />
+              <Input value={name} onChange={(e) => setName(e.target.value)}
+                placeholder="Ex: Boas-vindas de Outubro" className="mt-1" maxLength={160} />
             </div>
             <div className="text-xs text-muted-foreground sm:text-right">
               {draftRestored && <div>Rascunho restaurado</div>}
@@ -317,109 +358,123 @@ function Page() {
         </div>
       )}
 
-      {/* Etapa 1 - Número */}
+      {/* ============== STEP 1 — CONTATOS ============== */}
       {step === 1 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base"><Phone className="h-4 w-4" /> Selecione o número remetente</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {numbers.length === 0 ? (
-              <div className="rounded border border-dashed p-6 text-center text-sm text-muted-foreground">
-                Nenhum número liberado para o seu workspace.
-              </div>
-            ) : (
-              <div className="grid gap-2 sm:grid-cols-2">
-                {numbers.map((n) => {
-                  const selected = connectionId === n.id;
-                  const active = String(n.status).toLowerCase() === "active" || String(n.status).toLowerCase() === "connected";
-                  return (
-                    <button
-                      key={n.id}
-                      type="button"
-                      onClick={() => setConnectionId(n.id)}
-                      className={cn(
-                        "flex flex-col rounded-lg border p-3 text-left transition-colors hover:bg-muted/40",
-                        selected && "border-primary bg-primary/5 ring-1 ring-primary/40"
-                      )}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <div className="text-sm font-semibold">{n.display_name}</div>
-                          <div className="text-xs text-muted-foreground">{n.phone_masked}</div>
-                        </div>
-                        {active
-                          ? <Badge variant="secondary" className="gap-1"><Wifi className="h-3 w-3" /> {n.status}</Badge>
-                          : <Badge variant="destructive" className="gap-1"><WifiOff className="h-3 w-3" /> {n.status}</Badge>}
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
-                        {n.quality_rating && (
-                          <Badge variant="outline" className="gap-1"><Signal className="h-3 w-3" /> Qualidade: {n.quality_rating}</Badge>
-                        )}
-                        {n.messaging_limit_tier && (
-                          <Badge variant="outline">Tier: {n.messaging_limit_tier}</Badge>
-                        )}
-                        {typeof n.daily_cap === "number" && n.daily_cap > 0 && (
-                          <Badge variant="outline">Limite: {n.daily_cap.toLocaleString("pt-BR")}/dia</Badge>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-            <NavFooter onNext={next} onBack={null} disabled={!canAdvance(1)} />
+          <CardContent className="space-y-4 pt-6">
+            <div>
+              <h2 className="text-lg font-semibold">Selecione os destinatários</h2>
+              <p className="text-sm text-muted-foreground">Escolha para quem você deseja enviar a mensagem</p>
+            </div>
+            <ContactsStep workspaceId={workspaceId} value={contactSel} onChange={setContactSel} />
+            <NavFooter onNext={next} onBack={null} disabled={!canAdvance(1)} nextLabel="Próximo" />
           </CardContent>
         </Card>
       )}
 
-      {/* Etapa 2 - Template */}
+      {/* ============== STEP 2 — AÇÕES ============== */}
       {step === 2 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <MessageSquareText className="h-4 w-4" /> Escolha o template
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4 pt-6">
+            <div>
+              <h2 className="text-lg font-semibold">Componha suas ações</h2>
+              <p className="text-sm text-muted-foreground">Selecione o número, o template e configure o ritmo do disparo</p>
+            </div>
+
             <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
-              <div className="space-y-2">
-                {templates.length === 0 ? (
-                  <div className="rounded border border-dashed p-6 text-center text-sm text-muted-foreground">
-                    Nenhum template disponível para <b>{selectedNumber?.display_name}</b>.
+              <div className="space-y-4">
+                {/* Número + Template */}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <Label className="mb-1 flex items-center gap-1.5 text-xs uppercase tracking-wide">
+                      <PhoneCall className="h-3.5 w-3.5" /> WhatsApp de envio *
+                    </Label>
+                    <select
+                      className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                      value={connectionId}
+                      onChange={(e) => { setConnectionId(e.target.value); setTemplateId(""); }}
+                    >
+                      <option value="">— Selecione um número —</option>
+                      {numbers.map((n) => (
+                        <option key={n.id} value={n.id}>
+                          {n.phone_masked} — {n.display_name}
+                        </option>
+                      ))}
+                    </select>
+                    {selectedNumber && (
+                      <div className="mt-1.5 flex flex-wrap gap-1.5 text-[11px]">
+                        {String(selectedNumber.status).toLowerCase().match(/active|connected/)
+                          ? <Badge variant="secondary" className="gap-1"><Wifi className="h-3 w-3" /> {selectedNumber.status}</Badge>
+                          : <Badge variant="destructive" className="gap-1"><WifiOff className="h-3 w-3" /> {selectedNumber.status}</Badge>}
+                        {selectedNumber.quality_rating && (
+                          <Badge variant="outline" className="gap-1"><Signal className="h-3 w-3" /> {selectedNumber.quality_rating}</Badge>
+                        )}
+                        {selectedNumber.messaging_limit_tier && (
+                          <Badge variant="outline">Tier: {selectedNumber.messaging_limit_tier}</Badge>
+                        )}
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div className="max-h-[520px] space-y-2 overflow-auto pr-1">
-                    {templates.map((t) => {
-                      const selected = templateId === t.id;
-                      return (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => setTemplateId(t.id)}
-                          className={cn(
-                            "block w-full rounded-lg border p-3 text-left transition-colors hover:bg-muted/40",
-                            selected && "border-primary bg-primary/5"
-                          )}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-semibold">{t.name}</div>
-                              <div className="mt-0.5 flex flex-wrap gap-1.5 text-[10px]">
-                                <Badge variant="outline">{t.language}</Badge>
-                                <Badge variant="outline">{t.category}</Badge>
-                                {t.status && <Badge variant={String(t.status).toLowerCase().includes("approv") ? "secondary" : "outline"}>{t.status}</Badge>}
-                              </div>
-                            </div>
-                            {selected && <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />}
-                          </div>
-                          <div className="mt-1.5 line-clamp-2 whitespace-pre-wrap text-xs text-muted-foreground">{t.body}</div>
-                        </button>
-                      );
-                    })}
+                  <div>
+                    <Label className="mb-1 flex items-center gap-1.5 text-xs uppercase tracking-wide">
+                      <MessageSquareText className="h-3.5 w-3.5" /> Template *
+                    </Label>
+                    <select
+                      className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                      value={templateId}
+                      onChange={(e) => setTemplateId(e.target.value)}
+                      disabled={!connectionId}
+                    >
+                      <option value="">
+                        {!connectionId ? "— Selecione o número primeiro —" : "— Selecione um template —"}
+                      </option>
+                      {templates.map((t) => (
+                        <option key={t.id} value={t.id}>{t.name} ({t.language})</option>
+                      ))}
+                    </select>
+                    {connectionId && templates.length === 0 && (
+                      <div className="mt-1 text-[11px] text-muted-foreground">Nenhum template aprovado para este número.</div>
+                    )}
                   </div>
-                )}
+                </div>
+
+                {/* Config */}
+                <div className="rounded-lg border p-4">
+                  <div className="mb-3">
+                    <div className="flex items-center gap-2 text-sm font-semibold">
+                      <Sliders className="h-4 w-4" /> Configurações de Disparo
+                    </div>
+                    <div className="text-xs text-muted-foreground">Ajuste os intervalos e pausas para garantir a segurança dos envios.</div>
+                  </div>
+                  <div className="space-y-2">
+                    <RateRow icon={<Timer className="h-4 w-4" />}
+                      title="Intervalo (s)"
+                      subtitle="Tempo de espera entre cada disparo"
+                      unit="s"
+                      value={rate.interval_s}
+                      min={1} max={600}
+                      onChange={(v) => setRate((r) => ({ ...r, interval_s: v }))}
+                    />
+                    <RateRow icon={<Users2 className="h-4 w-4" />}
+                      title="Pausa (a cada X envios)"
+                      subtitle="Gatilho para iniciar uma pausa longa"
+                      unit="ctts"
+                      value={rate.pause_every}
+                      min={1} max={500}
+                      onChange={(v) => setRate((r) => ({ ...r, pause_every: v }))}
+                    />
+                    <RateRow icon={<Clock className="h-4 w-4" />}
+                      title="Tempo de pausa em (s)"
+                      subtitle="Duração do descanso do sistema"
+                      unit="s"
+                      value={rate.pause_duration_s}
+                      min={0} max={3600}
+                      onChange={(v) => setRate((r) => ({ ...r, pause_duration_s: v }))}
+                    />
+                  </div>
+                </div>
               </div>
+
               <div>
                 <Label className="mb-1 block text-xs">Pré-visualização</Label>
                 <WhatsAppPreview
@@ -429,102 +484,67 @@ function Page() {
                   footer={selectedTemplate?.footer ?? null}
                   buttons={selectedTemplate?.buttons ?? []}
                 />
-                <p className="mt-2 text-[11px] text-muted-foreground">
-                  Variáveis como {"{{1}}"} aparecerão como no template. O mapeamento de variáveis é aplicado no envio real.
-                </p>
               </div>
             </div>
-            <div className="mt-4">
-              <NavFooter onNext={next} onBack={back} disabled={!canAdvance(2)} />
-            </div>
+
+            <NavFooter onNext={next} onBack={back} disabled={!canAdvance(2)} nextLabel="Próximo" />
           </CardContent>
         </Card>
       )}
 
-      {/* Etapa 3 - Contatos */}
+      {/* ============== STEP 3 — REVISÃO ============== */}
       {step === 3 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Users className="h-4 w-4" /> Adicione os contatos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ContactPicker workspaceId={workspaceId} value={contactSel} onChange={setContactSel} />
-            <div className="mt-4">
-              <NavFooter onNext={next} onBack={back} disabled={!canAdvance(3)} />
+          <CardContent className="space-y-4 pt-6">
+            <div>
+              <h2 className="text-lg font-semibold">Revise e confirme</h2>
+              <p className="text-sm text-muted-foreground">Verifique os detalhes antes de executar as ações</p>
             </div>
-          </CardContent>
-        </Card>
-      )}
 
-      {/* Etapa 4 - Configuração */}
-      {step === 4 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base"><Sliders className="h-4 w-4" /> Ritmo e configuração</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div>
-                <Label className="text-xs">Envios por minuto</Label>
-                <Input type="number" min={1} max={2400}
-                  value={rate.send_rate_per_min}
-                  onChange={(e) => setRate((r) => ({ ...r, send_rate_per_min: Number(e.target.value) }))} />
-              </div>
-              <div>
-                <Label className="text-xs">Tamanho do lote</Label>
-                <Input type="number" min={1} max={500}
-                  value={rate.batch_size}
-                  onChange={(e) => setRate((r) => ({ ...r, batch_size: Number(e.target.value) }))} />
-              </div>
-              <div>
-                <Label className="text-xs">Jitter (ms)</Label>
-                <Input type="number" min={0} max={60000}
-                  value={rate.jitter_ms}
-                  onChange={(e) => setRate((r) => ({ ...r, jitter_ms: Number(e.target.value) }))} />
-              </div>
-            </div>
-            <div className="grid gap-3 rounded-lg border bg-muted/30 p-3 text-sm sm:grid-cols-3">
-              <div>
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">Contatos válidos</div>
-                <div className="text-lg font-semibold">{validContacts.toLocaleString("pt-BR")}</div>
-              </div>
-              <div>
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">Duração estimada</div>
-                <div className="text-lg font-semibold">
-                  {estimatedDurationMin > 60 ? `${Math.floor(estimatedDurationMin / 60)}h ${estimatedDurationMin % 60}min` : `${estimatedDurationMin} min`}
+            <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+              <div className="space-y-3">
+                <div className="rounded-lg border">
+                  <div className="flex items-center justify-between border-b bg-muted/30 px-3 py-2">
+                    <div className="flex items-center gap-2 text-sm font-semibold">
+                      <Users2 className="h-4 w-4" /> DESTINATÁRIOS
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => goTo(1)}>Editar</Button>
+                  </div>
+                  <div className="p-3 text-sm">
+                    <div className="rounded-md border p-3">
+                      <div className="font-semibold">{contactSel?.valid ?? 0} contatos selecionados</div>
+                      <div className="text-xs text-muted-foreground">De um total de {contactSel?.total ?? 0} · lista "{contactSel?.list_name}"</div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">Custo estimado</div>
-                <div className="text-lg font-semibold">R$ {(estimatedCostCents / 100).toFixed(2)}</div>
-              </div>
-            </div>
-            <NavFooter onNext={next} onBack={back} disabled={!canAdvance(4)} />
-          </CardContent>
-        </Card>
-      )}
 
-      {/* Etapa 5 - Revisão */}
-      {step === 5 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base"><ClipboardCheck className="h-4 w-4" /> Revisar campanha</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 lg:grid-cols-2">
-              <div className="space-y-2 text-sm">
-                <ReviewRow label="Campanha" value={name || <em className="text-muted-foreground">sem nome</em>} />
-                <ReviewRow label="Número" value={selectedNumber ? `${selectedNumber.display_name} (${selectedNumber.phone_masked})` : "—"} />
-                <ReviewRow label="Template" value={selectedTemplate?.name ?? "—"} />
-                <ReviewRow label="Lista" value={contactSel?.list_name ?? "—"} />
-                <ReviewRow label="Contatos válidos" value={<b>{validContacts.toLocaleString("pt-BR")}</b>} />
-                <ReviewRow label="Ritmo" value={`${rate.send_rate_per_min}/min · lote ${rate.batch_size} · jitter ${rate.jitter_ms}ms`} />
-                <ReviewRow label="Duração estimada" value={estimatedDurationMin > 60 ? `${Math.floor(estimatedDurationMin / 60)}h ${estimatedDurationMin % 60}min` : `${estimatedDurationMin} min`} />
-                <ReviewRow label="Custo estimado" value={`R$ ${(estimatedCostCents / 100).toFixed(2)}`} />
-                <ReviewRow label="Saldo (msgs)" value={balance?.available?.toLocaleString("pt-BR") ?? "—"} />
+                <div className="rounded-lg border">
+                  <div className="flex items-center justify-between border-b bg-muted/30 px-3 py-2">
+                    <div className="flex items-center gap-2 text-sm font-semibold">
+                      <MessageSquareText className="h-4 w-4" /> AÇÕES
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => goTo(2)}>Editar</Button>
+                  </div>
+                  <div className="space-y-2 p-3 text-sm">
+                    <ReviewRow label="Nome" value={name || <em className="text-muted-foreground">sem nome</em>} />
+                    <ReviewRow label="Número" value={selectedNumber ? `${selectedNumber.display_name} (${selectedNumber.phone_masked})` : "—"} />
+                    <ReviewRow label="Template" value={selectedTemplate?.name ?? "—"} />
+                    <ReviewRow label="Intervalo" value={`${rate.interval_s}s entre envios`} />
+                    <ReviewRow label="Pausa automática" value={`${rate.pause_duration_s}s a cada ${rate.pause_every} envios`} />
+                    <ReviewRow label="Duração estimada" value={estimatedDurationMin > 60 ? `${Math.floor(estimatedDurationMin / 60)}h ${estimatedDurationMin % 60}min` : `${estimatedDurationMin} min`} />
+                    <ReviewRow label="Custo estimado" value={`R$ ${(estimatedCostCents / 100).toFixed(2)}`} />
+                    <ReviewRow label="Saldo (msgs)" value={balance?.available?.toLocaleString("pt-BR") ?? "—"} />
+                  </div>
+                </div>
+
+                {balance && balance.available < validContacts && (
+                  <div className="flex items-start gap-2 rounded border border-amber-400 bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <div>Saldo insuficiente. Você tem <b>{balance.available}</b> mensagens e precisa de <b>{validContacts}</b>.</div>
+                  </div>
+                )}
               </div>
+
               <div>
                 <Label className="mb-1 block text-xs">Prévia da mensagem</Label>
                 <WhatsAppPreview
@@ -536,34 +556,27 @@ function Page() {
                 />
               </div>
             </div>
-            {balance && balance.available < validContacts && (
-              <div className="flex items-start gap-2 rounded border border-amber-400 bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                <div>Saldo insuficiente para esta campanha. Você tem <b>{balance.available}</b> mensagens e precisa de <b>{validContacts}</b>.</div>
-              </div>
-            )}
-            <NavFooter onNext={next} onBack={back} disabled={!canAdvance(5)} nextLabel="Ir para envio" />
+
+            <NavFooter onNext={next} onBack={back} disabled={!canAdvance(3)} nextLabel="Ir para envio" />
           </CardContent>
         </Card>
       )}
 
-      {/* Etapa 6 - Envio */}
-      {step === 6 && (
+      {/* ============== STEP 4 — ENVIO ============== */}
+      {step === 4 && !campaignId && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base"><Send className="h-4 w-4" /> Enviar ou agendar</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 pt-6">
+            <div>
+              <h2 className="text-lg font-semibold">Como você quer enviar?</h2>
+              <p className="text-sm text-muted-foreground">Envie imediatamente, agende para depois ou salve como rascunho.</p>
+            </div>
             <div className="grid gap-2 sm:grid-cols-3">
               {([
                 { m: "now" as Mode, icon: Send, title: "Enviar agora", desc: "Coloca a campanha na fila. O envio acontece em segundo plano." },
                 { m: "schedule" as Mode, icon: Clock, title: "Agendar", desc: "Escolha data e horário. Executa automaticamente." },
                 { m: "draft" as Mode, icon: Save, title: "Salvar rascunho", desc: "Guarda a campanha sem enviar." },
               ]).map(({ m, icon: Icon, title, desc }) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setMode(m)}
+                <button key={m} type="button" onClick={() => setMode(m)}
                   className={cn(
                     "flex flex-col rounded-lg border p-3 text-left text-sm transition-colors hover:bg-muted/40",
                     mode === m && "border-primary bg-primary/5 ring-1 ring-primary/40"
@@ -610,12 +623,145 @@ function Page() {
               <Button variant="outline" onClick={back}><ArrowLeft className="mr-1 h-4 w-4" /> Voltar</Button>
               <Button onClick={() => handleSubmit(mode)} disabled={submitting} size="lg">
                 {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {mode === "now" ? "Enviar agora" : mode === "schedule" ? "Agendar campanha" : "Salvar rascunho"}
+                {mode === "now" ? "Realizar Disparo" : mode === "schedule" ? "Agendar Campanha" : "Salvar Rascunho"}
+                <ArrowRight className="ml-1 h-4 w-4" />
               </Button>
             </div>
             <p className="text-center text-xs text-muted-foreground">
               O disparo é executado em segundo plano. Você pode fechar esta página, criar outra campanha ou usar outros módulos sem interromper o envio.
             </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Live progress after send */}
+      {step === 4 && campaignId && progress && (
+        <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+          <Card>
+            <CardContent className="space-y-4 pt-6">
+              <div>
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-primary" />
+                  {isDone ? "Envio concluído" : "Enviando mensagens..."}
+                </h2>
+                <p className="text-sm text-muted-foreground">Campanha "{name}"</p>
+              </div>
+
+              <div>
+                <div className="mb-1 flex justify-between text-sm">
+                  <span className="font-semibold">Progresso</span>
+                  <span>{progress.total ? Math.round(((progress.sent + progress.failed) / progress.total) * 100) : 0}%</span>
+                </div>
+                <Progress value={progress.total ? ((progress.sent + progress.failed) / progress.total) * 100 : 0} />
+                <div className="mt-1 text-right text-xs text-muted-foreground">
+                  {progress.sent + progress.failed} / {progress.total} contatos
+                </div>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-3">
+                <StatCard icon={<Users2 className="h-4 w-4" />} label="Contatos Processados" value={progress.sent + progress.failed} />
+                <StatCard icon={<CheckCircle2 className="h-4 w-4 text-emerald-500" />} label="Contatos Enviados" value={progress.sent} />
+                <StatCard icon={<XOctagon className="h-4 w-4 text-red-500" />} label="Falhas" value={progress.failed} />
+              </div>
+
+              <div>
+                <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
+                  <Sliders className="h-4 w-4" /> Configurações de Envio
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <ConfigBadge icon={<Timer className="h-4 w-4" />} title="Intervalo entre contatos" subtitle="Tempo de espera configurado" value={`${rate.interval_s}s`} />
+                  <ConfigBadge icon={<Clock className="h-4 w-4" />} title="Pausa Automática" subtitle={`Pausa a cada ${rate.pause_every} envios`} value={`${rate.pause_duration_s}s`} />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap justify-end gap-2">
+                {progress.status === "running" && (
+                  <Button variant="outline" onClick={pauseCampaign}><Pause className="mr-1 h-4 w-4" /> Pausar</Button>
+                )}
+                {progress.status === "paused" && (
+                  <Button variant="outline" onClick={resumeCampaign}><Play className="mr-1 h-4 w-4" /> Retomar</Button>
+                )}
+                {!isDone && (
+                  <>
+                    <Button variant="outline" onClick={() => cancelCampaign(false)} className="border-red-300 text-red-600">
+                      <Ban className="mr-1 h-4 w-4" /> Cancelar
+                    </Button>
+                    <Button variant="destructive" onClick={() => cancelCampaign(true)}>
+                      <XOctagon className="mr-1 h-4 w-4" /> Forçar Cancelamento
+                    </Button>
+                  </>
+                )}
+                {isDone && (
+                  <Button onClick={() => setStep(5)} size="lg">
+                    Ver Resultados <ArrowRight className="ml-1 h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="space-y-2 pt-6">
+              <div className="flex items-center justify-between text-sm font-semibold">
+                <span className="flex items-center gap-2"><Users2 className="h-4 w-4" /> Contatos</span>
+                <Badge variant="outline">{progress.total} Total</Badge>
+              </div>
+              <div className="rounded-md border p-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/15 text-xs font-semibold text-emerald-600">
+                    {contactSel?.list_name?.slice(0, 1).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium">{contactSel?.list_name}</div>
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      {progress.status === "running" ? "Processando..." : progress.status}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <p className="pt-2 text-[11px] text-muted-foreground">
+                Você pode sair desta página. O envio continua em segundo plano.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ============== STEP 5 — RESULTADOS ============== */}
+      {step === 5 && (
+        <Card>
+          <CardContent className="space-y-4 pt-6">
+            <div>
+              <h2 className="flex items-center gap-2 text-lg font-semibold">
+                <BarChart3 className="h-5 w-5 text-primary" /> Resultados
+              </h2>
+              <p className="text-sm text-muted-foreground">Resumo desta campanha.</p>
+            </div>
+
+            {progress ? (
+              <div className="grid gap-3 sm:grid-cols-4">
+                <StatCard label="Total" value={progress.total} />
+                <StatCard label="Enviados" value={progress.sent} icon={<CheckCircle2 className="h-4 w-4 text-emerald-500" />} />
+                <StatCard label="Entregues" value={progress.delivered} />
+                <StatCard label="Falhas" value={progress.failed} icon={<XOctagon className="h-4 w-4 text-red-500" />} />
+              </div>
+            ) : (
+              <div className="rounded border border-dashed p-6 text-center text-sm text-muted-foreground">
+                {mode === "schedule" ? "Campanha agendada. Os resultados aparecem após o envio." : "Rascunho salvo."}
+              </div>
+            )}
+
+            <div className="flex flex-wrap justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => navigate({ to: "/painel/campanhas" })}>
+                Ver minhas campanhas
+              </Button>
+              <Button variant="secondary" onClick={resetForNext}>
+                <Plus className="mr-1 h-4 w-4" /> Criar outra campanha
+              </Button>
+              <Button variant="outline" onClick={() => navigate({ to: "/painel/agenda" })}>
+                <CalendarClock className="mr-1 h-4 w-4" /> Abrir agenda
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -635,26 +781,23 @@ function Page() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Success dialog */}
-      <Dialog open={!!successCampaignId} onOpenChange={(v) => { if (!v) navigate({ to: "/painel/campanhas" }); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-primary" /> Campanha criada</DialogTitle>
-            <DialogDescription>O que deseja fazer agora?</DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex flex-col gap-2 sm:flex-col sm:space-x-0">
-            <Button onClick={() => navigate({ to: "/painel/campanhas" })}>Ver minhas campanhas</Button>
-            <Button variant="secondary" onClick={resetForNext}>
-              <Plus className="mr-2 h-4 w-4" /> Criar outra campanha
-            </Button>
-            <Button variant="outline" onClick={() => navigate({ to: "/painel/agenda" })}>
-              <CalendarClock className="mr-2 h-4 w-4" /> Abrir a agenda
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
+  );
+}
+
+// -------- Helpers --------
+function NavFooter({
+  onNext, onBack, disabled, nextLabel,
+}: { onNext: () => void; onBack: (() => void) | null; disabled?: boolean; nextLabel?: string }) {
+  return (
+    <div className="flex items-center justify-between pt-4">
+      {onBack ? (
+        <Button variant="outline" onClick={onBack}><ArrowLeft className="mr-1 h-4 w-4" /> Voltar</Button>
+      ) : <div />}
+      <Button onClick={onNext} disabled={disabled}>
+        {nextLabel ?? "Continuar"} <ArrowRight className="ml-1 h-4 w-4" />
+      </Button>
+    </div>
   );
 }
 
@@ -667,22 +810,48 @@ function ReviewRow({ label, value }: { label: string; value: React.ReactNode }) 
   );
 }
 
-function NavFooter({
-  onNext, onBack, disabled, nextLabel,
-}: {
-  onNext: () => void;
-  onBack: (() => void) | null;
-  disabled?: boolean;
-  nextLabel?: string;
-}) {
+function RateRow({
+  icon, title, subtitle, unit, value, min, max, onChange,
+}: { icon: React.ReactNode; title: string; subtitle: string; unit: string; value: number; min: number; max: number; onChange: (v: number) => void }) {
   return (
-    <div className="flex items-center justify-between pt-2">
-      {onBack ? (
-        <Button variant="outline" onClick={onBack}><ArrowLeft className="mr-1 h-4 w-4" /> Voltar</Button>
-      ) : <div />}
-      <Button onClick={onNext} disabled={disabled}>
-        {nextLabel ?? "Continuar"} <ArrowRight className="ml-1 h-4 w-4" />
-      </Button>
+    <div className="flex items-center gap-3 rounded-md border p-2.5">
+      <div className="flex h-9 w-9 items-center justify-center rounded-md bg-muted">{icon}</div>
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-medium">{title}</div>
+        <div className="text-[11px] text-muted-foreground">{subtitle}</div>
+      </div>
+      <div className="flex items-center gap-1">
+        <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => onChange(Math.max(min, value - 1))}>-</Button>
+        <div className="flex w-16 items-center justify-center gap-1 rounded border px-2 py-1 text-sm">
+          <span className="font-semibold">{value}</span>
+          <span className="text-[10px] text-muted-foreground">{unit}</span>
+        </div>
+        <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => onChange(Math.min(max, value + 1))}>+</Button>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ icon, label, value }: { icon?: React.ReactNode; label: string; value: number }) {
+  return (
+    <div className="rounded-lg border p-3">
+      <div className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground">
+        {icon}{label}
+      </div>
+      <div className="text-2xl font-bold">{value.toLocaleString("pt-BR")}</div>
+    </div>
+  );
+}
+
+function ConfigBadge({ icon, title, subtitle, value }: { icon: React.ReactNode; title: string; subtitle: string; value: string }) {
+  return (
+    <div className="flex items-center gap-3 rounded-md border p-2.5">
+      <div className="flex h-9 w-9 items-center justify-center rounded-md bg-muted">{icon}</div>
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-medium">{title}</div>
+        <div className="text-[11px] text-muted-foreground">{subtitle}</div>
+      </div>
+      <Badge variant="secondary" className="text-sm">{value}</Badge>
     </div>
   );
 }
