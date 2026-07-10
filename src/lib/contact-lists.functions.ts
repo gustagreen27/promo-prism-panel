@@ -124,12 +124,14 @@ export const importPhonesToList = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
 
-    // fetch list to inherit client/project scoping
+    // fetch list to inherit workspace/client/project scoping
     const { data: list } = await context.supabase
       .from("contact_lists")
-      .select("client_id,project_id")
+      .select("workspace_id,client_id,project_id")
       .eq("id", data.list_id)
       .single();
+    const wsId = list?.workspace_id ?? await adminPrimaryWorkspaceId(context);
+
 
     const seen = new Set<string>();
     const normalized: { phone: string; name: string | null; email: string | null }[] = [];
