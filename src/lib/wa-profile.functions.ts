@@ -532,8 +532,9 @@ export const diagnoseConnection = createServerFn({ method: "POST" })
 
     // Auto-fix hints
     const auto_fix: { phone_number_id?: string; waba_id?: string; needs_subscribe?: boolean } = {};
-    if (causes.includes("PHONE_ID_WRONG_WABA") && wabaNumbers && wabaNumbers.length === 1) {
-      auto_fix.phone_number_id = wabaNumbers[0].id;
+    const nums: any[] | null = wabaNumbers;
+    if (causes.includes("PHONE_ID_WRONG_WABA") && nums && nums.length === 1) {
+      auto_fix.phone_number_id = String(nums[0].id);
     }
     if (causes.includes("APP_NOT_SUBSCRIBED")) auto_fix.needs_subscribe = true;
 
