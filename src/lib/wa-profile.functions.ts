@@ -402,7 +402,8 @@ export const listProfileAuditLogs = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     // reuse auth check
     await loadConnectionSecure(context.supabase, context.userId, data.connection_id);
-    const { data: rows, error } = await context.supabase
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await supabaseAdmin
       .from("whatsapp_profile_audit_logs")
       .select("*")
       .eq("connection_id", data.connection_id)
