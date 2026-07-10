@@ -99,7 +99,7 @@ export async function sendTemplateMessage(input: WaSendInput): Promise<WaSendRes
     if (!id) return { ok: false, error: "No message id returned", raw: json };
     return { ok: true, metaMessageId: id, raw: json };
   } catch (e: any) {
-    return { ok: false, error: e?.message ?? "Network error" };
+    return { ok: false, error: e?.message ?? "Network error", code: "network_error" };
   }
 }
 

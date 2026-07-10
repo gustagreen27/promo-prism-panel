@@ -15,6 +15,14 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
           .eq("status", "scheduled")
           .lte("scheduled_at", nowIso);
 
+        // Auto-retomar campanhas pausadas por erro de rede após 1 min
+        await supabaseAdmin
+          .from("wa_campaigns")
+          .update({ status: "running", pause_reason: null, paused_at: null, scheduled_at: null })
+          .eq("status", "paused")
+          .eq("pause_reason", "network_error")
+          .lte("scheduled_at", nowIso);
+
         const { data: running } = await supabaseAdmin
           .from("wa_campaigns")
           .select("id, send_rate_per_min")
