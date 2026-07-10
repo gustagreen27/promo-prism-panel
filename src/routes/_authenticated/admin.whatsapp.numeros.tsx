@@ -1,9 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, RefreshCw, Cloud, PhoneCall, ShieldCheck, KeyRound } from "lucide-react";
+import { Plus, Trash2, Pencil, RefreshCw, Cloud, PhoneCall, ShieldCheck, KeyRound, UserCog } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
 import { Button } from "@/components/ui/button";
@@ -106,6 +106,9 @@ function Page() {
                 <TableCell><Badge variant="outline">{r.quality_rating ?? "—"}</Badge></TableCell>
                 <TableCell><Badge variant={r.status === "ativa" ? "default" : "secondary"}>{r.status}</Badge></TableCell>
                 <TableCell className="text-right">
+                  <Button asChild size="icon" variant="ghost" title="Gerenciar perfil">
+                    <Link to="/admin/whatsapp/numeros/$id/perfil" params={{ id: r.id }}><UserCog className="h-4 w-4" /></Link>
+                  </Button>
                   <Button size="icon" variant="ghost" onClick={() => { setEditing(r); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                   <Button size="icon" variant="ghost" onClick={() => confirm("Remover este número?") && delMut.mutate(r.id)}><Trash2 className="h-4 w-4" /></Button>
                 </TableCell>

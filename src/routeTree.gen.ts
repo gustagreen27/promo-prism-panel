@@ -78,6 +78,7 @@ import { Route as AuthenticatedAdminContatosListasRouteImport } from './routes/_
 import { Route as AuthenticatedAdminCampaignsIdRouteImport } from './routes/_authenticated/admin.campaigns.$id'
 import { Route as AuthenticatedAdminCampaignsIdPreviewRouteImport } from './routes/_authenticated/admin.campaigns.$id.preview'
 import { Route as AuthenticatedAdminCampaignsIdEditRouteImport } from './routes/_authenticated/admin.campaigns.$id.edit'
+import { Route as AuthenticatedAdminWhatsappNumerosIdPerfilRouteImport } from './routes/_authenticated/admin.whatsapp.numeros.$id.perfil'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -469,6 +470,12 @@ const AuthenticatedAdminCampaignsIdEditRoute =
     path: '/edit',
     getParentRoute: () => AuthenticatedAdminCampaignsIdRoute,
   } as any)
+const AuthenticatedAdminWhatsappNumerosIdPerfilRoute =
+  AuthenticatedAdminWhatsappNumerosIdPerfilRouteImport.update({
+    id: '/$id/perfil',
+    path: '/$id/perfil',
+    getParentRoute: () => AuthenticatedAdminWhatsappNumerosRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -523,7 +530,7 @@ export interface FileRoutesByFullPath {
   '/admin/whatsapp/inbox': typeof AuthenticatedAdminWhatsappInboxRoute
   '/admin/whatsapp/liberacoes': typeof AuthenticatedAdminWhatsappLiberacoesRoute
   '/admin/whatsapp/logs': typeof AuthenticatedAdminWhatsappLogsRoute
-  '/admin/whatsapp/numeros': typeof AuthenticatedAdminWhatsappNumerosRoute
+  '/admin/whatsapp/numeros': typeof AuthenticatedAdminWhatsappNumerosRouteWithChildren
   '/admin/whatsapp/qualidade': typeof AuthenticatedAdminWhatsappQualidadeRoute
   '/admin/whatsapp/relatorios': typeof AuthenticatedAdminWhatsappRelatoriosRoute
   '/admin/whatsapp/templates': typeof AuthenticatedAdminWhatsappTemplatesRoute
@@ -539,6 +546,7 @@ export interface FileRoutesByFullPath {
   '/admin/whatsapp-campanhas/': typeof AuthenticatedAdminWhatsappCampanhasIndexRoute
   '/admin/campaigns/$id/edit': typeof AuthenticatedAdminCampaignsIdEditRoute
   '/admin/campaigns/$id/preview': typeof AuthenticatedAdminCampaignsIdPreviewRoute
+  '/admin/whatsapp/numeros/$id/perfil': typeof AuthenticatedAdminWhatsappNumerosIdPerfilRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -591,7 +599,7 @@ export interface FileRoutesByTo {
   '/admin/whatsapp/inbox': typeof AuthenticatedAdminWhatsappInboxRoute
   '/admin/whatsapp/liberacoes': typeof AuthenticatedAdminWhatsappLiberacoesRoute
   '/admin/whatsapp/logs': typeof AuthenticatedAdminWhatsappLogsRoute
-  '/admin/whatsapp/numeros': typeof AuthenticatedAdminWhatsappNumerosRoute
+  '/admin/whatsapp/numeros': typeof AuthenticatedAdminWhatsappNumerosRouteWithChildren
   '/admin/whatsapp/qualidade': typeof AuthenticatedAdminWhatsappQualidadeRoute
   '/admin/whatsapp/relatorios': typeof AuthenticatedAdminWhatsappRelatoriosRoute
   '/admin/whatsapp/templates': typeof AuthenticatedAdminWhatsappTemplatesRoute
@@ -607,6 +615,7 @@ export interface FileRoutesByTo {
   '/admin/whatsapp-campanhas': typeof AuthenticatedAdminWhatsappCampanhasIndexRoute
   '/admin/campaigns/$id/edit': typeof AuthenticatedAdminCampaignsIdEditRoute
   '/admin/campaigns/$id/preview': typeof AuthenticatedAdminCampaignsIdPreviewRoute
+  '/admin/whatsapp/numeros/$id/perfil': typeof AuthenticatedAdminWhatsappNumerosIdPerfilRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -663,7 +672,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/whatsapp/inbox': typeof AuthenticatedAdminWhatsappInboxRoute
   '/_authenticated/admin/whatsapp/liberacoes': typeof AuthenticatedAdminWhatsappLiberacoesRoute
   '/_authenticated/admin/whatsapp/logs': typeof AuthenticatedAdminWhatsappLogsRoute
-  '/_authenticated/admin/whatsapp/numeros': typeof AuthenticatedAdminWhatsappNumerosRoute
+  '/_authenticated/admin/whatsapp/numeros': typeof AuthenticatedAdminWhatsappNumerosRouteWithChildren
   '/_authenticated/admin/whatsapp/qualidade': typeof AuthenticatedAdminWhatsappQualidadeRoute
   '/_authenticated/admin/whatsapp/relatorios': typeof AuthenticatedAdminWhatsappRelatoriosRoute
   '/_authenticated/admin/whatsapp/templates': typeof AuthenticatedAdminWhatsappTemplatesRoute
@@ -679,6 +688,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/whatsapp-campanhas/': typeof AuthenticatedAdminWhatsappCampanhasIndexRoute
   '/_authenticated/admin/campaigns/$id/edit': typeof AuthenticatedAdminCampaignsIdEditRoute
   '/_authenticated/admin/campaigns/$id/preview': typeof AuthenticatedAdminCampaignsIdPreviewRoute
+  '/_authenticated/admin/whatsapp/numeros/$id/perfil': typeof AuthenticatedAdminWhatsappNumerosIdPerfilRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -751,6 +761,7 @@ export interface FileRouteTypes {
     | '/admin/whatsapp-campanhas/'
     | '/admin/campaigns/$id/edit'
     | '/admin/campaigns/$id/preview'
+    | '/admin/whatsapp/numeros/$id/perfil'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -819,6 +830,7 @@ export interface FileRouteTypes {
     | '/admin/whatsapp-campanhas'
     | '/admin/campaigns/$id/edit'
     | '/admin/campaigns/$id/preview'
+    | '/admin/whatsapp/numeros/$id/perfil'
   id:
     | '__root__'
     | '/'
@@ -890,6 +902,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/whatsapp-campanhas/'
     | '/_authenticated/admin/campaigns/$id/edit'
     | '/_authenticated/admin/campaigns/$id/preview'
+    | '/_authenticated/admin/whatsapp/numeros/$id/perfil'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1395,6 +1408,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminCampaignsIdEditRouteImport
       parentRoute: typeof AuthenticatedAdminCampaignsIdRoute
     }
+    '/_authenticated/admin/whatsapp/numeros/$id/perfil': {
+      id: '/_authenticated/admin/whatsapp/numeros/$id/perfil'
+      path: '/$id/perfil'
+      fullPath: '/admin/whatsapp/numeros/$id/perfil'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappNumerosIdPerfilRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappNumerosRoute
+    }
   }
 }
 
@@ -1413,6 +1433,21 @@ const AuthenticatedAdminContatosRouteWithChildren =
     AuthenticatedAdminContatosRouteChildren,
   )
 
+interface AuthenticatedAdminWhatsappNumerosRouteChildren {
+  AuthenticatedAdminWhatsappNumerosIdPerfilRoute: typeof AuthenticatedAdminWhatsappNumerosIdPerfilRoute
+}
+
+const AuthenticatedAdminWhatsappNumerosRouteChildren: AuthenticatedAdminWhatsappNumerosRouteChildren =
+  {
+    AuthenticatedAdminWhatsappNumerosIdPerfilRoute:
+      AuthenticatedAdminWhatsappNumerosIdPerfilRoute,
+  }
+
+const AuthenticatedAdminWhatsappNumerosRouteWithChildren =
+  AuthenticatedAdminWhatsappNumerosRoute._addFileChildren(
+    AuthenticatedAdminWhatsappNumerosRouteChildren,
+  )
+
 interface AuthenticatedAdminWhatsappRouteChildren {
   AuthenticatedAdminWhatsappConexoesRoute: typeof AuthenticatedAdminWhatsappConexoesRoute
   AuthenticatedAdminWhatsappConfiguracoesRoute: typeof AuthenticatedAdminWhatsappConfiguracoesRoute
@@ -1421,7 +1456,7 @@ interface AuthenticatedAdminWhatsappRouteChildren {
   AuthenticatedAdminWhatsappInboxRoute: typeof AuthenticatedAdminWhatsappInboxRoute
   AuthenticatedAdminWhatsappLiberacoesRoute: typeof AuthenticatedAdminWhatsappLiberacoesRoute
   AuthenticatedAdminWhatsappLogsRoute: typeof AuthenticatedAdminWhatsappLogsRoute
-  AuthenticatedAdminWhatsappNumerosRoute: typeof AuthenticatedAdminWhatsappNumerosRoute
+  AuthenticatedAdminWhatsappNumerosRoute: typeof AuthenticatedAdminWhatsappNumerosRouteWithChildren
   AuthenticatedAdminWhatsappQualidadeRoute: typeof AuthenticatedAdminWhatsappQualidadeRoute
   AuthenticatedAdminWhatsappRelatoriosRoute: typeof AuthenticatedAdminWhatsappRelatoriosRoute
   AuthenticatedAdminWhatsappTemplatesRoute: typeof AuthenticatedAdminWhatsappTemplatesRoute
@@ -1445,7 +1480,7 @@ const AuthenticatedAdminWhatsappRouteChildren: AuthenticatedAdminWhatsappRouteCh
       AuthenticatedAdminWhatsappLiberacoesRoute,
     AuthenticatedAdminWhatsappLogsRoute: AuthenticatedAdminWhatsappLogsRoute,
     AuthenticatedAdminWhatsappNumerosRoute:
-      AuthenticatedAdminWhatsappNumerosRoute,
+      AuthenticatedAdminWhatsappNumerosRouteWithChildren,
     AuthenticatedAdminWhatsappQualidadeRoute:
       AuthenticatedAdminWhatsappQualidadeRoute,
     AuthenticatedAdminWhatsappRelatoriosRoute:
