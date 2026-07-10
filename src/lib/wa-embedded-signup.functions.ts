@@ -213,6 +213,13 @@ export const completeEmbeddedSignup = createServerFn({ method: "POST" })
       .eq("phone_number_id", data.phone_number_id)
       .maybeSingle();
 
+    const isCoexistence = data.onboarding_mode === "coexistence";
+    const coexistenceStatus: string | null = isCoexistence
+      ? subscribeOk
+        ? "connected"
+        : "attention_required"
+      : null;
+
     const connPayload = {
       waba_ref_id: wabaRefId,
       waba_id: data.waba_id,
@@ -224,6 +231,8 @@ export const completeEmbeddedSignup = createServerFn({ method: "POST" })
       quality_rating: phJson?.quality_rating ?? null,
       messaging_limit: phJson?.messaging_limit_tier ?? null,
       access_token: accessToken,
+      // Never silently fall back to the global token for ES-provisioned connections.
+      use_global_token: false,
       graph_api_version: GRAPH_VERSION,
       provider: "meta_cloud",
       status: phJson?.code_verification_status === "VERIFIED" ? "ativo" : "aguardando_verificacao",
@@ -231,6 +240,9 @@ export const completeEmbeddedSignup = createServerFn({ method: "POST" })
       project_id: scopedProjectId,
       workspace_id: scopedWorkspaceId,
       visibility: caller.isAdmin ? "internal" : "workspace",
+      onboarding_mode: data.onboarding_mode,
+      coexistence_status: coexistenceStatus,
+      embedded_signup_completed_at: new Date().toISOString(),
     };
 
     let connectionId: string;
