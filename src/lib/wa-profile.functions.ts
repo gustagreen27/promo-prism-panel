@@ -453,8 +453,8 @@ export const diagnoseConnection = createServerFn({ method: "POST" })
     };
 
     let wabaData: any = null;
-    let wabaNumbers: any[] | null = null;
-    let subscribedApps: any[] | null = null;
+    let wabaNumbers = null as any[] | null;
+    let subscribedApps = null as any[] | null;
 
     ops.forEach((op, i) => {
       const { code, body } = parse(i);
