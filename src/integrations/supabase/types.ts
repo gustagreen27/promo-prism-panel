@@ -166,6 +166,57 @@ export type Database = {
           },
         ]
       }
+      campaign_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          campaign_id: string
+          created_at: string
+          from_data: Json | null
+          id: string
+          message: string | null
+          to_data: Json | null
+          workspace_id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          campaign_id: string
+          created_at?: string
+          from_data?: Json | null
+          id?: string
+          message?: string | null
+          to_data?: Json | null
+          workspace_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          campaign_id?: string
+          created_at?: string
+          from_data?: Json | null
+          id?: string
+          message?: string | null
+          to_data?: Json | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_audit_log_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "wa_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_audit_log_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_clicks: {
         Row: {
           as_name: string | null
@@ -1855,6 +1906,9 @@ export type Database = {
           failed_count: number
           final_report: Json | null
           finished_at: string | null
+          google_calendar_id: string | null
+          google_event_id: string | null
+          google_synced_at: string | null
           id: string
           jitter_ms: number
           last_error: string | null
@@ -1921,6 +1975,9 @@ export type Database = {
           failed_count?: number
           final_report?: Json | null
           finished_at?: string | null
+          google_calendar_id?: string | null
+          google_event_id?: string | null
+          google_synced_at?: string | null
           id?: string
           jitter_ms?: number
           last_error?: string | null
@@ -1987,6 +2044,9 @@ export type Database = {
           failed_count?: number
           final_report?: Json | null
           finished_at?: string | null
+          google_calendar_id?: string | null
+          google_event_id?: string | null
+          google_synced_at?: string | null
           id?: string
           jitter_ms?: number
           last_error?: string | null
@@ -3206,6 +3266,62 @@ export type Database = {
           },
         ]
       }
+      workspace_google_calendar: {
+        Row: {
+          access_token: string | null
+          auto_sync: boolean
+          calendar_id: string
+          calendar_name: string | null
+          connected_at: string
+          connected_by: string | null
+          google_email: string | null
+          id: string
+          refresh_token: string | null
+          scopes: string | null
+          token_expires_at: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          auto_sync?: boolean
+          calendar_id?: string
+          calendar_name?: string | null
+          connected_at?: string
+          connected_by?: string | null
+          google_email?: string | null
+          id?: string
+          refresh_token?: string | null
+          scopes?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          access_token?: string | null
+          auto_sync?: boolean
+          calendar_id?: string
+          calendar_name?: string | null
+          connected_at?: string
+          connected_by?: string | null
+          google_email?: string | null
+          id?: string
+          refresh_token?: string | null
+          scopes?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_google_calendar_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspace_members: {
         Row: {
           created_at: string
@@ -3465,6 +3581,20 @@ export type Database = {
       wa_available_stock: {
         Args: { _client_id: string; _project_id: string }
         Returns: number
+      }
+      wa_check_scheduling_conflict: {
+        Args: {
+          _connection_id: string
+          _duration_min?: number
+          _exclude_id?: string
+          _scheduled_at: string
+        }
+        Returns: {
+          id: string
+          name: string
+          scheduled_at: string
+          status: string
+        }[]
       }
       wa_consume_stock: {
         Args: { _client_id: string; _project_id: string; _qty: number }
