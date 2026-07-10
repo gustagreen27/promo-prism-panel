@@ -28,8 +28,10 @@ import { Route as PainelFinanceiroRouteImport } from './routes/painel.financeiro
 import { Route as PainelContatosRouteImport } from './routes/painel.contatos'
 import { Route as PainelConfiguracoesRouteImport } from './routes/painel.configuracoes'
 import { Route as PainelCampanhasRouteImport } from './routes/painel.campanhas'
+import { Route as PainelAgendaRouteImport } from './routes/painel.agenda'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as PainelCampanhasNovaRouteImport } from './routes/painel.campanhas.nova'
+import { Route as PainelCampanhasHistoricoRouteImport } from './routes/painel.campanhas.historico'
 import { Route as AuthenticatedAdminWhatsappCampanhasRouteImport } from './routes/_authenticated/admin.whatsapp-campanhas'
 import { Route as AuthenticatedAdminWhatsappRouteImport } from './routes/_authenticated/admin.whatsapp'
 import { Route as AuthenticatedAdminUpsellRouteImport } from './routes/_authenticated/admin.upsell'
@@ -175,6 +177,11 @@ const PainelCampanhasRoute = PainelCampanhasRouteImport.update({
   path: '/campanhas',
   getParentRoute: () => PainelRoute,
 } as any)
+const PainelAgendaRoute = PainelAgendaRouteImport.update({
+  id: '/agenda',
+  path: '/agenda',
+  getParentRoute: () => PainelRoute,
+} as any)
 const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
@@ -185,6 +192,12 @@ const PainelCampanhasNovaRoute = PainelCampanhasNovaRouteImport.update({
   path: '/nova',
   getParentRoute: () => PainelCampanhasRoute,
 } as any)
+const PainelCampanhasHistoricoRoute =
+  PainelCampanhasHistoricoRouteImport.update({
+    id: '/historico',
+    path: '/historico',
+    getParentRoute: () => PainelCampanhasRoute,
+  } as any)
 const AuthenticatedAdminWhatsappCampanhasRoute =
   AuthenticatedAdminWhatsappCampanhasRouteImport.update({
     id: '/admin/whatsapp-campanhas',
@@ -494,6 +507,7 @@ export interface FileRoutesByFullPath {
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/painel/agenda': typeof PainelAgendaRoute
   '/painel/campanhas': typeof PainelCampanhasRouteWithChildren
   '/painel/configuracoes': typeof PainelConfiguracoesRoute
   '/painel/contatos': typeof PainelContatosRoute
@@ -521,6 +535,7 @@ export interface FileRoutesByFullPath {
   '/admin/upsell': typeof AuthenticatedAdminUpsellRoute
   '/admin/whatsapp': typeof AuthenticatedAdminWhatsappRouteWithChildren
   '/admin/whatsapp-campanhas': typeof AuthenticatedAdminWhatsappCampanhasRouteWithChildren
+  '/painel/campanhas/historico': typeof PainelCampanhasHistoricoRoute
   '/painel/campanhas/nova': typeof PainelCampanhasNovaRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
@@ -565,6 +580,7 @@ export interface FileRoutesByTo {
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/painel/agenda': typeof PainelAgendaRoute
   '/painel/campanhas': typeof PainelCampanhasRouteWithChildren
   '/painel/configuracoes': typeof PainelConfiguracoesRoute
   '/painel/contatos': typeof PainelContatosRoute
@@ -591,6 +607,7 @@ export interface FileRoutesByTo {
   '/admin/tv': typeof AuthenticatedAdminTvRoute
   '/admin/upsell': typeof AuthenticatedAdminUpsellRoute
   '/admin/whatsapp': typeof AuthenticatedAdminWhatsappRouteWithChildren
+  '/painel/campanhas/historico': typeof PainelCampanhasHistoricoRoute
   '/painel/campanhas/nova': typeof PainelCampanhasNovaRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
@@ -638,6 +655,7 @@ export interface FileRoutesById {
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/painel/agenda': typeof PainelAgendaRoute
   '/painel/campanhas': typeof PainelCampanhasRouteWithChildren
   '/painel/configuracoes': typeof PainelConfiguracoesRoute
   '/painel/contatos': typeof PainelContatosRoute
@@ -665,6 +683,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/upsell': typeof AuthenticatedAdminUpsellRoute
   '/_authenticated/admin/whatsapp': typeof AuthenticatedAdminWhatsappRouteWithChildren
   '/_authenticated/admin/whatsapp-campanhas': typeof AuthenticatedAdminWhatsappCampanhasRouteWithChildren
+  '/painel/campanhas/historico': typeof PainelCampanhasHistoricoRoute
   '/painel/campanhas/nova': typeof PainelCampanhasNovaRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
@@ -712,6 +731,7 @@ export interface FileRouteTypes {
     | '/politica-de-privacidade'
     | '/recuperar-senha'
     | '/reset-password'
+    | '/painel/agenda'
     | '/painel/campanhas'
     | '/painel/configuracoes'
     | '/painel/contatos'
@@ -739,6 +759,7 @@ export interface FileRouteTypes {
     | '/admin/upsell'
     | '/admin/whatsapp'
     | '/admin/whatsapp-campanhas'
+    | '/painel/campanhas/historico'
     | '/painel/campanhas/nova'
     | '/admin/'
     | '/admin/campaigns/$id'
@@ -783,6 +804,7 @@ export interface FileRouteTypes {
     | '/politica-de-privacidade'
     | '/recuperar-senha'
     | '/reset-password'
+    | '/painel/agenda'
     | '/painel/campanhas'
     | '/painel/configuracoes'
     | '/painel/contatos'
@@ -809,6 +831,7 @@ export interface FileRouteTypes {
     | '/admin/tv'
     | '/admin/upsell'
     | '/admin/whatsapp'
+    | '/painel/campanhas/historico'
     | '/painel/campanhas/nova'
     | '/admin'
     | '/admin/campaigns/$id'
@@ -855,6 +878,7 @@ export interface FileRouteTypes {
     | '/politica-de-privacidade'
     | '/recuperar-senha'
     | '/reset-password'
+    | '/painel/agenda'
     | '/painel/campanhas'
     | '/painel/configuracoes'
     | '/painel/contatos'
@@ -882,6 +906,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/upsell'
     | '/_authenticated/admin/whatsapp'
     | '/_authenticated/admin/whatsapp-campanhas'
+    | '/painel/campanhas/historico'
     | '/painel/campanhas/nova'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/campaigns/$id'
@@ -1072,6 +1097,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PainelCampanhasRouteImport
       parentRoute: typeof PainelRoute
     }
+    '/painel/agenda': {
+      id: '/painel/agenda'
+      path: '/agenda'
+      fullPath: '/painel/agenda'
+      preLoaderRoute: typeof PainelAgendaRouteImport
+      parentRoute: typeof PainelRoute
+    }
     '/_authenticated/admin/': {
       id: '/_authenticated/admin/'
       path: '/admin'
@@ -1084,6 +1116,13 @@ declare module '@tanstack/react-router' {
       path: '/nova'
       fullPath: '/painel/campanhas/nova'
       preLoaderRoute: typeof PainelCampanhasNovaRouteImport
+      parentRoute: typeof PainelCampanhasRoute
+    }
+    '/painel/campanhas/historico': {
+      id: '/painel/campanhas/historico'
+      path: '/historico'
+      fullPath: '/painel/campanhas/historico'
+      preLoaderRoute: typeof PainelCampanhasHistoricoRouteImport
       parentRoute: typeof PainelCampanhasRoute
     }
     '/_authenticated/admin/whatsapp-campanhas': {
@@ -1610,10 +1649,12 @@ const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
 interface PainelCampanhasRouteChildren {
+  PainelCampanhasHistoricoRoute: typeof PainelCampanhasHistoricoRoute
   PainelCampanhasNovaRoute: typeof PainelCampanhasNovaRoute
 }
 
 const PainelCampanhasRouteChildren: PainelCampanhasRouteChildren = {
+  PainelCampanhasHistoricoRoute: PainelCampanhasHistoricoRoute,
   PainelCampanhasNovaRoute: PainelCampanhasNovaRoute,
 }
 
@@ -1622,6 +1663,7 @@ const PainelCampanhasRouteWithChildren = PainelCampanhasRoute._addFileChildren(
 )
 
 interface PainelRouteChildren {
+  PainelAgendaRoute: typeof PainelAgendaRoute
   PainelCampanhasRoute: typeof PainelCampanhasRouteWithChildren
   PainelConfiguracoesRoute: typeof PainelConfiguracoesRoute
   PainelContatosRoute: typeof PainelContatosRoute
@@ -1634,6 +1676,7 @@ interface PainelRouteChildren {
 }
 
 const PainelRouteChildren: PainelRouteChildren = {
+  PainelAgendaRoute: PainelAgendaRoute,
   PainelCampanhasRoute: PainelCampanhasRouteWithChildren,
   PainelConfiguracoesRoute: PainelConfiguracoesRoute,
   PainelContatosRoute: PainelContatosRoute,

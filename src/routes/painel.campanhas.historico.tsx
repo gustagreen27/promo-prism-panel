@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { searchCampaignHistory } from "@/lib/wa-schedule.functions";
 
-export const Route = createFileRoute("/painel/campanhas.historico")({
+export const Route = createFileRoute("/painel/campanhas/historico")({
   head: () => ({ meta: [{ title: "Histórico — Disparos FR" }] }),
   component: Page,
 });
