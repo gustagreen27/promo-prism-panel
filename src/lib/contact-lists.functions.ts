@@ -148,11 +148,12 @@ export const importPhonesToList = createServerFn({ method: "POST" })
 
     if (!normalized.length) return { added: 0, created: 0, invalid, invalidRows };
 
-    // upsert contacts by phone+client_id
+    // upsert contacts by phone+client_id (stamped com o workspace)
     const toUpsert = normalized.map((n) => ({
       phone: n.phone,
       name: n.name,
       email: n.email,
+      workspace_id: wsId,
       client_id: list?.client_id ?? null,
       project_id: list?.project_id ?? null,
       source: data.source,
@@ -164,11 +165,11 @@ export const importPhonesToList = createServerFn({ method: "POST" })
       .from("contacts")
       .upsert(toUpsert, { onConflict: "phone,client_id" as any, ignoreDuplicates: true });
 
-    // Ensure imported phones are opted-in (fixes existing contacts stuck at opt_in=false/opt_out=true)
+    // Ensure imported phones are opted-in e com workspace_id preenchido
     {
       let uq = context.supabase
         .from("contacts")
-        .update({ opt_in: true, opt_out: false, opt_in_at: new Date().toISOString() })
+        .update({ opt_in: true, opt_out: false, opt_in_at: new Date().toISOString(), workspace_id: wsId })
         .in("phone", normalized.map((n) => n.phone));
       uq = list?.client_id ? uq.eq("client_id", list.client_id) : uq.is("client_id", null);
       await uq;
@@ -181,9 +182,10 @@ export const importPhonesToList = createServerFn({ method: "POST" })
     const contacts = (contactRows ?? []) as { id: string; phone: string }[];
 
     if (contacts.length) {
-      const items = contacts.map((c) => ({ list_id: data.list_id, contact_id: c.id }));
+      const items = contacts.map((c) => ({ list_id: data.list_id, contact_id: c.id, workspace_id: wsId }));
       await context.supabase.from("contact_list_items").upsert(items, { onConflict: "list_id,contact_id" });
     }
+
 
     return {
       added: contacts.length,
