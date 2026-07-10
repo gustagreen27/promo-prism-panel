@@ -25,7 +25,7 @@ import {
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 
-export const Route = createFileRoute("/_authenticated/admin/whatsapp-campanhas/$id")({
+export const Route = createFileRoute("/_authenticated/admin/disparos/$id")({
   head: () => ({ meta: [{ title: "Campanha WhatsApp" }] }),
   component: Page,
 });

@@ -30,7 +30,7 @@ import { renderMapping, buildContext, metaVarsIn } from "@/lib/wa-variables";
 import { scheduleQuickSend, unscheduleWaCampaign, listWaCampaigns } from "@/lib/wa-campaigns.functions";
 
 
-export const Route = createFileRoute("/_authenticated/admin/whatsapp-campanhas/")({
+export const Route = createFileRoute("/_authenticated/admin/disparos/")({
   head: () => ({ meta: [{ title: "Campanhas WhatsApp" }] }),
   component: Page,
 });

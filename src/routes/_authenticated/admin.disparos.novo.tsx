@@ -25,7 +25,7 @@ import { previewAudience, renderPreview, createCampaignFromWizard } from "@/lib/
 import { availableStock, buildRecipients, startWaCampaign, scheduleWaCampaign } from "@/lib/wa-campaigns.functions";
 import { DEFAULT_TOKENS, metaVarsIn } from "@/lib/wa-variables";
 
-export const Route = createFileRoute("/_authenticated/admin/whatsapp-campanhas/novo")({
+export const Route = createFileRoute("/_authenticated/admin/disparos/novo")({
   head: () => ({ meta: [{ title: "Nova campanha — WhatsApp" }] }),
   component: WizardPage,
 });
