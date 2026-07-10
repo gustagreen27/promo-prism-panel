@@ -46,10 +46,16 @@ export const createList = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { data: row, error } = await context.supabase.from("contact_lists").insert(data).select().single();
+    const wsId = await adminPrimaryWorkspaceId(context);
+    const { data: row, error } = await context.supabase
+      .from("contact_lists")
+      .insert({ ...data, workspace_id: wsId })
+      .select()
+      .single();
     if (error) throw error;
     return row;
   });
+
 
 export const deleteList = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
