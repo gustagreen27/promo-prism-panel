@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Loader2, MessageCircle } from "lucide-react";
+import { Loader2, MessageCircle, Smartphone } from "lucide-react";
 import { getEmbeddedSignupConfig, completeEmbeddedSignup } from "@/lib/wa-embedded-signup.functions";
 
 declare global {
@@ -12,20 +12,45 @@ declare global {
   }
 }
 
+export type OnboardingMode = "standard" | "coexistence";
+
 type Props = {
   clientId?: string | null;
   projectId?: string | null;
   nomeInterno?: string;
-  onCompleted?: (r: { waba_ref_id: string; connection_id: string; display_phone_number: string | null; verified_name: string | null; status: string }) => void;
+  mode?: OnboardingMode;
+  label?: string;
+  variant?: "default" | "outline" | "secondary";
+  onCompleted?: (r: {
+    waba_ref_id: string;
+    connection_id: string;
+    display_phone_number: string | null;
+    verified_name: string | null;
+    status: string;
+    onboarding_mode: OnboardingMode;
+    coexistence_status?: string | null;
+  }) => void;
   disabled?: boolean;
 };
 
+const FB_ORIGINS = new Set(["https://www.facebook.com", "https://web.facebook.com"]);
+
 /**
- * "Conectar WhatsApp" — Meta Embedded Signup (Facebook Login for Business).
- * Uses FB.login with the app's Configuration ID; captures session_info via postMessage;
- * exchanges the returned `code` on the backend and upserts WABA + connection.
+ * Meta Embedded Signup button. Supports two modes:
+ * - "standard": adds a brand-new number to WhatsApp Cloud API.
+ * - "coexistence": connects a number that is already in use on the WhatsApp Business app
+ *   (featureType=whatsapp_business_app_onboarding, sessionInfoVersion=3).
  */
-export function EmbeddedSignupButton({ clientId, projectId, nomeInterno, onCompleted, disabled }: Props) {
+export function EmbeddedSignupButton({
+  clientId,
+  projectId,
+  nomeInterno,
+  mode = "standard",
+  label,
+  variant = "default",
+  onCompleted,
+  disabled,
+}: Props) {
   const cfgFn = useServerFn(getEmbeddedSignupConfig);
   const completeFn = useServerFn(completeEmbeddedSignup);
   const [ready, setReady] = useState(false);
@@ -44,7 +69,6 @@ export function EmbeddedSignupButton({ clientId, projectId, nomeInterno, onCompl
     })();
   }, [cfgFn]);
 
-  // Load FB SDK once cfg is available
   useEffect(() => {
     if (!cfg) return;
     if (window.FB) {
@@ -68,24 +92,22 @@ export function EmbeddedSignupButton({ clientId, projectId, nomeInterno, onCompl
     }
   }, [cfg]);
 
-  // Capture session_info via postMessage from facebook.com
   useEffect(() => {
     function onMessage(ev: MessageEvent) {
-      if (ev.origin !== "https://www.facebook.com" && ev.origin !== "https://web.facebook.com") return;
+      if (!FB_ORIGINS.has(ev.origin)) return;
       try {
         const data = typeof ev.data === "string" ? JSON.parse(ev.data) : ev.data;
-        if (data?.type === "WA_EMBEDDED_SIGNUP") {
-          if (data.event === "FINISH" || data.event === "FINISH_ONLY_WABA") {
-            sessionRef.current = {
-              phone_number_id: data.data?.phone_number_id,
-              waba_id: data.data?.waba_id,
-              business_id: data.data?.business_id,
-            };
-          } else if (data.event === "CANCEL") {
-            sessionRef.current = null;
-          } else if (data.event === "ERROR") {
-            toast.error(`Meta: ${data.data?.error_message ?? "Erro no Embedded Signup"}`);
-          }
+        if (!data || data.type !== "WA_EMBEDDED_SIGNUP") return;
+        if (data.event === "FINISH" || data.event === "FINISH_ONLY_WABA") {
+          sessionRef.current = {
+            phone_number_id: data.data?.phone_number_id,
+            waba_id: data.data?.waba_id,
+            business_id: data.data?.business_id,
+          };
+        } else if (data.event === "CANCEL") {
+          sessionRef.current = null;
+        } else if (data.event === "ERROR") {
+          toast.error(`Meta: ${data.data?.error_message ?? "Erro no Embedded Signup"}`);
         }
       } catch {
         /* ignore non-JSON messages */
@@ -99,6 +121,12 @@ export function EmbeddedSignupButton({ clientId, projectId, nomeInterno, onCompl
     if (!window.FB || !cfg) return;
     sessionRef.current = null;
     setLoading(true);
+
+    const extras: Record<string, any> =
+      mode === "coexistence"
+        ? { featureType: "whatsapp_business_app_onboarding", sessionInfoVersion: "3" }
+        : { setup: {}, featureType: "", sessionInfoVersion: "3" };
+
     window.FB.login(
       async (resp: any) => {
         try {
@@ -113,7 +141,11 @@ export function EmbeddedSignupButton({ clientId, projectId, nomeInterno, onCompl
             return;
           }
           if (!sess?.waba_id || !sess?.phone_number_id) {
-            toast.error("Onboarding incompleto: WABA/número não retornados. Refaça o fluxo escolhendo/criando um número.");
+            toast.error(
+              mode === "coexistence"
+                ? "Onboarding incompleto: selecione a WABA e o número existente no WhatsApp Business para concluir."
+                : "Onboarding incompleto: WABA/número não retornados. Refaça o fluxo escolhendo/criando um número.",
+            );
             return;
           }
           const result = await completeFn({
@@ -125,12 +157,27 @@ export function EmbeddedSignupButton({ clientId, projectId, nomeInterno, onCompl
               client_id: clientId ?? null,
               project_id: projectId ?? null,
               nome_interno: nomeInterno,
+              onboarding_mode: mode,
             },
           });
-          toast.success(`Conectado: ${result.display_phone_number ?? result.verified_name ?? "número"} (${result.status})`);
+          const suffix =
+            result.onboarding_mode === "coexistence" && result.coexistence_status === "attention_required"
+              ? " (com pendências)"
+              : "";
+          toast.success(
+            `Conectado: ${result.display_phone_number ?? result.verified_name ?? "número"} (${result.status})${suffix}`,
+          );
           onCompleted?.(result);
         } catch (e: any) {
-          toast.error(e?.message ?? "Falha ao concluir onboarding");
+          const msg: string = e?.message ?? "Falha ao concluir onboarding";
+          if (/já está registrado|already registered|Phone number in use/i.test(msg) && mode === "standard") {
+            toast.error(
+              "Este número já está sendo utilizado no WhatsApp. Use a opção “Conectar WhatsApp Business existente” (Coexistência).",
+              { duration: 8000 },
+            );
+          } else {
+            toast.error(msg);
+          }
         } finally {
           setLoading(false);
         }
@@ -139,15 +186,18 @@ export function EmbeddedSignupButton({ clientId, projectId, nomeInterno, onCompl
         config_id: cfg.configId,
         response_type: "code",
         override_default_response_type: true,
-        extras: { setup: {}, featureType: "", sessionInfoVersion: "3" },
+        extras,
       },
     );
   }
 
+  const defaultLabel = mode === "coexistence" ? "Conectar sem remover do WhatsApp" : "Conectar WhatsApp";
+  const Icon = mode === "coexistence" ? Smartphone : MessageCircle;
+
   return (
-    <Button onClick={launch} disabled={disabled || !ready || loading} type="button">
-      {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MessageCircle className="mr-2 h-4 w-4" />}
-      Conectar WhatsApp
+    <Button onClick={launch} disabled={disabled || !ready || loading} type="button" variant={variant}>
+      {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Icon className="mr-2 h-4 w-4" />}
+      {label ?? defaultLabel}
     </Button>
   );
 }
