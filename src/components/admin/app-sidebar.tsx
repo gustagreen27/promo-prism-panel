@@ -31,6 +31,7 @@ import {
   BarChart2,
   Hash,
   User,
+  MessagesSquare,
 } from "lucide-react";
 import {
   Sidebar,
@@ -68,6 +69,7 @@ const GROUPS: { label: string; items: NavItem[] }[] = [
       { title: "Conexões", to: "/admin/whatsapp/conexoes", icon: Link2 },
       { title: "Embedded Signup", to: "/admin/whatsapp/embedded-signup", icon: Sparkles },
       { title: "Webhooks", to: "/admin/whatsapp/webhooks", icon: Webhook },
+      { title: "Conversas", to: "/admin/whatsapp/conversas", icon: MessagesSquare },
       { title: "Inbox", to: "/admin/whatsapp/inbox", icon: Inbox },
       { title: "Logs", to: "/admin/whatsapp/logs", icon: History },
     ],
