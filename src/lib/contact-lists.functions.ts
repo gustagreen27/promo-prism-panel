@@ -10,6 +10,19 @@ async function assertAdmin(ctx: { supabase: any; userId: string }) {
   if (!data) throw new Error("Forbidden");
 }
 
+/** Workspace principal do admin (o mais antigo do qual ele é membro). */
+async function adminPrimaryWorkspaceId(ctx: { supabase: any; userId: string }): Promise<string | null> {
+  const { data } = await ctx.supabase
+    .from("workspace_members")
+    .select("workspace_id, workspaces!inner(created_at)")
+    .eq("user_id", ctx.userId)
+    .order("workspaces(created_at)", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  return (data as any)?.workspace_id ?? null;
+}
+
+
 export const listLists = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
