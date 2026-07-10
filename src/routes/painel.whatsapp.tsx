@@ -38,26 +38,60 @@ function Page() {
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageCircle className="h-5 w-5 text-primary" /> Conectar novo número
-          </CardTitle>
-          <CardDescription>
-            Você será redirecionado ao Facebook para autorizar sua Business Manager e escolher
-            (ou criar) o número. Ao concluir, o número aparece na lista abaixo.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-wrap items-center gap-3">
-          <EmbeddedSignupButton
-            onCompleted={() => qc.invalidateQueries({ queryKey: ["panel-wa-numbers"] })}
-          />
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <ShieldCheck className="h-4 w-4 text-emerald-600" />
-            Fluxo oficial Meta • token seguro no servidor • webhooks configurados automaticamente
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5 text-primary" /> Adicionar um número novo
+            </CardTitle>
+            <CardDescription>
+              Use um número que ainda não esteja cadastrado no WhatsApp ou no WhatsApp Business.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <EmbeddedSignupButton
+              mode="standard"
+              label="Cadastrar novo número"
+              onCompleted={() => qc.invalidateQueries({ queryKey: ["panel-wa-numbers"] })}
+            />
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <ShieldCheck className="h-4 w-4 text-emerald-600" />
+              Fluxo oficial Meta • token seguro no servidor
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-primary/40">
+          <CardHeader>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="flex items-center gap-2">
+                <MessageCircle className="h-5 w-5 text-primary" /> Conectar WhatsApp Business existente
+              </CardTitle>
+              <Badge variant="secondary">Recomendado para números em uso</Badge>
+            </div>
+            <CardDescription>
+              Mantenha seu número funcionando no aplicativo WhatsApp Business e conecte-o também à API oficial.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <ul className="text-xs text-muted-foreground space-y-1 list-disc pl-4">
+              <li>O número continua funcionando no celular.</li>
+              <li>Não é necessário excluir a conta do WhatsApp Business.</li>
+              <li>O atendimento pode continuar pelo aplicativo.</li>
+              <li>O número também poderá ser utilizado pelas automações do sistema.</li>
+            </ul>
+            <EmbeddedSignupButton
+              mode="coexistence"
+              onCompleted={() => qc.invalidateQueries({ queryKey: ["panel-wa-numbers"] })}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Funciona somente para números utilizados no aplicativo WhatsApp Business. Números do WhatsApp pessoal
+              podem exigir migração prévia para o WhatsApp Business.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
 
       <Card>
         <CardHeader>

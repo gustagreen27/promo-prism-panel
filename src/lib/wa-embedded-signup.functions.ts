@@ -70,6 +70,7 @@ const completeSchema = z.object({
   client_id: z.string().uuid().nullable().optional(),
   project_id: z.string().uuid().nullable().optional(),
   nome_interno: z.string().trim().min(1).max(120).optional(),
+  onboarding_mode: z.enum(["standard", "coexistence"]).optional().default("standard"),
 });
 
 /**
@@ -143,10 +144,26 @@ export const completeEmbeddedSignup = createServerFn({ method: "POST" })
     const businessId: string | null =
       data.business_id ?? wJson?.on_behalf_of_business_info?.id ?? null;
 
+    // 3b) Validate that phone_number_id really belongs to the returned WABA (PHONE_ID_WRONG_WABA guard)
+    const pnListRes = await gfetch(`/${data.waba_id}/phone_numbers?fields=id,display_phone_number&limit=200`);
+    const pnListJson: any = await pnListRes.json().catch(() => ({}));
+    const phoneBelongs =
+      pnListRes.ok && Array.isArray(pnListJson?.data)
+        ? pnListJson.data.some((p: any) => String(p.id) === String(data.phone_number_id))
+        : false;
+    if (!phoneBelongs) {
+      await logStep(supabase, baseLog, "validate_phone_waba", "error", pnListJson, "PHONE_ID_WRONG_WABA");
+      throw new Error(
+        "PHONE_ID_WRONG_WABA: o número informado não pertence à WABA retornada pelo onboarding. Nada foi salvo.",
+      );
+    }
+    await logStep(supabase, baseLog, "validate_phone_waba", "ok", { count: pnListJson.data.length });
+
     // 4) subscribe our app to WABA webhooks (best effort)
     const subRes = await gfetch(`/${data.waba_id}/subscribed_apps`, { method: "POST" });
     const subJson: any = await subRes.json().catch(() => ({}));
-    await logStep(supabase, baseLog, "subscribe_app", subRes.ok ? "ok" : "error", subJson, subRes.ok ? undefined : subJson?.error?.message);
+    const subscribeOk = subRes.ok;
+    await logStep(supabase, baseLog, "subscribe_app", subscribeOk ? "ok" : "error", subJson, subscribeOk ? undefined : subJson?.error?.message);
 
     // 5) upsert WABA
     const nomeInterno = data.nome_interno?.trim() || wabaName || `WABA ${data.waba_id.slice(-6)}`;
@@ -196,6 +213,13 @@ export const completeEmbeddedSignup = createServerFn({ method: "POST" })
       .eq("phone_number_id", data.phone_number_id)
       .maybeSingle();
 
+    const isCoexistence = data.onboarding_mode === "coexistence";
+    const coexistenceStatus: string | null = isCoexistence
+      ? subscribeOk
+        ? "connected"
+        : "attention_required"
+      : null;
+
     const connPayload = {
       waba_ref_id: wabaRefId,
       waba_id: data.waba_id,
@@ -207,6 +231,8 @@ export const completeEmbeddedSignup = createServerFn({ method: "POST" })
       quality_rating: phJson?.quality_rating ?? null,
       messaging_limit: phJson?.messaging_limit_tier ?? null,
       access_token: accessToken,
+      // Never silently fall back to the global token for ES-provisioned connections.
+      use_global_token: false,
       graph_api_version: GRAPH_VERSION,
       provider: "meta_cloud",
       status: phJson?.code_verification_status === "VERIFIED" ? "ativo" : "aguardando_verificacao",
@@ -214,6 +240,9 @@ export const completeEmbeddedSignup = createServerFn({ method: "POST" })
       project_id: scopedProjectId,
       workspace_id: scopedWorkspaceId,
       visibility: caller.isAdmin ? "internal" : "workspace",
+      onboarding_mode: data.onboarding_mode,
+      coexistence_status: coexistenceStatus,
+      embedded_signup_completed_at: new Date().toISOString(),
     };
 
     let connectionId: string;
@@ -253,12 +282,15 @@ export const completeEmbeddedSignup = createServerFn({ method: "POST" })
     }
 
     return {
-      ok: true,
+      ok: true as const,
       waba_ref_id: wabaRefId,
       connection_id: connectionId,
-      display_phone_number: phJson?.display_phone_number ?? null,
-      verified_name: phJson?.verified_name ?? null,
+      display_phone_number: (phJson?.display_phone_number ?? null) as string | null,
+      verified_name: (phJson?.verified_name ?? null) as string | null,
       status: connPayload.status,
+      onboarding_mode: data.onboarding_mode,
+      coexistence_status: coexistenceStatus,
+      webhook_subscribed: subscribeOk,
     };
   });
 

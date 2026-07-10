@@ -2215,6 +2215,7 @@ export type Database = {
           business_id: string | null
           client_id: string | null
           code_verification_status: string | null
+          coexistence_status: string | null
           created_at: string
           current_display_name: string | null
           daily_cap: number | null
@@ -2226,6 +2227,7 @@ export type Database = {
           display_name_reviewed_at: string | null
           display_name_status: string | null
           display_phone: string | null
+          embedded_signup_completed_at: string | null
           graph_api_version: string | null
           id: string
           last_meta_sync_at: string | null
@@ -2236,6 +2238,7 @@ export type Database = {
           name: string
           nome_interno: string | null
           notes: string | null
+          onboarding_mode: string
           paused_at: string | null
           phone: string | null
           phone_number_id: string | null
@@ -2261,6 +2264,7 @@ export type Database = {
           business_id?: string | null
           client_id?: string | null
           code_verification_status?: string | null
+          coexistence_status?: string | null
           created_at?: string
           current_display_name?: string | null
           daily_cap?: number | null
@@ -2272,6 +2276,7 @@ export type Database = {
           display_name_reviewed_at?: string | null
           display_name_status?: string | null
           display_phone?: string | null
+          embedded_signup_completed_at?: string | null
           graph_api_version?: string | null
           id?: string
           last_meta_sync_at?: string | null
@@ -2282,6 +2287,7 @@ export type Database = {
           name: string
           nome_interno?: string | null
           notes?: string | null
+          onboarding_mode?: string
           paused_at?: string | null
           phone?: string | null
           phone_number_id?: string | null
@@ -2307,6 +2313,7 @@ export type Database = {
           business_id?: string | null
           client_id?: string | null
           code_verification_status?: string | null
+          coexistence_status?: string | null
           created_at?: string
           current_display_name?: string | null
           daily_cap?: number | null
@@ -2318,6 +2325,7 @@ export type Database = {
           display_name_reviewed_at?: string | null
           display_name_status?: string | null
           display_phone?: string | null
+          embedded_signup_completed_at?: string | null
           graph_api_version?: string | null
           id?: string
           last_meta_sync_at?: string | null
@@ -2328,6 +2336,7 @@ export type Database = {
           name?: string
           nome_interno?: string | null
           notes?: string | null
+          onboarding_mode?: string
           paused_at?: string | null
           phone?: string | null
           phone_number_id?: string | null
