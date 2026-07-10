@@ -282,12 +282,15 @@ export const completeEmbeddedSignup = createServerFn({ method: "POST" })
     }
 
     return {
-      ok: true,
+      ok: true as const,
       waba_ref_id: wabaRefId,
       connection_id: connectionId,
-      display_phone_number: phJson?.display_phone_number ?? null,
-      verified_name: phJson?.verified_name ?? null,
+      display_phone_number: (phJson?.display_phone_number ?? null) as string | null,
+      verified_name: (phJson?.verified_name ?? null) as string | null,
       status: connPayload.status,
+      onboarding_mode: data.onboarding_mode,
+      coexistence_status: coexistenceStatus,
+      webhook_subscribed: subscribeOk,
     };
   });
 
