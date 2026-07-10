@@ -14,7 +14,7 @@ import {
 import { getMyWallet } from "@/lib/billing.functions";
 import { getMyContext, ensureWorkspace, logAuthEvent, type MyContext } from "@/lib/auth.functions";
 import {
-  LayoutDashboard, Send, Users, BarChart3, CreditCard,
+  LayoutDashboard, Send, Users, BarChart3, CreditCard, CalendarClock,
   LogOut, Wallet, Building2, AlertTriangle, ChevronDown, UserCircle, MessageCircle,
 } from "lucide-react";
 import { NotificationsBell } from "@/components/NotificationsBell";
@@ -33,6 +33,7 @@ export const Route = createFileRoute("/painel")({
 const NAV: Array<{ to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean }> = [
   { to: "/painel", label: "Início", icon: LayoutDashboard, exact: true },
   { to: "/painel/campanhas", label: "Campanhas", icon: Send },
+  { to: "/painel/agenda", label: "Agenda", icon: CalendarClock },
   { to: "/painel/whatsapp", label: "WhatsApp", icon: MessageCircle },
   { to: "/painel/contatos", label: "Contatos", icon: Users },
   { to: "/painel/relatorios", label: "Relatórios", icon: BarChart3 },
