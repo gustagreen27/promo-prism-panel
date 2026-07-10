@@ -70,6 +70,7 @@ const completeSchema = z.object({
   client_id: z.string().uuid().nullable().optional(),
   project_id: z.string().uuid().nullable().optional(),
   nome_interno: z.string().trim().min(1).max(120).optional(),
+  onboarding_mode: z.enum(["standard", "coexistence"]).optional().default("standard"),
 });
 
 /**
