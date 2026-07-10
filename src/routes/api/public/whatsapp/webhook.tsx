@@ -1,11 +1,27 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { createHmac, timingSafeEqual } from "node:crypto";
 
 const OPT_OUT_REGEX = /\b(parar|sair|cancelar|cancela|remover|descadastrar|n[ãa]o quero|stop|unsubscribe)\b/i;
+
+function verifySignature(rawBody: string, signatureHeader: string | null): boolean {
+  const secret = process.env.META_APP_SECRET;
+  if (!secret) return false;
+  if (!signatureHeader || !signatureHeader.startsWith("sha256=")) return false;
+  const provided = signatureHeader.slice("sha256=".length);
+  const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
+  try {
+    const a = Buffer.from(provided, "hex");
+    const b = Buffer.from(expected, "hex");
+    if (a.length !== b.length) return false;
+    return timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+}
 
 export const Route = createFileRoute("/api/public/whatsapp/webhook")({
   server: {
     handlers: {
-      // Meta verification
       GET: async ({ request }) => {
         const url = new URL(request.url);
         const mode = url.searchParams.get("hub.mode");
@@ -14,8 +30,6 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
         if (mode !== "subscribe" || !token) return new Response("forbidden", { status: 403 });
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-        // 1) Token global salvo em settings.whatsapp_webhook.verify_token
         const { data: setting } = await supabaseAdmin
           .from("settings")
           .select("value")
@@ -28,8 +42,6 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
             headers: { "content-type": "text/plain; charset=utf-8" },
           });
         }
-
-        // 2) Token por conexão em whatsapp_connections.verify_token
         const { data: conns } = await supabaseAdmin
           .from("whatsapp_connections")
           .select("id")
@@ -41,14 +53,25 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
             headers: { "content-type": "text/plain; charset=utf-8" },
           });
         }
-
         return new Response("invalid token", { status: 403 });
       },
       POST: async ({ request }) => {
-        const text = await request.text();
-        let payload: any = {};
-        try { payload = JSON.parse(text); } catch {}
+        const rawBody = await request.text();
+        const sig = request.headers.get("x-hub-signature-256");
+        const strict = !!process.env.META_APP_SECRET;
+        const valid = verifySignature(rawBody, sig);
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        if (strict && !valid) {
+          await supabaseAdmin.from("whatsapp_webhook_logs").insert({
+            event_type: "invalid_signature",
+            payload: { has_signature: !!sig },
+            error: "invalid X-Hub-Signature-256",
+          });
+          return new Response("invalid signature", { status: 401 });
+        }
+
+        let payload: any = {};
+        try { payload = JSON.parse(rawBody); } catch {}
 
         await supabaseAdmin.from("whatsapp_webhook_logs").insert({
           event_type: payload?.entry?.[0]?.changes?.[0]?.field ?? "unknown",
@@ -58,7 +81,49 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
         try {
           for (const entry of payload?.entry ?? []) {
             for (const change of entry?.changes ?? []) {
+              const field: string = change?.field ?? "";
               const value = change?.value ?? {};
+
+              // ── phone_number_name_update ─────────────────────────
+              if (field === "phone_number_name_update") {
+                const phoneNumberId = value?.phone_number ?? value?.phone_number_id;
+                const decision: string = value?.decision ?? value?.name_status ?? ""; // APPROVED / REJECTED
+                const requestedName: string | null = value?.requested_verified_name ?? value?.display_name ?? null;
+                const reason: string | null = value?.rejection_reason ?? null;
+                if (phoneNumberId) {
+                  const { data: conn } = await supabaseAdmin
+                    .from("whatsapp_connections")
+                    .select("id, workspace_id, requested_display_name, current_display_name")
+                    .eq("phone_number_id", phoneNumberId)
+                    .maybeSingle();
+                  if (conn) {
+                    const patch: any = {
+                      display_name_reviewed_at: new Date().toISOString(),
+                      last_meta_sync_at: new Date().toISOString(),
+                    };
+                    let action = "DISPLAY_NAME_APPROVED";
+                    if (decision === "APPROVED") {
+                      patch.display_name_status = "APPROVED";
+                      patch.display_name_rejection_reason = null;
+                    } else if (decision === "REJECTED" || decision === "DECLINED") {
+                      patch.display_name_status = "DECLINED";
+                      patch.display_name_rejection_reason = reason ?? "Rejeitado pela Meta";
+                      action = "DISPLAY_NAME_REJECTED";
+                    }
+                    await supabaseAdmin.from("whatsapp_connections").update(patch).eq("id", conn.id);
+                    await supabaseAdmin.from("whatsapp_profile_audit_logs").insert({
+                      workspace_id: conn.workspace_id,
+                      connection_id: conn.id,
+                      phone_number_id: phoneNumberId,
+                      action,
+                      new_value: { requested: requestedName, reason },
+                      status: "success",
+                    });
+                  }
+                }
+                continue;
+              }
+
               const phoneNumberId = value?.metadata?.phone_number_id;
               let connectionId: string | null = null;
               if (phoneNumberId) {
@@ -70,10 +135,9 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
                 connectionId = conn?.id ?? null;
               }
 
-              // Statuses
               for (const s of value?.statuses ?? []) {
                 const id = s?.id;
-                const status = s?.status; // sent | delivered | read | failed
+                const status = s?.status;
                 if (!id || !status) continue;
                 const patch: any = {};
                 if (status === "sent") patch.sent_at = new Date().toISOString();
@@ -88,8 +152,6 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
                 if (Object.keys(patch).length) {
                   await supabaseAdmin.from("campaign_recipients").update(patch).eq("meta_message_id", id);
                 }
-
-                // Also update message_logs (test sends + campaign sends land here)
                 const logPatch: any = { message_status: status };
                 if (status === "failed") {
                   logPatch.failed_reason = s?.errors?.[0]?.title ?? "failed";
@@ -98,7 +160,6 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
                 await supabaseAdmin.from("message_logs").update(logPatch).eq("meta_message_id", id);
               }
 
-              // Inbound messages
               for (const m of value?.messages ?? []) {
                 const from = m?.from;
                 const body = m?.text?.body ?? "";
@@ -111,7 +172,6 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
                   meta_message_id: m?.id ?? null,
                   raw: m,
                 });
-                // Mark as replied if matches a recipient
                 if (from) {
                   await supabaseAdmin
                     .from("campaign_recipients")
@@ -123,7 +183,6 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
                     .update({ last_interaction_at: new Date().toISOString() })
                     .eq("phone", from);
                 }
-                // Auto opt-out
                 if (body && OPT_OUT_REGEX.test(body) && from) {
                   await supabaseAdmin
                     .from("opt_outs")
