@@ -3,9 +3,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, Rocket, Send, Sparkles, AlertTriangle, CheckCircle2, Info, Plus, X, RefreshCw } from "lucide-react";
-import { PageHeader } from "@/components/admin/page-header";
-import { Stepper } from "@/components/admin/stepper";
+import {
+  ArrowLeft, ArrowRight, Rocket, Send, Sparkles, AlertTriangle, CheckCircle2, Info, Plus, X, RefreshCw,
+  Settings2, Users, MessageSquareText, Variable, Link2, ClipboardCheck, PlayCircle,
+} from "lucide-react";
+import { Stepper, type WizardStep } from "@/components/campaigns/wizard/Stepper";
+import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
 import { StatusBadge, AlertBadge } from "@/components/admin/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
