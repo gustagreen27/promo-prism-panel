@@ -773,16 +773,21 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
             )}
 
             <div className="flex flex-wrap justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => navigate({ to: "/painel/campanhas" })}>
-                Ver minhas campanhas
-              </Button>
+              {onExit && (
+                <Button variant="outline" onClick={onExit}>
+                  Ver minhas campanhas
+                </Button>
+              )}
               <Button variant="secondary" onClick={resetForNext}>
                 <Plus className="mr-1 h-4 w-4" /> Criar outra campanha
               </Button>
-              <Button variant="outline" onClick={() => navigate({ to: "/painel/agenda" })}>
-                <CalendarClock className="mr-1 h-4 w-4" /> Abrir agenda
-              </Button>
+              {onOpenCalendar && (
+                <Button variant="outline" onClick={onOpenCalendar}>
+                  <CalendarClock className="mr-1 h-4 w-4" /> Abrir agenda
+                </Button>
+              )}
             </div>
+
           </CardContent>
         </Card>
       )}
