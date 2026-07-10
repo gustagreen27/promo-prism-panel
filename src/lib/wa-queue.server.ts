@@ -402,16 +402,57 @@ export async function processCampaignTick(
 
       const attempts = (r.attempt ?? 0) + 1;
       if (result.ok) {
+        // Só considera "accepted" quando a Meta retornou wamid + message_status="accepted".
+        // Se vier wamid mas sem message_status, marcamos "sent" (id existe, status desconhecido).
+        // Sem wamid nunca chega aqui (result.ok=false).
+        const metaStatus = (result.messageStatus || "").toLowerCase();
+        const wamid = result.wamid;
+        if (!wamid) {
+          // Blindagem extra: sem wamid não é envio confirmado.
+          failed++;
+          lastError = "Meta não retornou wamid";
+          await supabaseAdmin
+            .from("campaign_recipients")
+            .update({
+              status: "failed",
+              failed_at: new Date().toISOString(),
+              failed_reason: "Meta não retornou wamid",
+              error_code: "no_wamid",
+              attempt: attempts,
+            })
+            .eq("id", r.id);
+          await logEvent(campaignId, "send_no_wamid", `Sem wamid para ${r.phone}`, {
+            recipient_id: r.id,
+            http_status: (result as any).httpStatus,
+            raw: result.raw,
+          });
+          continue;
+        }
+
+        const finalRecipientStatus: "accepted" | "sent" =
+          metaStatus === "accepted" ? "accepted" : "sent";
+
         sent++;
         await supabaseAdmin
           .from("campaign_recipients")
           .update({
-            status: "accepted",
-            meta_message_id: result.metaMessageId,
+            status: finalRecipientStatus,
+            meta_message_id: wamid,
             sent_at: new Date().toISOString(),
             attempt: attempts,
           })
           .eq("id", r.id);
+        await logEvent(
+          campaignId,
+          "send_accepted",
+          `Meta aceitou envio para ${r.phone} (wamid=${wamid}, message_status=${metaStatus || "n/d"})`,
+          {
+            recipient_id: r.id,
+            wamid,
+            message_status: metaStatus || null,
+            http_status: (result as any).httpStatus,
+          },
+        );
         // Cobrança: consome 1 unidade da reserva de saldo em R$ (novo modelo).
         // Fallback: se a campanha ainda usa estoque legado, desconta do estoque.
         if ((camp as any).reservation_id) {
