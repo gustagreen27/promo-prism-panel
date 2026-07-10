@@ -25,6 +25,7 @@ export const Route = createFileRoute("/_authenticated/admin/configuracoes")({
 
 
 function Page() {
+  const { tab } = Route.useSearch();
   const list = useServerFn(listSettings);
   const save = useServerFn(upsertSetting);
   const qc = useQueryClient();
@@ -51,38 +52,47 @@ function Page() {
     <>
       <PageHeader tabs={CONFIG_TABS} title="Configurações" description="Metas, preferências e dados da empresa." />
 
-      <div className="space-y-6">
-        <section className="rounded-xl border bg-card p-5">
-          <h3 className="text-sm font-semibold">Meta mensal de faturamento</h3>
-          <p className="text-xs text-muted-foreground">Usada no dashboard para a barra de progresso.</p>
-          <div className="mt-3 flex items-end gap-2">
-            <div className="flex-1"><Label>Valor (R$)</Label><Input type="number" step="0.01" value={goal} onChange={(e) => setGoal(e.target.value)} /></div>
-            <Button onClick={() => saveMut.mutate({ key: "monthly_goal", value: { amount: Number(goal || 0) } })}>Salvar</Button>
-          </div>
-        </section>
+      {tab === "geral" && (
+        <div className="space-y-6">
+          <section className="rounded-xl border bg-card p-5">
+            <h3 className="text-sm font-semibold">Meta mensal de faturamento</h3>
+            <p className="text-xs text-muted-foreground">Usada no dashboard para a barra de progresso.</p>
+            <div className="mt-3 flex items-end gap-2">
+              <div className="flex-1"><Label>Valor (R$)</Label><Input type="number" step="0.01" value={goal} onChange={(e) => setGoal(e.target.value)} /></div>
+              <Button onClick={() => saveMut.mutate({ key: "monthly_goal", value: { amount: Number(goal || 0) } })}>Salvar</Button>
+            </div>
+          </section>
 
-        <section className="rounded-xl border bg-card p-5">
-          <h3 className="text-sm font-semibold">Custo padrão por mensagem</h3>
-          <p className="text-xs text-muted-foreground">Usado nos relatórios de campanha.</p>
-          <div className="mt-3 flex items-end gap-2">
-            <div className="flex-1"><Label>R$ por mensagem</Label><Input type="number" step="0.001" value={costPerMsg} onChange={(e) => setCostPerMsg(e.target.value)} /></div>
-            <Button onClick={() => saveMut.mutate({ key: "cost_per_message", value: { amount: Number(costPerMsg || 0) } })}>Salvar</Button>
-          </div>
-        </section>
+          <section className="rounded-xl border bg-card p-5">
+            <h3 className="text-sm font-semibold">Custo padrão por mensagem</h3>
+            <p className="text-xs text-muted-foreground">Usado nos relatórios de campanha.</p>
+            <div className="mt-3 flex items-end gap-2">
+              <div className="flex-1"><Label>R$ por mensagem</Label><Input type="number" step="0.001" value={costPerMsg} onChange={(e) => setCostPerMsg(e.target.value)} /></div>
+              <Button onClick={() => saveMut.mutate({ key: "cost_per_message", value: { amount: Number(costPerMsg || 0) } })}>Salvar</Button>
+            </div>
+          </section>
 
-        <section className="rounded-xl border bg-card p-5">
-          <h3 className="text-sm font-semibold">Dados da empresa</h3>
-          <div className="mt-3 flex items-end gap-2">
-            <div className="flex-1"><Label>Nome</Label><Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} /></div>
-            <Button onClick={() => saveMut.mutate({ key: "company", value: { name: companyName } })}>Salvar</Button>
-          </div>
-        </section>
+          <section className="rounded-xl border bg-card p-5">
+            <h3 className="text-sm font-semibold">Dados da empresa</h3>
+            <div className="mt-3 flex items-end gap-2">
+              <div className="flex-1"><Label>Nome</Label><Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} /></div>
+              <Button onClick={() => saveMut.mutate({ key: "company", value: { name: companyName } })}>Salvar</Button>
+            </div>
+          </section>
 
-        <BillingSection />
-      </div>
+          <BillingSection />
+        </div>
+      )}
+
+      {tab !== "geral" && (
+        <section className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
+          Seção <span className="font-semibold text-foreground">{tab}</span> em breve.
+        </section>
+      )}
     </>
   );
 }
+
 
 function BillingSection() {
   const getBilling = useServerFn(getBillingSettings);
