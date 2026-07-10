@@ -427,6 +427,56 @@ export async function processCampaignTick(
           });
         }
       } else {
+        const isNetworkError =
+          result.code === "network_error" ||
+          /failed to fetch|fetch failed|network|econnreset|etimedout|enetunreach|socket hang up/i.test(
+            result.error || "",
+          );
+
+        if (isNetworkError) {
+          // Não conta como falha do destinatário: volta para pending e pausa a campanha por 1 minuto.
+          await supabaseAdmin
+            .from("campaign_recipients")
+            .update({
+              status: "pending",
+              failed_reason: null,
+              error_code: null,
+              last_attempt_at: new Date().toISOString(),
+            })
+            .eq("id", r.id);
+
+          // Reverte os demais recipients ainda em "processing" para pending
+          const remainingIds = recipients
+            .slice(recipients.indexOf(r) + 1)
+            .map((x: any) => x.id);
+          if (remainingIds.length) {
+            await supabaseAdmin
+              .from("campaign_recipients")
+              .update({ status: "pending" })
+              .in("id", remainingIds);
+          }
+
+          const resumeAt = new Date(Date.now() + 60_000).toISOString();
+          await supabaseAdmin
+            .from("wa_campaigns")
+            .update({
+              status: "paused",
+              paused_at: new Date().toISOString(),
+              pause_reason: "network_error",
+              scheduled_at: resumeAt,
+              last_error: result.error,
+            })
+            .eq("id", campaignId);
+          await logEvent(
+            campaignId,
+            "auto_paused",
+            `Pausada por 1 min após erro de rede: ${result.error}`,
+            { reason: "network_error", resume_at: resumeAt },
+          );
+          lastError = result.error;
+          break;
+        }
+
         failed++;
         lastError = result.error;
         const isRetryable = result.code ? RETRYABLE_CODES.has(String(result.code)) : false;
