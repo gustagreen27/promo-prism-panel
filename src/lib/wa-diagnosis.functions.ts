@@ -97,7 +97,7 @@ export const applyFixPhoneNumberId = createServerFn({ method: "POST" })
     await auditProfileEvent({
       workspace_id: conn.workspace_id, connection_id: conn.id, phone_number_id: data.phone_number_id,
       user_id: context.userId, action: "PHONE_NUMBER_ID_CORRECTED",
-      old_value: { phone_number_id: conn.phone_number_id },
+      previous_value: { phone_number_id: conn.phone_number_id },
       new_value: { phone_number_id: data.phone_number_id },
     });
     return { ok: true };
@@ -121,7 +121,7 @@ export const applyFixWabaId = createServerFn({ method: "POST" })
     await auditProfileEvent({
       workspace_id: conn.workspace_id, connection_id: conn.id, phone_number_id: conn.phone_number_id,
       user_id: context.userId, action: "WABA_ID_CORRECTED",
-      old_value: { waba_id: conn.waba_id }, new_value: { waba_id: data.waba_id },
+      previous_value: { waba_id: conn.waba_id }, new_value: { waba_id: data.waba_id },
     });
     return { ok: true };
   });
