@@ -152,6 +152,28 @@ function PanelHome() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader className="flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base"><CalendarClock className="h-4 w-4" />Próximos disparos</CardTitle>
+          <Button asChild size="sm" variant="ghost"><Link to="/painel/agenda">Ver agenda</Link></Button>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {upcoming.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum disparo agendado.</p>
+          ) : upcoming.map((c: any) => (
+            <div key={c.id} className="flex items-center justify-between rounded border p-3 text-sm">
+              <div>
+                <div className="font-medium">{c.name}</div>
+                <div className="text-xs text-muted-foreground">
+                  {new Date(c.scheduled_at).toLocaleString("pt-BR")} · {c.total_recipients ?? 0} contatos · {c.connection?.display_name ?? c.connection?.display_phone ?? "—"} · {c.template?.name ?? "—"}
+                </div>
+              </div>
+              <Badge variant="outline">{c.status}</Badge>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
       <div>
         <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Últimos 30 dias</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
