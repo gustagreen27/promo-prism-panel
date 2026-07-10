@@ -409,17 +409,36 @@ function WizardPage() {
       {/* STEP 2 — Público */}
       {step === 1 && (
         <Card>
-          <CardHeader><CardTitle>Público</CardTitle></CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+            <CardTitle>Público — Lista de contatos</CardTitle>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline" size="sm">
+                <a href="/admin/contatos" target="_blank" rel="noopener">
+                  <Users className="mr-1.5 h-3.5 w-3.5" /> Gerenciar contatos
+                </a>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <a href="/admin/contatos/listas" target="_blank" rel="noopener">
+                  <Plus className="mr-1.5 h-3.5 w-3.5" /> Nova lista / Importar
+                </a>
+              </Button>
+            </div>
+          </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label>Lista de contatos *</Label>
+              <Label>Selecione a lista *</Label>
               <Select value={state.list_id ?? NONE} onValueChange={(v) => set("list_id", v === NONE ? null : v)}>
-                <SelectTrigger><SelectValue placeholder="Selecione uma lista" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={lists.length ? "Selecione uma lista" : "Nenhuma lista criada — clique em Nova lista / Importar"} /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NONE}>—</SelectItem>
                   {lists.map((l: any) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {lists.length === 0 && (
+                <p className="mt-2 text-xs text-muted-foreground flex items-center gap-1">
+                  <Info className="h-3 w-3" /> Você ainda não tem listas. Use <b className="ml-1">Nova lista / Importar</b> para criar ou importar uma planilha (CSV).
+                </p>
+              )}
             </div>
             {audienceQ.data && (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -438,6 +457,7 @@ function WizardPage() {
           </CardContent>
         </Card>
       )}
+
 
       {/* STEP 3 — WhatsApp */}
       {step === 2 && (
