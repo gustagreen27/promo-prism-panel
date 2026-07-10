@@ -5,6 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Circle, Send, Users, FileText, CreditCard, Building2, Sparkles, MessageSquare } from "lucide-react";
 import { getMyContext, markOnboardingStep, getPanelHomeStats, type MyContext } from "@/lib/auth.functions";
+import { listUpcomingCampaigns } from "@/lib/wa-schedule.functions";
+import { CalendarClock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/painel/")({
   head: () => ({ meta: [{ title: "Painel — Disparos FR" }] }),
