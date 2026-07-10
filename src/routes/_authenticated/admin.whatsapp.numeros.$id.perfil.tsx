@@ -501,25 +501,136 @@ function Page() {
 
       {/* Diagnóstico */}
       <Dialog open={diagOpen} onOpenChange={setDiagOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Diagnóstico da conexão</DialogTitle>
-            <DialogDescription>Verificação em tempo real com a Meta.</DialogDescription>
+            <DialogTitle>Diagnóstico da conexão Meta ↔ WhatsApp</DialogTitle>
+            <DialogDescription>
+              {diagMut.data?.token
+                ? <>Token: <span className="font-mono">{diagMut.data.token.source === "global" ? "global" : "conexão"} · termina em …{diagMut.data.token.last6}</span>{diagMut.data.token.app_id ? <> · app <span className="font-mono">{diagMut.data.token.app_id}</span></> : null}</>
+                : "Verificação em tempo real com a Meta."}
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-1 text-sm max-h-[400px] overflow-y-auto">
-            {(diagMut.data?.results ?? []).map((r: any, i: number) => (
-              <div key={i} className="flex items-start gap-2 border-b py-2 last:border-0">
-                {r.ok ? <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5" /> : <AlertCircle className="h-4 w-4 text-red-500 mt-0.5" />}
-                <div className="flex-1">
-                  <div className="font-medium">{r.step}</div>
-                  {r.detail && <div className="text-xs text-muted-foreground">{r.detail}</div>}
+
+          {/* Causas detectadas */}
+          {diagMut.data?.causes?.length ? (
+            <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs space-y-1">
+              <div className="font-semibold text-destructive">Causas identificadas:</div>
+              <ul className="list-disc pl-4">
+                {diagMut.data.causes.map((c: string) => <li key={c} className="font-mono">{c}</li>)}
+              </ul>
+            </div>
+          ) : diagMut.data?.ok ? (
+            <div className="rounded-md border border-green-500/40 bg-green-500/5 p-3 text-xs text-green-700 dark:text-green-400">
+              Todas as verificações passaram. Conexão íntegra.
+            </div>
+          ) : null}
+
+          {/* Checks */}
+          <div className="space-y-1 text-sm max-h-[380px] overflow-y-auto pr-1">
+            {(diagMut.data?.checks ?? []).map((r: any, i: number) => {
+              const icon =
+                r.status === "success" ? <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5" /> :
+                r.status === "warning" ? <AlertCircle className="h-4 w-4 text-yellow-500 mt-0.5" /> :
+                r.status === "error"   ? <XCircle className="h-4 w-4 text-red-500 mt-0.5" /> :
+                                          <AlertCircle className="h-4 w-4 text-muted-foreground mt-0.5" />;
+              return (
+                <div key={i} className="flex items-start gap-2 border-b py-2 last:border-0">
+                  {icon}
+                  <div className="flex-1">
+                    <div className="font-medium">{r.label}</div>
+                    {r.detail && <div className="text-xs text-muted-foreground whitespace-pre-wrap">{r.detail}</div>}
+                    {r.meta_error?.fbtrace_id && <div className="text-[10px] text-muted-foreground font-mono">fbtrace_id: {r.meta_error.fbtrace_id}{r.meta_error.code != null ? ` · code ${r.meta_error.code}` : ""}{r.meta_error.subcode ? ` · subcode ${r.meta_error.subcode}` : ""}{r.meta_error.type ? ` · ${r.meta_error.type}` : ""}</div>}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
+
+          {/* Ações corretivas */}
+          {diagMut.data && (
+            <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ações corretivas</div>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => setTokenDlg(true)}>Atualizar token da conexão</Button>
+                <Button size="sm" variant="outline" onClick={() => togGlobalMut.mutate(!(diagMut.data?.token?.source === "global"))} disabled={togGlobalMut.isPending}>
+                  {diagMut.data?.token?.source === "global" ? "Usar token próprio" : "Usar token global"}
+                </Button>
+                {connMeta.waba_ref_id && (
+                  <Button size="sm" variant="outline" onClick={() => syncNumbersMut.mutate(connMeta.waba_ref_id)} disabled={syncNumbersMut.isPending}>
+                    Sincronizar números da WABA
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" onClick={() => { setWabaInput(connMeta.waba_id ?? ""); setWabaDlg(true); }}>Corrigir waba_id</Button>
+                {diagMut.data?.auto_fix?.needs_subscribe && (
+                  <Button size="sm" variant="default" onClick={() => subscribeMut.mutate()} disabled={subscribeMut.isPending}>
+                    Inscrever app no webhook
+                  </Button>
+                )}
+                {diagMut.data?.auto_fix?.phone_number_id && diagMut.data.auto_fix.phone_number_id !== diagMut.data?.connection?.phone_number_id && (
+                  <Button size="sm" variant="default" onClick={() => fixPhoneMut.mutate(diagMut.data!.auto_fix!.phone_number_id!)} disabled={fixPhoneMut.isPending}>
+                    Corrigir phone_number_id → {diagMut.data.auto_fix.phone_number_id}
+                  </Button>
+                )}
+              </div>
+
+              {/* Escolha manual quando há múltiplos números na WABA */}
+              {diagMut.data?.waba_numbers && diagMut.data.waba_numbers.length > 1 && diagMut.data.causes?.includes("PHONE_ID_WRONG_WABA") && (
+                <div className="pt-2 space-y-1">
+                  <div className="text-xs text-muted-foreground">A WABA possui vários números. Escolha o correto:</div>
+                  <div className="flex flex-col gap-1">
+                    {diagMut.data.waba_numbers.map((n: any) => (
+                      <button key={n.id}
+                        className="text-left text-xs rounded border px-2 py-1 hover:bg-accent"
+                        disabled={fixPhoneMut.isPending}
+                        onClick={() => fixPhoneMut.mutate(String(n.id))}>
+                        <span className="font-mono">{n.id}</span> — {n.display_phone_number ?? "?"} · {n.verified_name ?? "sem nome"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setDiagOpen(false)}>Fechar</Button>
-            <Button onClick={() => diagMut.mutate()} disabled={diagMut.isPending}>Rodar novamente</Button>
+            <Button onClick={runAgain} disabled={diagMut.isPending}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${diagMut.isPending ? "animate-spin" : ""}`} />Rodar novamente
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Atualizar token */}
+      <Dialog open={tokenDlg} onOpenChange={(o) => { setTokenDlg(o); if (!o) setTokenInput(""); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Atualizar token da conexão</DialogTitle>
+            <DialogDescription>Cole um novo access token do System User. Ele será salvo apenas para esta conexão e nunca é exibido de volta.</DialogDescription>
+          </DialogHeader>
+          <Textarea value={tokenInput} onChange={(e) => setTokenInput(e.target.value)} rows={4} placeholder="EAAG…" />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTokenDlg(false)}>Cancelar</Button>
+            <Button onClick={() => updTokenMut.mutate()} disabled={updTokenMut.isPending || tokenInput.trim().length < 20}>
+              {updTokenMut.isPending ? "Salvando…" : "Salvar token"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Corrigir waba_id */}
+      <Dialog open={wabaDlg} onOpenChange={(o) => { setWabaDlg(o); if (!o) setWabaInput(""); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Corrigir WABA ID</DialogTitle>
+            <DialogDescription>Informe o WABA ID correto do Business Manager. Isso não altera dados na Meta — só corrige o vínculo local.</DialogDescription>
+          </DialogHeader>
+          <Input value={wabaInput} onChange={(e) => setWabaInput(e.target.value)} placeholder="1234567890" />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWabaDlg(false)}>Cancelar</Button>
+            <Button onClick={() => fixWabaMut.mutate()} disabled={fixWabaMut.isPending || wabaInput.trim().length < 3}>
+              {fixWabaMut.isPending ? "Salvando…" : "Salvar"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
