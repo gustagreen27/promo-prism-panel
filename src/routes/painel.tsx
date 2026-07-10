@@ -35,11 +35,8 @@ const NAV: Array<{ to: string; label: string; icon: typeof LayoutDashboard; exac
   { to: "/painel/campanhas", label: "Campanhas", icon: Send },
   { to: "/painel/whatsapp", label: "WhatsApp", icon: MessageCircle },
   { to: "/painel/contatos", label: "Contatos", icon: Users },
-  { to: "/painel/templates", label: "Templates", icon: FileText },
   { to: "/painel/relatorios", label: "Relatórios", icon: BarChart3 },
   { to: "/painel/financeiro", label: "Financeiro", icon: CreditCard },
-  { to: "/painel/notificacoes", label: "Notificações", icon: Bell },
-  { to: "/painel/configuracoes", label: "Configurações", icon: Settings },
 ];
 
 function PanelLayout() {
