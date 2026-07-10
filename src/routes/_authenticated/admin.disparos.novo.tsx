@@ -33,15 +33,16 @@ export const Route = createFileRoute("/_authenticated/admin/disparos/novo")({
   component: WizardPage,
 });
 
-const STEPS = [
-  { id: "dados", label: "Dados", description: "Nome, cliente, agendamento" },
-  { id: "publico", label: "Público", description: "Lista e filtros" },
-  { id: "whatsapp", label: "WhatsApp", description: "WABA, número, template" },
-  { id: "variaveis", label: "Variáveis", description: "Mapear {{n}} do template" },
-  { id: "botao", label: "Botão / URL", description: "URLs dinâmicas" },
-  { id: "revisao", label: "Revisão", description: "Confira antes de enviar" },
-  { id: "envio", label: "Envio", description: "Fila e progresso" },
+const STEPS: (WizardStep & { title: string; subtitle: string })[] = [
+  { id: 1, label: "Dados", short: "Dados", icon: Settings2, title: "Dados da campanha", subtitle: "Nome, cliente, agendamento e limites operacionais" },
+  { id: 2, label: "Público", short: "Público", icon: Users, title: "Selecione o público", subtitle: "Escolha a lista e aplique filtros de audiência" },
+  { id: 3, label: "WhatsApp", short: "WhatsApp", icon: MessageSquareText, title: "Configure o WhatsApp", subtitle: "WABA, número remetente e template aprovado" },
+  { id: 4, label: "Variáveis", short: "Variáveis", icon: Variable, title: "Mapear variáveis", subtitle: "Preencha as variáveis {{n}} do template" },
+  { id: 5, label: "Botão / URL", short: "Botão", icon: Link2, title: "Botões e URL dinâmica", subtitle: "Personalize os parâmetros dos botões" },
+  { id: 6, label: "Revisão", short: "Revisão", icon: ClipboardCheck, title: "Revise e confirme", subtitle: "Confira os detalhes antes de enviar" },
+  { id: 7, label: "Envio", short: "Envio", icon: PlayCircle, title: "Envio", subtitle: "Crie a fila, inicie ou agende o disparo" },
 ];
+
 
 type WizardState = {
   // step 1
