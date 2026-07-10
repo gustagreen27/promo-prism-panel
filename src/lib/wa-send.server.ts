@@ -17,8 +17,9 @@ export type WaSendInput = {
 };
 
 export type WaSendResult =
-  | { ok: true; metaMessageId: string; raw: any }
-  | { ok: false; error: string; code?: string; raw?: any };
+  | { ok: true; metaMessageId: string; messageStatus: string | null; wamid: string | null; raw: any; httpStatus: number }
+  | { ok: false; error: string; code?: string; raw?: any; httpStatus?: number };
+
 
 function buildBodyComponents(variables?: Record<string, string>) {
   if (!variables) return [];
@@ -93,11 +94,15 @@ export async function sendTemplateMessage(input: WaSendInput): Promise<WaSendRes
         error: err?.message ?? `HTTP ${res.status}`,
         code: err?.code ? String(err.code) : String(res.status),
         raw: json,
+        httpStatus: res.status,
       };
     }
-    const id = json?.messages?.[0]?.id;
-    if (!id) return { ok: false, error: "No message id returned", raw: json };
-    return { ok: true, metaMessageId: id, raw: json };
+    const msg = json?.messages?.[0];
+    const id = msg?.id;
+    const messageStatus: string | null = msg?.message_status ?? null;
+    const wamid: string | null = id ?? null;
+    if (!id) return { ok: false, error: "No message id returned", raw: json, httpStatus: res.status };
+    return { ok: true, metaMessageId: id, messageStatus, wamid, raw: json, httpStatus: res.status };
   } catch (e: any) {
     return { ok: false, error: e?.message ?? "Network error", code: "network_error" };
   }
