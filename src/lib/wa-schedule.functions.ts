@@ -273,7 +273,7 @@ export const searchCampaignHistory = createServerFn({ method: "POST" })
       .eq("workspace_id", data.workspace_id)
       .order("created_at", { ascending: false })
       .limit(data.limit);
-    if (data.status) q = q.eq("status", data.status);
+    if (data.status) q = q.eq("status", data.status as any);
     if (data.connection_id) q = q.eq("connection_id", data.connection_id);
     if (data.template_id) q = q.eq("template_id", data.template_id);
     if (data.created_by) q = q.eq("created_by", data.created_by);

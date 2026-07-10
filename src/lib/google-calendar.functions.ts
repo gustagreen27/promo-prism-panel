@@ -121,9 +121,10 @@ export const syncCampaignToGoogle = createServerFn({ method: "POST" })
     const { data: camp, error } = await context.supabase
       .from("wa_campaigns").select("*").eq("id", data.campaign_id).maybeSingle();
     if (error || !camp) throw new Error("Campanha não encontrada");
-    const { data: member } = await context.supabase.rpc("is_workspace_member", { _ws: camp.workspace_id, _user: context.userId });
+    if (!camp.workspace_id) throw new Error("Campanha sem workspace");
+    const { data: member } = await context.supabase.rpc("is_workspace_member", { _ws: camp.workspace_id as string, _user: context.userId });
     if (!member) throw new Error("Sem acesso");
-    const r = await syncCampaignToGoogleInternal(camp.workspace_id, camp.id);
+    const r = await syncCampaignToGoogleInternal(camp.workspace_id as string, camp.id);
     return r;
   });
 
