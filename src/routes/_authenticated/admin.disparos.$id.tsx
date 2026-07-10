@@ -25,7 +25,7 @@ import {
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 
-export const Route = createFileRoute("/_authenticated/admin/whatsapp-campanhas/$id")({
+export const Route = createFileRoute("/_authenticated/admin/disparos/$id")({
   head: () => ({ meta: [{ title: "Campanha WhatsApp" }] }),
   component: Page,
 });
@@ -184,7 +184,7 @@ function Page() {
     }),
     dup: useMutation({
       mutationFn: () => dupFn({ data: { id } }),
-      onSuccess: (r: any) => { toast.success("Campanha duplicada"); nav({ to: "/admin/whatsapp-campanhas/$id", params: { id: r.id } }); },
+      onSuccess: (r: any) => { toast.success("Campanha duplicada"); nav({ to: "/admin/disparos/$id", params: { id: r.id } }); },
     }),
   };
 
@@ -223,7 +223,7 @@ function Page() {
         actions={
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="outline" size="sm">
-              <Link to="/admin/whatsapp-campanhas"><ArrowLeft className="mr-2 h-4 w-4" />Voltar</Link>
+              <Link to="/admin/disparos"><ArrowLeft className="mr-2 h-4 w-4" />Voltar</Link>
             </Button>
             {!isRunning && !isPaused && !isFinished && (
               <Button size="sm" onClick={() => m.start.mutate()} disabled={m.start.isPending}>

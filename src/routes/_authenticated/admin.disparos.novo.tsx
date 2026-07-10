@@ -25,7 +25,7 @@ import { previewAudience, renderPreview, createCampaignFromWizard } from "@/lib/
 import { availableStock, buildRecipients, startWaCampaign, scheduleWaCampaign } from "@/lib/wa-campaigns.functions";
 import { DEFAULT_TOKENS, metaVarsIn } from "@/lib/wa-variables";
 
-export const Route = createFileRoute("/_authenticated/admin/whatsapp-campanhas/novo")({
+export const Route = createFileRoute("/_authenticated/admin/disparos/novo")({
   head: () => ({ meta: [{ title: "Nova campanha — WhatsApp" }] }),
   component: WizardPage,
 });
@@ -257,7 +257,7 @@ function WizardPage() {
     mutationFn: () => startFn({ data: { id: campaignId! } }),
     onSuccess: () => {
       toast.success("Envio iniciado");
-      nav({ to: "/admin/whatsapp-campanhas/$id", params: { id: campaignId! } });
+      nav({ to: "/admin/disparos/$id", params: { id: campaignId! } });
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao iniciar"),
   });
@@ -266,7 +266,7 @@ function WizardPage() {
     mutationFn: () => scheduleFn({ data: { id: campaignId!, scheduled_at: new Date(state.scheduled_at!).toISOString() } }),
     onSuccess: (r: any) => {
       toast.success(`Agendado para ${new Date(r.scheduled_at).toLocaleString("pt-BR")}`);
-      nav({ to: "/admin/whatsapp-campanhas/$id", params: { id: campaignId! } });
+      nav({ to: "/admin/disparos/$id", params: { id: campaignId! } });
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao agendar"),
   });
@@ -277,7 +277,7 @@ function WizardPage() {
         title="Nova campanha WhatsApp"
         description="Fluxo guiado em 7 etapas: dados, público, WhatsApp, variáveis, botão, revisão e envio."
         actions={
-          <Button variant="ghost" onClick={() => nav({ to: "/admin/whatsapp-campanhas" })}>
+          <Button variant="ghost" onClick={() => nav({ to: "/admin/disparos" })}>
             <ArrowLeft className="mr-2 h-4 w-4" />Voltar
           </Button>
         }
@@ -638,7 +638,7 @@ function WizardPage() {
                       <Send className="mr-2 h-4 w-4" /> Agendar para {state.scheduled_at ? new Date(state.scheduled_at).toLocaleString("pt-BR") : "—"}
                     </Button>
                   )}
-                  <Button variant="outline" onClick={() => nav({ to: "/admin/whatsapp-campanhas/$id", params: { id: campaignId } })}>
+                  <Button variant="outline" onClick={() => nav({ to: "/admin/disparos/$id", params: { id: campaignId } })}>
                     Abrir campanha
                   </Button>
                 </div>

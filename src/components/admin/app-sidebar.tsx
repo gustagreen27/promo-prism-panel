@@ -43,7 +43,7 @@ const NAV: NavItem[] = [
   },
   {
     title: "Campanhas",
-    to: "/admin/whatsapp-campanhas",
+    to: "/admin/disparos",
     icon: Megaphone,
   },
   {

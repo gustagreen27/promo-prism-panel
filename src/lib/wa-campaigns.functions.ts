@@ -229,7 +229,7 @@ export const unscheduleWaCampaign = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// Cria uma campanha agendada a partir do fluxo "disparo rápido" da tela /admin/whatsapp-campanhas.
+// Cria uma campanha agendada a partir do fluxo "disparo rápido" da tela /admin/disparos.
 // Persiste tudo no backend (números, template, destinatários, mapeamentos) e o cron promove no horário.
 export const scheduleQuickSend = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
