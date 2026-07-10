@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Download } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
+import { FINANCEIRO_TABS } from "@/components/admin/hub-tabs";
 import { EmptyState } from "@/components/admin/empty-state";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -75,7 +76,7 @@ function Page() {
 
   return (
     <>
-      <PageHeader title="Histórico" description="Auditoria de operações e disparos." />
+      <PageHeader tabs={FINANCEIRO_TABS} title="Histórico" description="Auditoria de operações e disparos." />
 
       <div className="flex items-center gap-2">
         <span className="text-xs text-muted-foreground">Filtrar por sócio:</span>

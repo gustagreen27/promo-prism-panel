@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Plus, Trash2, Upload, UserX } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
+import { CLIENTES_TABS } from "@/components/admin/hub-tabs";
 import { EmptyState } from "@/components/admin/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

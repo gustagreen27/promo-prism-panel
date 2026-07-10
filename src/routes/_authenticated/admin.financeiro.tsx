@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/admin/page-header";
+import { FINANCEIRO_TABS } from "@/components/admin/hub-tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -92,7 +93,7 @@ function Page() {
 
   return (
     <>
-      <PageHeader title="Financeiro" description="Saldos, preços personalizados, ajustes e histórico de todos os workspaces." />
+      <PageHeader tabs={FINANCEIRO_TABS} title="Financeiro" description="Saldos, preços personalizados, ajustes e histórico de todos os workspaces." />
 
       <Card className="mb-6">
         <CardHeader><CardTitle>Workspaces</CardTitle></CardHeader>

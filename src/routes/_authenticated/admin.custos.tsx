@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, Pencil, Download } from "lucide-react";
 import { toCSV, downloadCSV, participantsLabel } from "@/lib/csv";
 import { PageHeader } from "@/components/admin/page-header";
+import { FINANCEIRO_TABS } from "@/components/admin/hub-tabs";
 import { EmptyState } from "@/components/admin/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,7 +67,7 @@ function Page() {
 
   return (
     <>
-      <PageHeader title="Custos" description="Despesas e fornecedores." actions={
+      <PageHeader tabs={FINANCEIRO_TABS} title="Custos" description="Despesas e fornecedores." actions={
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
           <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Novo custo</Button></DialogTrigger>
           <FormDialog editing={editing} clients={clients} projects={projects} onSubmit={(p: any) => saveMut.mutate(p)} saving={saveMut.isPending} />

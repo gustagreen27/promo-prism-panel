@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/admin/page-header";
+import { CONFIG_TABS } from "@/components/admin/hub-tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,7 +41,7 @@ function Page() {
 
   return (
     <>
-      <PageHeader title="Configurações" description="Metas, preferências e dados da empresa." />
+      <PageHeader tabs={CONFIG_TABS} title="Configurações" description="Metas, preferências e dados da empresa." />
 
       <div className="space-y-6">
         <section className="rounded-xl border bg-card p-5">

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
+import { FINANCEIRO_TABS } from "@/components/admin/hub-tabs";
 import { EmptyState } from "@/components/admin/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,7 +46,7 @@ function Page() {
 
   return (
     <>
-      <PageHeader title="Estoque de Mensagens" description="Saldo de envios disponíveis." actions={
+      <PageHeader tabs={FINANCEIRO_TABS} title="Estoque de Mensagens" description="Saldo de envios disponíveis." actions={
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Novo lançamento</Button></DialogTrigger>
           <FormDialog onSubmit={(p: any) => saveMut.mutate(p)} saving={saveMut.isPending} />
