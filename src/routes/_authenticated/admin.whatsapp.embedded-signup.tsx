@@ -86,19 +86,48 @@ function Page() {
             </div>
           </div>
 
-          <div className="pt-2 flex items-center gap-3">
-            <EmbeddedSignupButton
-              clientId={clientId === NONE ? null : clientId}
-              projectId={projectId === NONE ? null : projectId}
-              nomeInterno={nomeInterno || undefined}
-              onCompleted={() => {
-                qc.invalidateQueries({ queryKey: ["wa-wabas"] });
-                qc.invalidateQueries({ queryKey: ["wa-numeros"] });
-                qc.invalidateQueries({ queryKey: ["wa-onboarding-logs"] });
-              }}
-            />
-            <span className="text-xs text-muted-foreground">Token de acesso nunca sai do backend.</span>
+          <div className="pt-2 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-lg border p-3 space-y-2">
+              <div className="font-medium text-sm">Adicionar um número novo</div>
+              <p className="text-xs text-muted-foreground">
+                Número que ainda não esteja cadastrado no WhatsApp/WhatsApp Business.
+              </p>
+              <EmbeddedSignupButton
+                mode="standard"
+                label="Cadastrar novo número"
+                clientId={clientId === NONE ? null : clientId}
+                projectId={projectId === NONE ? null : projectId}
+                nomeInterno={nomeInterno || undefined}
+                onCompleted={() => {
+                  qc.invalidateQueries({ queryKey: ["wa-wabas"] });
+                  qc.invalidateQueries({ queryKey: ["wa-numeros"] });
+                  qc.invalidateQueries({ queryKey: ["wa-onboarding-logs"] });
+                }}
+              />
+            </div>
+            <div className="rounded-lg border border-primary/40 p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-sm">Conectar WhatsApp Business existente</span>
+                <Badge variant="secondary">Recomendado</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Mantém o número no aplicativo WhatsApp Business e conecta à API oficial (Coexistência).
+              </p>
+              <EmbeddedSignupButton
+                mode="coexistence"
+                clientId={clientId === NONE ? null : clientId}
+                projectId={projectId === NONE ? null : projectId}
+                nomeInterno={nomeInterno || undefined}
+                onCompleted={() => {
+                  qc.invalidateQueries({ queryKey: ["wa-wabas"] });
+                  qc.invalidateQueries({ queryKey: ["wa-numeros"] });
+                  qc.invalidateQueries({ queryKey: ["wa-onboarding-logs"] });
+                }}
+              />
+            </div>
           </div>
+          <p className="text-xs text-muted-foreground">Token de acesso nunca sai do backend.</p>
+
         </div>
 
         <div className="rounded-xl border bg-card p-6 space-y-3 text-sm">
