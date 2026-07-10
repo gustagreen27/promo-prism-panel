@@ -42,27 +42,49 @@ export const getPhoneProfile = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const conn = await loadConnectionSecure(context.supabase, context.userId, data.connection_id);
     const headers = { Authorization: `Bearer ${conn.access_token}` };
-    const profileJson = await metaFetch(
-      `/${conn.phone_number_id}/whatsapp_business_profile?fields=${PROFILE_FIELDS}`,
-      { headers },
-    );
-    const phoneJson = await metaFetch(`/${conn.phone_number_id}?fields=${PHONE_FIELDS}`, { headers });
-    // Sincroniza cache local
-    try { await updateConnectionDisplayName(conn, phoneJson); } catch {}
-    return {
-      profile: profileJson?.data?.[0] ?? {},
-      phone: phoneJson,
-      connection: {
-        id: conn.id,
-        workspace_id: conn.workspace_id,
-        waba_id: conn.waba_id,
-        use_global_token: conn.use_global_token,
-        current_display_name: conn.current_display_name,
-        requested_display_name: conn.requested_display_name,
-        display_name_status: conn.display_name_status,
-      },
+    const connectionMeta = {
+      id: conn.id,
+      workspace_id: conn.workspace_id,
+      waba_id: conn.waba_id,
+      phone_number_id: conn.phone_number_id,
+      use_global_token: conn.use_global_token,
+      current_display_name: conn.current_display_name,
+      requested_display_name: conn.requested_display_name,
+      display_name_status: conn.display_name_status,
     };
+    try {
+      const profileJson = await metaFetch(
+        `/${conn.phone_number_id}/whatsapp_business_profile?fields=${PROFILE_FIELDS}`,
+        { headers },
+      );
+      const phoneJson = await metaFetch(`/${conn.phone_number_id}?fields=${PHONE_FIELDS}`, { headers });
+      try { await updateConnectionDisplayName(conn, phoneJson); } catch {}
+      return {
+        profile: profileJson?.data?.[0] ?? {},
+        phone: phoneJson,
+        connection: connectionMeta,
+        meta_error: null as null | { code?: number; subcode?: number; message: string; type?: string; hint: string },
+      };
+    } catch (e: any) {
+      // Meta rejeitou o phone_number_id — devolve payload amigável em vez de derrubar a página.
+      const isMeta = e instanceof MetaError;
+      const code = isMeta ? (e as MetaError).code : undefined;
+      const subcode = isMeta ? (e as MetaError).subcode : undefined;
+      const message = isMeta ? (e as MetaError).message : (e?.message ?? "Erro desconhecido ao consultar a Meta.");
+      const tokenOrigin = conn.use_global_token ? "token global (WHATSAPP_ACCESS_TOKEN)" : "token da conexão";
+      const hint =
+        code === 100 || /does not exist|missing permissions/i.test(message)
+          ? `A Meta não reconhece o phone_number_id "${conn.phone_number_id}" com o ${tokenOrigin}. Verifique se: (1) o Phone Number ID está correto e ativo; (2) o token pertence ao mesmo Business Manager/WABA (${conn.waba_id ?? "sem WABA"}); (3) o System User tem acesso à WABA e possui as permissões whatsapp_business_management e whatsapp_business_messaging. Use "Testar conexão" para um diagnóstico completo.`
+          : `Falha ao consultar o perfil na Meta usando o ${tokenOrigin}. Use "Testar conexão" para diagnóstico.`;
+      return {
+        profile: {},
+        phone: {},
+        connection: connectionMeta,
+        meta_error: { code, subcode, message, type: isMeta ? (e as MetaError).type : undefined, hint },
+      };
+    }
   });
+
 
 export const updatePhoneProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

@@ -211,6 +211,23 @@ function Page() {
         <div className="rounded-xl border bg-card p-6 text-sm text-destructive">{(q.error as any)?.message ?? "Erro ao carregar."}</div>
       ) : (
         <div className="space-y-4">
+          {(q.data as any)?.meta_error ? (
+            <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-5 text-sm space-y-2">
+              <div className="font-semibold text-destructive">Não foi possível carregar o perfil da Meta</div>
+              <div className="text-foreground/90">{(q.data as any).meta_error.message}</div>
+              <div className="text-muted-foreground">{(q.data as any).meta_error.hint}</div>
+              <div className="text-xs text-muted-foreground pt-1">
+                <span className="font-mono">phone_number_id:</span> {connMeta.phone_number_id ?? "—"} · <span className="font-mono">waba_id:</span> {connMeta.waba_id ?? "—"} · <span className="font-mono">token:</span> {connMeta.use_global_token ? "global" : "conexão"}
+                {(q.data as any).meta_error.code != null && <> · <span className="font-mono">code:</span> {(q.data as any).meta_error.code}</>}
+              </div>
+              <div className="pt-2">
+                <Button size="sm" variant="outline" onClick={() => diagMut.mutate()} disabled={diagMut.isPending}>
+                  <Stethoscope className="mr-2 h-4 w-4" />Executar diagnóstico
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
           {/* Header card */}
           <div className="rounded-xl border bg-card p-5 flex flex-wrap items-center gap-4">
             <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full bg-muted ring-2 ring-border">
