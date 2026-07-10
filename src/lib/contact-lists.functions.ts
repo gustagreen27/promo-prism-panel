@@ -84,10 +84,14 @@ export const addContactsToList = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     if (!data.contact_ids.length) return { added: 0 };
-    const rows = data.contact_ids.map((c) => ({ list_id: data.list_id, contact_id: c }));
+    const { data: list } = await context.supabase
+      .from("contact_lists").select("workspace_id").eq("id", data.list_id).single();
+    const wsId = list?.workspace_id ?? await adminPrimaryWorkspaceId(context);
+    const rows = data.contact_ids.map((c) => ({ list_id: data.list_id, contact_id: c, workspace_id: wsId }));
     await context.supabase.from("contact_list_items").upsert(rows, { onConflict: "list_id,contact_id" });
     return { added: rows.length };
   });
+
 
 export const removeContactFromList = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
