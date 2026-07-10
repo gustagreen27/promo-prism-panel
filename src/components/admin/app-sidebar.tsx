@@ -81,15 +81,14 @@ const NAV: NavItem[] = [
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const search = useRouterState({ select: (s) => s.location.search as Record<string, unknown> });
   const navigate = useNavigate();
 
   const isActive = (item: NavItem) => {
-    const pathMatches =
-      item.to === "/admin" ? pathname === "/admin" : pathname === item.to || pathname.startsWith(item.to + "/");
-    if (!pathMatches) return false;
-    if (!item.search) return true;
-    return Object.entries(item.search).every(([k, v]) => String((search as any)?.[k] ?? "") === v);
+    if (item.to === "/admin") return pathname === "/admin";
+    if (pathname === item.to || pathname.startsWith(item.to + "/")) return true;
+    return (item.matches ?? []).some(
+      (m) => pathname === m || pathname.startsWith(m + "/"),
+    );
   };
 
   async function handleLogout() {
@@ -116,31 +115,26 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {GROUPS.map((group) => (
-          <SidebarGroup key={group.label}>
-            <SidebarGroupLabel className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-              {group.label}
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {group.items.map((item) => (
-                  <SidebarMenuItem key={`${item.to}-${item.title}`}>
-                    <SidebarMenuButton asChild isActive={isActive(item)} tooltip={item.title}>
-                      <Link
-                        to={item.to}
-                        search={item.search ?? undefined}
-                        className="flex items-center gap-2"
-                      >
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {NAV.map((item) => (
+                <SidebarMenuItem key={item.to}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive(item)}
+                    tooltip={item.title}
+                  >
+                    <Link to={item.to} className="flex items-center gap-2">
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter className="border-t border-border p-2">
@@ -156,3 +150,4 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
+
