@@ -3,9 +3,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, Rocket, Send, Sparkles, AlertTriangle, CheckCircle2, Info, Plus, X, RefreshCw } from "lucide-react";
-import { PageHeader } from "@/components/admin/page-header";
-import { Stepper } from "@/components/admin/stepper";
+import {
+  ArrowLeft, ArrowRight, Rocket, Send, Sparkles, AlertTriangle, CheckCircle2, Info, Plus, X, RefreshCw,
+  Settings2, Users, MessageSquareText, Variable, Link2, ClipboardCheck, PlayCircle,
+} from "lucide-react";
+import { Stepper, type WizardStep } from "@/components/campaigns/wizard/Stepper";
+import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
 import { StatusBadge, AlertBadge } from "@/components/admin/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,15 +33,16 @@ export const Route = createFileRoute("/_authenticated/admin/disparos/novo")({
   component: WizardPage,
 });
 
-const STEPS = [
-  { id: "dados", label: "Dados", description: "Nome, cliente, agendamento" },
-  { id: "publico", label: "Público", description: "Lista e filtros" },
-  { id: "whatsapp", label: "WhatsApp", description: "WABA, número, template" },
-  { id: "variaveis", label: "Variáveis", description: "Mapear {{n}} do template" },
-  { id: "botao", label: "Botão / URL", description: "URLs dinâmicas" },
-  { id: "revisao", label: "Revisão", description: "Confira antes de enviar" },
-  { id: "envio", label: "Envio", description: "Fila e progresso" },
+const STEPS: (WizardStep & { title: string; subtitle: string })[] = [
+  { id: 1, label: "Dados", short: "Dados", icon: Settings2, title: "Dados da campanha", subtitle: "Nome, cliente, agendamento e limites operacionais" },
+  { id: 2, label: "Público", short: "Público", icon: Users, title: "Selecione o público", subtitle: "Escolha a lista e aplique filtros de audiência" },
+  { id: 3, label: "WhatsApp", short: "WhatsApp", icon: MessageSquareText, title: "Configure o WhatsApp", subtitle: "WABA, número remetente e template aprovado" },
+  { id: 4, label: "Variáveis", short: "Variáveis", icon: Variable, title: "Mapear variáveis", subtitle: "Preencha as variáveis {{n}} do template" },
+  { id: 5, label: "Botão / URL", short: "Botão", icon: Link2, title: "Botões e URL dinâmica", subtitle: "Personalize os parâmetros dos botões" },
+  { id: 6, label: "Revisão", short: "Revisão", icon: ClipboardCheck, title: "Revise e confirme", subtitle: "Confira os detalhes antes de enviar" },
+  { id: 7, label: "Envio", short: "Envio", icon: PlayCircle, title: "Envio", subtitle: "Crie a fila, inicie ou agende o disparo" },
 ];
+
 
 type WizardState = {
   // step 1
@@ -271,21 +275,28 @@ function WizardPage() {
     onError: (e: any) => toast.error(e?.message ?? "Erro ao agendar"),
   });
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Nova campanha WhatsApp"
-        description="Fluxo guiado em 7 etapas: dados, público, WhatsApp, variáveis, botão, revisão e envio."
-        actions={
-          <Button variant="ghost" onClick={() => nav({ to: "/admin/disparos" })}>
-            <ArrowLeft className="mr-2 h-4 w-4" />Voltar
-          </Button>
-        }
-      />
+  const currentStepMeta = STEPS[step];
 
-      <div className="rounded-xl border bg-card p-4">
-        <Stepper steps={STEPS} currentIndex={step} onStepClick={(i) => i < step && setStep(i)} />
+  return (
+    <div className="space-y-6 pb-24">
+      {/* Header com título à esquerda e stepper à direita/centro */}
+      <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 lg:max-w-sm">
+            <h1 className="text-xl font-semibold tracking-tight">{currentStepMeta.title}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{currentStepMeta.subtitle}</p>
+          </div>
+          <div className="flex-1 lg:max-w-3xl">
+            <Stepper
+              steps={STEPS}
+              current={step + 1}
+              maxReached={step + 1}
+              onGoTo={(id) => id - 1 < step && setStep(id - 1)}
+            />
+          </div>
+        </div>
       </div>
+
 
       {/* STEP 1 — Dados */}
       {step === 0 && (
@@ -648,17 +659,24 @@ function WizardPage() {
         </Card>
       )}
 
-      {/* Nav */}
-      <div className="flex items-center justify-between pt-2">
-        <Button variant="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>
-          <ArrowLeft className="mr-2 h-4 w-4" />Voltar
-        </Button>
-        {step < STEPS.length - 1 && (
-          <Button onClick={() => setStep((s) => s + 1)} disabled={!canGoNext}>
-            Próximo <ArrowRight className="ml-2 h-4 w-4" />
+      {/* Sticky nav */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-3 px-6 py-3">
+          <Button
+            variant="secondary"
+            className="rounded-full"
+            onClick={() => (step === 0 ? nav({ to: "/admin/disparos" }) : setStep((s) => Math.max(0, s - 1)))}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />Voltar
           </Button>
-        )}
+          {step < STEPS.length - 1 && (
+            <Button className="rounded-full" onClick={() => setStep((s) => s + 1)} disabled={!canGoNext}>
+              Próximo <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
+
     </div>
   );
 }
@@ -754,24 +772,15 @@ function PreviewCard({ previewQ, contact, embedded }: { previewQ: any; contact?:
   const content = (
     <div className="space-y-3">
       <div className="flex items-center justify-between text-xs">
-        <span className="text-muted-foreground">Preview com:</span>
+        <span className="text-muted-foreground">Prévia com:</span>
         <Badge variant="outline">{contact?.name ?? contact?.phone ?? "sem contato de amostra"}</Badge>
       </div>
-      <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 whitespace-pre-wrap text-sm text-emerald-950">
-        {previewQ.data?.header && <div className="font-semibold mb-1">{previewQ.data.header}</div>}
-        {previewQ.data?.body ?? "…"}
-        {previewQ.data?.footer && <div className="mt-2 text-xs opacity-70">{previewQ.data.footer}</div>}
-      </div>
-      {(previewQ.data?.buttons ?? []).length > 0 && (
-        <div className="space-y-1">
-          {previewQ.data.buttons.map((b: any, i: number) => (
-            <div key={i} className="rounded-md border bg-card p-2 text-xs">
-              <div className="font-medium">{b.text}</div>
-              {b.url && <div className="text-muted-foreground truncate">{b.url}</div>}
-            </div>
-          ))}
-        </div>
-      )}
+      <WhatsAppPreview
+        body={previewQ.data?.body ?? "…"}
+        header={previewQ.data?.header ? { text: previewQ.data.header } : null}
+        footer={previewQ.data?.footer ?? null}
+        buttons={previewQ.data?.buttons ?? []}
+      />
       {(previewQ.data?.warnings ?? []).length > 0 && (
         <div className="rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 space-y-1">
           {previewQ.data.warnings.map((w: string, i: number) => <div key={i}>⚠ {w}</div>)}
@@ -787,3 +796,4 @@ function PreviewCard({ previewQ, contact, embedded }: { previewQ: any; contact?:
     </Card>
   );
 }
+
