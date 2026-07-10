@@ -183,6 +183,56 @@ function Page() {
     onError: (e: any) => toast.error(e?.message ?? "Erro no diagnóstico"),
   });
 
+  // Fix action mutations
+  const updateTokenFn = useServerFn(updateConnectionToken);
+  const toggleGlobalFn = useServerFn(toggleGlobalToken);
+  const fixPhoneFn = useServerFn(applyFixPhoneNumberId);
+  const fixWabaFn = useServerFn(applyFixWabaId);
+  const subscribeFn = useServerFn(subscribeAppToWaba);
+  const syncNumbersFn = useServerFn(syncWabaNumbers);
+
+  const [tokenDlg, setTokenDlg] = useState(false);
+  const [tokenInput, setTokenInput] = useState("");
+  const [wabaDlg, setWabaDlg] = useState(false);
+  const [wabaInput, setWabaInput] = useState("");
+
+  const runAgain = () => diagMut.mutate();
+  const invAll = () => {
+    qc.invalidateQueries({ queryKey: ["wa-phone-profile", id] });
+    qc.invalidateQueries({ queryKey: ["wa-phone-audit", id] });
+  };
+
+  const updTokenMut = useMutation({
+    mutationFn: () => updateTokenFn({ data: { connection_id: id, access_token: tokenInput.trim() } }),
+    onSuccess: (r: any) => { toast.success(`Token atualizado (…${r.last6})`); setTokenDlg(false); setTokenInput(""); invAll(); runAgain(); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao atualizar token"),
+  });
+  const togGlobalMut = useMutation({
+    mutationFn: (use: boolean) => toggleGlobalFn({ data: { connection_id: id, use_global_token: use } }),
+    onSuccess: () => { toast.success("Origem do token alterada"); invAll(); runAgain(); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro"),
+  });
+  const fixPhoneMut = useMutation({
+    mutationFn: (pn: string) => fixPhoneFn({ data: { connection_id: id, phone_number_id: pn } }),
+    onSuccess: () => { toast.success("phone_number_id corrigido"); invAll(); runAgain(); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro"),
+  });
+  const fixWabaMut = useMutation({
+    mutationFn: () => fixWabaFn({ data: { connection_id: id, waba_id: wabaInput.trim() } }),
+    onSuccess: () => { toast.success("waba_id corrigido"); setWabaDlg(false); setWabaInput(""); invAll(); runAgain(); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro"),
+  });
+  const subscribeMut = useMutation({
+    mutationFn: () => subscribeFn({ data: { connection_id: id } }),
+    onSuccess: () => { toast.success("Aplicativo inscrito no webhook"); runAgain(); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao inscrever"),
+  });
+  const syncNumbersMut = useMutation({
+    mutationFn: (waba_ref_id: string) => syncNumbersFn({ data: { waba_ref_id } }),
+    onSuccess: (r: any) => { toast.success(`Sincronizado: ${r.total_from_meta} número(s) da WABA`); invAll(); runAgain(); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro na sincronização"),
+  });
+
   const phone: any = (q.data as any)?.phone ?? {};
   const profile: any = (q.data as any)?.profile ?? {};
   const connMeta: any = (q.data as any)?.connection ?? {};
