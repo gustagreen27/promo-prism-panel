@@ -46,6 +46,7 @@ export const getPhoneProfile = createServerFn({ method: "GET" })
       id: conn.id,
       workspace_id: conn.workspace_id,
       waba_id: conn.waba_id,
+      waba_ref_id: (conn as any).waba_ref_id ?? null,
       phone_number_id: conn.phone_number_id,
       use_global_token: conn.use_global_token,
       current_display_name: conn.current_display_name,
