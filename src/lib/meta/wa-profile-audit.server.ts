@@ -11,7 +11,13 @@ export type ProfileAuditAction =
   | "DISPLAY_NAME_REJECTED"
   | "DISPLAY_NAME_APPLIED"
   | "PROFILE_SYNCED"
-  | "CONNECTION_DIAGNOSED";
+  | "CONNECTION_DIAGNOSED"
+  | "TOKEN_UPDATED"
+  | "TOKEN_SOURCE_CHANGED"
+  | "PHONE_NUMBER_ID_CORRECTED"
+  | "WABA_ID_CORRECTED"
+  | "APP_SUBSCRIBED"
+  | "APP_SUBSCRIBE_FAILED";
 
 export async function auditProfileEvent(params: {
   workspace_id?: string | null;
