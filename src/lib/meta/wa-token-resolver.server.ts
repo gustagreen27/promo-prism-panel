@@ -29,7 +29,7 @@ export async function loadConnectionSecure(
   const { data: conn, error } = await supabase
     .from("whatsapp_connections")
     .select(
-      "id, workspace_id, phone_number_id, waba_id, access_token, use_global_token, current_display_name, requested_display_name, display_name_status, display_phone, verified_name",
+      "id, workspace_id, phone_number_id, waba_id, waba_ref_id, access_token, use_global_token, current_display_name, requested_display_name, display_name_status, display_phone, verified_name",
     )
     .eq("id", connectionId)
     .maybeSingle();

@@ -46,6 +46,7 @@ export const getPhoneProfile = createServerFn({ method: "GET" })
       id: conn.id,
       workspace_id: conn.workspace_id,
       waba_id: conn.waba_id,
+      waba_ref_id: (conn as any).waba_ref_id ?? null,
       phone_number_id: conn.phone_number_id,
       use_global_token: conn.use_global_token,
       current_display_name: conn.current_display_name,
@@ -331,33 +332,101 @@ export const applyDisplayName = createServerFn({ method: "POST" })
     });
   });
 
-// ── Diagnóstico (batch) ───────────────────────────────────────────────
-// Usa Meta Batch API para consultar em paralelo: debug_token, WABA, números
-// da WABA e o próprio phone_number_id. Detecta mismatch WABA↔número↔token.
+// ── Diagnóstico completo da conexão Meta → WhatsApp ─────────────────────
+// Executa debug_token separadamente (auth diferente) + Batch API para as
+// demais chamadas. Nenhuma falha interrompe as verificações seguintes.
+type CheckStatus = "success" | "warning" | "error" | "skipped";
+type Check = {
+  key: string;
+  label: string;
+  status: CheckStatus;
+  detail?: string;
+  meta_error?: { code?: number; subcode?: number; type?: string; message: string; fbtrace_id?: string } | null;
+};
+
+const NEEDED_SCOPES = ["whatsapp_business_management", "whatsapp_business_messaging"];
+
 export const diagnoseConnection = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ connection_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const results: Array<{ step: string; ok: boolean; detail?: string }> = [];
+    const checks: Check[] = [];
+    const causes: string[] = [];
+    const push = (c: Check) => { checks.push(c); return c; };
+
+    // 1) Load conn / token
     let conn: LoadedConnection | null = null;
     try {
       conn = await loadConnectionSecure(context.supabase, context.userId, data.connection_id);
-      results.push({ step: "Token carregado", ok: true, detail: conn.use_global_token ? "global (WHATSAPP_ACCESS_TOKEN)" : "conexão" });
     } catch (e: any) {
-      results.push({ step: "Token carregado", ok: false, detail: e?.message });
-      return { ok: false, results };
+      push({ key: "load", label: "Carregar conexão e token", status: "error", detail: e?.message });
+      causes.push("TOKEN_UNAVAILABLE");
+      return { ok: false, checks, causes, token: null, connection: null, waba: null, waba_numbers: null, subscribed_apps: null, auto_fix: null };
     }
-    const appId = process.env.META_APP_ID;
+    const tokenSource: "global" | "connection" = conn.use_global_token ? "global" : "connection";
+    const tokenLast6 = conn.access_token.slice(-6);
+    push({ key: "load", label: "Carregar conexão e token", status: "success", detail: `Origem: ${tokenSource === "global" ? "WHATSAPP_ACCESS_TOKEN (global)" : "token da própria conexão"} · termina em …${tokenLast6}` });
 
-    // Monta batch: cada request paralela; cada uma pode falhar independente.
-    const ops: Array<{ key: string; method: "GET"; relative_url: string }> = [
-      { key: "debug", method: "GET", relative_url: `debug_token?input_token=${encodeURIComponent(conn.access_token)}` },
-      { key: "phone", method: "GET", relative_url: `${conn.phone_number_id}?fields=${PHONE_FIELDS}` },
-      { key: "profile", method: "GET", relative_url: `${conn.phone_number_id}/whatsapp_business_profile?fields=about` },
+    // 2) debug_token (chamada separada, exige app token quando disponível)
+    const appId = process.env.META_APP_ID;
+    const appSecret = process.env.META_APP_SECRET;
+    const appToken = appId && appSecret ? `${appId}|${appSecret}` : conn.access_token;
+    let dbg: any = null;
+    try {
+      const url = `https://graph.facebook.com/v21.0/debug_token?input_token=${encodeURIComponent(conn.access_token)}&access_token=${encodeURIComponent(appToken)}`;
+      const r = await fetch(url);
+      const j: any = await r.json().catch(() => ({}));
+      if (!r.ok || j?.error) {
+        push({ key: "debug_token", label: "debug_token (Meta)", status: "error", detail: j?.error?.message ?? `HTTP ${r.status}`, meta_error: j?.error });
+        causes.push("DEBUG_TOKEN_FAILED");
+      } else {
+        dbg = j?.data ?? {};
+        const scopes: string[] = Array.isArray(dbg.scopes) ? dbg.scopes : [];
+        const missing = NEEDED_SCOPES.filter((s) => !scopes.includes(s));
+        const gran = Array.isArray(dbg.granular_scopes) ? dbg.granular_scopes : [];
+        const grantedBiz = new Set<string>();
+        const grantedWaba = new Set<string>();
+        for (const g of gran) {
+          const ids: string[] = Array.isArray(g.target_ids) ? g.target_ids : [];
+          if (g.scope === "whatsapp_business_management" || g.scope === "whatsapp_business_messaging") {
+            for (const id of ids) grantedWaba.add(String(id));
+          }
+          if (g.scope === "business_management") for (const id of ids) grantedBiz.add(String(id));
+        }
+
+        push({ key: "token_valid", label: "Token válido", status: dbg.is_valid ? "success" : "error", detail: dbg.is_valid ? `Expira: ${dbg.expires_at ? (dbg.expires_at === 0 ? "nunca" : new Date(dbg.expires_at * 1000).toLocaleString("pt-BR")) : "?"} · Data access: ${dbg.data_access_expires_at ? new Date(dbg.data_access_expires_at * 1000).toLocaleString("pt-BR") : "?"}` : "Token inválido/expirado" });
+        if (!dbg.is_valid) causes.push("TOKEN_INVALID");
+
+        push({ key: "token_app", label: "App ID do token", status: !appId ? "warning" : (String(dbg.app_id ?? "") === String(appId) ? "success" : "error"), detail: !appId ? `token.app_id=${dbg.app_id ?? "?"} · META_APP_ID não configurado, comparação ignorada` : `token.app_id=${dbg.app_id ?? "?"} · esperado=${appId}` });
+        if (appId && String(dbg.app_id ?? "") !== String(appId)) causes.push("TOKEN_WRONG_APP");
+
+        push({ key: "token_scopes", label: "Permissões (scopes)", status: missing.length === 0 ? "success" : "error", detail: missing.length === 0 ? scopes.join(", ") : `Faltando: ${missing.join(", ")} · Presentes: ${scopes.join(", ") || "nenhuma"}` });
+        if (missing.length) causes.push("SCOPES_MISSING");
+
+        push({ key: "token_granular", label: "WABAs cobertas pelo token (granular_scopes)", status: (grantedWaba.size === 0) ? "warning" : (conn.waba_id && grantedWaba.has(String(conn.waba_id)) ? "success" : "error"), detail: grantedWaba.size === 0 ? "Token não expõe granular_scopes de WhatsApp (comum em tokens do System User de longa duração — verificar via /{waba_id}/subscribed_apps)" : `Cobre: ${Array.from(grantedWaba).join(", ")}` });
+        if (conn.waba_id && grantedWaba.size > 0 && !grantedWaba.has(String(conn.waba_id))) causes.push("TOKEN_MISSING_WABA_GRANT");
+
+        push({ key: "token_biz", label: "Businesses cobertos pelo token", status: grantedBiz.size ? "success" : "warning", detail: grantedBiz.size ? Array.from(grantedBiz).join(", ") : "sem business_management explícito" });
+      }
+    } catch (e: any) {
+      push({ key: "debug_token", label: "debug_token (Meta)", status: "error", detail: e?.message ?? "Falha ao chamar debug_token" });
+      causes.push("DEBUG_TOKEN_FAILED");
+    }
+
+    // 3) Batch API para o restante — não aborta se qualquer chamada falhar
+    const ops: Array<{ key: string; label: string; relative_url: string }> = [
+      { key: "phone", label: "Acesso ao Phone Number ID", relative_url: `${conn.phone_number_id}?fields=${PHONE_FIELDS}` },
+      { key: "profile", label: "Perfil comercial (whatsapp_business_profile)", relative_url: `${conn.phone_number_id}/whatsapp_business_profile?fields=about,vertical,email` },
     ];
     if (conn.waba_id) {
-      ops.push({ key: "waba", method: "GET", relative_url: `${conn.waba_id}?fields=id,name,currency,timezone_id` });
-      ops.push({ key: "waba_numbers", method: "GET", relative_url: `${conn.waba_id}/phone_numbers?fields=id,display_phone_number,verified_name,code_verification_status` });
+      ops.push({ key: "waba", label: "Acesso à WABA", relative_url: `${conn.waba_id}?fields=id,name,currency,timezone_id,message_template_namespace,owner_business_info` });
+      ops.push({ key: "waba_numbers", label: "Listar números da WABA", relative_url: `${conn.waba_id}/phone_numbers?fields=id,display_phone_number,verified_name,code_verification_status,quality_rating` });
+      ops.push({ key: "subscribed_apps", label: "Aplicativos inscritos no webhook (subscribed_apps)", relative_url: `${conn.waba_id}/subscribed_apps` });
+    } else {
+      push({ key: "waba", label: "Acesso à WABA", status: "error", detail: "waba_id ausente na conexão" });
+      push({ key: "waba_numbers", label: "Listar números da WABA", status: "skipped", detail: "waba_id ausente" });
+      push({ key: "subscribed_apps", label: "Aplicativos inscritos no webhook", status: "skipped", detail: "waba_id ausente" });
+      causes.push("WABA_ID_MISSING");
     }
 
     let batchResp: any[] = [];
@@ -365,123 +434,141 @@ export const diagnoseConnection = createServerFn({ method: "POST" })
       const body = new URLSearchParams();
       body.set("access_token", conn.access_token);
       body.set("include_headers", "false");
-      body.set("batch", JSON.stringify(ops.map(({ method, relative_url }) => ({ method, relative_url }))));
-      batchResp = await metaFetch("/", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: body.toString(),
-      });
-      if (!Array.isArray(batchResp)) throw new Error("Resposta inesperada do batch da Meta.");
-      results.push({ step: "Batch API executado", ok: true, detail: `${batchResp.length} chamadas` });
+      body.set("batch", JSON.stringify(ops.map((o) => ({ method: "GET", relative_url: o.relative_url }))));
+      const r = await fetch("https://graph.facebook.com/v21.0/", { method: "POST", body });
+      batchResp = await r.json().catch(() => []);
+      if (!Array.isArray(batchResp)) {
+        push({ key: "batch", label: "Meta Batch API", status: "error", detail: `Resposta inesperada: ${JSON.stringify(batchResp).slice(0, 200)}` });
+        batchResp = [];
+      }
     } catch (e: any) {
-      results.push({ step: "Batch API executado", ok: false, detail: e?.message });
-      return { ok: false, results };
+      push({ key: "batch", label: "Meta Batch API", status: "error", detail: e?.message });
     }
 
-    const byKey: Record<string, { code: number; body: any }> = {};
-    ops.forEach((op, i) => {
+    const parse = (i: number) => {
       const raw = batchResp[i];
-      if (!raw) { byKey[op.key] = { code: 0, body: null }; return; }
-      let parsed: any = null;
-      try { parsed = raw.body ? JSON.parse(raw.body) : null; } catch { parsed = raw.body; }
-      byKey[op.key] = { code: raw.code ?? 0, body: parsed };
+      if (!raw) return { code: 0, body: null };
+      let b: any = null;
+      try { b = raw.body ? JSON.parse(raw.body) : null; } catch { b = raw.body; }
+      return { code: raw.code ?? 0, body: b };
+    };
+
+    let wabaData: any = null;
+    let wabaNumbers = null as any[] | null;
+    let subscribedApps = null as any[] | null;
+
+    ops.forEach((op, i) => {
+      const { code, body } = parse(i);
+      const err = body?.error;
+      const meErr = err ? { code: err.code, subcode: err.error_subcode, type: err.type, message: err.message, fbtrace_id: err.fbtrace_id } : null;
+
+      if (op.key === "phone") {
+        if (code === 200 && body?.id) {
+          push({ key: op.key, label: op.label, status: "success", detail: `${body.display_phone_number ?? ""} · ${body.verified_name ?? ""} · verificação: ${body.code_verification_status ?? "?"}` });
+        } else {
+          push({ key: op.key, label: op.label, status: "error", detail: err?.message ?? `HTTP ${code}`, meta_error: meErr });
+          if (err?.code === 100 || err?.code === 803) causes.push("PHONE_ID_NOT_ACCESSIBLE");
+          else if (err?.code === 190) causes.push("TOKEN_INVALID");
+          else if (err?.code === 200 || err?.code === 10) causes.push("PHONE_ID_NO_PERMISSION");
+          else causes.push("PHONE_ID_ERROR");
+        }
+      } else if (op.key === "profile") {
+        if (code === 200) {
+          push({ key: op.key, label: op.label, status: "success", detail: body?.data?.[0] ? "perfil retornado" : "vazio (sem perfil configurado)" });
+        } else {
+          push({ key: op.key, label: op.label, status: "warning", detail: err?.message ?? `HTTP ${code}`, meta_error: meErr });
+          if (err?.code === 100) causes.push("PROFILE_MISSING");
+        }
+      } else if (op.key === "waba") {
+        if (code === 200 && body?.id) {
+          wabaData = body;
+          push({ key: op.key, label: op.label, status: "success", detail: `${body.name ?? "?"} (${body.id})${body.owner_business_info?.id ? ` · Business ${body.owner_business_info.id}` : ""}` });
+        } else {
+          push({ key: op.key, label: op.label, status: "error", detail: err?.message ?? `HTTP ${code}`, meta_error: meErr });
+          if (err?.code === 100 || err?.code === 803) causes.push("WABA_NOT_ACCESSIBLE");
+          else if (err?.code === 200 || err?.code === 10) causes.push("TOKEN_NO_WABA_ACCESS");
+        }
+      } else if (op.key === "waba_numbers") {
+        if (code === 200 && Array.isArray(body?.data)) {
+          wabaNumbers = body.data;
+          const match = wabaNumbers!.find((n: any) => String(n.id) === String(conn!.phone_number_id));
+          if (match) {
+            push({ key: "phone_in_waba", label: "phone_number_id pertence à WABA", status: "success", detail: `${match.display_phone_number ?? ""} · ${match.verified_name ?? ""}` });
+          } else {
+            const listed = wabaNumbers!.map((n: any) => `${n.id}${n.display_phone_number ? ` (${n.display_phone_number})` : ""}`).join(", ") || "nenhum";
+            push({ key: "phone_in_waba", label: "phone_number_id pertence à WABA", status: "error", detail: `${conn!.phone_number_id} NÃO está entre os números desta WABA. Encontrados: ${listed}` });
+            causes.push("PHONE_ID_WRONG_WABA");
+          }
+          push({ key: op.key, label: op.label, status: "success", detail: `${wabaNumbers!.length} número(s)` });
+        } else {
+          push({ key: op.key, label: op.label, status: "error", detail: err?.message ?? `HTTP ${code}`, meta_error: meErr });
+        }
+      } else if (op.key === "subscribed_apps") {
+        if (code === 200 && Array.isArray(body?.data)) {
+          subscribedApps = body.data;
+          const mine = appId ? subscribedApps!.find((a: any) => String(a?.whatsapp_business_api_data?.id ?? a?.id) === String(appId)) : null;
+          if (!subscribedApps!.length) {
+            push({ key: op.key, label: op.label, status: "error", detail: "Nenhum aplicativo inscrito no webhook desta WABA" });
+            causes.push("APP_NOT_SUBSCRIBED");
+          } else if (appId && !mine) {
+            push({ key: op.key, label: op.label, status: "error", detail: `App ${appId} não está inscrito. Inscritos: ${subscribedApps!.map((a: any) => a?.whatsapp_business_api_data?.name ?? a?.whatsapp_business_api_data?.id ?? "?").join(", ")}` });
+            causes.push("APP_NOT_SUBSCRIBED");
+          } else {
+            push({ key: op.key, label: op.label, status: "success", detail: subscribedApps!.map((a: any) => a?.whatsapp_business_api_data?.name ?? a?.whatsapp_business_api_data?.id ?? "?").join(", ") });
+          }
+        } else {
+          push({ key: op.key, label: op.label, status: "warning", detail: err?.message ?? `HTTP ${code}`, meta_error: meErr });
+        }
+      }
     });
 
-    // 1) debug_token
-    const dbg = byKey.debug;
-    if (dbg?.code === 200 && dbg.body?.data) {
-      const d = dbg.body.data;
-      results.push({ step: "Token válido", ok: !!d.is_valid, detail: d.is_valid ? `expira em ${d.expires_at ? new Date(d.expires_at * 1000).toLocaleString("pt-BR") : "nunca"}` : "inválido" });
-      results.push({
-        step: "App ID correspondente",
-        ok: !appId || String(d.app_id ?? "") === String(appId),
-        detail: `token.app_id=${d.app_id ?? "?"}${appId ? ` · esperado=${appId}` : ""}`,
-      });
-      const scopes: string[] = d.scopes ?? [];
-      const need = ["whatsapp_business_management", "whatsapp_business_messaging"];
-      const missing = need.filter((s) => !scopes.includes(s));
-      results.push({
-        step: "Permissões (scopes)",
-        ok: missing.length === 0,
-        detail: missing.length === 0 ? scopes.join(", ") : `Faltando: ${missing.join(", ")}`,
-      });
-    } else {
-      results.push({ step: "Token válido", ok: false, detail: dbg?.body?.error?.message ?? `HTTP ${dbg?.code}` });
-    }
-
-    // 2) WABA
-    if (conn.waba_id) {
-      const w = byKey.waba;
-      if (w?.code === 200 && w.body?.id) {
-        results.push({ step: "Acesso à WABA", ok: true, detail: `${w.body.name ?? "?"} (${w.body.id})` });
-      } else {
-        results.push({ step: "Acesso à WABA", ok: false, detail: w?.body?.error?.message ?? `HTTP ${w?.code}` });
-      }
-    }
-
-    // 3) Números da WABA — checagem crítica de mismatch
-    if (conn.waba_id) {
-      const wn = byKey.waba_numbers;
-      if (wn?.code === 200 && Array.isArray(wn.body?.data)) {
-        const nums = wn.body.data as Array<{ id: string; display_phone_number?: string; verified_name?: string }>;
-        const match = nums.find((n) => String(n.id) === String(conn!.phone_number_id));
-        if (match) {
-          results.push({ step: "phone_number_id pertence à WABA", ok: true, detail: `${match.display_phone_number ?? ""} · ${match.verified_name ?? ""}` });
-        } else {
-          const listed = nums.map((n) => `${n.id}${n.display_phone_number ? ` (${n.display_phone_number})` : ""}`).join(", ") || "nenhum";
-          results.push({
-            step: "phone_number_id pertence à WABA",
-            ok: false,
-            detail: `❌ ${conn.phone_number_id} NÃO está entre os números da WABA ${conn.waba_id}. Números encontrados: ${listed}. → Corrija o phone_number_id da conexão ou aponte para a WABA correta.`,
-          });
-        }
-      } else {
-        results.push({ step: "Listar números da WABA", ok: false, detail: wn?.body?.error?.message ?? `HTTP ${wn?.code}` });
-      }
-    }
-
-    // 4) Acesso direto ao número
-    const ph = byKey.phone;
-    if (ph?.code === 200 && ph.body?.id) {
-      results.push({ step: "Acesso ao número (GET direto)", ok: true, detail: `${ph.body.display_phone_number ?? ""} · name_status=${ph.body.name_status ?? "—"}` });
-    } else {
-      const err = ph?.body?.error;
-      const hint = err?.code === 100
-        ? " → phone_number_id inexistente OU token não pertence ao Business Manager que possui a WABA."
-        : "";
-      results.push({ step: "Acesso ao número (GET direto)", ok: false, detail: `${err?.message ?? `HTTP ${ph?.code}`}${hint}` });
-    }
-
-    // 5) Perfil comercial
-    const pr = byKey.profile;
-    if (pr?.code === 200) {
-      results.push({ step: "Consulta do perfil comercial", ok: true });
-    } else {
-      results.push({ step: "Consulta do perfil comercial", ok: false, detail: pr?.body?.error?.message ?? `HTTP ${pr?.code}` });
-    }
-
-    // 6) Último webhook
+    // Último webhook recebido
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data: last } = await supabaseAdmin
-        .from("whatsapp_webhook_logs")
-        .select("created_at,event_type")
-        .order("created_at", { ascending: false })
-        .limit(1);
-      results.push({
-        step: "Último webhook",
-        ok: !!last?.[0],
-        detail: last?.[0] ? `${last[0].event_type} · ${new Date(last[0].created_at).toLocaleString("pt-BR")}` : "nunca recebido",
-      });
+        .from("whatsapp_webhook_logs").select("created_at,event_type")
+        .order("created_at", { ascending: false }).limit(1);
+      push({ key: "webhook_last", label: "Último webhook recebido", status: last?.[0] ? "success" : "warning", detail: last?.[0] ? `${last[0].event_type} · ${new Date(last[0].created_at).toLocaleString("pt-BR")}` : "nunca" });
     } catch {}
+
+    // Auto-fix hints
+    const auto_fix: { phone_number_id?: string; waba_id?: string; needs_subscribe?: boolean } = {};
+    const nums: any[] | null = wabaNumbers;
+    if (causes.includes("PHONE_ID_WRONG_WABA") && nums && nums.length === 1) {
+      auto_fix.phone_number_id = String(nums[0].id);
+    }
+    if (causes.includes("APP_NOT_SUBSCRIBED")) auto_fix.needs_subscribe = true;
 
     await auditProfileEvent({
       workspace_id: conn.workspace_id, connection_id: conn.id, phone_number_id: conn.phone_number_id,
       user_id: context.userId, action: "CONNECTION_DIAGNOSED",
-      new_value: { results },
+      new_value: { causes, checks: checks.map((c) => ({ k: c.key, s: c.status })) },
     });
 
-    return { ok: results.every((r) => r.ok), results };
+    return {
+      ok: checks.every((c) => c.status === "success" || c.status === "skipped"),
+      checks,
+      causes: Array.from(new Set(causes)),
+      token: dbg ? {
+        source: tokenSource,
+        last6: tokenLast6,
+        is_valid: dbg.is_valid,
+        app_id: dbg.app_id,
+        user_id: dbg.user_id,
+        expires_at: dbg.expires_at,
+        data_access_expires_at: dbg.data_access_expires_at,
+        scopes: Array.isArray(dbg.scopes) ? dbg.scopes : [],
+        granular_scopes: Array.isArray(dbg.granular_scopes) ? dbg.granular_scopes : [],
+      } : { source: tokenSource, last6: tokenLast6, scopes: [] },
+      connection: {
+        id: conn.id, workspace_id: conn.workspace_id,
+        phone_number_id: conn.phone_number_id, waba_id: conn.waba_id,
+      },
+      waba: wabaData,
+      waba_numbers: wabaNumbers,
+      subscribed_apps: subscribedApps,
+      auto_fix,
+    };
   });
 
 
