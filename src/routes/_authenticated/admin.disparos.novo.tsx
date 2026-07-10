@@ -772,24 +772,15 @@ function PreviewCard({ previewQ, contact, embedded }: { previewQ: any; contact?:
   const content = (
     <div className="space-y-3">
       <div className="flex items-center justify-between text-xs">
-        <span className="text-muted-foreground">Preview com:</span>
+        <span className="text-muted-foreground">Prévia com:</span>
         <Badge variant="outline">{contact?.name ?? contact?.phone ?? "sem contato de amostra"}</Badge>
       </div>
-      <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 whitespace-pre-wrap text-sm text-emerald-950">
-        {previewQ.data?.header && <div className="font-semibold mb-1">{previewQ.data.header}</div>}
-        {previewQ.data?.body ?? "…"}
-        {previewQ.data?.footer && <div className="mt-2 text-xs opacity-70">{previewQ.data.footer}</div>}
-      </div>
-      {(previewQ.data?.buttons ?? []).length > 0 && (
-        <div className="space-y-1">
-          {previewQ.data.buttons.map((b: any, i: number) => (
-            <div key={i} className="rounded-md border bg-card p-2 text-xs">
-              <div className="font-medium">{b.text}</div>
-              {b.url && <div className="text-muted-foreground truncate">{b.url}</div>}
-            </div>
-          ))}
-        </div>
-      )}
+      <WhatsAppPreview
+        body={previewQ.data?.body ?? "…"}
+        header={previewQ.data?.header ? { text: previewQ.data.header } : null}
+        footer={previewQ.data?.footer ?? null}
+        buttons={previewQ.data?.buttons ?? []}
+      />
       {(previewQ.data?.warnings ?? []).length > 0 && (
         <div className="rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 space-y-1">
           {previewQ.data.warnings.map((w: string, i: number) => <div key={i}>⚠ {w}</div>)}
@@ -805,3 +796,4 @@ function PreviewCard({ previewQ, contact, embedded }: { previewQ: any; contact?:
     </Card>
   );
 }
+
