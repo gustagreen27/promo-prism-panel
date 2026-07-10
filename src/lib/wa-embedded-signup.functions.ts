@@ -144,10 +144,26 @@ export const completeEmbeddedSignup = createServerFn({ method: "POST" })
     const businessId: string | null =
       data.business_id ?? wJson?.on_behalf_of_business_info?.id ?? null;
 
+    // 3b) Validate that phone_number_id really belongs to the returned WABA (PHONE_ID_WRONG_WABA guard)
+    const pnListRes = await gfetch(`/${data.waba_id}/phone_numbers?fields=id,display_phone_number&limit=200`);
+    const pnListJson: any = await pnListRes.json().catch(() => ({}));
+    const phoneBelongs =
+      pnListRes.ok && Array.isArray(pnListJson?.data)
+        ? pnListJson.data.some((p: any) => String(p.id) === String(data.phone_number_id))
+        : false;
+    if (!phoneBelongs) {
+      await logStep(supabase, baseLog, "validate_phone_waba", "error", pnListJson, "PHONE_ID_WRONG_WABA");
+      throw new Error(
+        "PHONE_ID_WRONG_WABA: o número informado não pertence à WABA retornada pelo onboarding. Nada foi salvo.",
+      );
+    }
+    await logStep(supabase, baseLog, "validate_phone_waba", "ok", { count: pnListJson.data.length });
+
     // 4) subscribe our app to WABA webhooks (best effort)
     const subRes = await gfetch(`/${data.waba_id}/subscribed_apps`, { method: "POST" });
     const subJson: any = await subRes.json().catch(() => ({}));
-    await logStep(supabase, baseLog, "subscribe_app", subRes.ok ? "ok" : "error", subJson, subRes.ok ? undefined : subJson?.error?.message);
+    const subscribeOk = subRes.ok;
+    await logStep(supabase, baseLog, "subscribe_app", subscribeOk ? "ok" : "error", subJson, subscribeOk ? undefined : subJson?.error?.message);
 
     // 5) upsert WABA
     const nomeInterno = data.nome_interno?.trim() || wabaName || `WABA ${data.waba_id.slice(-6)}`;
