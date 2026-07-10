@@ -245,3 +245,99 @@ function SegurancaCard({ ctx }: { ctx: any }) {
     </div>
   );
 }
+
+/* ---- Integrações (Google Calendar) ---- */
+
+function IntegracoesCard({ ctx }: { ctx: any }) {
+  const qc = useQueryClient();
+  const wsId = ctx.primary_workspace?.id;
+  const authUrlFn = useServerFn(getGoogleAuthUrl);
+  const connFn = useServerFn(getGoogleConnection);
+  const disconnFn = useServerFn(disconnectGoogleCalendar);
+  const listCalsFn = useServerFn(listGoogleCalendars);
+  const setPrefsFn = useServerFn(setGoogleCalendarPrefs);
+
+  const { data: conn } = useQuery({
+    queryKey: ["gcal-conn", wsId],
+    queryFn: () => connFn({ data: { workspace_id: wsId } }),
+    enabled: !!wsId,
+  });
+  const { data: cals } = useQuery({
+    queryKey: ["gcal-list", wsId, conn?.id],
+    queryFn: () => listCalsFn({ data: { workspace_id: wsId } }),
+    enabled: !!wsId && !!conn?.id,
+  });
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const g = params.get("gcal");
+    if (g === "ok") { toast.success("Google Calendar conectado"); qc.invalidateQueries({ queryKey: ["gcal-conn"] }); }
+    else if (g?.startsWith("error:")) toast.error(`Falha na conexão: ${g.replace("error:", "")}`);
+    if (g) { params.delete("gcal"); window.history.replaceState({}, "", `${window.location.pathname}?${params}`); }
+  }, [qc]);
+
+  async function connect() {
+    try {
+      const { url } = await authUrlFn({ data: { workspace_id: wsId } });
+      window.location.href = url;
+    } catch (e: any) { toast.error(e?.message ?? "Erro"); }
+  }
+  async function disconnect() {
+    if (!confirm("Desconectar Google Calendar?")) return;
+    await disconnFn({ data: { workspace_id: wsId } });
+    toast.success("Desconectado");
+    qc.invalidateQueries({ queryKey: ["gcal-conn"] });
+  }
+  async function updatePrefs(patch: { calendar_id?: string; auto_sync?: boolean }) {
+    await setPrefsFn({ data: { workspace_id: wsId, ...patch } });
+    toast.success("Atualizado");
+    qc.invalidateQueries({ queryKey: ["gcal-conn"] });
+  }
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="flex items-center gap-2"><Calendar className="h-4 w-4" />Google Calendar</CardTitle></CardHeader>
+      <CardContent className="space-y-4 max-w-xl">
+        {!conn ? (
+          <>
+            <p className="text-sm text-muted-foreground">
+              Conecte sua conta Google para sincronizar automaticamente cada campanha agendada com o seu calendário.
+            </p>
+            <Button onClick={connect}><Calendar className="mr-2 h-4 w-4" />Conectar Google Calendar</Button>
+          </>
+        ) : (
+          <>
+            <div className="rounded border p-3 text-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-xs text-muted-foreground">Conta conectada</div>
+                  <div className="font-medium">{conn.google_email ?? "—"}</div>
+                </div>
+                <Badge variant="outline">Ativo</Badge>
+              </div>
+            </div>
+            <div>
+              <Label>Calendário usado</Label>
+              <select className="w-full rounded border px-3 py-2 text-sm" value={conn.calendar_id ?? "primary"}
+                onChange={(e) => updatePrefs({ calendar_id: e.target.value })}>
+                <option value="primary">Primary</option>
+                {(cals ?? []).map((c: any) => (
+                  <option key={c.id} value={c.id}>{c.summary}{c.primary ? " (primary)" : ""}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center justify-between rounded border p-3">
+              <div>
+                <div className="text-sm font-medium">Sincronização automática</div>
+                <div className="text-xs text-muted-foreground">Criar/atualizar evento no Google quando a campanha for agendada, reagendada ou cancelada.</div>
+              </div>
+              <Switch checked={!!conn.auto_sync} onCheckedChange={(v) => updatePrefs({ auto_sync: v })} />
+            </div>
+            <Button variant="destructive" onClick={disconnect}>Desconectar</Button>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
