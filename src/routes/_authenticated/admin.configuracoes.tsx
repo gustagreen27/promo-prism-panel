@@ -3,6 +3,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z } from "zod";
 import { PageHeader } from "@/components/admin/page-header";
 import { CONFIG_TABS } from "@/components/admin/hub-tabs";
 import { Button } from "@/components/ui/button";
@@ -11,10 +13,16 @@ import { Label } from "@/components/ui/label";
 import { listSettings, upsertSetting } from "@/lib/settings.functions";
 import { getBillingSettings, adminUpdateBillingSettings } from "@/lib/billing.functions";
 
+const searchSchema = z.object({
+  tab: fallback(z.string(), "geral").default("geral"),
+});
+
 export const Route = createFileRoute("/_authenticated/admin/configuracoes")({
   head: () => ({ meta: [{ title: "Configurações — Painel" }] }),
+  validateSearch: zodValidator(searchSchema),
   component: Page,
 });
+
 
 function Page() {
   const list = useServerFn(listSettings);
