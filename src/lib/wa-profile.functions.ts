@@ -331,7 +331,9 @@ export const applyDisplayName = createServerFn({ method: "POST" })
     });
   });
 
-// ── Diagnóstico ──────────────────────────────────────────────────────
+// ── Diagnóstico (batch) ───────────────────────────────────────────────
+// Usa Meta Batch API para consultar em paralelo: debug_token, WABA, números
+// da WABA e o próprio phone_number_id. Detecta mismatch WABA↔número↔token.
 export const diagnoseConnection = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ connection_id: z.string().uuid() }).parse(d))
@@ -340,60 +342,125 @@ export const diagnoseConnection = createServerFn({ method: "POST" })
     let conn: LoadedConnection | null = null;
     try {
       conn = await loadConnectionSecure(context.supabase, context.userId, data.connection_id);
-      results.push({ step: "Token encontrado", ok: true, detail: conn.use_global_token ? "global" : "conexão" });
+      results.push({ step: "Token carregado", ok: true, detail: conn.use_global_token ? "global (WHATSAPP_ACCESS_TOKEN)" : "conexão" });
     } catch (e: any) {
-      results.push({ step: "Token encontrado", ok: false, detail: e?.message });
+      results.push({ step: "Token carregado", ok: false, detail: e?.message });
       return { ok: false, results };
     }
-    const headers = { Authorization: `Bearer ${conn.access_token}` };
     const appId = process.env.META_APP_ID;
-    // Token válido + App
+
+    // Monta batch: cada request paralela; cada uma pode falhar independente.
+    const ops: Array<{ key: string; method: "GET"; relative_url: string }> = [
+      { key: "debug", method: "GET", relative_url: `debug_token?input_token=${encodeURIComponent(conn.access_token)}` },
+      { key: "phone", method: "GET", relative_url: `${conn.phone_number_id}?fields=${PHONE_FIELDS}` },
+      { key: "profile", method: "GET", relative_url: `${conn.phone_number_id}/whatsapp_business_profile?fields=about` },
+    ];
+    if (conn.waba_id) {
+      ops.push({ key: "waba", method: "GET", relative_url: `${conn.waba_id}?fields=id,name,currency,timezone_id` });
+      ops.push({ key: "waba_numbers", method: "GET", relative_url: `${conn.waba_id}/phone_numbers?fields=id,display_phone_number,verified_name,code_verification_status` });
+    }
+
+    let batchResp: any[] = [];
     try {
-      const debug = await metaFetch(
-        `/debug_token?input_token=${encodeURIComponent(conn.access_token)}`,
-        { headers },
-      );
-      const d = debug?.data ?? {};
-      results.push({ step: "Token válido", ok: !!d.is_valid, detail: d.is_valid ? `expira em ${d.expires_at || "—"}` : "inválido" });
+      const body = new URLSearchParams();
+      body.set("access_token", conn.access_token);
+      body.set("include_headers", "false");
+      body.set("batch", JSON.stringify(ops.map(({ method, relative_url }) => ({ method, relative_url }))));
+      batchResp = await metaFetch("/", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: body.toString(),
+      });
+      if (!Array.isArray(batchResp)) throw new Error("Resposta inesperada do batch da Meta.");
+      results.push({ step: "Batch API executado", ok: true, detail: `${batchResp.length} chamadas` });
+    } catch (e: any) {
+      results.push({ step: "Batch API executado", ok: false, detail: e?.message });
+      return { ok: false, results };
+    }
+
+    const byKey: Record<string, { code: number; body: any }> = {};
+    ops.forEach((op, i) => {
+      const raw = batchResp[i];
+      if (!raw) { byKey[op.key] = { code: 0, body: null }; return; }
+      let parsed: any = null;
+      try { parsed = raw.body ? JSON.parse(raw.body) : null; } catch { parsed = raw.body; }
+      byKey[op.key] = { code: raw.code ?? 0, body: parsed };
+    });
+
+    // 1) debug_token
+    const dbg = byKey.debug;
+    if (dbg?.code === 200 && dbg.body?.data) {
+      const d = dbg.body.data;
+      results.push({ step: "Token válido", ok: !!d.is_valid, detail: d.is_valid ? `expira em ${d.expires_at ? new Date(d.expires_at * 1000).toLocaleString("pt-BR") : "nunca"}` : "inválido" });
       results.push({
         step: "App ID correspondente",
         ok: !appId || String(d.app_id ?? "") === String(appId),
-        detail: `app_id=${d.app_id ?? "?"}`,
+        detail: `token.app_id=${d.app_id ?? "?"}${appId ? ` · esperado=${appId}` : ""}`,
       });
       const scopes: string[] = d.scopes ?? [];
       const need = ["whatsapp_business_management", "whatsapp_business_messaging"];
+      const missing = need.filter((s) => !scopes.includes(s));
       results.push({
-        step: "Permissões",
-        ok: need.every((s) => scopes.includes(s)),
-        detail: scopes.join(", ") || "—",
+        step: "Permissões (scopes)",
+        ok: missing.length === 0,
+        detail: missing.length === 0 ? scopes.join(", ") : `Faltando: ${missing.join(", ")}`,
       });
-    } catch (e: any) {
-      results.push({ step: "Token válido", ok: false, detail: e?.message });
+    } else {
+      results.push({ step: "Token válido", ok: false, detail: dbg?.body?.error?.message ?? `HTTP ${dbg?.code}` });
     }
-    // WABA
+
+    // 2) WABA
     if (conn.waba_id) {
-      try {
-        await metaFetch(`/${conn.waba_id}?fields=id,name`, { headers });
-        results.push({ step: "Acesso à WABA", ok: true });
-      } catch (e: any) {
-        results.push({ step: "Acesso à WABA", ok: false, detail: e?.message });
+      const w = byKey.waba;
+      if (w?.code === 200 && w.body?.id) {
+        results.push({ step: "Acesso à WABA", ok: true, detail: `${w.body.name ?? "?"} (${w.body.id})` });
+      } else {
+        results.push({ step: "Acesso à WABA", ok: false, detail: w?.body?.error?.message ?? `HTTP ${w?.code}` });
       }
     }
-    // Número + perfil
-    try {
-      const phone = await metaFetch(`/${conn.phone_number_id}?fields=${PHONE_FIELDS}`, { headers });
-      results.push({ step: "Acesso ao número", ok: true, detail: phone.display_phone_number });
-      results.push({ step: "Status do nome", ok: true, detail: phone.name_status ?? "—" });
-    } catch (e: any) {
-      results.push({ step: "Acesso ao número", ok: false, detail: e?.message });
+
+    // 3) Números da WABA — checagem crítica de mismatch
+    if (conn.waba_id) {
+      const wn = byKey.waba_numbers;
+      if (wn?.code === 200 && Array.isArray(wn.body?.data)) {
+        const nums = wn.body.data as Array<{ id: string; display_phone_number?: string; verified_name?: string }>;
+        const match = nums.find((n) => String(n.id) === String(conn!.phone_number_id));
+        if (match) {
+          results.push({ step: "phone_number_id pertence à WABA", ok: true, detail: `${match.display_phone_number ?? ""} · ${match.verified_name ?? ""}` });
+        } else {
+          const listed = nums.map((n) => `${n.id}${n.display_phone_number ? ` (${n.display_phone_number})` : ""}`).join(", ") || "nenhum";
+          results.push({
+            step: "phone_number_id pertence à WABA",
+            ok: false,
+            detail: `❌ ${conn.phone_number_id} NÃO está entre os números da WABA ${conn.waba_id}. Números encontrados: ${listed}. → Corrija o phone_number_id da conexão ou aponte para a WABA correta.`,
+          });
+        }
+      } else {
+        results.push({ step: "Listar números da WABA", ok: false, detail: wn?.body?.error?.message ?? `HTTP ${wn?.code}` });
+      }
     }
-    try {
-      await metaFetch(`/${conn.phone_number_id}/whatsapp_business_profile?fields=about`, { headers });
-      results.push({ step: "Consulta do perfil", ok: true });
-    } catch (e: any) {
-      results.push({ step: "Consulta do perfil", ok: false, detail: e?.message });
+
+    // 4) Acesso direto ao número
+    const ph = byKey.phone;
+    if (ph?.code === 200 && ph.body?.id) {
+      results.push({ step: "Acesso ao número (GET direto)", ok: true, detail: `${ph.body.display_phone_number ?? ""} · name_status=${ph.body.name_status ?? "—"}` });
+    } else {
+      const err = ph?.body?.error;
+      const hint = err?.code === 100
+        ? " → phone_number_id inexistente OU token não pertence ao Business Manager que possui a WABA."
+        : "";
+      results.push({ step: "Acesso ao número (GET direto)", ok: false, detail: `${err?.message ?? `HTTP ${ph?.code}`}${hint}` });
     }
-    // Último webhook recebido
+
+    // 5) Perfil comercial
+    const pr = byKey.profile;
+    if (pr?.code === 200) {
+      results.push({ step: "Consulta do perfil comercial", ok: true });
+    } else {
+      results.push({ step: "Consulta do perfil comercial", ok: false, detail: pr?.body?.error?.message ?? `HTTP ${pr?.code}` });
+    }
+
+    // 6) Último webhook
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data: last } = await supabaseAdmin
@@ -416,6 +483,7 @@ export const diagnoseConnection = createServerFn({ method: "POST" })
 
     return { ok: results.every((r) => r.ok), results };
   });
+
 
 // ── Histórico de auditoria ────────────────────────────────────────────
 export const listProfileAuditLogs = createServerFn({ method: "GET" })
