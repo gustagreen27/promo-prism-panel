@@ -17,8 +17,9 @@ export type WaSendInput = {
 };
 
 export type WaSendResult =
-  | { ok: true; metaMessageId: string; raw: any }
-  | { ok: false; error: string; code?: string; raw?: any };
+  | { ok: true; metaMessageId: string; messageStatus: string | null; wamid: string | null; raw: any; httpStatus: number }
+  | { ok: false; error: string; code?: string; raw?: any; httpStatus?: number };
+
 
 function buildBodyComponents(variables?: Record<string, string>) {
   if (!variables) return [];
