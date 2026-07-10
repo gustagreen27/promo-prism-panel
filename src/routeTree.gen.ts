@@ -28,8 +28,10 @@ import { Route as PainelFinanceiroRouteImport } from './routes/painel.financeiro
 import { Route as PainelContatosRouteImport } from './routes/painel.contatos'
 import { Route as PainelConfiguracoesRouteImport } from './routes/painel.configuracoes'
 import { Route as PainelCampanhasRouteImport } from './routes/painel.campanhas'
+import { Route as PainelAgendaRouteImport } from './routes/painel.agenda'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as PainelCampanhasNovaRouteImport } from './routes/painel.campanhas.nova'
+import { Route as PainelCampanhasHistoricoRouteImport } from './routes/painel.campanhas.historico'
 import { Route as AuthenticatedAdminWhatsappCampanhasRouteImport } from './routes/_authenticated/admin.whatsapp-campanhas'
 import { Route as AuthenticatedAdminWhatsappRouteImport } from './routes/_authenticated/admin.whatsapp'
 import { Route as AuthenticatedAdminUpsellRouteImport } from './routes/_authenticated/admin.upsell'
@@ -54,6 +56,8 @@ import { Route as ApiPublicWhatsappWebhookHealthRouteImport } from './routes/api
 import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp/webhook'
 import { Route as ApiPublicWhatsappSyncNumbersRouteImport } from './routes/api/public/whatsapp/sync-numbers'
 import { Route as ApiPublicWhatsappQueueTickRouteImport } from './routes/api/public/whatsapp/queue-tick'
+import { Route as ApiPublicHooksNotifyUpcomingCampaignsRouteImport } from './routes/api/public/hooks/notify-upcoming-campaigns'
+import { Route as ApiPublicGoogleOauthCallbackRouteImport } from './routes/api/public/google/oauth-callback'
 import { Route as ApiPublicCiSplatRouteImport } from './routes/api/public/ci.$'
 import { Route as AuthenticatedAdminWhatsappWebhooksRouteImport } from './routes/_authenticated/admin.whatsapp.webhooks'
 import { Route as AuthenticatedAdminWhatsappWabasRouteImport } from './routes/_authenticated/admin.whatsapp.wabas'
@@ -174,6 +178,11 @@ const PainelCampanhasRoute = PainelCampanhasRouteImport.update({
   path: '/campanhas',
   getParentRoute: () => PainelRoute,
 } as any)
+const PainelAgendaRoute = PainelAgendaRouteImport.update({
+  id: '/agenda',
+  path: '/agenda',
+  getParentRoute: () => PainelRoute,
+} as any)
 const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
@@ -184,6 +193,12 @@ const PainelCampanhasNovaRoute = PainelCampanhasNovaRouteImport.update({
   path: '/nova',
   getParentRoute: () => PainelCampanhasRoute,
 } as any)
+const PainelCampanhasHistoricoRoute =
+  PainelCampanhasHistoricoRouteImport.update({
+    id: '/historico',
+    path: '/historico',
+    getParentRoute: () => PainelCampanhasRoute,
+  } as any)
 const AuthenticatedAdminWhatsappCampanhasRoute =
   AuthenticatedAdminWhatsappCampanhasRouteImport.update({
     id: '/admin/whatsapp-campanhas',
@@ -325,6 +340,18 @@ const ApiPublicWhatsappQueueTickRoute =
   ApiPublicWhatsappQueueTickRouteImport.update({
     id: '/api/public/whatsapp/queue-tick',
     path: '/api/public/whatsapp/queue-tick',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksNotifyUpcomingCampaignsRoute =
+  ApiPublicHooksNotifyUpcomingCampaignsRouteImport.update({
+    id: '/api/public/hooks/notify-upcoming-campaigns',
+    path: '/api/public/hooks/notify-upcoming-campaigns',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicGoogleOauthCallbackRoute =
+  ApiPublicGoogleOauthCallbackRouteImport.update({
+    id: '/api/public/google/oauth-callback',
+    path: '/api/public/google/oauth-callback',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicCiSplatRoute = ApiPublicCiSplatRouteImport.update({
@@ -487,6 +514,7 @@ export interface FileRoutesByFullPath {
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/painel/agenda': typeof PainelAgendaRoute
   '/painel/campanhas': typeof PainelCampanhasRouteWithChildren
   '/painel/configuracoes': typeof PainelConfiguracoesRoute
   '/painel/contatos': typeof PainelContatosRoute
@@ -514,6 +542,7 @@ export interface FileRoutesByFullPath {
   '/admin/upsell': typeof AuthenticatedAdminUpsellRoute
   '/admin/whatsapp': typeof AuthenticatedAdminWhatsappRouteWithChildren
   '/admin/whatsapp-campanhas': typeof AuthenticatedAdminWhatsappCampanhasRouteWithChildren
+  '/painel/campanhas/historico': typeof PainelCampanhasHistoricoRoute
   '/painel/campanhas/nova': typeof PainelCampanhasNovaRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
@@ -537,6 +566,8 @@ export interface FileRoutesByFullPath {
   '/admin/whatsapp/wabas': typeof AuthenticatedAdminWhatsappWabasRoute
   '/admin/whatsapp/webhooks': typeof AuthenticatedAdminWhatsappWebhooksRoute
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
+  '/api/public/google/oauth-callback': typeof ApiPublicGoogleOauthCallbackRoute
+  '/api/public/hooks/notify-upcoming-campaigns': typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
   '/api/public/whatsapp/queue-tick': typeof ApiPublicWhatsappQueueTickRoute
   '/api/public/whatsapp/sync-numbers': typeof ApiPublicWhatsappSyncNumbersRoute
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
@@ -557,6 +588,7 @@ export interface FileRoutesByTo {
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/painel/agenda': typeof PainelAgendaRoute
   '/painel/campanhas': typeof PainelCampanhasRouteWithChildren
   '/painel/configuracoes': typeof PainelConfiguracoesRoute
   '/painel/contatos': typeof PainelContatosRoute
@@ -583,6 +615,7 @@ export interface FileRoutesByTo {
   '/admin/tv': typeof AuthenticatedAdminTvRoute
   '/admin/upsell': typeof AuthenticatedAdminUpsellRoute
   '/admin/whatsapp': typeof AuthenticatedAdminWhatsappRouteWithChildren
+  '/painel/campanhas/historico': typeof PainelCampanhasHistoricoRoute
   '/painel/campanhas/nova': typeof PainelCampanhasNovaRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
@@ -606,6 +639,8 @@ export interface FileRoutesByTo {
   '/admin/whatsapp/wabas': typeof AuthenticatedAdminWhatsappWabasRoute
   '/admin/whatsapp/webhooks': typeof AuthenticatedAdminWhatsappWebhooksRoute
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
+  '/api/public/google/oauth-callback': typeof ApiPublicGoogleOauthCallbackRoute
+  '/api/public/hooks/notify-upcoming-campaigns': typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
   '/api/public/whatsapp/queue-tick': typeof ApiPublicWhatsappQueueTickRoute
   '/api/public/whatsapp/sync-numbers': typeof ApiPublicWhatsappSyncNumbersRoute
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
@@ -629,6 +664,7 @@ export interface FileRoutesById {
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/painel/agenda': typeof PainelAgendaRoute
   '/painel/campanhas': typeof PainelCampanhasRouteWithChildren
   '/painel/configuracoes': typeof PainelConfiguracoesRoute
   '/painel/contatos': typeof PainelContatosRoute
@@ -656,6 +692,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/upsell': typeof AuthenticatedAdminUpsellRoute
   '/_authenticated/admin/whatsapp': typeof AuthenticatedAdminWhatsappRouteWithChildren
   '/_authenticated/admin/whatsapp-campanhas': typeof AuthenticatedAdminWhatsappCampanhasRouteWithChildren
+  '/painel/campanhas/historico': typeof PainelCampanhasHistoricoRoute
   '/painel/campanhas/nova': typeof PainelCampanhasNovaRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
@@ -679,6 +716,8 @@ export interface FileRoutesById {
   '/_authenticated/admin/whatsapp/wabas': typeof AuthenticatedAdminWhatsappWabasRoute
   '/_authenticated/admin/whatsapp/webhooks': typeof AuthenticatedAdminWhatsappWebhooksRoute
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
+  '/api/public/google/oauth-callback': typeof ApiPublicGoogleOauthCallbackRoute
+  '/api/public/hooks/notify-upcoming-campaigns': typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
   '/api/public/whatsapp/queue-tick': typeof ApiPublicWhatsappQueueTickRoute
   '/api/public/whatsapp/sync-numbers': typeof ApiPublicWhatsappSyncNumbersRoute
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
@@ -702,6 +741,7 @@ export interface FileRouteTypes {
     | '/politica-de-privacidade'
     | '/recuperar-senha'
     | '/reset-password'
+    | '/painel/agenda'
     | '/painel/campanhas'
     | '/painel/configuracoes'
     | '/painel/contatos'
@@ -729,6 +769,7 @@ export interface FileRouteTypes {
     | '/admin/upsell'
     | '/admin/whatsapp'
     | '/admin/whatsapp-campanhas'
+    | '/painel/campanhas/historico'
     | '/painel/campanhas/nova'
     | '/admin/'
     | '/admin/campaigns/$id'
@@ -752,6 +793,8 @@ export interface FileRouteTypes {
     | '/admin/whatsapp/wabas'
     | '/admin/whatsapp/webhooks'
     | '/api/public/ci/$'
+    | '/api/public/google/oauth-callback'
+    | '/api/public/hooks/notify-upcoming-campaigns'
     | '/api/public/whatsapp/queue-tick'
     | '/api/public/whatsapp/sync-numbers'
     | '/api/public/whatsapp/webhook'
@@ -772,6 +815,7 @@ export interface FileRouteTypes {
     | '/politica-de-privacidade'
     | '/recuperar-senha'
     | '/reset-password'
+    | '/painel/agenda'
     | '/painel/campanhas'
     | '/painel/configuracoes'
     | '/painel/contatos'
@@ -798,6 +842,7 @@ export interface FileRouteTypes {
     | '/admin/tv'
     | '/admin/upsell'
     | '/admin/whatsapp'
+    | '/painel/campanhas/historico'
     | '/painel/campanhas/nova'
     | '/admin'
     | '/admin/campaigns/$id'
@@ -821,6 +866,8 @@ export interface FileRouteTypes {
     | '/admin/whatsapp/wabas'
     | '/admin/whatsapp/webhooks'
     | '/api/public/ci/$'
+    | '/api/public/google/oauth-callback'
+    | '/api/public/hooks/notify-upcoming-campaigns'
     | '/api/public/whatsapp/queue-tick'
     | '/api/public/whatsapp/sync-numbers'
     | '/api/public/whatsapp/webhook'
@@ -843,6 +890,7 @@ export interface FileRouteTypes {
     | '/politica-de-privacidade'
     | '/recuperar-senha'
     | '/reset-password'
+    | '/painel/agenda'
     | '/painel/campanhas'
     | '/painel/configuracoes'
     | '/painel/contatos'
@@ -870,6 +918,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/upsell'
     | '/_authenticated/admin/whatsapp'
     | '/_authenticated/admin/whatsapp-campanhas'
+    | '/painel/campanhas/historico'
     | '/painel/campanhas/nova'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/campaigns/$id'
@@ -893,6 +942,8 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/whatsapp/wabas'
     | '/_authenticated/admin/whatsapp/webhooks'
     | '/api/public/ci/$'
+    | '/api/public/google/oauth-callback'
+    | '/api/public/hooks/notify-upcoming-campaigns'
     | '/api/public/whatsapp/queue-tick'
     | '/api/public/whatsapp/sync-numbers'
     | '/api/public/whatsapp/webhook'
@@ -917,6 +968,8 @@ export interface RootRouteChildren {
   RecuperarSenhaRoute: typeof RecuperarSenhaRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ApiPublicCiSplatRoute: typeof ApiPublicCiSplatRoute
+  ApiPublicGoogleOauthCallbackRoute: typeof ApiPublicGoogleOauthCallbackRoute
+  ApiPublicHooksNotifyUpcomingCampaignsRoute: typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
   ApiPublicWhatsappQueueTickRoute: typeof ApiPublicWhatsappQueueTickRoute
   ApiPublicWhatsappSyncNumbersRoute: typeof ApiPublicWhatsappSyncNumbersRoute
   ApiPublicWhatsappWebhookRoute: typeof ApiPublicWhatsappWebhookRoute
@@ -1058,6 +1111,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PainelCampanhasRouteImport
       parentRoute: typeof PainelRoute
     }
+    '/painel/agenda': {
+      id: '/painel/agenda'
+      path: '/agenda'
+      fullPath: '/painel/agenda'
+      preLoaderRoute: typeof PainelAgendaRouteImport
+      parentRoute: typeof PainelRoute
+    }
     '/_authenticated/admin/': {
       id: '/_authenticated/admin/'
       path: '/admin'
@@ -1070,6 +1130,13 @@ declare module '@tanstack/react-router' {
       path: '/nova'
       fullPath: '/painel/campanhas/nova'
       preLoaderRoute: typeof PainelCampanhasNovaRouteImport
+      parentRoute: typeof PainelCampanhasRoute
+    }
+    '/painel/campanhas/historico': {
+      id: '/painel/campanhas/historico'
+      path: '/historico'
+      fullPath: '/painel/campanhas/historico'
+      preLoaderRoute: typeof PainelCampanhasHistoricoRouteImport
       parentRoute: typeof PainelCampanhasRoute
     }
     '/_authenticated/admin/whatsapp-campanhas': {
@@ -1238,6 +1305,20 @@ declare module '@tanstack/react-router' {
       path: '/api/public/whatsapp/queue-tick'
       fullPath: '/api/public/whatsapp/queue-tick'
       preLoaderRoute: typeof ApiPublicWhatsappQueueTickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/notify-upcoming-campaigns': {
+      id: '/api/public/hooks/notify-upcoming-campaigns'
+      path: '/api/public/hooks/notify-upcoming-campaigns'
+      fullPath: '/api/public/hooks/notify-upcoming-campaigns'
+      preLoaderRoute: typeof ApiPublicHooksNotifyUpcomingCampaignsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/google/oauth-callback': {
+      id: '/api/public/google/oauth-callback'
+      path: '/api/public/google/oauth-callback'
+      fullPath: '/api/public/google/oauth-callback'
+      preLoaderRoute: typeof ApiPublicGoogleOauthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/ci/$': {
@@ -1589,10 +1670,12 @@ const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
 interface PainelCampanhasRouteChildren {
+  PainelCampanhasHistoricoRoute: typeof PainelCampanhasHistoricoRoute
   PainelCampanhasNovaRoute: typeof PainelCampanhasNovaRoute
 }
 
 const PainelCampanhasRouteChildren: PainelCampanhasRouteChildren = {
+  PainelCampanhasHistoricoRoute: PainelCampanhasHistoricoRoute,
   PainelCampanhasNovaRoute: PainelCampanhasNovaRoute,
 }
 
@@ -1601,6 +1684,7 @@ const PainelCampanhasRouteWithChildren = PainelCampanhasRoute._addFileChildren(
 )
 
 interface PainelRouteChildren {
+  PainelAgendaRoute: typeof PainelAgendaRoute
   PainelCampanhasRoute: typeof PainelCampanhasRouteWithChildren
   PainelConfiguracoesRoute: typeof PainelConfiguracoesRoute
   PainelContatosRoute: typeof PainelContatosRoute
@@ -1613,6 +1697,7 @@ interface PainelRouteChildren {
 }
 
 const PainelRouteChildren: PainelRouteChildren = {
+  PainelAgendaRoute: PainelAgendaRoute,
   PainelCampanhasRoute: PainelCampanhasRouteWithChildren,
   PainelConfiguracoesRoute: PainelConfiguracoesRoute,
   PainelContatosRoute: PainelContatosRoute,
@@ -1639,6 +1724,9 @@ const rootRouteChildren: RootRouteChildren = {
   RecuperarSenhaRoute: RecuperarSenhaRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ApiPublicCiSplatRoute: ApiPublicCiSplatRoute,
+  ApiPublicGoogleOauthCallbackRoute: ApiPublicGoogleOauthCallbackRoute,
+  ApiPublicHooksNotifyUpcomingCampaignsRoute:
+    ApiPublicHooksNotifyUpcomingCampaignsRoute,
   ApiPublicWhatsappQueueTickRoute: ApiPublicWhatsappQueueTickRoute,
   ApiPublicWhatsappSyncNumbersRoute: ApiPublicWhatsappSyncNumbersRoute,
   ApiPublicWhatsappWebhookRoute: ApiPublicWhatsappWebhookRoute,
