@@ -106,6 +106,9 @@ function Page() {
                 <TableCell><Badge variant="outline">{r.quality_rating ?? "—"}</Badge></TableCell>
                 <TableCell><Badge variant={r.status === "ativa" ? "default" : "secondary"}>{r.status}</Badge></TableCell>
                 <TableCell className="text-right">
+                  <Button asChild size="icon" variant="ghost" title="Gerenciar perfil">
+                    <Link to="/admin/whatsapp/numeros/$id/perfil" params={{ id: r.id }}><UserCog className="h-4 w-4" /></Link>
+                  </Button>
                   <Button size="icon" variant="ghost" onClick={() => { setEditing(r); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                   <Button size="icon" variant="ghost" onClick={() => confirm("Remover este número?") && delMut.mutate(r.id)}><Trash2 className="h-4 w-4" /></Button>
                 </TableCell>
