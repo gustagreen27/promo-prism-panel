@@ -275,21 +275,28 @@ function WizardPage() {
     onError: (e: any) => toast.error(e?.message ?? "Erro ao agendar"),
   });
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Nova campanha WhatsApp"
-        description="Fluxo guiado em 7 etapas: dados, público, WhatsApp, variáveis, botão, revisão e envio."
-        actions={
-          <Button variant="ghost" onClick={() => nav({ to: "/admin/disparos" })}>
-            <ArrowLeft className="mr-2 h-4 w-4" />Voltar
-          </Button>
-        }
-      />
+  const currentStepMeta = STEPS[step];
 
-      <div className="rounded-xl border bg-card p-4">
-        <Stepper steps={STEPS} currentIndex={step} onStepClick={(i) => i < step && setStep(i)} />
+  return (
+    <div className="space-y-6 pb-24">
+      {/* Header com título à esquerda e stepper à direita/centro */}
+      <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 lg:max-w-sm">
+            <h1 className="text-xl font-semibold tracking-tight">{currentStepMeta.title}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{currentStepMeta.subtitle}</p>
+          </div>
+          <div className="flex-1 lg:max-w-3xl">
+            <Stepper
+              steps={STEPS}
+              current={step + 1}
+              maxReached={step + 1}
+              onGoTo={(id) => id - 1 < step && setStep(id - 1)}
+            />
+          </div>
+        </div>
       </div>
+
 
       {/* STEP 1 — Dados */}
       {step === 0 && (
