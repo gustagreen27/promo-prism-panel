@@ -79,45 +79,70 @@ export type Database = {
       }
       calendar_events: {
         Row: {
+          campaign_id: string | null
           client_id: string | null
           created_at: string
+          created_by: string | null
           description: string | null
           end_time: string | null
           event_type: string | null
+          google_calendar_id: string | null
+          google_event_id: string | null
+          google_synced_at: string | null
           id: string
           project_id: string | null
           start_time: string
           status: string
           title: string
           updated_at: string
+          workspace_id: string | null
         }
         Insert: {
+          campaign_id?: string | null
           client_id?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           end_time?: string | null
           event_type?: string | null
+          google_calendar_id?: string | null
+          google_event_id?: string | null
+          google_synced_at?: string | null
           id?: string
           project_id?: string | null
           start_time: string
           status?: string
           title: string
           updated_at?: string
+          workspace_id?: string | null
         }
         Update: {
+          campaign_id?: string | null
           client_id?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           end_time?: string | null
           event_type?: string | null
+          google_calendar_id?: string | null
+          google_event_id?: string | null
+          google_synced_at?: string | null
           id?: string
           project_id?: string | null
           start_time?: string
           status?: string
           title?: string
           updated_at?: string
+          workspace_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "calendar_events_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "wa_campaigns"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "calendar_events_client_id_fkey"
             columns: ["client_id"]
@@ -130,6 +155,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_events_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
