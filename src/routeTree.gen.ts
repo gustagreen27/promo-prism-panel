@@ -75,7 +75,6 @@ import { Route as AuthenticatedAdminWhatsappConexoesRouteImport } from './routes
 import { Route as AuthenticatedAdminRelatoriosNewRouteImport } from './routes/_authenticated/admin.relatorios.new'
 import { Route as AuthenticatedAdminRelatoriosAnalyticsRouteImport } from './routes/_authenticated/admin.relatorios.analytics'
 import { Route as AuthenticatedAdminRelatoriosIdRouteImport } from './routes/_authenticated/admin.relatorios.$id'
-import { Route as AuthenticatedAdminDisparosNovoRouteImport } from './routes/_authenticated/admin.disparos.novo'
 import { Route as AuthenticatedAdminDisparosIdRouteImport } from './routes/_authenticated/admin.disparos.$id'
 import { Route as AuthenticatedAdminContatosListasRouteImport } from './routes/_authenticated/admin.contatos.listas'
 import { Route as AuthenticatedAdminCampaignsIdRouteImport } from './routes/_authenticated/admin.campaigns.$id'
@@ -455,12 +454,6 @@ const AuthenticatedAdminRelatoriosIdRoute =
     path: '/admin/relatorios/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedAdminDisparosNovoRoute =
-  AuthenticatedAdminDisparosNovoRouteImport.update({
-    id: '/novo',
-    path: '/novo',
-    getParentRoute: () => AuthenticatedAdminDisparosRoute,
-  } as any)
 const AuthenticatedAdminDisparosIdRoute =
   AuthenticatedAdminDisparosIdRouteImport.update({
     id: '/$id',
@@ -548,7 +541,6 @@ export interface FileRoutesByFullPath {
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
   '/admin/contatos/listas': typeof AuthenticatedAdminContatosListasRoute
   '/admin/disparos/$id': typeof AuthenticatedAdminDisparosIdRoute
-  '/admin/disparos/novo': typeof AuthenticatedAdminDisparosNovoRoute
   '/admin/relatorios/$id': typeof AuthenticatedAdminRelatoriosIdRoute
   '/admin/relatorios/analytics': typeof AuthenticatedAdminRelatoriosAnalyticsRoute
   '/admin/relatorios/new': typeof AuthenticatedAdminRelatoriosNewRoute
@@ -621,7 +613,6 @@ export interface FileRoutesByTo {
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
   '/admin/contatos/listas': typeof AuthenticatedAdminContatosListasRoute
   '/admin/disparos/$id': typeof AuthenticatedAdminDisparosIdRoute
-  '/admin/disparos/novo': typeof AuthenticatedAdminDisparosNovoRoute
   '/admin/relatorios/$id': typeof AuthenticatedAdminRelatoriosIdRoute
   '/admin/relatorios/analytics': typeof AuthenticatedAdminRelatoriosAnalyticsRoute
   '/admin/relatorios/new': typeof AuthenticatedAdminRelatoriosNewRoute
@@ -698,7 +689,6 @@ export interface FileRoutesById {
   '/_authenticated/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
   '/_authenticated/admin/contatos/listas': typeof AuthenticatedAdminContatosListasRoute
   '/_authenticated/admin/disparos/$id': typeof AuthenticatedAdminDisparosIdRoute
-  '/_authenticated/admin/disparos/novo': typeof AuthenticatedAdminDisparosNovoRoute
   '/_authenticated/admin/relatorios/$id': typeof AuthenticatedAdminRelatoriosIdRoute
   '/_authenticated/admin/relatorios/analytics': typeof AuthenticatedAdminRelatoriosAnalyticsRoute
   '/_authenticated/admin/relatorios/new': typeof AuthenticatedAdminRelatoriosNewRoute
@@ -775,7 +765,6 @@ export interface FileRouteTypes {
     | '/admin/campaigns/$id'
     | '/admin/contatos/listas'
     | '/admin/disparos/$id'
-    | '/admin/disparos/novo'
     | '/admin/relatorios/$id'
     | '/admin/relatorios/analytics'
     | '/admin/relatorios/new'
@@ -848,7 +837,6 @@ export interface FileRouteTypes {
     | '/admin/campaigns/$id'
     | '/admin/contatos/listas'
     | '/admin/disparos/$id'
-    | '/admin/disparos/novo'
     | '/admin/relatorios/$id'
     | '/admin/relatorios/analytics'
     | '/admin/relatorios/new'
@@ -924,7 +912,6 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/campaigns/$id'
     | '/_authenticated/admin/contatos/listas'
     | '/_authenticated/admin/disparos/$id'
-    | '/_authenticated/admin/disparos/novo'
     | '/_authenticated/admin/relatorios/$id'
     | '/_authenticated/admin/relatorios/analytics'
     | '/_authenticated/admin/relatorios/new'
@@ -1440,13 +1427,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRelatoriosIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/admin/disparos/novo': {
-      id: '/_authenticated/admin/disparos/novo'
-      path: '/novo'
-      fullPath: '/admin/disparos/novo'
-      preLoaderRoute: typeof AuthenticatedAdminDisparosNovoRouteImport
-      parentRoute: typeof AuthenticatedAdminDisparosRoute
-    }
     '/_authenticated/admin/disparos/$id': {
       id: '/_authenticated/admin/disparos/$id'
       path: '/$id'
@@ -1516,14 +1496,12 @@ const AuthenticatedAdminContatosRouteWithChildren =
 
 interface AuthenticatedAdminDisparosRouteChildren {
   AuthenticatedAdminDisparosIdRoute: typeof AuthenticatedAdminDisparosIdRoute
-  AuthenticatedAdminDisparosNovoRoute: typeof AuthenticatedAdminDisparosNovoRoute
   AuthenticatedAdminDisparosIndexRoute: typeof AuthenticatedAdminDisparosIndexRoute
 }
 
 const AuthenticatedAdminDisparosRouteChildren: AuthenticatedAdminDisparosRouteChildren =
   {
     AuthenticatedAdminDisparosIdRoute: AuthenticatedAdminDisparosIdRoute,
-    AuthenticatedAdminDisparosNovoRoute: AuthenticatedAdminDisparosNovoRoute,
     AuthenticatedAdminDisparosIndexRoute: AuthenticatedAdminDisparosIndexRoute,
   }
 
