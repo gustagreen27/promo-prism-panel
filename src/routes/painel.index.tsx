@@ -38,6 +38,14 @@ function PanelHome() {
     refetchInterval: 60_000,
   });
 
+  const upcomingFn = useServerFn(listUpcomingCampaigns);
+  const { data: upcoming = [] } = useQuery({
+    queryKey: ["upcoming-campaigns", ws?.id],
+    queryFn: () => upcomingFn({ data: { workspace_id: ws!.id, limit: 5 } }),
+    enabled: !!ws?.id,
+    refetchInterval: 60_000,
+  });
+
   const onboarding = ws?.onboarding ?? [];
   const totalSteps = onboarding.length || 5;
   const doneSteps = onboarding.filter((o) => o.done).length;
