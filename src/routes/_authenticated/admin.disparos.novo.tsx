@@ -659,17 +659,24 @@ function WizardPage() {
         </Card>
       )}
 
-      {/* Nav */}
-      <div className="flex items-center justify-between pt-2">
-        <Button variant="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>
-          <ArrowLeft className="mr-2 h-4 w-4" />Voltar
-        </Button>
-        {step < STEPS.length - 1 && (
-          <Button onClick={() => setStep((s) => s + 1)} disabled={!canGoNext}>
-            Próximo <ArrowRight className="ml-2 h-4 w-4" />
+      {/* Sticky nav */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-3 px-6 py-3">
+          <Button
+            variant="secondary"
+            className="rounded-full"
+            onClick={() => (step === 0 ? nav({ to: "/admin/disparos" }) : setStep((s) => Math.max(0, s - 1)))}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />Voltar
           </Button>
-        )}
+          {step < STEPS.length - 1 && (
+            <Button className="rounded-full" onClick={() => setStep((s) => s + 1)} disabled={!canGoNext}>
+              Próximo <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
+
     </div>
   );
 }
