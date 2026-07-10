@@ -20,7 +20,7 @@ import { listWabas } from "@/lib/wa-wabas.functions";
 import { listClients } from "@/lib/clients.functions";
 import { listProjects } from "@/lib/projects.functions";
 
-export const Route = createFileRoute("/_authenticated/admin/whatsapp/numeros")({
+export const Route = createFileRoute("/_authenticated/admin/whatsapp/numeros/")({
   head: () => ({ meta: [{ title: "Números WhatsApp" }] }),
   component: Page,
 });
