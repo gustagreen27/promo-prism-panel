@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, Pencil, Download } from "lucide-react";
 import { toCSV, downloadCSV, participantsLabel } from "@/lib/csv";
 import { PageHeader } from "@/components/admin/page-header";
+import { FINANCEIRO_TABS } from "@/components/admin/hub-tabs";
 import { EmptyState } from "@/components/admin/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

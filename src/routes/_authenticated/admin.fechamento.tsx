@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
+import { FINANCEIRO_TABS } from "@/components/admin/hub-tabs";
 import { EmptyState } from "@/components/admin/empty-state";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
@@ -44,7 +45,7 @@ function Page() {
 
   return (
     <>
-      <PageHeader title="Fechamento" description="Consolidados mensais de receita, custo e mensagens." actions={
+      <PageHeader tabs={FINANCEIRO_TABS} title="Fechamento" description="Consolidados mensais de receita, custo e mensagens." actions={
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Gerar fechamento</Button></DialogTrigger>
           <DialogContent>

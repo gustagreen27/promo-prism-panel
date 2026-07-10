@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Plus, FileText, BarChart3 } from "lucide-react";
 import { computeTotals, fmtBRL, fmtNum, formatBRDate, type Campaign } from "@/lib/report-utils";
 import { PageHeader } from "@/components/admin/page-header";
+import { RELATORIOS_TABS } from "@/components/admin/hub-tabs";
 
 type ReportRow = {
   id: string;

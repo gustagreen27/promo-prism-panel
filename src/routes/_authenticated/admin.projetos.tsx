@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Plus, Trash2, Pencil } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
+import { CLIENTES_TABS } from "@/components/admin/hub-tabs";
 import { EmptyState } from "@/components/admin/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,7 +48,7 @@ function Page() {
 
   return (
     <>
-      <PageHeader title="Projetos" description="Projetos e entregas." actions={
+      <PageHeader tabs={CLIENTES_TABS} title="Projetos" description="Projetos e entregas." actions={
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
           <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Novo projeto</Button></DialogTrigger>
           <FormDialog editing={editing} clients={clients} onSubmit={(p: any) => saveMut.mutate(p)} saving={saveMut.isPending} />
