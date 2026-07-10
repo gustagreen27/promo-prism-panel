@@ -10,9 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Building2, KeyRound, ShieldCheck } from "lucide-react";
+import { User, Building2, KeyRound, ShieldCheck, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyContext } from "@/lib/auth.functions";
+import { getGoogleAuthUrl, getGoogleConnection, disconnectGoogleCalendar, listGoogleCalendars, setGoogleCalendarPrefs } from "@/lib/google-calendar.functions";
+import { Switch } from "@/components/ui/switch";
 
 export const Route = createFileRoute("/painel/configuracoes")({
   head: () => ({ meta: [{ title: "Configurações — Disparos FR" }] }),
@@ -50,10 +52,12 @@ function Page() {
         <TabsList>
           <TabsTrigger value="perfil"><User className="mr-1 h-4 w-4" />Perfil</TabsTrigger>
           <TabsTrigger value="empresa"><Building2 className="mr-1 h-4 w-4" />Empresa</TabsTrigger>
+          <TabsTrigger value="integracoes"><Calendar className="mr-1 h-4 w-4" />Integrações</TabsTrigger>
           <TabsTrigger value="seguranca"><KeyRound className="mr-1 h-4 w-4" />Segurança</TabsTrigger>
         </TabsList>
         <TabsContent value="perfil"><PerfilCard ctx={ctx} /></TabsContent>
         <TabsContent value="empresa"><EmpresaCard ctx={ctx} /></TabsContent>
+        <TabsContent value="integracoes"><IntegracoesCard ctx={ctx} /></TabsContent>
         <TabsContent value="seguranca"><SegurancaCard ctx={ctx} /></TabsContent>
       </Tabs>
     </div>
