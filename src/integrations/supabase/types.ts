@@ -2216,12 +2216,19 @@ export type Database = {
           client_id: string | null
           code_verification_status: string | null
           created_at: string
+          current_display_name: string | null
           daily_cap: number | null
           daily_limit: number | null
           display_name: string | null
+          display_name_applied_at: string | null
+          display_name_rejection_reason: string | null
+          display_name_requested_at: string | null
+          display_name_reviewed_at: string | null
+          display_name_status: string | null
           display_phone: string | null
           graph_api_version: string | null
           id: string
+          last_meta_sync_at: string | null
           last_seen_at: string | null
           last_synced_at: string | null
           messaging_limit: string | null
@@ -2236,8 +2243,10 @@ export type Database = {
           provider: string | null
           quality_rating: string | null
           quality_visible_to_client: boolean
+          requested_display_name: string | null
           status: string
           updated_at: string
+          use_global_token: boolean
           verified_name: string | null
           verify_token: string | null
           visibility: string
@@ -2253,12 +2262,19 @@ export type Database = {
           client_id?: string | null
           code_verification_status?: string | null
           created_at?: string
+          current_display_name?: string | null
           daily_cap?: number | null
           daily_limit?: number | null
           display_name?: string | null
+          display_name_applied_at?: string | null
+          display_name_rejection_reason?: string | null
+          display_name_requested_at?: string | null
+          display_name_reviewed_at?: string | null
+          display_name_status?: string | null
           display_phone?: string | null
           graph_api_version?: string | null
           id?: string
+          last_meta_sync_at?: string | null
           last_seen_at?: string | null
           last_synced_at?: string | null
           messaging_limit?: string | null
@@ -2273,8 +2289,10 @@ export type Database = {
           provider?: string | null
           quality_rating?: string | null
           quality_visible_to_client?: boolean
+          requested_display_name?: string | null
           status?: string
           updated_at?: string
+          use_global_token?: boolean
           verified_name?: string | null
           verify_token?: string | null
           visibility?: string
@@ -2290,12 +2308,19 @@ export type Database = {
           client_id?: string | null
           code_verification_status?: string | null
           created_at?: string
+          current_display_name?: string | null
           daily_cap?: number | null
           daily_limit?: number | null
           display_name?: string | null
+          display_name_applied_at?: string | null
+          display_name_rejection_reason?: string | null
+          display_name_requested_at?: string | null
+          display_name_reviewed_at?: string | null
+          display_name_status?: string | null
           display_phone?: string | null
           graph_api_version?: string | null
           id?: string
+          last_meta_sync_at?: string | null
           last_seen_at?: string | null
           last_synced_at?: string | null
           messaging_limit?: string | null
@@ -2310,8 +2335,10 @@ export type Database = {
           provider?: string | null
           quality_rating?: string | null
           quality_visible_to_client?: boolean
+          requested_display_name?: string | null
           status?: string
           updated_at?: string
+          use_global_token?: boolean
           verified_name?: string | null
           verify_token?: string | null
           visibility?: string
@@ -2347,6 +2374,45 @@ export type Database = {
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_display_name_attempts: {
+        Row: {
+          connection_id: string
+          created_at: string
+          id: string
+          success: boolean
+          user_id: string | null
+        }
+        Insert: {
+          connection_id: string
+          created_at?: string
+          id?: string
+          success?: boolean
+          user_id?: string | null
+        }
+        Update: {
+          connection_id?: string
+          created_at?: string
+          id?: string
+          success?: boolean
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_display_name_attempts_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_numbers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_display_name_attempts_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections"
             referencedColumns: ["id"]
           },
         ]
@@ -2622,6 +2688,82 @@ export type Database = {
             columns: ["waba_ref_id"]
             isOneToOne: false
             referencedRelation: "whatsapp_wabas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_profile_audit_logs: {
+        Row: {
+          action: string
+          connection_id: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          meta_error_code: string | null
+          meta_error_subcode: string | null
+          meta_error_type: string | null
+          meta_fbtrace_id: string | null
+          new_value: Json | null
+          phone_number_id: string | null
+          previous_value: Json | null
+          status: string
+          user_id: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          action: string
+          connection_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          meta_error_code?: string | null
+          meta_error_subcode?: string | null
+          meta_error_type?: string | null
+          meta_fbtrace_id?: string | null
+          new_value?: Json | null
+          phone_number_id?: string | null
+          previous_value?: Json | null
+          status?: string
+          user_id?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          action?: string
+          connection_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          meta_error_code?: string | null
+          meta_error_subcode?: string | null
+          meta_error_type?: string | null
+          meta_fbtrace_id?: string | null
+          new_value?: Json | null
+          phone_number_id?: string | null
+          previous_value?: Json | null
+          status?: string
+          user_id?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_profile_audit_logs_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_numbers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_profile_audit_logs_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_profile_audit_logs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
