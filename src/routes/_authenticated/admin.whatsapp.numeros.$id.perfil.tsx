@@ -16,6 +16,11 @@ import {
   getPhoneProfile, updatePhoneProfile, uploadPhoneProfilePicture,
   requestDisplayNameChange, applyDisplayName, diagnoseConnection, listProfileAuditLogs,
 } from "@/lib/wa-profile.functions";
+import {
+  updateConnectionToken, toggleGlobalToken, applyFixPhoneNumberId,
+  applyFixWabaId, subscribeAppToWaba,
+} from "@/lib/wa-diagnosis.functions";
+import { syncWabaNumbers } from "@/lib/wa-meta-sync.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp/numeros/$id/perfil")({
   head: () => ({ meta: [{ title: "Perfil do número WhatsApp" }] }),
