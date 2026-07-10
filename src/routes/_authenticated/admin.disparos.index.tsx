@@ -1,11 +1,11 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
-  Plus, Search, Play, Pause, XCircle, Eye, RefreshCw, Users, MessageSquareText,
-  Calendar, CheckCircle2, AlertTriangle, Clock, Rocket,
+  Plus, Search, Play, Pause, XCircle, Eye, RefreshCw, ArrowLeft,
+  Calendar, CheckCircle2, AlertTriangle, Clock, Rocket, MessageSquareText,
 } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,8 @@ import {
 import {
   listWaCampaigns, startWaCampaign, pauseWaCampaign, cancelWaCampaign,
 } from "@/lib/wa-campaigns.functions";
+import { supabase } from "@/integrations/supabase/client";
+import { CampaignWizard } from "@/routes/painel.campanhas.nova";
 
 export const Route = createFileRoute("/_authenticated/admin/disparos/")({
   head: () => ({ meta: [{ title: "Disparos — WhatsApp" }] }),
@@ -37,8 +39,53 @@ const STATUS_META: Record<string, { label: string; className: string }> = {
 };
 
 type StatusFilter = "all" | "active" | "scheduled" | "done" | "draft";
+type ViewMode = "list" | "wizard";
 
 function DisparosIndex() {
+  const [mode, setMode] = useState<ViewMode>("list");
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+
+  // Carrega workspace primário do admin — o wizard opera sobre ele.
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await supabase.rpc("get_my_context");
+      if (error) { toast.error("Não foi possível carregar seu workspace"); return; }
+      const ctx = data as any;
+      const wid = ctx?.primary_workspace?.id ?? ctx?.workspaces?.[0]?.id;
+      if (wid) setWorkspaceId(wid);
+    })();
+  }, []);
+
+  if (mode === "wizard") {
+    if (!workspaceId) {
+      return (
+        <div className="p-10 text-center text-sm text-muted-foreground">
+          Carregando workspace…
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <Button variant="ghost" size="sm" onClick={() => setMode("list")}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Voltar para a lista
+          </Button>
+          <div className="text-xs text-muted-foreground">
+            Novo disparo — fluxo em 5 etapas
+          </div>
+        </div>
+        <CampaignWizard
+          workspaceId={workspaceId}
+          onExit={() => setMode("list")}
+        />
+      </div>
+    );
+  }
+
+  return <ListView onNew={() => setMode("wizard")} />;
+}
+
+function ListView({ onNew }: { onNew: () => void }) {
   const nav = useNavigate();
   const qc = useQueryClient();
   const listFn = useServerFn(listWaCampaigns);
@@ -103,23 +150,20 @@ function DisparosIndex() {
     <div className="space-y-6">
       <PageHeader
         title="Disparos"
-        description="Todas as campanhas de disparo WhatsApp — crie, agende e acompanhe o envio em tempo real."
+        description="Crie, agende e acompanhe todas as campanhas de WhatsApp em tempo real."
         actions={
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => campaignsQ.refetch()}>
               <RefreshCw className={`mr-2 h-4 w-4 ${campaignsQ.isFetching ? "animate-spin" : ""}`} />
               Atualizar
             </Button>
-            <Button asChild size="lg" className="rounded-full shadow-sm">
-              <Link to="/admin/disparos/novo">
-                <Plus className="mr-2 h-4 w-4" /> Novo disparo
-              </Link>
+            <Button size="lg" className="rounded-full shadow-sm" onClick={onNew}>
+              <Plus className="mr-2 h-4 w-4" /> Novo disparo
             </Button>
           </div>
         }
       />
 
-      {/* KPIs / filtros clicáveis */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <StatCard active={filter === "all"} onClick={() => setFilter("all")} icon={<Rocket className="h-4 w-4" />} label="Todas" value={counts.all} />
         <StatCard active={filter === "active"} onClick={() => setFilter("active")} icon={<Play className="h-4 w-4 text-emerald-600" />} label="Ativas" value={counts.active} />
@@ -128,7 +172,6 @@ function DisparosIndex() {
         <StatCard active={filter === "draft"} onClick={() => setFilter("draft")} icon={<Clock className="h-4 w-4 text-muted-foreground" />} label="Rascunhos" value={counts.draft} />
       </div>
 
-      {/* Busca */}
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -139,13 +182,12 @@ function DisparosIndex() {
         />
       </div>
 
-      {/* Tabela */}
       <Card>
         <CardContent className="p-0">
           {campaignsQ.isLoading ? (
             <div className="p-10 text-center text-sm text-muted-foreground">Carregando disparos…</div>
           ) : filtered.length === 0 ? (
-            <EmptyState hasAny={campaigns.length > 0} onNew={() => nav({ to: "/admin/disparos/novo" })} />
+            <EmptyState hasAny={campaigns.length > 0} onNew={onNew} />
           ) : (
             <Table>
               <TableHeader>
@@ -247,9 +289,6 @@ function EmptyState({ hasAny, onNew }: { hasAny: boolean; onNew: () => void }) {
       <Button className="mt-6 rounded-full" onClick={onNew}>
         <Plus className="mr-2 h-4 w-4" /> Novo disparo
       </Button>
-      <p className="mt-4 text-xs text-muted-foreground flex items-center justify-center gap-1">
-        <Users className="h-3 w-3" /> Precisa organizar contatos antes? Vá em <Link to="/admin/contatos" className="underline mx-1">Contatos</Link> ou <Link to="/admin/contatos/listas" className="underline ml-1">Listas de contatos</Link>.
-      </p>
     </div>
   );
 }

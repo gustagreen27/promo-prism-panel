@@ -1,12 +1,15 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
-  MessageCircle,
   Megaphone,
-  Building2,
-  BadgeDollarSign,
-  BarChart3,
   Link2,
+  Users,
+  ListChecks,
+  FileText,
+  Phone,
+  Building2,
+  BarChart3,
+  Webhook,
   Settings,
   LogOut,
 } from "lucide-react";
@@ -28,56 +31,24 @@ type NavItem = {
   title: string;
   to: string;
   icon: React.ComponentType<{ className?: string }>;
-  /** Rotas que também ativam este item (para hubs com sub-abas). */
   matches?: string[];
 };
 
-// Sidebar enxuta: 8 áreas principais. Cada uma tem sub-abas dentro da própria página.
+// Sidebar do admin — cada função em um único lugar, sem duplicidade.
 const NAV: NavItem[] = [
-  { title: "Dashboard", to: "/admin", icon: LayoutDashboard },
-  {
-    title: "WhatsApp",
-    to: "/admin/whatsapp/conversas",
-    icon: MessageCircle,
-    matches: ["/admin/whatsapp"],
-  },
-  {
-    title: "Disparos",
-    to: "/admin/disparos",
-    icon: Megaphone,
-  },
-  {
-    title: "Clientes",
-    to: "/admin/clientes",
-    icon: Building2,
-    matches: ["/admin/projetos", "/admin/contatos"],
-  },
-  {
-    title: "Financeiro",
-    to: "/admin/financeiro",
-    icon: BadgeDollarSign,
-    matches: [
-      "/admin/precificacao",
-      "/admin/faturamento",
-      "/admin/custos",
-      "/admin/estoque",
-      "/admin/fechamento",
-      "/admin/historico",
-    ],
-  },
-  {
-    title: "Relatórios",
-    to: "/admin/relatorios",
-    icon: BarChart3,
-    matches: ["/admin/agenda", "/admin/whatsapp/relatorios"],
-  },
-  { title: "Cloaker", to: "/admin/campanhas", icon: Link2 },
-  {
-    title: "Configurações",
-    to: "/admin/configuracoes",
-    icon: Settings,
-  },
+  { title: "Visão geral", to: "/admin", icon: LayoutDashboard },
+  { title: "Disparos", to: "/admin/disparos", icon: Megaphone },
+  { title: "Campanhas", to: "/admin/campanhas", icon: Link2 },
+  { title: "Contatos", to: "/admin/contatos", icon: Users, matches: ["/admin/clientes", "/admin/projetos"] },
+  { title: "Listas", to: "/admin/contatos/listas", icon: ListChecks },
+  { title: "Templates", to: "/admin/whatsapp/templates", icon: FileText },
+  { title: "Números", to: "/admin/whatsapp/numeros", icon: Phone, matches: ["/admin/whatsapp/conversas"] },
+  { title: "WABAs", to: "/admin/whatsapp/wabas", icon: Building2 },
+  { title: "Relatórios", to: "/admin/relatorios", icon: BarChart3, matches: ["/admin/financeiro", "/admin/agenda"] },
+  { title: "Webhooks", to: "/admin/whatsapp/webhooks", icon: Webhook },
+  { title: "Configurações", to: "/admin/configuracoes", icon: Settings },
 ];
+
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });

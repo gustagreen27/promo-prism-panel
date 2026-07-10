@@ -38,6 +38,21 @@ export const Route = createFileRoute("/painel/campanhas/nova")({
   component: Page,
 });
 
+function Page() {
+  const { workspaceId } = Route.useRouteContext() as { workspaceId: string };
+  const { event_id, scheduled_for } = Route.useSearch();
+  const navigate = useNavigate();
+  return (
+    <CampaignWizard
+      workspaceId={workspaceId}
+      event_id={event_id}
+      scheduled_for={scheduled_for}
+      onExit={() => navigate({ to: "/painel/campanhas" })}
+      onOpenCalendar={() => navigate({ to: "/painel/agenda" })}
+    />
+  );
+}
+
 type NumberRow = {
   id: string; display_name: string; phone_masked: string; status: string;
   quality_rating?: string | null; messaging_limit_tier?: string | null; daily_cap?: number | null;
@@ -63,10 +78,15 @@ const STEPS: WizardStep[] = [
   { id: 5, label: "Resultados", short: "Resultados" },
 ];
 
-function Page() {
-  const { workspaceId } = Route.useRouteContext() as { workspaceId: string };
-  const { event_id, scheduled_for } = Route.useSearch();
-  const navigate = useNavigate();
+export interface CampaignWizardProps {
+  workspaceId: string;
+  event_id?: string;
+  scheduled_for?: string;
+  onExit?: () => void;
+  onOpenCalendar?: () => void;
+}
+
+export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, onOpenCalendar }: CampaignWizardProps) {
   const fnListNumbers = useServerFn(listMyNumbers);
   const fnListTemplates = useServerFn(listMyTemplates);
   const fnBalance = useServerFn(getMyBalance);
@@ -76,6 +96,7 @@ function Page() {
   const fnConflict = useServerFn(checkSchedulingConflict);
 
   const DRAFT_KEY = `wa_wizard_draft_${workspaceId}`;
+
   const toLocal = (iso?: string) => (iso ? new Date(iso).toISOString().slice(0, 16) : "");
 
   // Wizard
@@ -752,16 +773,21 @@ function Page() {
             )}
 
             <div className="flex flex-wrap justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => navigate({ to: "/painel/campanhas" })}>
-                Ver minhas campanhas
-              </Button>
+              {onExit && (
+                <Button variant="outline" onClick={onExit}>
+                  Ver minhas campanhas
+                </Button>
+              )}
               <Button variant="secondary" onClick={resetForNext}>
                 <Plus className="mr-1 h-4 w-4" /> Criar outra campanha
               </Button>
-              <Button variant="outline" onClick={() => navigate({ to: "/painel/agenda" })}>
-                <CalendarClock className="mr-1 h-4 w-4" /> Abrir agenda
-              </Button>
+              {onOpenCalendar && (
+                <Button variant="outline" onClick={onOpenCalendar}>
+                  <CalendarClock className="mr-1 h-4 w-4" /> Abrir agenda
+                </Button>
+              )}
             </div>
+
           </CardContent>
         </Card>
       )}
