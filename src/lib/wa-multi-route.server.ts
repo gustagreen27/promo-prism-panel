@@ -348,7 +348,7 @@ export async function processMultiRouteTick(campaignId: string, reservationBudge
                 error_code: null,
               })
               .eq("id", rec.id);
-            await supabaseAdmin.rpc("increment" as any, {}).catch(() => {});
+            // (no-op; accepted_count updated below on the route row)
             await supabaseAdmin
               .from("wa_campaign_routes")
               .update({ accepted_count: (picked as any).accepted_count = ((picked as any).accepted_count ?? 0) + 1 })
