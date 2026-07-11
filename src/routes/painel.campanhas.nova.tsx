@@ -534,6 +534,125 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                   </div>
                 </div>
 
+                {/* Conteúdo dinâmico do template */}
+                {selectedTemplate && (tplRequiresMedia || tplBodyVarNums.length > 0 || tplUrlVarNums.length > 0) && (
+                  <div className="rounded-lg border p-4 space-y-4">
+                    <div>
+                      <div className="flex items-center gap-2 text-sm font-semibold">
+                        <MessageSquareText className="h-4 w-4" /> Conteúdo do template
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Preencha as variáveis dinâmicas do template selecionado.
+                      </div>
+                    </div>
+
+                    {tplRequiresMedia && (
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-1.5 text-xs uppercase tracking-wide">
+                          {tplHeaderType === "video" ? <VideoIcon className="h-3.5 w-3.5" />
+                            : tplHeaderType === "document" ? <FileText className="h-3.5 w-3.5" />
+                            : <ImageIcon className="h-3.5 w-3.5" />}
+                          Mídia do cabeçalho ({tplHeaderType})*
+                        </Label>
+                        {headerMediaUrl ? (
+                          <div className="space-y-2">
+                            {tplHeaderType === "image" && (
+                              <img src={headerMediaUrl} alt="Prévia" className="max-h-40 rounded border object-contain" />
+                            )}
+                            {tplHeaderType === "video" && (
+                              <video src={headerMediaUrl} controls className="max-h-40 rounded border" />
+                            )}
+                            {tplHeaderType === "document" && (
+                              <a href={headerMediaUrl} target="_blank" rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-primary underline">
+                                <FileText className="h-3 w-3" /> Ver documento
+                              </a>
+                            )}
+                            <div className="flex flex-wrap gap-2">
+                              <Button type="button" variant="outline" size="sm" onClick={() => setHeaderMediaUrl("")}>
+                                <X className="mr-1 h-3.5 w-3.5" /> Remover
+                              </Button>
+                              <label className="inline-flex cursor-pointer">
+                                <Input type="file" className="hidden"
+                                  accept={tplHeaderType === "image" ? "image/*" : tplHeaderType === "video" ? "video/*" : "*"}
+                                  onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadHeaderMedia(f); e.currentTarget.value = ""; }} />
+                                <span className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs hover:bg-muted">
+                                  <Upload className="h-3.5 w-3.5" /> Substituir
+                                </span>
+                              </label>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <label className="inline-flex cursor-pointer">
+                              <Input type="file" className="hidden"
+                                accept={tplHeaderType === "image" ? "image/*" : tplHeaderType === "video" ? "video/*" : "*"}
+                                onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadHeaderMedia(f); e.currentTarget.value = ""; }}
+                                disabled={uploadingMedia} />
+                              <span className="inline-flex items-center gap-2 rounded-md border border-dashed px-4 py-2 text-sm hover:bg-muted">
+                                {uploadingMedia ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                                {uploadingMedia ? "Enviando..." : "Fazer upload"}
+                              </span>
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
+                              <Input placeholder="ou cole uma URL pública da mídia"
+                                value={headerMediaUrl}
+                                onChange={(e) => setHeaderMediaUrl(e.target.value)} />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {tplBodyVarNums.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-xs uppercase tracking-wide">Variáveis do corpo</Label>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {tplBodyVarNums.map((n) => (
+                            <div key={`body-${n}`}>
+                              <Label className="text-[11px] text-muted-foreground">{`{{${n}}}`}</Label>
+                              <Input
+                                value={bodyVars[String(n)] ?? ""}
+                                onChange={(e) => setBodyVars((v) => ({ ...v, [String(n)]: e.target.value }))}
+                                placeholder='Valor fixo ou token, ex: {nome|"Cliente"}'
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          Tokens suportados: <code>{'{nome}'}</code>, <code>{'{email}'}</code>, <code>{'{telefone}'}</code>, <code>{'{cliente.nome}'}</code>, com fallback <code>{'{campo|"padrão"}'}</code>.
+                        </p>
+                      </div>
+                    )}
+
+                    {tplUrlVarNums.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-xs uppercase tracking-wide">
+                          Variável da URL do botão{tplUrlButton?.text ? ` — "${tplUrlButton.text}"` : ""}
+                        </Label>
+                        <div className="rounded-md border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground break-all">
+                          {String(tplUrlButton?.url ?? "")}
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {tplUrlVarNums.map((n) => (
+                            <div key={`btn-${n}`}>
+                              <Label className="text-[11px] text-muted-foreground">{`{{${n}}} da URL`}</Label>
+                              <Input
+                                value={btnVars[String(n)] ?? ""}
+                                onChange={(e) => setBtnVars((v) => ({ ...v, [String(n)]: e.target.value }))}
+                                placeholder="Valor a inserir no link"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+
+
                 {/* Config */}
                 <div className="rounded-lg border p-4">
                   <div className="mb-3">
