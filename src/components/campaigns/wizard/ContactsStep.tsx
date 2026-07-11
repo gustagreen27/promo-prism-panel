@@ -18,6 +18,7 @@ export type ContactSelValue = {
   list_name: string;
   total: number;
   valid: number;
+  contacts?: { id: string; name: string | null; phone: string }[];
 };
 
 type Source = "saved" | "inbox" | "tags" | "groups" | "import";
