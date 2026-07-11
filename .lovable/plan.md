@@ -1,67 +1,28 @@
-# Auditoria e revisão completa do /admin
+# Campanhas Multi-Rota — Fase 1
 
-## Contexto
-O painel `/admin` cresceu muito rápido e hoje tem ~40 rotas, várias com sobreposição (contatos vs listas, disparos vs campanhas, relatórios vs analytics, whatsapp/* com 12 subrotas). Uma revisão "tudo de uma vez" em uma única resposta iria:
-- gerar edições enormes sem revisão do usuário,
-- arriscar quebrar fluxos que hoje funcionam (disparos, wallet, webhooks),
-- consumir muitos créditos sem entregar valor claro por etapa.
+## Decisões
+- Fluxo legado preservado (campanhas existentes NÃO migradas). Flag `wa_campaigns.use_multi_route` (default false).
+- SWRR proporcional a `rate_per_second` efetivo por número.
+- Failover automático DESLIGADO por default; erros 132015/132016/132001 pausam SÓ a rota e notificam.
+- Dedup lógico via `uniq_recipient_campaign_phone` (já existe) + `wa_campaign_attempts` para histórico imutável.
 
-A proposta abaixo divide o trabalho em **6 fases entregáveis**, cada uma como um turno separado, com auditoria + correções focadas. Você aprova fase por fase.
+## Schema novo
+- `wa_campaign_routes` (id, campaign_id, connection_id, phone_number_id, waba_ref_id, template_id, template_name, template_language, priority, weight, status, rate_effective, max_concurrency, accepted_count, failed_count, last_error_code, last_error_at, disabled_reason, variables_mapping, is_primary, timestamps)
+- `wa_campaign_attempts` (id, campaign_id, recipient_id, route_id, phone_number_id, template_id, template_name, attempt_number, attempted_at, http_status, meta_message_id, message_status, error_code, error_details, worker_id)
+- `campaign_recipients` +cols: `route_id` (rota escolhida no despacho), `locked_route_id` (afinidade)
+- `wa_campaigns` +cols: `use_multi_route`, `distribution_strategy` (weighted|round_robin|primary_reserve|custom), `template_failover_mode` (manual|auto)
+- Status novos em `wa_route_status` enum: active, paused, template_unavailable, number_unavailable, rate_limited, disabled, completed
 
----
+## Worker
+- `queue-tick`: se `use_multi_route`, chama `runMultiRouteCampaign`.
+- Selector SWRR entre rotas active com bucket disponível.
+- Recipient com `locked_route_id` respeitado em retries.
+- Erros 132015/132016/132001 marcam rota, liberam `processing` (route_id=NULL) para pendentes.
 
-## Fase 0 — Mapa e auditoria (sem código)
-Entrego um **relatório em `.lovable/audit-admin.md`** com, para cada rota de `/admin`:
-- Propósito atual
-- Está no sidebar? Onde?
-- Duplicações / sobreposições detectadas
-- Botões/campos sem ação (varredura por `onClick` vazio, `TODO`, `disabled` fixo)
-- Chamadas de API que não existem mais ou retornam erro
-- Recomendação: **manter / mesclar / mover / remover**
+## Wizard
+- Passo 02 reescrito: NumbersMultiSelect + TemplatesPerNumber + StrategyPicker + FailoverToggles + Summary
+- Nova serverFn `createMultiRouteWaCampaign` que cria campaign + N rotas.
 
-Sem alterações de código nesta fase — só diagnóstico pra você validar o que consolidar.
-
----
-
-## Fase 1 — Reorganização de navegação e remoção de duplicatas
-- Consolidar sidebar (`src/components/admin/app-sidebar.tsx`) em grupos claros:
-  - **Operação:** Dashboard, Disparos, Campanhas, Agenda
-  - **Público:** Contatos, Listas, Opt-outs
-  - **WhatsApp:** Conexões, Números, WABAs, Templates, Webhooks, Inbox
-  - **Financeiro:** Faturamento, Custos, Fechamento, Precificação
-  - **Análise:** Relatórios, Histórico, Logs
-  - **Configurações:** Configurações, Perfil, Clientes/Projetos
-- Mesclar rotas duplicadas (ex.: `contatos` vs `contatos/listas` — já iniciado; `relatorios/analytics` vs `relatorios`; `campanhas` vs `disparos`).
-- Redirects 301 client-side de rotas removidas → rotas canônicas.
-
-## Fase 2 — Fluxos críticos (Disparos + Contatos + Templates)
-Testar ponta-a-ponta com Playwright:
-- Criar lista → importar contatos → criar disparo → agendar → executar → ver relatório.
-- Corrigir botões quebrados, validações de formulário, estados de loading, mensagens de erro/sucesso, confirmações destrutivas.
-
-## Fase 3 — WhatsApp (Conexões, WABAs, Números, Templates, Webhooks)
-- Verificar que o suporte a **múltiplos portfólios por workspace** (migration já aplicada) está refletido em todas as telas.
-- Corrigir sync com Meta, exibição de status de qualidade, aprovação de templates.
-
-## Fase 4 — Relatórios, Financeiro, Logs
-- Padronizar filtros de período (`PeriodFilter`), exportações CSV/PDF, paginação.
-- Wallet: revisar reserva/consumo/liberação nas telas de faturamento.
-
-## Fase 5 — Transversal (loading, erros, responsividade, permissões)
-- `errorComponent` + `notFoundComponent` em toda rota de `/admin` com loader.
-- Empty states padronizados (`EmptyState` já existe).
-- Checagem de `has_role('admin')` server-side em todas as server fns sensíveis.
-- Ajustes de responsividade mobile (sidebar colapsável já existe).
-
-## Fase 6 — Relatório final de auditoria
-Documento consolidado em `.lovable/audit-admin-final.md` com tudo que foi corrigido, movido, removido, testado, e pendências conhecidas.
-
----
-
-## Detalhes técnicos
-- Cada fase = 1 turno = 1 conjunto coeso de edições + verificação (build + Playwright quando aplicável).
-- Migrations só se necessário (não prevejo nenhuma nas fases 1-5).
-- Sem mudanças em `auth`, `wallet_*` functions, ou webhooks a menos que a auditoria da Fase 0 encontre bug.
-
-## Por que dividir assim
-Uma "revisão geral" feita num único turno vira patch de milhares de linhas sem como você validar. Fase 0 sozinha já responde "o que está quebrado e duplicado" — dali você decide o escopo real.
+## Detalhe da campanha
+- Aba "Rotas" com pause/resume/replace-template/adicionar-remover-rota.
+- Botão "Trocar template" abre modal com mapeamento de variáveis.

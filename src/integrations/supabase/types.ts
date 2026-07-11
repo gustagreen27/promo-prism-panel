@@ -385,12 +385,14 @@ export type Database = {
           failed_reason: string | null
           id: string
           last_attempt_at: string | null
+          locked_route_id: string | null
           meta_message_id: string | null
           next_attempt_at: string | null
           phone: string
           read_at: string | null
           replied_at: string | null
           responded_at: string | null
+          route_id: string | null
           sent_at: string | null
           status: Database["public"]["Enums"]["wa_recipient_status"]
           updated_at: string
@@ -410,12 +412,14 @@ export type Database = {
           failed_reason?: string | null
           id?: string
           last_attempt_at?: string | null
+          locked_route_id?: string | null
           meta_message_id?: string | null
           next_attempt_at?: string | null
           phone: string
           read_at?: string | null
           replied_at?: string | null
           responded_at?: string | null
+          route_id?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["wa_recipient_status"]
           updated_at?: string
@@ -435,12 +439,14 @@ export type Database = {
           failed_reason?: string | null
           id?: string
           last_attempt_at?: string | null
+          locked_route_id?: string | null
           meta_message_id?: string | null
           next_attempt_at?: string | null
           phone?: string
           read_at?: string | null
           replied_at?: string | null
           responded_at?: string | null
+          route_id?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["wa_recipient_status"]
           updated_at?: string
@@ -460,6 +466,20 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_recipients_locked_route_id_fkey"
+            columns: ["locked_route_id"]
+            isOneToOne: false
+            referencedRelation: "wa_campaign_routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_recipients_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "wa_campaign_routes"
             referencedColumns: ["id"]
           },
           {
@@ -1889,6 +1909,189 @@ export type Database = {
         }
         Relationships: []
       }
+      wa_campaign_attempts: {
+        Row: {
+          attempt_number: number
+          attempted_at: string
+          campaign_id: string
+          error_code: string | null
+          error_details: Json | null
+          fbtrace_id: string | null
+          http_status: number | null
+          id: string
+          message_status: string | null
+          meta_message_id: string | null
+          phone_number_id: string | null
+          recipient_id: string
+          route_id: string | null
+          template_id: string | null
+          template_name: string | null
+          worker_id: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          attempt_number?: number
+          attempted_at?: string
+          campaign_id: string
+          error_code?: string | null
+          error_details?: Json | null
+          fbtrace_id?: string | null
+          http_status?: number | null
+          id?: string
+          message_status?: string | null
+          meta_message_id?: string | null
+          phone_number_id?: string | null
+          recipient_id: string
+          route_id?: string | null
+          template_id?: string | null
+          template_name?: string | null
+          worker_id?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          attempt_number?: number
+          attempted_at?: string
+          campaign_id?: string
+          error_code?: string | null
+          error_details?: Json | null
+          fbtrace_id?: string | null
+          http_status?: number | null
+          id?: string
+          message_status?: string | null
+          meta_message_id?: string | null
+          phone_number_id?: string | null
+          recipient_id?: string
+          route_id?: string | null
+          template_id?: string | null
+          template_name?: string | null
+          worker_id?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wa_campaign_attempts_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "wa_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_campaign_attempts_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_recipients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_campaign_attempts_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "wa_campaign_routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wa_campaign_routes: {
+        Row: {
+          accepted_count: number
+          button_url_mapping: Json | null
+          campaign_id: string
+          connection_id: string
+          created_at: string
+          disabled_reason: string | null
+          failed_count: number
+          id: string
+          is_primary: boolean
+          last_error_at: string | null
+          last_error_code: string | null
+          last_error_message: string | null
+          max_concurrency: number | null
+          phone_number_id: string
+          priority: number
+          rate_effective: number | null
+          rate_requested: number | null
+          status: Database["public"]["Enums"]["wa_route_status"]
+          swrr_current_weight: number
+          template_category: string | null
+          template_id: string
+          template_language: string
+          template_name: string
+          updated_at: string
+          variables_mapping: Json | null
+          waba_ref_id: string | null
+          weight: number
+          workspace_id: string | null
+        }
+        Insert: {
+          accepted_count?: number
+          button_url_mapping?: Json | null
+          campaign_id: string
+          connection_id: string
+          created_at?: string
+          disabled_reason?: string | null
+          failed_count?: number
+          id?: string
+          is_primary?: boolean
+          last_error_at?: string | null
+          last_error_code?: string | null
+          last_error_message?: string | null
+          max_concurrency?: number | null
+          phone_number_id: string
+          priority?: number
+          rate_effective?: number | null
+          rate_requested?: number | null
+          status?: Database["public"]["Enums"]["wa_route_status"]
+          swrr_current_weight?: number
+          template_category?: string | null
+          template_id: string
+          template_language: string
+          template_name: string
+          updated_at?: string
+          variables_mapping?: Json | null
+          waba_ref_id?: string | null
+          weight?: number
+          workspace_id?: string | null
+        }
+        Update: {
+          accepted_count?: number
+          button_url_mapping?: Json | null
+          campaign_id?: string
+          connection_id?: string
+          created_at?: string
+          disabled_reason?: string | null
+          failed_count?: number
+          id?: string
+          is_primary?: boolean
+          last_error_at?: string | null
+          last_error_code?: string | null
+          last_error_message?: string | null
+          max_concurrency?: number | null
+          phone_number_id?: string
+          priority?: number
+          rate_effective?: number | null
+          rate_requested?: number | null
+          status?: Database["public"]["Enums"]["wa_route_status"]
+          swrr_current_weight?: number
+          template_category?: string | null
+          template_id?: string
+          template_language?: string
+          template_name?: string
+          updated_at?: string
+          variables_mapping?: Json | null
+          waba_ref_id?: string | null
+          weight?: number
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wa_campaign_routes_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "wa_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wa_campaigns: {
         Row: {
           abort_on_failure_rate: number | null
@@ -1909,6 +2112,7 @@ export type Database = {
           created_by: string | null
           custom_fields: Json | null
           delivered_count: number
+          distribution_strategy: string
           estimated_cost: number
           failed_count: number
           final_report: Json | null
@@ -1928,6 +2132,7 @@ export type Database = {
           min_processed_for_abort: number
           name: string
           notes: string | null
+          number_failover_mode: string
           parallelism: number | null
           participants: Database["public"]["Enums"]["partner_participant"][]
           pause_duration_seconds: number | null
@@ -1957,11 +2162,13 @@ export type Database = {
           status: Database["public"]["Enums"]["wa_campaign_status"]
           tag_filters: string[] | null
           target_per_hour: number | null
+          template_failover_mode: string
           template_id: string | null
           template_variables: Json
           timezone: string
           total_recipients: number
           updated_at: string
+          use_multi_route: boolean
           variables_mapping: Json | null
           waba_ref_id: string | null
           worker_lease_id: string | null
@@ -1987,6 +2194,7 @@ export type Database = {
           created_by?: string | null
           custom_fields?: Json | null
           delivered_count?: number
+          distribution_strategy?: string
           estimated_cost?: number
           failed_count?: number
           final_report?: Json | null
@@ -2006,6 +2214,7 @@ export type Database = {
           min_processed_for_abort?: number
           name: string
           notes?: string | null
+          number_failover_mode?: string
           parallelism?: number | null
           participants?: Database["public"]["Enums"]["partner_participant"][]
           pause_duration_seconds?: number | null
@@ -2035,11 +2244,13 @@ export type Database = {
           status?: Database["public"]["Enums"]["wa_campaign_status"]
           tag_filters?: string[] | null
           target_per_hour?: number | null
+          template_failover_mode?: string
           template_id?: string | null
           template_variables?: Json
           timezone?: string
           total_recipients?: number
           updated_at?: string
+          use_multi_route?: boolean
           variables_mapping?: Json | null
           waba_ref_id?: string | null
           worker_lease_id?: string | null
@@ -2065,6 +2276,7 @@ export type Database = {
           created_by?: string | null
           custom_fields?: Json | null
           delivered_count?: number
+          distribution_strategy?: string
           estimated_cost?: number
           failed_count?: number
           final_report?: Json | null
@@ -2084,6 +2296,7 @@ export type Database = {
           min_processed_for_abort?: number
           name?: string
           notes?: string | null
+          number_failover_mode?: string
           parallelism?: number | null
           participants?: Database["public"]["Enums"]["partner_participant"][]
           pause_duration_seconds?: number | null
@@ -2113,11 +2326,13 @@ export type Database = {
           status?: Database["public"]["Enums"]["wa_campaign_status"]
           tag_filters?: string[] | null
           target_per_hour?: number | null
+          template_failover_mode?: string
           template_id?: string | null
           template_variables?: Json
           timezone?: string
           total_recipients?: number
           updated_at?: string
+          use_multi_route?: boolean
           variables_mapping?: Json | null
           waba_ref_id?: string | null
           worker_lease_id?: string | null
@@ -3652,6 +3867,10 @@ export type Database = {
         Args: { _client_id: string; _project_id: string }
         Returns: number
       }
+      wa_campaign_active_routes: {
+        Args: { _campaign_id: string }
+        Returns: number
+      }
       wa_check_scheduling_conflict: {
         Args: {
           _connection_id: string
@@ -3845,6 +4064,14 @@ export type Database = {
         | "opt_out"
         | "accepted"
         | "skipped"
+      wa_route_status:
+        | "active"
+        | "paused"
+        | "template_unavailable"
+        | "number_unavailable"
+        | "rate_limited"
+        | "disabled"
+        | "completed"
       wa_template_status:
         | "approved"
         | "pending"
@@ -4021,6 +4248,15 @@ export const Constants = {
         "opt_out",
         "accepted",
         "skipped",
+      ],
+      wa_route_status: [
+        "active",
+        "paused",
+        "template_unavailable",
+        "number_unavailable",
+        "rate_limited",
+        "disabled",
+        "completed",
       ],
       wa_template_status: [
         "approved",
