@@ -85,6 +85,33 @@ function Page() {
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao sincronizar"),
   });
+  const subscribeMut = useMutation({
+    mutationFn: (id: string) => subscribeFn({ data: { waba_ref_id: id } }),
+    onSuccess: (r: any) => {
+      const n = Array.isArray(r?.apps) ? r.apps.length : 0;
+      const names = (r?.apps ?? [])
+        .map((a: any) => a?.whatsapp_business_api_data?.name)
+        .filter(Boolean)
+        .join(", ");
+      toast.success(
+        `App assinado na WABA (${n} app${n === 1 ? "" : "s"}${names ? `: ${names}` : ""}). Webhooks agora serão entregues.`,
+      );
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao assinar app na WABA"),
+  });
+  const checkSubsMut = useMutation({
+    mutationFn: (id: string) => listSubsFn({ data: { waba_ref_id: id } }),
+    onSuccess: (r: any) => {
+      const n = Array.isArray(r?.apps) ? r.apps.length : 0;
+      if (!n) return toast.warning("Nenhum app assinado nesta WABA.");
+      const names = r.apps
+        .map((a: any) => a?.whatsapp_business_api_data?.name ?? a?.whatsapp_business_api_data?.id)
+        .filter(Boolean)
+        .join(", ");
+      toast.success(`${n} app(s) assinado(s): ${names}`);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao consultar apps"),
+  });
   const syncAllMut = useMutation({
     mutationFn: () => syncAll(),
     onSuccess: (r: any) => {
