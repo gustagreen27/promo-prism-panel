@@ -469,9 +469,14 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
     for (const n of tplUrlVarNums) {
       if (!(btnVars[String(n)] ?? "").trim()) items.push(`Preencha a variável {{${n}}} da URL do botão`);
     }
-    if (rate.interval_s <= 0) items.push("Defina um intervalo válido entre envios");
+    if (dispatch.rate_per_second <= 0) items.push("Mensagens por segundo deve ser maior que zero");
+    if (dispatch.max_concurrency < 1) items.push("Concorrência máxima deve ser pelo menos 1");
+    if (dispatch.scheduled_pause_enabled) {
+      if (dispatch.pause_every_messages < 1) items.push("Pausa programada: informe a quantidade de envios");
+      if (dispatch.pause_duration_seconds < 1) items.push("Pausa programada: informe a duração em segundos");
+    }
     return items;
-  }, [connectionId, templateId, tplRequiresMedia, headerMediaUrl, tplHeaderType, tplBodyVarNums, bodyVars, tplUrlVarNums, btnVars, rate.interval_s]);
+  }, [connectionId, templateId, tplRequiresMedia, headerMediaUrl, tplHeaderType, tplBodyVarNums, bodyVars, tplUrlVarNums, btnVars, dispatch]);
 
   // -------- Navigation --------
   const canAdvance = useCallback((from: number): boolean => {
