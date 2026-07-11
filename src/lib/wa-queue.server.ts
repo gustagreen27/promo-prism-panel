@@ -382,7 +382,11 @@ export async function processCampaignTick(
       const buttonIndexRaw = renderedVars._button_index;
       const buttonIndex = buttonIndexRaw != null && buttonIndexRaw !== "" ? Number(buttonIndexRaw) : 0;
 
-      const resolvedHeaderType = headerImageOverride ? "image" : tpl.header_type;
+      const tplHeaderType = (tpl.header_type || "").toString().toLowerCase();
+      const isMediaHeader = ["image", "video", "document"].includes(tplHeaderType);
+      const resolvedHeaderType = headerImageOverride
+        ? (isMediaHeader ? tplHeaderType : "image")
+        : tpl.header_type;
       const resolvedHeaderValue = headerImageOverride ?? tpl.header_text;
 
 

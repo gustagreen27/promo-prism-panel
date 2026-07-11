@@ -21,11 +21,12 @@ import {
   CalendarClock, CheckCircle2, Plus, AlertTriangle, ArrowLeft, ArrowRight,
   Phone, MessageSquareText, Save, Clock, Signal, Wifi, WifiOff, Loader2,
   Send, Pause, Play, Ban, XOctagon, Timer, Users2, Activity, PhoneCall, Sliders,
-  BarChart3,
+  BarChart3, Image as ImageIcon, Video as VideoIcon, FileText, Upload, X, Link2,
 } from "lucide-react";
 import { Stepper, type WizardStep } from "@/components/campaigns/wizard/Stepper";
 import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
 import { ContactsStep, type ContactSelValue } from "@/components/campaigns/wizard/ContactsStep";
+import { metaVarsIn } from "@/lib/wa-variables";
 import { cn } from "@/lib/utils";
 
 const searchSchema = z.object({
@@ -114,6 +115,10 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   const [scheduledAt, setScheduledAt] = useState<string>(toLocal(scheduled_for));
   const [timezone, setTimezone] = useState<string>(Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo");
   const [forceConflict, setForceConflict] = useState(false);
+  const [bodyVars, setBodyVars] = useState<Record<string, string>>({});
+  const [btnVars, setBtnVars] = useState<Record<string, string>>({});
+  const [headerMediaUrl, setHeaderMediaUrl] = useState<string>("");
+  const [uploadingMedia, setUploadingMedia] = useState(false);
 
   // Data
   const [numbers, setNumbers] = useState<NumberRow[]>([]);
@@ -245,13 +250,45 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   }, [validContacts, rate.interval_s]);
   const estimatedCostCents = useMemo(() => (balance?.unit_price_cents ?? 15) * validContacts, [balance, validContacts]);
 
+  // Template-driven variable maps
+  const tplBodyVarNums = useMemo(
+    () => (selectedTemplate ? metaVarsIn(selectedTemplate.body ?? "") : []),
+    [selectedTemplate]
+  );
+  const tplHeaderType = useMemo(
+    () => (selectedTemplate?.header_type ?? "").toString().toLowerCase(),
+    [selectedTemplate]
+  );
+  const tplRequiresMedia = ["image", "video", "document"].includes(tplHeaderType);
+  const tplUrlButton = useMemo(() => {
+    const btns = (selectedTemplate?.buttons ?? []) as any[];
+    return btns.find((b) => (b?.type || "").toString().toLowerCase() === "url" && b?.url);
+  }, [selectedTemplate]);
+  const tplUrlVarNums = useMemo(
+    () => (tplUrlButton?.url ? metaVarsIn(String(tplUrlButton.url)) : []),
+    [tplUrlButton]
+  );
+
+  // Reset mappings when template changes
+  useEffect(() => {
+    setBodyVars({});
+    setBtnVars({});
+    setHeaderMediaUrl("");
+  }, [templateId]);
+
   // -------- Navigation --------
   const canAdvance = useCallback((from: number): boolean => {
     if (from === 1) return !!contactSel?.list_id;
-    if (from === 2) return !!connectionId && !!templateId && rate.interval_s > 0;
+    if (from === 2) {
+      if (!connectionId || !templateId || rate.interval_s <= 0) return false;
+      if (tplRequiresMedia && !headerMediaUrl.trim()) return false;
+      for (const n of tplBodyVarNums) if (!(bodyVars[String(n)] ?? "").trim()) return false;
+      for (const n of tplUrlVarNums) if (!(btnVars[String(n)] ?? "").trim()) return false;
+      return true;
+    }
     if (from === 3) return !!name.trim();
     return true;
-  }, [contactSel, connectionId, templateId, rate, name]);
+  }, [contactSel, connectionId, templateId, rate, name, tplRequiresMedia, headerMediaUrl, tplBodyVarNums, bodyVars, tplUrlVarNums, btnVars]);
 
   function goTo(id: number) { if (id <= maxReached) setStep(id); }
   function next() {
@@ -262,11 +299,43 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   }
   function back() { setStep((s) => Math.max(1, s - 1)); }
 
+  // Upload header media -> long-lived signed URL (bucket is private).
+  async function uploadHeaderMedia(file: File) {
+    setUploadingMedia(true);
+    try {
+      const ext = (file.name.split(".").pop() || "bin").toLowerCase();
+      const key = `${workspaceId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("campaign-images").upload(key, file, {
+        cacheControl: "3600", upsert: false, contentType: file.type || undefined,
+      });
+      if (upErr) throw upErr;
+      // 7 days — Meta downloads the URL at send time.
+      const { data: signed, error: sErr } = await supabase.storage.from("campaign-images")
+        .createSignedUrl(key, 60 * 60 * 24 * 7);
+      if (sErr || !signed?.signedUrl) throw sErr ?? new Error("Falha ao gerar URL");
+      setHeaderMediaUrl(signed.signedUrl);
+      toast.success("Mídia carregada.");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Erro no upload da mídia");
+    } finally {
+      setUploadingMedia(false);
+    }
+  }
+
   // -------- Submit --------
   async function handleSubmit(finalMode: Mode) {
     if (!name.trim() || !connectionId || !templateId || !contactSel?.list_id) {
       toast.error("Faltam informações. Volte às etapas anteriores.");
       return;
+    }
+    if (tplRequiresMedia && !headerMediaUrl.trim()) {
+      toast.error("Envie a mídia do cabeçalho do template."); return;
+    }
+    for (const n of tplBodyVarNums) {
+      if (!(bodyVars[String(n)] ?? "").trim()) { toast.error(`Preencha a variável {{${n}}} do corpo.`); return; }
+    }
+    for (const n of tplUrlVarNums) {
+      if (!(btnVars[String(n)] ?? "").trim()) { toast.error(`Preencha a variável {{${n}}} da URL do botão.`); return; }
     }
     if (finalMode === "schedule" && !scheduledAt) { toast.error("Informe a data/hora do agendamento"); return; }
     if (finalMode === "schedule" && conflicts.length > 0 && !forceConflict) {
@@ -281,6 +350,9 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
           connection_id: connectionId,
           template_id: templateId,
           list_id: contactSel.list_id,
+          variables_mapping: bodyVars,
+          button_url_mapping: btnVars,
+          header_media_url: headerMediaUrl || null,
           scheduled_at: finalMode === "schedule" ? new Date(scheduledAt).toISOString() : null,
         },
       });
@@ -462,6 +534,125 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                   </div>
                 </div>
 
+                {/* Conteúdo dinâmico do template */}
+                {selectedTemplate && (tplRequiresMedia || tplBodyVarNums.length > 0 || tplUrlVarNums.length > 0) && (
+                  <div className="rounded-lg border p-4 space-y-4">
+                    <div>
+                      <div className="flex items-center gap-2 text-sm font-semibold">
+                        <MessageSquareText className="h-4 w-4" /> Conteúdo do template
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Preencha as variáveis dinâmicas do template selecionado.
+                      </div>
+                    </div>
+
+                    {tplRequiresMedia && (
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-1.5 text-xs uppercase tracking-wide">
+                          {tplHeaderType === "video" ? <VideoIcon className="h-3.5 w-3.5" />
+                            : tplHeaderType === "document" ? <FileText className="h-3.5 w-3.5" />
+                            : <ImageIcon className="h-3.5 w-3.5" />}
+                          Mídia do cabeçalho ({tplHeaderType})*
+                        </Label>
+                        {headerMediaUrl ? (
+                          <div className="space-y-2">
+                            {tplHeaderType === "image" && (
+                              <img src={headerMediaUrl} alt="Prévia" className="max-h-40 rounded border object-contain" />
+                            )}
+                            {tplHeaderType === "video" && (
+                              <video src={headerMediaUrl} controls className="max-h-40 rounded border" />
+                            )}
+                            {tplHeaderType === "document" && (
+                              <a href={headerMediaUrl} target="_blank" rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-primary underline">
+                                <FileText className="h-3 w-3" /> Ver documento
+                              </a>
+                            )}
+                            <div className="flex flex-wrap gap-2">
+                              <Button type="button" variant="outline" size="sm" onClick={() => setHeaderMediaUrl("")}>
+                                <X className="mr-1 h-3.5 w-3.5" /> Remover
+                              </Button>
+                              <label className="inline-flex cursor-pointer">
+                                <Input type="file" className="hidden"
+                                  accept={tplHeaderType === "image" ? "image/*" : tplHeaderType === "video" ? "video/*" : "*"}
+                                  onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadHeaderMedia(f); e.currentTarget.value = ""; }} />
+                                <span className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs hover:bg-muted">
+                                  <Upload className="h-3.5 w-3.5" /> Substituir
+                                </span>
+                              </label>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <label className="inline-flex cursor-pointer">
+                              <Input type="file" className="hidden"
+                                accept={tplHeaderType === "image" ? "image/*" : tplHeaderType === "video" ? "video/*" : "*"}
+                                onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadHeaderMedia(f); e.currentTarget.value = ""; }}
+                                disabled={uploadingMedia} />
+                              <span className="inline-flex items-center gap-2 rounded-md border border-dashed px-4 py-2 text-sm hover:bg-muted">
+                                {uploadingMedia ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                                {uploadingMedia ? "Enviando..." : "Fazer upload"}
+                              </span>
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
+                              <Input placeholder="ou cole uma URL pública da mídia"
+                                value={headerMediaUrl}
+                                onChange={(e) => setHeaderMediaUrl(e.target.value)} />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {tplBodyVarNums.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-xs uppercase tracking-wide">Variáveis do corpo</Label>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {tplBodyVarNums.map((n) => (
+                            <div key={`body-${n}`}>
+                              <Label className="text-[11px] text-muted-foreground">{`{{${n}}}`}</Label>
+                              <Input
+                                value={bodyVars[String(n)] ?? ""}
+                                onChange={(e) => setBodyVars((v) => ({ ...v, [String(n)]: e.target.value }))}
+                                placeholder='Valor fixo ou token, ex: {nome|"Cliente"}'
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          Tokens suportados: <code>{'{nome}'}</code>, <code>{'{email}'}</code>, <code>{'{telefone}'}</code>, <code>{'{cliente.nome}'}</code>, com fallback <code>{'{campo|"padrão"}'}</code>.
+                        </p>
+                      </div>
+                    )}
+
+                    {tplUrlVarNums.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-xs uppercase tracking-wide">
+                          Variável da URL do botão{tplUrlButton?.text ? ` — "${tplUrlButton.text}"` : ""}
+                        </Label>
+                        <div className="rounded-md border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground break-all">
+                          {String(tplUrlButton?.url ?? "")}
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {tplUrlVarNums.map((n) => (
+                            <div key={`btn-${n}`}>
+                              <Label className="text-[11px] text-muted-foreground">{`{{${n}}} da URL`}</Label>
+                              <Input
+                                value={btnVars[String(n)] ?? ""}
+                                onChange={(e) => setBtnVars((v) => ({ ...v, [String(n)]: e.target.value }))}
+                                placeholder="Valor a inserir no link"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+
+
                 {/* Config */}
                 <div className="rounded-lg border p-4">
                   <div className="mb-3">
@@ -553,6 +744,23 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                     <ReviewRow label="Nome" value={name || <em className="text-muted-foreground">sem nome</em>} />
                     <ReviewRow label="Número" value={selectedNumber ? `${selectedNumber.display_name} (${selectedNumber.phone_masked})` : "—"} />
                     <ReviewRow label="Template" value={selectedTemplate?.name ?? "—"} />
+                    {tplRequiresMedia && (
+                      <ReviewRow label={`Mídia (${tplHeaderType})`} value={headerMediaUrl
+                        ? <a href={headerMediaUrl} target="_blank" rel="noreferrer" className="text-primary underline">Ver mídia</a>
+                        : <em className="text-muted-foreground">não enviada</em>} />
+                    )}
+                    {tplBodyVarNums.map((n) => (
+                      <ReviewRow key={`rv-body-${n}`} label={`Var. corpo {{${n}}}`}
+                        value={bodyVars[String(n)] || <em className="text-muted-foreground">vazio</em>} />
+                    ))}
+                    {tplUrlVarNums.map((n) => (
+                      <ReviewRow key={`rv-btn-${n}`} label={`Var. URL {{${n}}}`}
+                        value={btnVars[String(n)] || <em className="text-muted-foreground">vazio</em>} />
+                    ))}
+                    {mode === "schedule" && scheduledAt && (
+                      <ReviewRow label="Agendamento"
+                        value={`${new Date(scheduledAt).toLocaleString("pt-BR")} (${timezone})`} />
+                    )}
                     <ReviewRow label="Intervalo" value={`${rate.interval_s}s entre envios`} />
                     <ReviewRow label="Pausa automática" value={`${rate.pause_duration_s}s a cada ${rate.pause_every} envios`} />
                     <ReviewRow label="Duração estimada" value={estimatedDurationMin > 60 ? `${Math.floor(estimatedDurationMin / 60)}h ${estimatedDurationMin % 60}min` : `${estimatedDurationMin} min`} />
