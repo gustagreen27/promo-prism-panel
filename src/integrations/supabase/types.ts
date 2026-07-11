@@ -1922,6 +1922,7 @@ export type Database = {
           last_sent_at: string | null
           linked_revenue_id: string | null
           list_id: string | null
+          max_concurrency: number | null
           max_per_day: number | null
           max_per_hour: number | null
           min_processed_for_abort: number
@@ -1929,6 +1930,8 @@ export type Database = {
           notes: string | null
           parallelism: number | null
           participants: Database["public"]["Enums"]["partner_participant"][]
+          pause_duration_seconds: number | null
+          pause_every_messages: number | null
           pause_reason: string | null
           paused_at: string | null
           paused_by: string | null
@@ -1937,6 +1940,7 @@ export type Database = {
           project_id: string | null
           quiet_hours_end: string | null
           quiet_hours_start: string | null
+          rate_per_second: number | null
           read_count: number
           rejection_reason: string | null
           replied_count: number
@@ -1944,12 +1948,15 @@ export type Database = {
           responsavel_id: string | null
           resumed_at: string | null
           scheduled_at: string | null
+          scheduled_pause_enabled: boolean
+          scheduled_pause_until: string | null
           send_rate_per_min: number
           sent_count: number
           started_at: string | null
           started_by: string | null
           status: Database["public"]["Enums"]["wa_campaign_status"]
           tag_filters: string[] | null
+          target_per_hour: number | null
           template_id: string | null
           template_variables: Json
           timezone: string
@@ -1993,6 +2000,7 @@ export type Database = {
           last_sent_at?: string | null
           linked_revenue_id?: string | null
           list_id?: string | null
+          max_concurrency?: number | null
           max_per_day?: number | null
           max_per_hour?: number | null
           min_processed_for_abort?: number
@@ -2000,6 +2008,8 @@ export type Database = {
           notes?: string | null
           parallelism?: number | null
           participants?: Database["public"]["Enums"]["partner_participant"][]
+          pause_duration_seconds?: number | null
+          pause_every_messages?: number | null
           pause_reason?: string | null
           paused_at?: string | null
           paused_by?: string | null
@@ -2008,6 +2018,7 @@ export type Database = {
           project_id?: string | null
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
+          rate_per_second?: number | null
           read_count?: number
           rejection_reason?: string | null
           replied_count?: number
@@ -2015,12 +2026,15 @@ export type Database = {
           responsavel_id?: string | null
           resumed_at?: string | null
           scheduled_at?: string | null
+          scheduled_pause_enabled?: boolean
+          scheduled_pause_until?: string | null
           send_rate_per_min?: number
           sent_count?: number
           started_at?: string | null
           started_by?: string | null
           status?: Database["public"]["Enums"]["wa_campaign_status"]
           tag_filters?: string[] | null
+          target_per_hour?: number | null
           template_id?: string | null
           template_variables?: Json
           timezone?: string
@@ -2064,6 +2078,7 @@ export type Database = {
           last_sent_at?: string | null
           linked_revenue_id?: string | null
           list_id?: string | null
+          max_concurrency?: number | null
           max_per_day?: number | null
           max_per_hour?: number | null
           min_processed_for_abort?: number
@@ -2071,6 +2086,8 @@ export type Database = {
           notes?: string | null
           parallelism?: number | null
           participants?: Database["public"]["Enums"]["partner_participant"][]
+          pause_duration_seconds?: number | null
+          pause_every_messages?: number | null
           pause_reason?: string | null
           paused_at?: string | null
           paused_by?: string | null
@@ -2079,6 +2096,7 @@ export type Database = {
           project_id?: string | null
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
+          rate_per_second?: number | null
           read_count?: number
           rejection_reason?: string | null
           replied_count?: number
@@ -2086,12 +2104,15 @@ export type Database = {
           responsavel_id?: string | null
           resumed_at?: string | null
           scheduled_at?: string | null
+          scheduled_pause_enabled?: boolean
+          scheduled_pause_until?: string | null
           send_rate_per_min?: number
           sent_count?: number
           started_at?: string | null
           started_by?: string | null
           status?: Database["public"]["Enums"]["wa_campaign_status"]
           tag_filters?: string[] | null
+          target_per_hour?: number | null
           template_id?: string | null
           template_variables?: Json
           timezone?: string

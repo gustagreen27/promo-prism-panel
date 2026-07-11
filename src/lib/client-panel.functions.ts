@@ -138,6 +138,13 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
       button_url_mapping: z.record(z.string()).optional(),
       header_media_url: z.string().optional().nullable(),
       scheduled_at: z.string().nullish(),
+      // Rate limiter (novo worker)
+      target_per_hour: z.number().int().min(1).nullish(),
+      rate_per_second: z.number().int().min(1).max(80).nullish(),
+      max_concurrency: z.number().int().min(1).max(100).nullish(),
+      scheduled_pause_enabled: z.boolean().optional(),
+      pause_every_messages: z.number().int().min(1).nullish(),
+      pause_duration_seconds: z.number().int().min(1).nullish(),
     }).parse(d)
   )
   .handler(async ({ data, context }) => {
@@ -206,6 +213,13 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
         approval_mode,
         approval_status,
         created_by: userId,
+        // Rate limiter (novo worker) — usa fallback conservador se ausente
+        target_per_hour: data.target_per_hour ?? null,
+        rate_per_second: data.rate_per_second ?? 6,
+        max_concurrency: data.max_concurrency ?? 15,
+        scheduled_pause_enabled: data.scheduled_pause_enabled ?? false,
+        pause_every_messages: data.scheduled_pause_enabled ? (data.pause_every_messages ?? null) : null,
+        pause_duration_seconds: data.scheduled_pause_enabled ? (data.pause_duration_seconds ?? null) : null,
       })
       .select()
       .single()

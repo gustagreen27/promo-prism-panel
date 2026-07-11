@@ -242,6 +242,18 @@ export async function processCampaignTick(
 
     // pause/cancel guard
     if (camp.status === "paused") return { processed: 0, done: false };
+
+    // Scheduled pause (configurada no wizard, Passo 02): aguarda até scheduled_pause_until
+    {
+      const spUntil = (camp as any).scheduled_pause_until as string | null;
+      if ((camp as any).scheduled_pause_enabled && spUntil && new Date(spUntil).getTime() > Date.now()) {
+        await supabaseAdmin
+          .from("wa_campaigns")
+          .update({ pause_reason: "scheduled_pause" })
+          .eq("id", campaignId);
+        return { processed: 0, done: false, reason: "scheduled_pause" };
+      }
+    }
     if (camp.status === "cancelled") {
       await supabaseAdmin
         .from("campaign_recipients")
@@ -631,6 +643,26 @@ export async function processCampaignTick(
             _qty: 1,
           });
         }
+
+        // Pausa programada (Passo 02): a cada N mensagens enviadas, agenda pausa curta
+        if ((camp as any).scheduled_pause_enabled) {
+          const every = Number((camp as any).pause_every_messages ?? 0);
+          const dur = Number((camp as any).pause_duration_seconds ?? 0);
+          if (every > 0 && dur > 0) {
+            const totalSent = baseSentCount + sent;
+            if (totalSent > 0 && totalSent % every === 0) {
+              const until = new Date(Date.now() + dur * 1000).toISOString();
+              await supabaseAdmin
+                .from("wa_campaigns")
+                .update({ scheduled_pause_until: until, pause_reason: "scheduled_pause" })
+                .eq("id", campaignId);
+              systemicPause = {
+                reason: "scheduled_pause",
+                message: `Pausa programada: ${dur}s após ${every} envios`,
+              };
+            }
+          }
+        }
         return;
       }
 
@@ -705,7 +737,11 @@ export async function processCampaignTick(
 
     // ---- Scheduler: token bucket global + semáforo de concorrência ----
     const inflight = new Set<Promise<void>>();
-    let maxConc = DEFAULT_MAX_CONCURRENCY;
+    // Por campanha (Passo 02) — usados como fallback ao criar wa_rate_limits e como teto local
+    const campRate = Math.max(1, Number((camp as any).rate_per_second ?? DEFAULT_RATE_PER_SECOND));
+    const campConc = Math.max(1, Number((camp as any).max_concurrency ?? DEFAULT_MAX_CONCURRENCY));
+    const baseSentCount = Number((camp as any).sent_count ?? 0);
+    let maxConc = campConc;
     let idx = 0;
     const tickStart = Date.now();
 
@@ -718,15 +754,18 @@ export async function processCampaignTick(
         await Promise.race(inflight);
       }
 
-      // Global token bucket (per phone_number_id, shared across campaigns)
+      // Global token bucket (per phone_number_id, shared across campaigns).
+      // Passamos a config da campanha como default; se o número já tem row,
+      // o teto global do número prevalece (rate efetivo = min(camp, global)).
       const { data: tok } = await supabaseAdmin.rpc("wa_try_consume_token" as any, {
         _phone_number_id: phoneNumberId,
-        _default_rate: DEFAULT_RATE_PER_SECOND,
-        _default_conc: DEFAULT_MAX_CONCURRENCY,
+        _default_rate: campRate,
+        _default_conc: campConc,
       });
       const row = Array.isArray(tok) ? tok[0] : tok;
       if (row?.max_concurrency && row.max_concurrency > 0) {
-        maxConc = row.max_concurrency;
+        // efetivo = min(camp, global)
+        maxConc = Math.min(campConc, row.max_concurrency);
       }
 
       if (!row?.allowed) {

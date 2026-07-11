@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   listMyNumbers, listMyTemplates, getMyBalance, createClientCampaign, startClientCampaign,
 } from "@/lib/client-panel.functions";
@@ -83,6 +85,41 @@ const STEPS: WizardStep[] = [
   { id: 5, label: "Resultados", short: "Resultados" },
 ];
 
+// ─────────────────────────────────────────────────────────────────
+// Rate limiter / Passo 02 — Configurações de Disparo
+// Fields realmente consumidos pelo worker (wa-queue.server.ts) e persistidos
+// em wa_campaigns: rate_per_second, max_concurrency, target_per_hour,
+// scheduled_pause_enabled, pause_every_messages, pause_duration_seconds.
+// ─────────────────────────────────────────────────────────────────
+type DispatchPreset = "conservative" | "target_20k" | "custom";
+type DispatchConfig = {
+  preset: DispatchPreset;
+  target_per_hour: number;      // meta operacional (mensagens/h)
+  rate_per_second: number;      // rate_per_second do rate limiter global (por phone_number_id)
+  max_concurrency: number;      // requisições HTTP simultâneas
+  scheduled_pause_enabled: boolean;
+  pause_every_messages: number; // usado apenas se scheduled_pause_enabled
+  pause_duration_seconds: number; // usado apenas se scheduled_pause_enabled
+};
+
+const DISPATCH_PRESETS: Record<Exclude<DispatchPreset, "custom">, Omit<DispatchConfig, "preset" | "scheduled_pause_enabled" | "pause_every_messages" | "pause_duration_seconds">> = {
+  conservative: { target_per_hour: 20_000, rate_per_second: 6, max_concurrency: 15 },
+  target_20k:   { target_per_hour: 20_000, rate_per_second: 7, max_concurrency: 15 },
+};
+
+function defaultDispatch(preset: DispatchPreset = "target_20k"): DispatchConfig {
+  const p = preset === "custom" ? DISPATCH_PRESETS.target_20k : DISPATCH_PRESETS[preset];
+  return {
+    preset,
+    target_per_hour: p.target_per_hour,
+    rate_per_second: p.rate_per_second,
+    max_concurrency: p.max_concurrency,
+    scheduled_pause_enabled: false,
+    pause_every_messages: 5000,
+    pause_duration_seconds: 60,
+  };
+}
+
 export interface CampaignWizardProps {
   workspaceId: string;
   event_id?: string;
@@ -115,7 +152,7 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   const [connectionId, setConnectionId] = useState<string>("");
   const [templateId, setTemplateId] = useState<string>("");
   const [contactSel, setContactSel] = useState<ContactSelValue | null>(null);
-  const [rate, setRate] = useState({ interval_s: 10, pause_every: 10, pause_duration_s: 60 });
+  const [dispatch, setDispatch] = useState<DispatchConfig>(defaultDispatch("target_20k"));
   const [mode, setMode] = useState<Mode>(scheduled_for ? "schedule" : "now");
   const [scheduledAt, setScheduledAt] = useState<string>(toLocal(scheduled_for));
   const [timezone, setTimezone] = useState<string>(Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo");
@@ -180,7 +217,7 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
       if (d.connectionId) setConnectionId(d.connectionId);
       if (d.templateId) setTemplateId(d.templateId);
       if (d.contactSel) setContactSel(d.contactSel);
-      if (d.rate) setRate(d.rate);
+      if (d.dispatch && typeof d.dispatch === "object") setDispatch({ ...defaultDispatch(), ...d.dispatch });
       if (d.mode) setMode(d.mode);
       if (d.scheduledAt) setScheduledAt(d.scheduledAt);
       if (d.timezone) setTimezone(d.timezone);
@@ -199,13 +236,13 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
     const t = setTimeout(() => {
       try {
         localStorage.setItem(DRAFT_KEY, JSON.stringify({
-          name, connectionId, templateId, contactSel, rate, mode, scheduledAt, timezone, step, maxReached,
+          name, connectionId, templateId, contactSel, dispatch, mode, scheduledAt, timezone, step, maxReached,
           savedAt: Date.now(),
         }));
       } catch { /* ignore */ }
     }, 400);
     return () => clearTimeout(t);
-  }, [name, connectionId, templateId, contactSel, rate, mode, scheduledAt, timezone, step, maxReached, campaignId, DRAFT_KEY]);
+  }, [name, connectionId, templateId, contactSel, dispatch, mode, scheduledAt, timezone, step, maxReached, campaignId, DRAFT_KEY]);
 
   // -------- Conflict check --------
   useEffect(() => {
@@ -332,10 +369,11 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   }, [contactSel]);
   const senderCode = selectedNumber?.phone_country_code ?? getCountryCallingCode(selectedNumber?.phone_display ?? selectedNumber?.phone_masked);
   const ddiDifferent = !!selectedAudienceCode && !!senderCode && selectedAudienceCode !== senderCode;
+  // Duração estimada usa a taxa efetiva do rate limiter (msg/s).
   const estimatedDurationMin = useMemo(() => {
-    if (!validContacts || !rate.interval_s) return 0;
-    return Math.ceil((validContacts * rate.interval_s) / 60);
-  }, [validContacts, rate.interval_s]);
+    if (!validContacts || dispatch.rate_per_second <= 0) return 0;
+    return Math.ceil(validContacts / dispatch.rate_per_second / 60);
+  }, [validContacts, dispatch.rate_per_second]);
   const estimatedCostCents = useMemo(() => (balance?.unit_price_cents ?? 15) * validContacts, [balance, validContacts]);
 
   // Template-driven variable maps
@@ -433,15 +471,22 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
     for (const n of tplUrlVarNums) {
       if (!(btnVars[String(n)] ?? "").trim()) items.push(`Preencha a variável {{${n}}} da URL do botão`);
     }
-    if (rate.interval_s <= 0) items.push("Defina um intervalo válido entre envios");
+    if (dispatch.rate_per_second <= 0) items.push("Mensagens por segundo deve ser maior que zero");
+    if (dispatch.max_concurrency < 1) items.push("Concorrência máxima deve ser pelo menos 1");
+    if (dispatch.scheduled_pause_enabled) {
+      if (dispatch.pause_every_messages < 1) items.push("Pausa programada: informe a quantidade de envios");
+      if (dispatch.pause_duration_seconds < 1) items.push("Pausa programada: informe a duração em segundos");
+    }
     return items;
-  }, [connectionId, templateId, tplRequiresMedia, headerMediaUrl, tplHeaderType, tplBodyVarNums, bodyVars, tplUrlVarNums, btnVars, rate.interval_s]);
+  }, [connectionId, templateId, tplRequiresMedia, headerMediaUrl, tplHeaderType, tplBodyVarNums, bodyVars, tplUrlVarNums, btnVars, dispatch]);
 
   // -------- Navigation --------
   const canAdvance = useCallback((from: number): boolean => {
     if (from === 1) return !!contactSel?.list_id;
     if (from === 2) {
-      if (!connectionId || !templateId || rate.interval_s <= 0) return false;
+      if (!connectionId || !templateId) return false;
+      if (dispatch.rate_per_second <= 0 || dispatch.max_concurrency < 1) return false;
+      if (dispatch.scheduled_pause_enabled && (dispatch.pause_every_messages < 1 || dispatch.pause_duration_seconds < 1)) return false;
       if (tplRequiresMedia && !headerMediaUrl.trim()) return false;
       for (const n of tplBodyVarNums) if (!(bodyVars[String(n)] ?? "").trim()) return false;
       for (const n of tplUrlVarNums) if (!(btnVars[String(n)] ?? "").trim()) return false;
@@ -449,7 +494,7 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
     }
     if (from === 3) return !!name.trim();
     return true;
-  }, [contactSel, connectionId, templateId, rate, name, tplRequiresMedia, headerMediaUrl, tplBodyVarNums, bodyVars, tplUrlVarNums, btnVars]);
+  }, [contactSel, connectionId, templateId, dispatch, name, tplRequiresMedia, headerMediaUrl, tplBodyVarNums, bodyVars, tplUrlVarNums, btnVars]);
 
   function goTo(id: number) { if (id <= maxReached) setStep(id); }
   function next() {
@@ -505,6 +550,14 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
     }
     setSubmitting(true);
     try {
+      const dispatchPayload = {
+        target_per_hour: dispatch.target_per_hour,
+        rate_per_second: dispatch.rate_per_second,
+        max_concurrency: dispatch.max_concurrency,
+        scheduled_pause_enabled: dispatch.scheduled_pause_enabled,
+        pause_every_messages: dispatch.scheduled_pause_enabled ? dispatch.pause_every_messages : null,
+        pause_duration_seconds: dispatch.scheduled_pause_enabled ? dispatch.pause_duration_seconds : null,
+      };
       const { campaign } = await fnCreate({
         data: {
           workspace_id: workspaceId,
@@ -516,19 +569,17 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
           button_url_mapping: btnVars,
           header_media_url: headerMediaUrl || null,
           scheduled_at: finalMode === "schedule" ? new Date(scheduledAt).toISOString() : null,
+          ...dispatchPayload,
         },
       });
       if (event_id) {
         try { await fnLink({ data: { event_id, campaign_id: campaign.id } }); } catch { /* non-fatal */ }
       }
-      const sendRatePerMin = Math.max(1, Math.round(60 / Math.max(1, rate.interval_s)));
-      // Save rate/timezone config, but keep status as "draft" until start/schedule is confirmed.
+      // Timezone + reforço da config do rate limiter (garante persistência mesmo no adminMode).
       await supabase.from("wa_campaigns").update({
         timezone,
-        send_rate_per_min: sendRatePerMin,
-        batch_size: rate.pause_every,
-        jitter_ms: rate.pause_duration_s * 1000,
-      }).eq("id", campaign.id);
+        ...dispatchPayload,
+      } as any).eq("id", campaign.id);
 
       if (finalMode === "now") {
         if (adminMode) {
@@ -907,41 +958,8 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
 
 
 
-                {/* Config */}
-                <div className="rounded-lg border p-4">
-                  <div className="mb-3">
-                    <div className="flex items-center gap-2 text-sm font-semibold">
-                      <Sliders className="h-4 w-4" /> Configurações de Disparo
-                    </div>
-                    <div className="text-xs text-muted-foreground">Ajuste os intervalos e pausas para garantir a segurança dos envios.</div>
-                  </div>
-                  <div className="space-y-2">
-                    <RateRow icon={<Timer className="h-4 w-4" />}
-                      title="Intervalo (s)"
-                      subtitle="Tempo de espera entre cada disparo"
-                      unit="s"
-                      value={rate.interval_s}
-                      min={1} max={600}
-                      onChange={(v) => setRate((r) => ({ ...r, interval_s: v }))}
-                    />
-                    <RateRow icon={<Users2 className="h-4 w-4" />}
-                      title="Pausa (a cada X envios)"
-                      subtitle="Gatilho para iniciar uma pausa longa"
-                      unit="ctts"
-                      value={rate.pause_every}
-                      min={1} max={500}
-                      onChange={(v) => setRate((r) => ({ ...r, pause_every: v }))}
-                    />
-                    <RateRow icon={<Clock className="h-4 w-4" />}
-                      title="Tempo de pausa em (s)"
-                      subtitle="Duração do descanso do sistema"
-                      unit="s"
-                      value={rate.pause_duration_s}
-                      min={0} max={3600}
-                      onChange={(v) => setRate((r) => ({ ...r, pause_duration_s: v }))}
-                    />
-                  </div>
-                </div>
+                {/* Config — Rate limiter (Passo 02) */}
+                <DispatchConfigCard value={dispatch} onChange={setDispatch} />
               </div>
 
               <div>
@@ -1015,8 +1033,14 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                       <ReviewRow label="Agendamento"
                         value={`${new Date(scheduledAt).toLocaleString("pt-BR")} (${timezone})`} />
                     )}
-                    <ReviewRow label="Intervalo" value={`${rate.interval_s}s entre envios`} />
-                    <ReviewRow label="Pausa automática" value={`${rate.pause_duration_s}s a cada ${rate.pause_every} envios`} />
+                    <ReviewRow label="Velocidade" value={`${dispatch.rate_per_second} msg/s · ~${Math.round(1000 / Math.max(1, dispatch.rate_per_second))} ms`} />
+                    <ReviewRow label="Meta operacional" value={`${dispatch.target_per_hour.toLocaleString("pt-BR")} msgs/h`} />
+                    <ReviewRow label="Concorrência máx." value={`${dispatch.max_concurrency} requisições`} />
+                    <ReviewRow label="Pausa programada" value={
+                      dispatch.scheduled_pause_enabled
+                        ? `${dispatch.pause_duration_seconds}s a cada ${dispatch.pause_every_messages.toLocaleString("pt-BR")} envios`
+                        : "desativada"
+                    } />
                     <ReviewRow label="Duração estimada" value={estimatedDurationMin > 60 ? `${Math.floor(estimatedDurationMin / 60)}h ${estimatedDurationMin % 60}min` : `${estimatedDurationMin} min`} />
                     <ReviewRow label="Custo estimado" value={`R$ ${(estimatedCostCents / 100).toFixed(2)}`} />
                     {!adminMode && (
@@ -1157,8 +1181,8 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                   <Sliders className="h-4 w-4" /> Configurações de Envio
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  <ConfigBadge icon={<Timer className="h-4 w-4" />} title="Intervalo entre contatos" subtitle="Tempo de espera configurado" value={`${rate.interval_s}s`} />
-                  <ConfigBadge icon={<Clock className="h-4 w-4" />} title="Pausa Automática" subtitle={`Pausa a cada ${rate.pause_every} envios`} value={`${rate.pause_duration_s}s`} />
+                  <ConfigBadge icon={<Timer className="h-4 w-4" />} title="Velocidade" subtitle={`~${Math.round(1000 / Math.max(1, dispatch.rate_per_second))} ms · concorrência ${dispatch.max_concurrency}`} value={`${dispatch.rate_per_second} msg/s`} />
+                  <ConfigBadge icon={<Clock className="h-4 w-4" />} title="Pausa programada" subtitle={dispatch.scheduled_pause_enabled ? `A cada ${dispatch.pause_every_messages.toLocaleString("pt-BR")} envios` : "Não aplicada"} value={dispatch.scheduled_pause_enabled ? `${dispatch.pause_duration_seconds}s` : "—"} />
                 </div>
               </div>
 
@@ -1444,6 +1468,214 @@ function ConfigBadge({ icon, title, subtitle, value }: { icon: React.ReactNode; 
         <div className="text-[11px] text-muted-foreground">{subtitle}</div>
       </div>
       <Badge variant="secondary" className="text-sm">{value}</Badge>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Passo 02 — Configurações de Disparo (rate limiter)
+// Espelha exatamente os campos consumidos pelo worker novo em wa_campaigns:
+// target_per_hour, rate_per_second, max_concurrency,
+// scheduled_pause_enabled, pause_every_messages, pause_duration_seconds.
+// O intervalo é apenas exibido (calculado em runtime pelo rate limiter):
+//   intervalMs = 1000 / rate_per_second
+// ─────────────────────────────────────────────────────────────────
+function DispatchConfigCard({
+  value,
+  onChange,
+}: {
+  value: DispatchConfig;
+  onChange: (patch: DispatchConfig | ((prev: DispatchConfig) => DispatchConfig)) => void;
+}) {
+  const patch = (p: Partial<DispatchConfig>) =>
+    onChange((prev) => ({ ...prev, ...p }));
+  const setPreset = (preset: DispatchPreset) => {
+    if (preset === "custom") {
+      onChange((prev) => ({ ...prev, preset }));
+      return;
+    }
+    const p = DISPATCH_PRESETS[preset];
+    onChange((prev) => ({
+      ...prev,
+      preset,
+      target_per_hour: p.target_per_hour,
+      rate_per_second: p.rate_per_second,
+      max_concurrency: p.max_concurrency,
+      // Presets vêm com pausa programada desativada por padrão
+      scheduled_pause_enabled: false,
+    }));
+  };
+
+  const isCustom = value.preset === "custom";
+  const intervalMs = Math.round(1000 / Math.max(1, value.rate_per_second));
+  const nominalPerHour = value.rate_per_second * 3600;
+
+  const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
+  const updRate = (v: number) => {
+    const rate = clamp(Math.round(v), 1, 80);
+    // Ao editar rate, mantém a meta operacional coerente
+    patch({ preset: "custom", rate_per_second: rate });
+  };
+  const updTarget = (v: number) => {
+    const t = clamp(Math.round(v), 100, 200_000);
+    // Deriva rate necessário a partir da meta; usuário sempre pode ajustar rate depois
+    const derived = Math.max(1, Math.ceil(t / 3600));
+    patch({ preset: "custom", target_per_hour: t, rate_per_second: clamp(derived, 1, 80) });
+  };
+  const updConc = (v: number) => {
+    const c = clamp(Math.round(v), 1, 100);
+    patch({ preset: "custom", max_concurrency: c });
+  };
+  const updPauseEvery = (v: number) => patch({ pause_every_messages: clamp(Math.round(v), 1, 1_000_000) });
+  const updPauseDur = (v: number) => patch({ pause_duration_seconds: clamp(Math.round(v), 1, 3600) });
+
+  return (
+    <div className="rounded-lg border p-4 space-y-4">
+      <div>
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <Sliders className="h-4 w-4" /> Configurações de Disparo
+        </div>
+        <div className="text-xs text-muted-foreground">
+          Escolha a velocidade e o comportamento da campanha. O intervalo é calculado
+          automaticamente pelo rate limiter global do número.
+        </div>
+      </div>
+
+      <div>
+        <Label className="mb-1 block text-xs">Preset de velocidade</Label>
+        <Select value={value.preset} onValueChange={(v) => setPreset(v as DispatchPreset)}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="conservative">Conservador — 6 msg/s</SelectItem>
+            <SelectItem value="target_20k">Meta de 20 mil/h — 7 msg/s</SelectItem>
+            <SelectItem value="custom">Personalizado</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <NumberField
+          label="Meta de envios por hora"
+          hint="Meta operacional da campanha"
+          value={value.target_per_hour}
+          min={100} max={200_000} step={500}
+          onChange={updTarget}
+        />
+        <NumberField
+          label="Mensagens por segundo"
+          hint="rate_per_second (rate limiter global do número)"
+          value={value.rate_per_second}
+          min={1} max={80} step={1}
+          onChange={updRate}
+        />
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-md border bg-muted/40 p-3">
+          <div className="text-xs text-muted-foreground">Intervalo calculado</div>
+          <div className="text-lg font-semibold">{intervalMs} ms</div>
+          <div className="text-[11px] text-muted-foreground">
+            Calculado automaticamente: 1000 / {value.rate_per_second} msg/s.
+            Aplicado pelo scheduler — não como <code>sleep</code> após o envio.
+          </div>
+        </div>
+        <NumberField
+          label="Concorrência máxima"
+          hint="Requisições HTTP em andamento simultâneas"
+          value={value.max_concurrency}
+          min={1} max={100} step={1}
+          onChange={updConc}
+        />
+      </div>
+
+      <div className="rounded-md border p-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm font-medium">Pausa programada</div>
+            <div className="text-[11px] text-muted-foreground">
+              Pausa curta contabilizada no total da campanha (não por worker).
+              Desativada por padrão.
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">
+              {value.scheduled_pause_enabled ? "Ativada" : "Desativada"}
+            </span>
+            <Switch
+              checked={value.scheduled_pause_enabled}
+              onCheckedChange={(v) => patch({ scheduled_pause_enabled: !!v })}
+            />
+          </div>
+        </div>
+        {value.scheduled_pause_enabled && (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <NumberField
+              label="Pausar após (envios)"
+              hint="Ex.: 5.000"
+              value={value.pause_every_messages}
+              min={1} max={1_000_000} step={100}
+              onChange={updPauseEvery}
+            />
+            <NumberField
+              label="Duração da pausa (s)"
+              hint="Ex.: 60"
+              value={value.pause_duration_seconds}
+              min={1} max={3600} step={5}
+              onChange={updPauseDur}
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-md border bg-muted/30 p-3 text-xs">
+        <div className="mb-1 font-semibold">Resumo da configuração</div>
+        <ul className="space-y-0.5 text-muted-foreground">
+          <li>Meta operacional: <b>{value.target_per_hour.toLocaleString("pt-BR")}</b> mensagens/h {isCustom ? "(personalizado)" : ""}</li>
+          <li>Capacidade nominal: <b>{nominalPerHour.toLocaleString("pt-BR")}</b> tentativas/h</li>
+          <li>Velocidade: <b>{value.rate_per_second} msg/s</b></li>
+          <li>Intervalo médio: <b>{intervalMs} ms</b> (somente leitura)</li>
+          <li>Concorrência: <b>{value.max_concurrency}</b></li>
+          <li>Pausa programada: <b>{value.scheduled_pause_enabled
+            ? `${value.pause_duration_seconds}s a cada ${value.pause_every_messages.toLocaleString("pt-BR")} envios`
+            : "desativada"}</b></li>
+        </ul>
+        <div className="mt-2 text-[11px] text-muted-foreground">
+          O rate efetivo é <b>min(campanha, limite global do número)</b>. Se o número
+          tiver throughput menor, o worker respeita esse teto.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NumberField({
+  label, hint, value, min, max, step, onChange,
+}: {
+  label: string; hint?: string; value: number;
+  min: number; max: number; step: number; onChange: (v: number) => void;
+}) {
+  return (
+    <div>
+      <Label className="mb-1 block text-xs">{label}</Label>
+      <div className="flex items-center gap-1">
+        <Button type="button" variant="outline" size="icon" className="h-8 w-8"
+          onClick={() => onChange(Math.max(min, value - step))}>-</Button>
+        <Input
+          type="number"
+          value={Number.isFinite(value) ? value : min}
+          min={min} max={max} step={step}
+          onChange={(e) => {
+            const n = Number(e.target.value);
+            if (Number.isFinite(n)) onChange(n);
+          }}
+          className="h-8 text-center"
+        />
+        <Button type="button" variant="outline" size="icon" className="h-8 w-8"
+          onClick={() => onChange(Math.min(max, value + step))}>+</Button>
+      </div>
+      {hint && <div className="mt-1 text-[11px] text-muted-foreground">{hint}</div>}
     </div>
   );
 }
