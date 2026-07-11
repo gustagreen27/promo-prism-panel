@@ -107,8 +107,27 @@ function ListView({ onNew }: { onNew: () => void }) {
   const campaignsQ = useQuery({
     queryKey: ["wa-campaigns", "all"],
     queryFn: () => listFn(),
-    refetchInterval: 10_000,
+    refetchInterval: 15_000,
   });
+
+  // Realtime: recarrega a lista assim que qualquer campanha ou destinatário muda.
+  useEffect(() => {
+    let pending = false;
+    const schedule = () => {
+      if (pending) return;
+      pending = true;
+      setTimeout(() => {
+        pending = false;
+        qc.invalidateQueries({ queryKey: ["wa-campaigns"] });
+      }, 800);
+    };
+    const channel = supabase
+      .channel("admin-disparos-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "wa_campaigns" }, schedule)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "campaign_recipients" }, schedule)
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [qc]);
 
   const campaigns = (campaignsQ.data ?? []) as any[];
   const listError = campaignsQ.error;
