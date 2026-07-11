@@ -256,6 +256,20 @@ function Page() {
       },
       onError: (e: any) => toast.error(e?.message ?? "Erro ao destravar"),
     }),
+    swap: useMutation({
+      mutationFn: () => swapFn({ data: {
+        id,
+        connection_id: swapConn || undefined,
+        template_id: swapTpl || undefined,
+        retry_failed: swapRetry,
+      } }),
+      onSuccess: () => {
+        toast.success("Rota trocada e campanha retomada");
+        setSwapOpen(false);
+        invalidate();
+      },
+      onError: (e: any) => toast.error(e?.message ?? "Erro ao trocar rota"),
+    }),
   };
 
   const p = (prog?.progress as any) ?? {};
