@@ -112,7 +112,7 @@ function Page() {
                       </TableCell>
                     </TableRow>
                   )}
-                </>
+                </Fragment>
               ))}
             </TableBody>
           </Table>}
