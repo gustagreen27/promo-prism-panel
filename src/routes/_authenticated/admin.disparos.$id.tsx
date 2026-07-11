@@ -27,6 +27,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
 import { renderMapping, fillMetaTemplate, buildContext } from "@/lib/wa-variables";
+import { formatPhoneDisplay } from "@/lib/phone-country";
 
 export const Route = createFileRoute("/_authenticated/admin/disparos/$id")({
   head: () => ({ meta: [{ title: "Campanha WhatsApp" }] }),
