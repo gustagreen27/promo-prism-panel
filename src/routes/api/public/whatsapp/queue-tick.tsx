@@ -124,13 +124,17 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
 
         const { data: running } = await supabaseAdmin
           .from("wa_campaigns")
-          .select("id, send_rate_per_min")
+          .select("id, rate_per_second")
           .eq("status", "running");
 
-
+        // Cada tick tem até ~90s de runtime (MAX_TICK_RUNTIME_MS no worker).
+        // Reservamos rate_per_second * 90s * 1.5 (folga) para saturar a janela
+        // até o próximo cron; a velocidade real é limitada pelo token bucket.
+        const TICK_WINDOW_S = 90;
         const results: any[] = [];
         for (const c of running ?? []) {
-          const batch = Math.min(Math.max(Number(c.send_rate_per_min) || 30, 1), 200);
+          const rps = Math.max(1, Number((c as any).rate_per_second) || 6);
+          const batch = Math.min(5000, Math.ceil(rps * TICK_WINDOW_S * 1.5));
           try {
             const r = await processCampaignTick(c.id, batch);
             results.push({ id: c.id, ...r });
@@ -138,6 +142,7 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
             results.push({ id: c.id, error: e?.message });
           }
         }
+
         return Response.json({ ok: true, processed_at: nowIso, results });
       },
     },
