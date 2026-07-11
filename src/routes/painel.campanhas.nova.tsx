@@ -83,6 +83,41 @@ const STEPS: WizardStep[] = [
   { id: 5, label: "Resultados", short: "Resultados" },
 ];
 
+// ─────────────────────────────────────────────────────────────────
+// Rate limiter / Passo 02 — Configurações de Disparo
+// Fields realmente consumidos pelo worker (wa-queue.server.ts) e persistidos
+// em wa_campaigns: rate_per_second, max_concurrency, target_per_hour,
+// scheduled_pause_enabled, pause_every_messages, pause_duration_seconds.
+// ─────────────────────────────────────────────────────────────────
+type DispatchPreset = "conservative" | "target_20k" | "custom";
+type DispatchConfig = {
+  preset: DispatchPreset;
+  target_per_hour: number;      // meta operacional (mensagens/h)
+  rate_per_second: number;      // rate_per_second do rate limiter global (por phone_number_id)
+  max_concurrency: number;      // requisições HTTP simultâneas
+  scheduled_pause_enabled: boolean;
+  pause_every_messages: number; // usado apenas se scheduled_pause_enabled
+  pause_duration_seconds: number; // usado apenas se scheduled_pause_enabled
+};
+
+const DISPATCH_PRESETS: Record<Exclude<DispatchPreset, "custom">, Omit<DispatchConfig, "preset" | "scheduled_pause_enabled" | "pause_every_messages" | "pause_duration_seconds">> = {
+  conservative: { target_per_hour: 20_000, rate_per_second: 6, max_concurrency: 15 },
+  target_20k:   { target_per_hour: 20_000, rate_per_second: 7, max_concurrency: 15 },
+};
+
+function defaultDispatch(preset: DispatchPreset = "target_20k"): DispatchConfig {
+  const p = preset === "custom" ? DISPATCH_PRESETS.target_20k : DISPATCH_PRESETS[preset];
+  return {
+    preset,
+    target_per_hour: p.target_per_hour,
+    rate_per_second: p.rate_per_second,
+    max_concurrency: p.max_concurrency,
+    scheduled_pause_enabled: false,
+    pause_every_messages: 5000,
+    pause_duration_seconds: 60,
+  };
+}
+
 export interface CampaignWizardProps {
   workspaceId: string;
   event_id?: string;
