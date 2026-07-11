@@ -201,7 +201,58 @@ function FormDialog({ editing, numbers, wabas, onSubmit, saving }: any) {
         <div className="sm:col-span-2"><Label>Variáveis detectadas</Label>
           <Input readOnly value={((form.body || "").match(/\{\{\d+\}\}/g) || []).join(", ") || "—"} className="font-mono text-xs" />
         </div>
-        <div className="sm:col-span-2"><Label>Rodapé</Label><Input value={form.footer ?? ""} onChange={(e) => set("footer", e.target.value)} /></div>
+        <div className="sm:col-span-2"><Label>Rodapé (máx. 60 caracteres)</Label><Input maxLength={60} value={form.footer ?? ""} onChange={(e) => set("footer", e.target.value)} /></div>
+        <div className="sm:col-span-2 space-y-2">
+          <div className="flex items-center justify-between">
+            <Label>Botões (até 10)</Label>
+            <Button type="button" size="sm" variant="outline" disabled={(form.buttons ?? []).length >= 10}
+              onClick={() => set("buttons", [...(form.buttons ?? []), { type: "QUICK_REPLY", text: "" }])}>
+              <Plus className="mr-1 h-3 w-3" />Adicionar botão
+            </Button>
+          </div>
+          {(form.buttons ?? []).map((b: any, i: number) => (
+            <div key={i} className="rounded-md border p-2 space-y-2">
+              <div className="flex gap-2">
+                <Select value={b.type} onValueChange={(v) => {
+                  const arr = [...form.buttons]; arr[i] = { ...arr[i], type: v }; set("buttons", arr);
+                }}>
+                  <SelectTrigger className="w-[170px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="QUICK_REPLY">Resposta rápida</SelectItem>
+                    <SelectItem value="URL">URL</SelectItem>
+                    <SelectItem value="PHONE_NUMBER">Telefone</SelectItem>
+                    <SelectItem value="COPY_CODE">Copiar código</SelectItem>
+                    <SelectItem value="VOICE_CALL">Solicitar ligação</SelectItem>
+                  </SelectContent>
+                </Select>
+                {b.type !== "COPY_CODE" && (
+                  <Input maxLength={25} placeholder="Rótulo (máx. 25)" value={b.text ?? ""}
+                    onChange={(e) => { const arr = [...form.buttons]; arr[i] = { ...arr[i], text: e.target.value }; set("buttons", arr); }} />
+                )}
+                <Button type="button" size="icon" variant="ghost"
+                  onClick={() => { const arr = [...form.buttons]; arr.splice(i, 1); set("buttons", arr); }}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+              {b.type === "URL" && (
+                <div className="grid grid-cols-2 gap-2">
+                  <Input placeholder="https://exemplo.com/{{1}}" value={b.url ?? ""}
+                    onChange={(e) => { const arr = [...form.buttons]; arr[i] = { ...arr[i], url: e.target.value }; set("buttons", arr); }} />
+                  <Input placeholder="Exemplo da variável (se URL tem {{1}})" value={b.example ?? ""}
+                    onChange={(e) => { const arr = [...form.buttons]; arr[i] = { ...arr[i], example: e.target.value }; set("buttons", arr); }} />
+                </div>
+              )}
+              {b.type === "PHONE_NUMBER" && (
+                <Input placeholder="+5511999999999" value={b.phone_number ?? ""}
+                  onChange={(e) => { const arr = [...form.buttons]; arr[i] = { ...arr[i], phone_number: e.target.value }; set("buttons", arr); }} />
+              )}
+              {b.type === "COPY_CODE" && (
+                <Input placeholder="Código de exemplo (ex.: 250FF)" value={b.example ?? ""}
+                  onChange={(e) => { const arr = [...form.buttons]; arr[i] = { ...arr[i], example: e.target.value }; set("buttons", arr); }} />
+              )}
+            </div>
+          ))}
+        </div>
       </div>
       <DialogFooter><Button disabled={saving} onClick={() => onSubmit(form)}>Salvar</Button></DialogFooter>
     </DialogContent>

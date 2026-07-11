@@ -100,6 +100,14 @@ export function buildTemplateComponents(t: {
           return btn;
         }
         if (type === "PHONE_NUMBER") return { type: "PHONE_NUMBER", text: b.text, phone_number: b.phone_number };
+        if (type === "COPY_CODE") {
+          const btn: any = { type: "COPY_CODE" };
+          if (b.example) btn.example = [b.example];
+          return btn;
+        }
+        if (type === "VOICE_CALL" || type === "CALL_REQUEST") {
+          return { type: "VOICE_CALL", text: b.text };
+        }
         return { type: "QUICK_REPLY", text: b.text };
       }),
     });
