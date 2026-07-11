@@ -255,7 +255,7 @@ export const swapCampaignRouteAndResume = createServerFn({ method: "POST" })
     if (Object.keys(patch).length === 0) {
       // Nothing swapped, behave like plain resume.
     } else {
-      const { error: upErr } = await supabase.from("wa_campaigns").update(patch).eq("id", data.id);
+      const { error: upErr } = await supabase.from("wa_campaigns").update(patch as any).eq("id", data.id);
       if (upErr) throw upErr;
       await logEvent(
         context.supabase, data.id, "route_swapped",
