@@ -220,6 +220,7 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
         scheduled_pause_enabled: data.scheduled_pause_enabled ?? false,
         pause_every_messages: data.scheduled_pause_enabled ? (data.pause_every_messages ?? null) : null,
         pause_duration_seconds: data.scheduled_pause_enabled ? (data.pause_duration_seconds ?? null) : null,
+      })
       .select()
       .single()
     if (error) throw error
