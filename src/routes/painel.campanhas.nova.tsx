@@ -97,6 +97,7 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   const fnBalance = useServerFn(getMyBalance);
   const fnCreate = useServerFn(createClientCampaign);
   const fnStart = useServerFn(startClientCampaign);
+  const fnAdminStart = useServerFn(adminStartWaCampaign);
   const fnLink = useServerFn(linkEventToCampaign);
   const fnConflict = useServerFn(checkSchedulingConflict);
 
