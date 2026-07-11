@@ -38,8 +38,8 @@ export const preflightCampaign = createServerFn({ method: "POST" })
     const { data: camp } = await supabase.from("wa_campaigns").select("*").eq("id", data.id).single();
     if (!camp) throw new Error("Campanha não encontrada");
 
-    checks.push({ key: "client", label: "Cliente selecionado", ok: !!camp.client_id });
-    checks.push({ key: "project", label: "Projeto selecionado", ok: !!camp.project_id });
+    checks.push({ key: "client", label: "Cliente opcional no modo admin", ok: true, message: camp.client_id ? undefined : "Sem trava para administrador" });
+    checks.push({ key: "project", label: "Projeto opcional no modo admin", ok: true, message: camp.project_id ? undefined : "Sem trava para administrador" });
     checks.push({ key: "list", label: "Lista de contatos selecionada", ok: !!camp.list_id });
     checks.push({ key: "connection", label: "Número WhatsApp selecionado", ok: !!camp.connection_id });
     checks.push({ key: "template", label: "Template selecionado", ok: !!camp.template_id });
@@ -52,8 +52,8 @@ export const preflightCampaign = createServerFn({ method: "POST" })
       checks.push({
         key: "connection_active",
         label: "Número ativo com token válido",
-        ok: !!(c && c.status === "ativo" && c.access_token && c.phone_number_id),
-        message: !c ? "Conexão não encontrada" : !c.access_token ? "Token ausente" : c.status !== "ativo" ? `Status: ${c.status}` : undefined,
+        ok: !!(c && ["ativo", "active", "connected"].includes(String(c.status ?? "").toLowerCase()) && c.access_token && c.phone_number_id),
+        message: !c ? "Conexão não encontrada" : !c.access_token ? "Token ausente" : !["ativo", "active", "connected"].includes(String(c.status ?? "").toLowerCase()) ? `Status: ${c.status}` : undefined,
       });
     }
 
@@ -63,7 +63,7 @@ export const preflightCampaign = createServerFn({ method: "POST" })
       checks.push({
         key: "template_approved",
         label: "Template aprovado pela Meta",
-        ok: t?.status === "approved",
+        ok: String(t?.status ?? "").toLowerCase() === "approved",
         message: t ? `Status: ${t.status}` : "Template não encontrado",
       });
     }
@@ -79,16 +79,13 @@ export const preflightCampaign = createServerFn({ method: "POST" })
       ok: (recCount ?? 0) > 0,
     });
 
-    // Stock
-    const { data: avail } = await supabase.rpc("wa_available_stock", {
-      _client_id: camp.client_id ?? undefined,
-      _project_id: camp.project_id ?? undefined,
-    } as any);
-    const available = Number(avail ?? 0);
+    // Admin dispatch has no stock/cost lock.
+    const available = recCount ?? 0;
     checks.push({
       key: "stock",
-      label: `Estoque suficiente (${available} disponíveis, ${recCount ?? 0} necessárias)`,
-      ok: available >= (recCount ?? 0) && (recCount ?? 0) > 0,
+      label: "Estoque/custo liberado para administrador",
+      ok: (recCount ?? 0) > 0,
+      message: "Sem desconto de saldo ou estoque",
     });
 
     // Webhook configured (either global settings or connection-level)
