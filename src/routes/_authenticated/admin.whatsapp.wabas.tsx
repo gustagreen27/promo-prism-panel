@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, Eye, RefreshCw, ShieldCheck, Cloud, Download, Zap, CheckCircle2, XCircle, Loader2, AlertTriangle, Circle } from "lucide-react";
+import { Plus, Trash2, Pencil, Eye, RefreshCw, ShieldCheck, Cloud, Download, Zap, CheckCircle2, XCircle, Loader2, AlertTriangle, Circle, Webhook } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import { listWabas, createWaba, updateWaba, deleteWaba, getWabaChildren } from "
 import { syncWabaNumbers, syncAllWabas } from "@/lib/wa-meta-sync.functions";
 import { debugToken, createWabaViaApi, importWabasFromBusiness } from "@/lib/wa-meta-api.functions";
 import { quickConnectWa, parseQuickConnect } from "@/lib/wa-quick-connect.functions";
+import { subscribeWabaToApp, listSubscribedApps } from "@/lib/wa-subscribe.functions";
 import { listWorkspaceConnections } from "@/lib/wa-connections.functions";
 import { listClients } from "@/lib/clients.functions";
 import { listProjects } from "@/lib/projects.functions";
@@ -44,6 +45,8 @@ function Page() {
   const projectsFn = useServerFn(listProjects);
   const quickFn = useServerFn(quickConnectWa);
   const workspacesFn = useServerFn(listWorkspaceConnections);
+  const subscribeFn = useServerFn(subscribeWabaToApp);
+  const listSubsFn = useServerFn(listSubscribedApps);
   const qc = useQueryClient();
 
   const wabasQuery = useQuery({ queryKey: ["wa-wabas"], queryFn: () => listFn() });
@@ -81,6 +84,33 @@ function Page() {
       refresh();
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao sincronizar"),
+  });
+  const subscribeMut = useMutation({
+    mutationFn: (id: string) => subscribeFn({ data: { waba_ref_id: id } }),
+    onSuccess: (r: any) => {
+      const n = Array.isArray(r?.apps) ? r.apps.length : 0;
+      const names = (r?.apps ?? [])
+        .map((a: any) => a?.whatsapp_business_api_data?.name)
+        .filter(Boolean)
+        .join(", ");
+      toast.success(
+        `App assinado na WABA (${n} app${n === 1 ? "" : "s"}${names ? `: ${names}` : ""}). Webhooks agora serão entregues.`,
+      );
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao assinar app na WABA"),
+  });
+  const checkSubsMut = useMutation({
+    mutationFn: (id: string) => listSubsFn({ data: { waba_ref_id: id } }),
+    onSuccess: (r: any) => {
+      const n = Array.isArray(r?.apps) ? r.apps.length : 0;
+      if (!n) return toast.warning("Nenhum app assinado nesta WABA.");
+      const names = r.apps
+        .map((a: any) => a?.whatsapp_business_api_data?.name ?? a?.whatsapp_business_api_data?.id)
+        .filter(Boolean)
+        .join(", ");
+      toast.success(`${n} app(s) assinado(s): ${names}`);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao consultar apps"),
   });
   const syncAllMut = useMutation({
     mutationFn: () => syncAll(),
@@ -169,6 +199,28 @@ function Page() {
                   </Button>
                   <Button size="icon" variant="ghost" title="Ver vinculados" onClick={() => setViewing(r)}>
                     <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    title="Assinar app na Meta (webhooks)"
+                    disabled={subscribeMut.isPending && subscribeMut.variables === r.id}
+                    onClick={() => subscribeMut.mutate(r.id)}
+                  >
+                    {subscribeMut.isPending && subscribeMut.variables === r.id
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <Webhook className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    title="Verificar apps assinados"
+                    disabled={checkSubsMut.isPending && checkSubsMut.variables === r.id}
+                    onClick={() => checkSubsMut.mutate(r.id)}
+                  >
+                    {checkSubsMut.isPending && checkSubsMut.variables === r.id
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <ShieldCheck className="h-4 w-4" />}
                   </Button>
                   <Button size="icon" variant="ghost" onClick={() => { setEditing(r); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                   <Button size="icon" variant="ghost" onClick={() => confirm("Remover WABA?") && del.mutate(r.id)}><Trash2 className="h-4 w-4" /></Button>
