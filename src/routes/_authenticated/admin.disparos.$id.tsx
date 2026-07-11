@@ -797,11 +797,11 @@ function Page() {
       </Tabs>
 
       <Dialog open={swapOpen} onOpenChange={setSwapOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Trocar número/template e retomar</DialogTitle>
             <DialogDescription>
-              Selecione um número e/ou template diferentes. Destinatários já enviados não serão reenviados.
+              Selecione o número, o template aprovado para esse número e ajuste as variáveis. Destinatários já enviados não serão reenviados.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -810,38 +810,66 @@ function Page() {
               <Select value={swapConn} onValueChange={setSwapConn}>
                 <SelectTrigger><SelectValue placeholder="Selecione um número" /></SelectTrigger>
                 <SelectContent>
-                  {(connsQ.data ?? []).flatMap((w: any) =>
-                    (w.connections ?? [])
-                      .filter((c: any) => ["ativo","active","connected"].includes(String(c.status ?? "").toLowerCase()))
-                      .map((c: any) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.display_phone ?? c.name} — {w.name}
-                          {c.id === (camp as any)?.connection_id ? " (atual)" : ""}
-                        </SelectItem>
-                      )),
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Template</Label>
-              <Select value={swapTpl} onValueChange={setSwapTpl}>
-                <SelectTrigger><SelectValue placeholder="Selecione um template" /></SelectTrigger>
-                <SelectContent>
-                  {(tplsQ.data ?? [])
-                    .filter((t: any) => {
-                      const st = String(t.status ?? "").toUpperCase();
-                      return !st || st === "APPROVED" || st === "ACTIVE";
-                    })
-                    .map((t: any) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.name} ({t.language})
-                        {t.id === (camp as any)?.template_id ? " (atual)" : ""}
+                  {swapConnList
+                    .filter((c: any) => ["ativo","active","connected"].includes(String(c.status ?? "").toLowerCase()))
+                    .map((c: any) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.display_phone ?? c.name} — {c.workspace_name}
+                        {c.id === (camp as any)?.connection_id ? " (atual)" : ""}
                       </SelectItem>
                     ))}
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1.5">
+              <Label>Template aprovado</Label>
+              <Select value={swapTpl} onValueChange={setSwapTpl} disabled={!swapConn}>
+                <SelectTrigger>
+                  <SelectValue placeholder={swapConn ? "Selecione um template" : "Escolha o número primeiro"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {swapTplList.map((t: any) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name} ({t.language})
+                      {t.id === (camp as any)?.template_id ? " (atual)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {swapConn && swapTplList.length === 0 && (
+                <p className="text-[11px] text-muted-foreground">Nenhum template aprovado para esta WABA.</p>
+              )}
+            </div>
+
+            {swapTplRow && (swapBodyVarNums.length > 0 || swapBtnVarNums.length > 0) && (
+              <div className="space-y-3 rounded-md border p-3">
+                <p className="text-xs font-medium">Variáveis do template</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Use tokens como <code>{"{nome}"}</code>, <code>{"{telefone}"}</code> ou texto fixo. Fallback: <code>{"{nome|amigo}"}</code>.
+                </p>
+                {swapBodyVarNums.map((n) => (
+                  <div key={`b-${n}`} className="space-y-1">
+                    <Label className="text-xs">Corpo · {"{{" + n + "}}"}</Label>
+                    <Input
+                      value={swapBodyVars[String(n)] ?? ""}
+                      onChange={(e) => setSwapBodyVars((s) => ({ ...s, [String(n)]: e.target.value }))}
+                      placeholder="{nome}"
+                    />
+                  </div>
+                ))}
+                {swapBtnVarNums.map((n) => (
+                  <div key={`u-${n}`} className="space-y-1">
+                    <Label className="text-xs">URL do botão · {"{{" + n + "}}"}</Label>
+                    <Input
+                      value={swapBtnVars[String(n)] ?? ""}
+                      onChange={(e) => setSwapBtnVars((s) => ({ ...s, [String(n)]: e.target.value }))}
+                      placeholder="slug ou parâmetro"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
             <label className="flex items-center gap-2 text-sm">
               <Checkbox
                 checked={swapRetry}
