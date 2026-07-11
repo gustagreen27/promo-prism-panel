@@ -38,7 +38,7 @@ export const adminListAllNumbers = createServerFn({ method: "POST" })
 export const adminListAllTemplates = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { connection_id?: string | null }) =>
-    z.object({ connection_id: z.string().uuid().nullish() }).parse(d ?? {})
+    z.object({ connection_id: z.string().uuid().nullish() }).passthrough().parse(d ?? {})
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any;
