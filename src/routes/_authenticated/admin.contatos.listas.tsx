@@ -404,7 +404,7 @@ function ImportDialog({
           <DialogFooter>
             <Button
               disabled={saving || !csvRows?.length}
-              onClick={() => csvRows && onImport(csvRows, "csv")}
+              onClick={() => csvRows && onImport(csvRows, "csv", csvName)}
             >
               Importar {csvRows?.length ?? 0}
             </Button>
