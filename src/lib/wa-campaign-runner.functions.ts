@@ -260,34 +260,32 @@ export const getCampaignProgress = createServerFn({ method: "GET" })
       .single();
     if (error) throw error;
 
-    const statuses = ["pending", "processing", "accepted", "sent", "delivered", "read", "replied", "failed", "opt_out", "cancelled", "skipped"];
-    const counts: Record<string, number> = {};
-    await Promise.all(
-      statuses.map(async (status) => {
-        const { count, error: countError } = await context.supabase
-          .from("campaign_recipients")
-          .select("id", { count: "exact", head: true })
-          .eq("campaign_id", data.id)
-          .eq("status", status as any);
-        if (countError) throw countError;
-        counts[status] = count ?? 0;
-      }),
-    );
-    const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
-    const processed = total - counts.pending - counts.processing;
+    const stored = ((camp.progress as any) ?? {}) as Record<string, unknown>;
+    const num = (key: string) => Number(stored[key] ?? 0) || 0;
+    const total = Number(stored.total ?? camp.total_recipients ?? 0) || 0;
+    const pending = num("pending");
+    const processing = num("processing");
+    const accepted = num("accepted");
+    const deliveredBase = num("delivered");
+    const readBase = num("read");
+    const replied = num("replied");
+    const delivered = deliveredBase + readBase + replied;
+    const read = readBase + replied;
+    const sent = accepted + num("sent") + delivered;
+    const processed = Number(stored.processed ?? (total - pending - processing)) || 0;
     const liveProgress = {
       total,
-      pending: counts.pending,
-      processing: counts.processing,
-      accepted: counts.accepted,
-      sent: counts.sent + counts.delivered + counts.read + counts.replied,
-      delivered: counts.delivered + counts.read + counts.replied,
-      read: counts.read + counts.replied,
-      replied: counts.replied,
-      failed: counts.failed,
-      opt_out: counts.opt_out,
-      cancelled: counts.cancelled,
-      skipped: counts.skipped,
+      pending,
+      processing,
+      accepted,
+      sent,
+      delivered,
+      read,
+      replied,
+      failed: num("failed"),
+      opt_out: num("opt_out"),
+      cancelled: num("cancelled"),
+      skipped: num("skipped"),
       processed,
       percent: total > 0 ? Number(((processed / total) * 100).toFixed(2)) : 0,
     };

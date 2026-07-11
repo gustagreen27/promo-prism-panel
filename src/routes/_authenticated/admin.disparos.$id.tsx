@@ -27,7 +27,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
 import { renderMapping, fillMetaTemplate, buildContext } from "@/lib/wa-variables";
-import { formatPhoneDisplay } from "@/lib/phone-country";
+import { formatCallingCode, formatPhoneDisplay, summarizeCallingCodes } from "@/lib/phone-country";
 
 export const Route = createFileRoute("/_authenticated/admin/disparos/$id")({
   head: () => ({ meta: [{ title: "Campanha WhatsApp" }] }),
@@ -202,8 +202,19 @@ function Page() {
   const p = (prog?.progress as any) ?? {};
   const total = p.total ?? camp?.total_recipients ?? 0;
   const percent = p.percent ?? 0;
+  const processed = p.processed ?? (total - (p.pending ?? 0) - (p.processing ?? 0));
   const status = (prog?.status ?? camp?.status ?? "draft") as string;
   const isRunning = status === "running";
+  const senderPhone = (camp as any)?.connection?.display_phone ?? (camp as any)?.connection?.phone ?? null;
+  const audienceSummary = useMemo(() => {
+    const phones = (recipients as any[] | undefined)?.map((r: any) => r.phone).filter(Boolean) ?? [];
+    return summarizeCallingCodes(phones);
+  }, [recipients]);
+  const audienceCodeLabel = audienceSummary.dominantCode
+    ? `${formatCallingCode(audienceSummary.dominantCode)} (${audienceSummary.dominantCount.toLocaleString("pt-BR")} de ${audienceSummary.total.toLocaleString("pt-BR")} carregados)`
+    : recipientsQ.isLoading
+      ? "Carregando destinatários…"
+      : "DDI não identificado";
 
   // Prévia renderizada para o 1º destinatário (substitui {nome}, {{1}} etc.)
   const previewForFirst = useMemo(() => {
@@ -336,7 +347,7 @@ function Page() {
         <CardContent className="pt-6">
           <div className="flex items-baseline justify-between mb-2">
             <div className="text-2xl font-semibold tabular-nums">
-              {(total - (p.pending ?? 0) - (p.processing ?? 0)).toLocaleString("pt-BR")} <span className="text-muted-foreground text-base font-normal">de {total.toLocaleString("pt-BR")} processadas</span>
+              {Number(processed).toLocaleString("pt-BR")} <span className="text-muted-foreground text-base font-normal">de {total.toLocaleString("pt-BR")} processadas</span>
             </div>
             <div className="text-3xl font-bold tabular-nums text-primary">{Number(percent).toFixed(1)}%</div>
           </div>
@@ -396,7 +407,8 @@ function Page() {
               <KV k="Projeto" v={(camp as any)?.project?.name ?? "—"} />
               <KV k="Template" v={(camp as any)?.template?.name ?? "—"} />
               <KV k="Idioma" v={(camp as any)?.template?.language ?? "—"} />
-              <KV k="Número" v={(camp as any)?.connection?.display_phone ?? (camp as any)?.connection?.name ?? "—"} />
+              <KV k="Número de envio" v={senderPhone ? formatPhoneDisplay(senderPhone) : ((camp as any)?.connection?.name ?? "—")} />
+              <KV k="DDI dos destinatários" v={audienceCodeLabel} />
               <KV k="Taxa (msg/min)" v={String(camp?.send_rate_per_min ?? 30)} />
               <KV k="Lote por ciclo" v={String((camp as any)?.batch_size ?? 25)} />
               <KV k="Jitter" v={`${(camp as any)?.jitter_ms ?? 0} ms`} />

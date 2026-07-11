@@ -10,6 +10,8 @@ const OPT_OUT_REGEX = /\b(parar|sair|cancelar|cancela|remover|descadastrar|n[ãa
 const RETRYABLE_CODES = new Set(["130429", "131056", "131048", "131047", "500", "502", "503", "504"]);
 const MAX_ATTEMPTS = 3;
 const LEASE_MS = 3 * 60 * 1000;
+const PROCESSING_STALE_MS = 5 * 60 * 1000;
+const MAX_TICK_RUNTIME_MS = 90 * 1000;
 
 async function logEvent(campaignId: string, event_type: string, message: string, payload: any = {}) {
   try {
@@ -187,6 +189,23 @@ async function markPaused(campaignId: string, reason: string, message: string) {
   await logEvent(campaignId, "auto_paused", message, { reason });
 }
 
+async function resetStaleProcessing(campaignId: string) {
+  const cutoff = new Date(Date.now() - PROCESSING_STALE_MS).toISOString();
+  const { data } = await supabaseAdmin
+    .from("campaign_recipients")
+    .update({ status: "pending", failed_reason: null, error_code: null })
+    .eq("campaign_id", campaignId)
+    .eq("status", "processing")
+    .is("meta_message_id", null)
+    .lt("last_attempt_at", cutoff)
+    .select("id");
+
+  const count = data?.length ?? 0;
+  if (count > 0) {
+    await logEvent(campaignId, "processing_reset", `${count} destinatário(s) destravado(s) para reenfileirar`, { count });
+  }
+}
+
 export async function processCampaignTick(
   campaignId: string,
   batchSize?: number,
@@ -222,6 +241,8 @@ export async function processCampaignTick(
       return { processed: 0, done: true };
     }
     if (camp.status !== "running") return { processed: 0, done: true };
+
+    await resetStaleProcessing(campaignId);
 
     if (!camp.connection_id || !camp.template_id) {
       await supabaseAdmin
@@ -309,10 +330,14 @@ export async function processCampaignTick(
       return { processed: 0, done: false, reason: "quota_reached" };
     }
 
-    // Effective batch = min(param, campaign.batch_size, rate/min, remaining cap)
+    // Effective batch = min(param, campaign.batch_size, rate/min, remaining cap, runtime budget).
+    // When the configured delay is high (ex.: 60s), a large batch can exceed the worker time
+    // and leave rows stuck as "processing". Cap the batch so every tick finishes safely.
     const cfgBatch = Math.max(1, (camp as any).batch_size ?? 25);
     const rateMin = Math.max(1, camp.send_rate_per_min ?? cfgBatch);
-    const eff = Math.min(batchSize ?? cfgBatch, cfgBatch, rateMin, cap);
+    const jitter = Math.max(0, (camp as any).jitter_ms ?? 0);
+    const maxByRuntime = jitter > 0 ? Math.max(1, Math.floor(MAX_TICK_RUNTIME_MS / jitter)) : Number.POSITIVE_INFINITY;
+    const eff = Math.min(batchSize ?? cfgBatch, cfgBatch, rateMin, cap, maxByRuntime);
 
     const { data: recipients } = await supabaseAdmin
       .from("campaign_recipients")
@@ -663,7 +688,6 @@ export async function processCampaignTick(
       }
 
       // Jitter delay between sends (in-lote)
-      const jitter = Math.max(0, (camp as any).jitter_ms ?? 0);
       if (jitter > 0) {
         const wait = Math.floor(Math.random() * jitter);
         if (wait > 0) await new Promise((res) => setTimeout(res, wait));
