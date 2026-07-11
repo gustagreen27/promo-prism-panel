@@ -391,12 +391,12 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
         try { await fnLink({ data: { event_id, campaign_id: campaign.id } }); } catch { /* non-fatal */ }
       }
       const sendRatePerMin = Math.max(1, Math.round(60 / Math.max(1, rate.interval_s)));
+      // Save rate/timezone config, but keep status as "draft" until start/schedule is confirmed.
       await supabase.from("wa_campaigns").update({
         timezone,
         send_rate_per_min: sendRatePerMin,
         batch_size: rate.pause_every,
         jitter_ms: rate.pause_duration_s * 1000,
-        status: finalMode === "schedule" ? "scheduled" : "draft",
       }).eq("id", campaign.id);
 
       if (finalMode === "now") {
@@ -408,6 +408,14 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
           toast.success(r.status === "queued" ? "Campanha na fila!" : "Aguardando aprovação.");
         }
       } else if (finalMode === "schedule") {
+        if (adminMode) {
+          await fnAdminSchedule({ data: { id: campaign.id, scheduled_at: new Date(scheduledAt).toISOString() } });
+        } else {
+          await supabase.from("wa_campaigns").update({
+            status: "scheduled",
+            scheduled_at: new Date(scheduledAt).toISOString(),
+          }).eq("id", campaign.id);
+        }
         toast.success("Campanha agendada.");
       } else {
         toast.success("Rascunho salvo.");
