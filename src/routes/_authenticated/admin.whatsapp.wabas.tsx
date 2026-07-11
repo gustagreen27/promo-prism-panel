@@ -60,6 +60,8 @@ function Page() {
   const [diag, setDiag] = useState<any>(null);
   const [apiOpen, setApiOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
+  const workspacesQuery = useQuery({ queryKey: ["wa-workspaces"], queryFn: () => workspacesFn(), enabled: quickOpen });
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["wa-wabas"] });
   const save = useMutation({
