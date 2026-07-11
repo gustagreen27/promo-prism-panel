@@ -8,7 +8,12 @@ const OPT_OUT_REGEX = /\b(parar|sair|cancelar|cancela|remover|descadastrar|n[ãa
 
 // Temporary/transient Meta error codes eligible for retry
 // Temporary/transient Meta error codes eligible for retry
-const RETRYABLE_CODES = new Set(["130429", "131056", "131048", "131047", "500", "502", "503", "504"]);
+// 131000 = "Something went wrong" (transient generic error, isolado por recipient)
+// 131016 = Service overloaded; 131026 = Message undeliverable (retry tenta re-rota); 368 = temporarily blocked
+const RETRYABLE_CODES = new Set([
+  "130429", "131000", "131016", "131026", "131056", "131048", "131047",
+  "368", "500", "502", "503", "504",
+]);
 const MAX_ATTEMPTS = 5;
 const LEASE_MS = 3 * 60 * 1000;
 const PROCESSING_STALE_MS = 5 * 60 * 1000;
