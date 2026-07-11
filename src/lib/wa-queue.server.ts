@@ -2,6 +2,7 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendTemplateMessage } from "@/lib/wa-send.server";
 import { renderMapping, buildContext } from "@/lib/wa-variables";
+import { getCountryCallingCode } from "@/lib/phone-country";
 
 
 const OPT_OUT_REGEX = /\b(parar|sair|cancelar|cancela|remover|descadastrar|n[ãa]o quero|stop|unsubscribe)\b/i;
@@ -350,6 +351,11 @@ export async function processCampaignTick(
     let failed = 0;
     let lastError: string | null = null;
 
+    // Sender's DDI (country calling code) derived from the connected WhatsApp number.
+    // Any recipient whose DDI differs is skipped with a clear reason — Meta would otherwise
+    // silently drop or return misleading errors for cross-country sends.
+    const senderCode = getCountryCallingCode((conn as any).display_phone);
+
     for (const r of recipients) {
       // Opt-out check
       const { data: oo } = await supabaseAdmin
@@ -370,6 +376,29 @@ export async function processCampaignTick(
         }
         continue;
       }
+
+      // DDI mismatch: recipient's country code must match the sender number's country code.
+      if (senderCode) {
+        const recCode = getCountryCallingCode(r.phone);
+        if (recCode && recCode !== senderCode) {
+          const reason = `DDI incompatível: destinatário +${recCode} × remetente +${senderCode}`;
+          await supabaseAdmin
+            .from("campaign_recipients")
+            .update({ status: "failed", failed_reason: reason, error_code: "ddi_mismatch" })
+            .eq("id", r.id);
+          if ((camp as any).reservation_id) {
+            await supabaseAdmin.rpc("wallet_release_reservation" as any, {
+              _reservation_id: (camp as any).reservation_id,
+              _qty: 1,
+            });
+          }
+          failed++;
+          lastError = reason;
+          continue;
+        }
+      }
+
+
 
       const campVars = (camp.template_variables as Record<string, string> | null) || {};
       const recVars = (r.variables as Record<string, string> | null) || {};
