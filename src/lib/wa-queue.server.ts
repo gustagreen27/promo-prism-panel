@@ -695,22 +695,31 @@ export async function processCampaignTick(
       }
     }
 
-    // Auto-pause on failure-rate threshold
+    // Auto-pause on failure-rate threshold — só recalcula quando houve falhas neste lote,
+    // evitando um full-scan de status a cada tick.
     const threshold = (camp as any).abort_on_failure_rate as number | null;
     const minProc = (camp as any).min_processed_for_abort ?? 50;
-    if (threshold && threshold > 0) {
-      const { data: agg } = await supabaseAdmin
-        .from("campaign_recipients")
-        .select("status")
-        .eq("campaign_id", campaignId);
-      const rows = agg ?? [];
-      const processedTotal = rows.filter((r: any) => !["pending", "processing"].includes(r.status)).length;
-      const failedTotal = rows.filter((r: any) => r.status === "failed").length;
-      if (processedTotal >= minProc && failedTotal / processedTotal >= threshold) {
+    if (threshold && threshold > 0 && failed > 0) {
+      const [{ count: failedTotal }, { count: pendingLike }] = await Promise.all([
+        supabaseAdmin
+          .from("campaign_recipients")
+          .select("id", { count: "exact", head: true })
+          .eq("campaign_id", campaignId)
+          .eq("status", "failed"),
+        supabaseAdmin
+          .from("campaign_recipients")
+          .select("id", { count: "exact", head: true })
+          .eq("campaign_id", campaignId)
+          .in("status", ["pending", "processing"]),
+      ]);
+      const totalRecipients = (camp as any).total_recipients ?? 0;
+      const processedTotal = Math.max(totalRecipients - (pendingLike ?? 0), 0);
+      const fT = failedTotal ?? 0;
+      if (processedTotal >= minProc && processedTotal > 0 && fT / processedTotal >= threshold) {
         await markPaused(
           campaignId,
           "failure_rate",
-          `Auto-pausada: taxa de falha ${(100 * failedTotal / processedTotal).toFixed(1)}% ≥ ${(100 * threshold).toFixed(0)}%`,
+          `Auto-pausada: taxa de falha ${(100 * fT / processedTotal).toFixed(1)}% ≥ ${(100 * threshold).toFixed(0)}%`,
         );
         return { processed: sent + failed, done: false, reason: "failure_rate" };
       }
