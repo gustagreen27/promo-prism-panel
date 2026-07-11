@@ -8,6 +8,7 @@ import { toCSV, downloadCSV, participantsLabel } from "@/lib/csv";
 import { PageHeader } from "@/components/admin/page-header";
 import { FINANCEIRO_TABS } from "@/components/admin/hub-tabs";
 import { EmptyState } from "@/components/admin/empty-state";
+import { ErrorCard } from "@/components/admin/query-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,9 +46,13 @@ function Page() {
   const clientsFn = useServerFn(listClients);
   const projectsFn = useServerFn(listProjects);
   const qc = useQueryClient();
-  const { data = [], isLoading } = useQuery({ queryKey: ["costs"], queryFn: () => list() });
-  const { data: clients = [] } = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
-  const { data: projects = [] } = useQuery({ queryKey: ["projects"], queryFn: () => projectsFn() });
+  const costsQuery = useQuery({ queryKey: ["costs"], queryFn: () => list() });
+  const clientsQuery = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
+  const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: () => projectsFn() });
+  const data = costsQuery.data ?? [];
+  const isLoading = costsQuery.isLoading;
+  const clients = clientsQuery.data ?? [];
+  const projects = projectsQuery.data ?? [];
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [partFilter, setPartFilter] = useState<Participant[]>([]);
@@ -60,6 +65,7 @@ function Page() {
   const delMut = useMutation({
     mutationFn: (id: string) => remove({ data: { id } }),
     onSuccess: () => { toast.success("Removido"); refresh(); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao remover"),
   });
 
   const filtered = data.filter((r: any) => matchesParticipants(r, partFilter));
@@ -102,9 +108,13 @@ function Page() {
         </div>
       </div>
 
+      {clientsQuery.error && <ErrorCard error={clientsQuery.error} onRetry={() => clientsQuery.refetch()} />}
+      {projectsQuery.error && <ErrorCard error={projectsQuery.error} onRetry={() => projectsQuery.refetch()} />}
+
       <div className="rounded-xl border bg-card">
-        {isLoading ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
-          : filtered.length === 0 ? <EmptyState title="Sem custos" />
+        {costsQuery.error ? <ErrorCard error={costsQuery.error} onRetry={() => costsQuery.refetch()} />
+          : isLoading ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
+          : filtered.length === 0 ? <EmptyState title="Nenhum custo encontrado" />
           : <Table>
             <TableHeader>
               <TableRow>

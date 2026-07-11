@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, Pencil, RefreshCw, Cloud, PhoneCall, ShieldCheck, KeyRound, UserCog } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
+import { ErrorCard } from "@/components/admin/query-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,10 +37,14 @@ function Page() {
   const wabasFn = useServerFn(listWabas);
   const qc = useQueryClient();
 
-  const { data: rows = [], isLoading } = useQuery({ queryKey: ["wa-numbers"], queryFn: () => listFn() });
-  const { data: clients = [] } = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
-  const { data: projects = [] } = useQuery({ queryKey: ["projects"], queryFn: () => projectsFn() });
-  const { data: wabas = [] } = useQuery({ queryKey: ["wa-wabas"], queryFn: () => wabasFn() });
+  const numbersQuery = useQuery({ queryKey: ["wa-numbers"], queryFn: () => listFn() });
+  const { data: rows, isLoading, error: rowsError, refetch: refetchRows } = numbersQuery;
+  const clientsQuery = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
+  const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: () => projectsFn() });
+  const wabasQuery = useQuery({ queryKey: ["wa-wabas"], queryFn: () => wabasFn() });
+  const clients = clientsQuery.data ?? [];
+  const projects = projectsQuery.data ?? [];
+  const wabas = wabasQuery.data ?? [];
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -86,9 +91,16 @@ function Page() {
           </div>
         }
       />
+      {(clientsQuery.error || projectsQuery.error || wabasQuery.error) && (
+        <ErrorCard
+          error={clientsQuery.error || projectsQuery.error || wabasQuery.error}
+          onRetry={() => { clientsQuery.refetch(); projectsQuery.refetch(); wabasQuery.refetch(); }}
+        />
+      )}
       <div className="rounded-xl border bg-card">
         {isLoading ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
-        : rows.length === 0 ? <EmptyState title="Nenhum número cadastrado" />
+        : rowsError ? <div className="p-4"><ErrorCard error={rowsError} onRetry={() => refetchRows()} /></div>
+        : !rows || rows.length === 0 ? <EmptyState title="Nenhum número cadastrado" />
         : <Table>
           <TableHeader><TableRow>
             <TableHead>Nome</TableHead><TableHead>Telefone</TableHead><TableHead>Phone Number ID</TableHead>

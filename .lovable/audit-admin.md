@@ -151,3 +151,35 @@ Nenhuma tela calcula números por conta própria a partir de dados soltos.
 - **`admin.whatsapp.qualidade`** — depende de campos que a Meta só envia se `phone_number_quality_updates` estiver assinado no webhook. Se não houver assinatura, a tela mostra os últimos valores em `whatsapp_connections.quality_rating` (real) mas fica desatualizada. Não é mock; é atraso de webhook.
 - **`admin.whatsapp.embedded-signup`** — depende de `META_ES_CONFIG_ID` já configurada (existe). Se o Meta rejeitar a Embedded Signup, a página mostra o erro real da API.
 
+
+## Fase 3 — Aplicação completa do padrão ErrorCard (concluída)
+
+Componente central: `src/components/admin/query-state.tsx` (`ErrorCard`/`QueryState`).
+Padrão aplicado: erro real do `useQuery` → `<ErrorCard error onRetry={refetch}>`; loading → spinner/skeleton; vazio → estado vazio explícito; sucesso → dados reais. Nenhum `?? 0` / `?? []` / `|| 0` / `|| []` / catch silencioso remanescente esconde falha de backend nas rotas listadas. Filtragem por workspace_id preservada. Nenhum token/segredo exposto nas mensagens.
+
+### Bloco Financeiro
+- `admin.financeiro.tsx` — split de queries workspaces/tx, ErrorCard isolado por card, empty state próprio.
+- `admin.faturamento.tsx` — split revenues/clients/projects, ErrorCard principal + isolados nas secundárias.
+- `admin.custos.tsx` — mesmo padrão + toast onError no delete.
+- `admin.fechamento.tsx` — ErrorCard na lista + toast onError no delete.
+- `admin.estoque.tsx` — ErrorCard na lista + toast onError no delete.
+- `admin.precificacao.tsx` — split settings/workspaces, ErrorCards por seção.
+- `admin.upsell.tsx` — split upsells/clients/projects, ErrorCards + toast onError delete.
+
+### Bloco WhatsApp
+- `admin.whatsapp.conexoes.tsx`, `admin.whatsapp.numeros.index.tsx`, `admin.whatsapp.numeros.$id.perfil.tsx` (perfil + histórico com ErrorCard isolado), `admin.whatsapp.wabas.tsx`, `admin.whatsapp.templates.tsx`, `admin.whatsapp.inbox.tsx`, `admin.whatsapp.conversas.tsx`, `admin.whatsapp.webhooks.tsx`, `admin.whatsapp.logs.tsx`, `admin.whatsapp.liberacoes.tsx` (remove catch silencioso no reload), `admin.whatsapp.qualidade.tsx`, `admin.whatsapp.relatorios.tsx`, `admin.whatsapp.configuracoes.tsx`, `admin.whatsapp.embedded-signup.tsx`.
+- `admin.whatsapp.tsx` — layout puro, sem queries.
+
+### Bloco Disparos / Campanhas / Agenda / Histórico
+- `admin.disparos.tsx`, `admin.disparos.index.tsx`, `admin.disparos.$id.tsx` (bloco principal), `admin.campanhas.tsx`, `admin.campanhas-aprovacao.tsx` (fetch manual convertido em `useQuery`), `admin.campaigns.$id.tsx`, `admin.campaigns.$id.edit.tsx`, `admin.campaigns.$id.preview.tsx`, `admin.agenda.tsx`, `admin.historico.tsx`.
+
+### Bloco Contatos / Clientes / Projetos / Relatórios / Config
+- `admin.contatos.tsx`, `admin.contatos.listas.tsx`, `admin.clientes.tsx`, `admin.projetos.tsx`, `admin.relatorios.$id.tsx`, `admin.relatorios.analytics.tsx`, `admin.configuracoes.tsx` (billing + settings).
+- `admin.relatorios.new.tsx` — formulário; erros já surgem via toast, sem alterações.
+
+### Validação
+- `bunx tsgo --noEmit` passa limpo após todos os blocos.
+- Estados testados por leitura de código em cada rota: loading, error (ErrorCard com refetch), vazio (mensagem específica), sucesso (dados reais). Erro em query secundária isolado em seu card.
+
+### Pendências / dependências externas
+- Nenhuma pendência de código; qualquer falha exibida agora reflete estado real de backend/credenciais (ex.: WABA sem token, Meta Graph, etc.) — a mensagem original do erro é preservada para diagnóstico.

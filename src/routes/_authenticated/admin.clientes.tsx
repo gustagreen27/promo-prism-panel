@@ -7,6 +7,7 @@ import { Plus, Trash2, Pencil } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { CLIENTES_TABS } from "@/components/admin/hub-tabs";
 import { EmptyState } from "@/components/admin/empty-state";
+import { ErrorCard } from "@/components/admin/query-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +32,8 @@ function Page() {
   const update = useServerFn(updateClient);
   const remove = useServerFn(deleteClient);
   const qc = useQueryClient();
-  const { data = [], isLoading } = useQuery({ queryKey: ["clients"], queryFn: () => list() });
+  const clientsQuery = useQuery({ queryKey: ["clients"], queryFn: () => list() });
+  const { data = [], isLoading, error, refetch } = clientsQuery;
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const refresh = () => qc.invalidateQueries({ queryKey: ["clients"] });
@@ -53,6 +55,7 @@ function Page() {
       } />
       <div className="rounded-xl border bg-card">
         {isLoading ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
+          : error ? <ErrorCard error={error} onRetry={() => refetch()} />
           : data.length === 0 ? <EmptyState title="Sem clientes" />
           : <Table>
             <TableHeader><TableRow>

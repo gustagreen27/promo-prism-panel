@@ -6,6 +6,7 @@ import { Download } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { FINANCEIRO_TABS } from "@/components/admin/hub-tabs";
 import { EmptyState } from "@/components/admin/empty-state";
+import { ErrorCard } from "@/components/admin/query-state";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,9 +31,12 @@ function Page() {
   const activityFn = useServerFn(listActivity);
   const waFn = useServerFn(listWaCampaigns);
   const linkFn = useServerFn(listCampaigns);
-  const { data: activity = [], isLoading: lA } = useQuery({ queryKey: ["activity"], queryFn: () => activityFn() });
-  const { data: wa = [], isLoading: lW } = useQuery({ queryKey: ["wa-campaigns"], queryFn: () => waFn() });
-  const { data: link = [], isLoading: lL } = useQuery({ queryKey: ["campaigns"], queryFn: () => linkFn() });
+  const activityQ = useQuery({ queryKey: ["activity"], queryFn: () => activityFn() });
+  const { data: activity = [], isLoading: lA, error: eA } = activityQ;
+  const waQ = useQuery({ queryKey: ["wa-campaigns"], queryFn: () => waFn() });
+  const { data: wa = [], isLoading: lW, error: eW } = waQ;
+  const linkQ = useQuery({ queryKey: ["campaigns"], queryFn: () => linkFn() });
+  const { data: link = [], isLoading: lL, error: eL } = linkQ;
 
   const [partFilter, setPartFilter] = useState<Participant[]>([]);
   const waFiltered = wa.filter((r: any) => matchesParticipants(r, partFilter));
@@ -101,6 +105,7 @@ function Page() {
           </div>
           <div className="rounded-xl border bg-card">
             {lW ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
+              : eW ? <div className="p-4"><ErrorCard error={eW} onRetry={() => waQ.refetch()} /></div>
               : waFiltered.length === 0 ? <EmptyState title="Sem disparos" />
               : <Table>
                   <TableHeader><TableRow>
@@ -136,6 +141,7 @@ function Page() {
           </div>
           <div className="rounded-xl border bg-card">
             {lL ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
+              : eL ? <div className="p-4"><ErrorCard error={eL} onRetry={() => linkQ.refetch()} /></div>
               : linkFiltered.length === 0 ? <EmptyState title="Sem campanhas" />
               : <Table>
                   <TableHeader><TableRow>
@@ -167,6 +173,7 @@ function Page() {
           </div>
           <div className="rounded-xl border bg-card">
             {lA ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
+              : eA ? <div className="p-4"><ErrorCard error={eA} onRetry={() => activityQ.refetch()} /></div>
               : activity.length === 0 ? <EmptyState title="Sem registros" />
               : <Table>
                   <TableHeader><TableRow>

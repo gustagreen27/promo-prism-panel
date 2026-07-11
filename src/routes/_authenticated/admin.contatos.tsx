@@ -9,6 +9,7 @@ import { CLIENTES_TABS, HubTabs } from "@/components/admin/hub-tabs";
 import { Link } from "@tanstack/react-router";
 import { ListPlus } from "lucide-react";
 import { EmptyState } from "@/components/admin/empty-state";
+import { ErrorCard } from "@/components/admin/query-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,9 +36,12 @@ function Page() {
   const clientsFn = useServerFn(listClients);
   const projectsFn = useServerFn(listProjects);
   const qc = useQueryClient();
-  const { data: rows = [], isLoading } = useQuery({ queryKey: ["contacts"], queryFn: () => listFn() });
-  const { data: clients = [] } = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
-  const { data: projects = [] } = useQuery({ queryKey: ["projects"], queryFn: () => projectsFn() });
+  const contactsQuery = useQuery({ queryKey: ["contacts"], queryFn: () => listFn() });
+  const { data: rows = [], isLoading } = contactsQuery;
+  const clientsQuery = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
+  const { data: clients = [] } = clientsQuery;
+  const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: () => projectsFn() });
+  const { data: projects = [] } = projectsQuery;
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const refresh = () => qc.invalidateQueries({ queryKey: ["contacts"] });
@@ -81,8 +85,12 @@ function Page() {
       <div className="mb-4 rounded-lg border bg-muted/40 p-3 text-sm">
         💡 O <b>disparo</b> escolhe uma <b>Lista</b>, não contatos soltos. Cadastre aqui, depois vá em <Link to="/admin/contatos/listas" className="font-semibold underline">Listas</Link> para agrupar.
       </div>
+      {(clientsQuery.error || projectsQuery.error) && (
+        <ErrorCard error={clientsQuery.error ?? projectsQuery.error} onRetry={() => { clientsQuery.refetch(); projectsQuery.refetch(); }} />
+      )}
       <div className="rounded-xl border bg-card">
         {isLoading ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
+        : contactsQuery.error ? <ErrorCard error={contactsQuery.error} onRetry={() => contactsQuery.refetch()} />
         : rows.length === 0 ? <EmptyState title="Sem contatos" description="Cadastre um contato ou importe uma planilha." />
         : <Table>
           <TableHeader><TableRow>

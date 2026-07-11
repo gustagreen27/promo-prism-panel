@@ -17,6 +17,7 @@ import {
 import {
   adminListWorkspacesWithBalance, adminSetCustomPrice, adminSetCustomMinimumMessages, adminAdjustWallet, adminListAllTransactions,
 } from "@/lib/billing.functions";
+import { ErrorCard } from "@/components/admin/query-state";
 
 export const Route = createFileRoute("/_authenticated/admin/financeiro")({
   head: () => ({ meta: [{ title: "Financeiro — Admin" }] }),
@@ -43,11 +44,13 @@ function Page() {
   const adjust = useServerFn(adminAdjustWallet);
   const qc = useQueryClient();
 
-  const { data: workspaces = [] } = useQuery({ queryKey: ["admin-ws-balance"], queryFn: () => listWs() });
-  const { data: txs = [] } = useQuery({
+  const wsQuery = useQuery({ queryKey: ["admin-ws-balance"], queryFn: () => listWs() });
+  const txQuery = useQuery({
     queryKey: ["admin-all-tx"],
     queryFn: () => listTx({ data: { limit: 200 } }),
   });
+  const workspaces = wsQuery.data ?? [];
+  const txs = txQuery.data ?? [];
 
   const [modal, setModal] = useState<null | { ws: any; type: "price" | "minmsg" | "adjust" }>(null);
   const [priceStr, setPriceStr] = useState("");
@@ -98,6 +101,13 @@ function Page() {
       <Card className="mb-6">
         <CardHeader><CardTitle>Workspaces</CardTitle></CardHeader>
         <CardContent>
+          {wsQuery.error ? (
+            <ErrorCard error={wsQuery.error} onRetry={() => wsQuery.refetch()} />
+          ) : wsQuery.isLoading ? (
+            <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
+          ) : workspaces.length === 0 ? (
+            <div className="p-6 text-sm text-muted-foreground">Nenhum workspace encontrado.</div>
+          ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -140,12 +150,20 @@ function Page() {
               })}
             </TableBody>
           </Table>
+          )}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader><CardTitle>Últimas transações (todas as contas)</CardTitle></CardHeader>
         <CardContent>
+          {txQuery.error ? (
+            <ErrorCard error={txQuery.error} onRetry={() => txQuery.refetch()} />
+          ) : txQuery.isLoading ? (
+            <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
+          ) : txs.length === 0 ? (
+            <div className="p-6 text-sm text-muted-foreground">Nenhuma transação encontrada.</div>
+          ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -172,6 +190,7 @@ function Page() {
               ))}
             </TableBody>
           </Table>
+          )}
         </CardContent>
       </Card>
 

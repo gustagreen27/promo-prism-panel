@@ -13,6 +13,7 @@ import { EmbeddedSignupButton } from "@/components/admin/whatsapp/embedded-signu
 import { listClients } from "@/lib/clients.functions";
 import { listProjects } from "@/lib/projects.functions";
 import { listOnboardingLogs } from "@/lib/wa-embedded-signup.functions";
+import { ErrorCard } from "@/components/admin/query-state";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp/embedded-signup")({
   head: () => ({ meta: [{ title: "Embedded Signup — WhatsApp" }] }),
@@ -27,9 +28,13 @@ function Page() {
   const projectsFn = useServerFn(listProjects);
   const logsFn = useServerFn(listOnboardingLogs);
 
-  const { data: clients = [] } = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
-  const { data: projects = [] } = useQuery({ queryKey: ["projects"], queryFn: () => projectsFn() });
-  const { data: logs = [] } = useQuery({ queryKey: ["wa-onboarding-logs"], queryFn: () => logsFn({ data: {} }) });
+  const clientsQuery = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
+  const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: () => projectsFn() });
+  const logsQuery = useQuery({ queryKey: ["wa-onboarding-logs"], queryFn: () => logsFn({ data: {} }) });
+  const clients = clientsQuery.data ?? [];
+  const projects = projectsQuery.data ?? [];
+  const { data: logs, isLoading: logsLoading, error: logsError, refetch: refetchLogs } = logsQuery;
+  const filtersError = clientsQuery.error || projectsQuery.error;
 
   const [clientId, setClientId] = useState<string>(NONE);
   const [projectId, setProjectId] = useState<string>(NONE);
@@ -44,6 +49,9 @@ function Page() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2 rounded-xl border bg-card p-6 space-y-5">
+          {filtersError && (
+            <ErrorCard error={filtersError} onRetry={() => { clientsQuery.refetch(); projectsQuery.refetch(); }} />
+          )}
           <div className="rounded-md border border-primary/20 bg-primary/5 p-3 text-sm flex gap-2">
             <Info className="h-4 w-4 shrink-0 text-primary mt-0.5" />
             <div>
@@ -149,7 +157,11 @@ function Page() {
           <h3 className="font-medium">Logs de onboarding</h3>
           <span className="text-xs text-muted-foreground">Últimos 200 registros</span>
         </div>
-        {logs.length === 0 ? (
+        {logsLoading ? (
+          <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
+        ) : logsError ? (
+          <div className="p-4"><ErrorCard error={logsError} onRetry={() => refetchLogs()} /></div>
+        ) : !logs || logs.length === 0 ? (
           <div className="p-6 text-sm text-muted-foreground">Nenhum onboarding executado ainda.</div>
         ) : (
           <Table>

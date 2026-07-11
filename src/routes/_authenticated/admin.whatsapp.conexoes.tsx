@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Save } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
+import { ErrorCard } from "@/components/admin/query-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,7 +29,7 @@ function Page() {
   const setDefault = useServerFn(setWorkspaceDefaultConnection);
   const qc = useQueryClient();
 
-  const { data: rows = [], isLoading } = useQuery({
+  const { data: rows, isLoading, error, refetch } = useQuery({
     queryKey: ["wa-workspace-conns"],
     queryFn: () => listFn(),
   });
@@ -56,7 +57,9 @@ function Page() {
       />
       {isLoading ? (
         <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
-      ) : rows.length === 0 ? (
+      ) : error ? (
+        <ErrorCard error={error} onRetry={() => refetch()} />
+      ) : !rows || rows.length === 0 ? (
         <EmptyState title="Nenhum workspace" />
       ) : (
         <div className="space-y-4">

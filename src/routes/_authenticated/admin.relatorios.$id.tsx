@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Printer, Trash2, ArrowLeft, User, Calendar, Tag, Folder, Wallet, MailCheck, Send, Hourglass, XCircle, Layers, BarChart3, Clock } from "lucide-react";
+import { ErrorCard } from "@/components/admin/query-state";
 import { toast } from "sonner";
 import {
   applyFinalValue,
@@ -77,7 +78,8 @@ function ReportPage() {
   }
 
   if (isLoading) return <div className="p-8 text-muted-foreground">Carregando…</div>;
-  if (error || !data) return <div className="p-8">Relatório não encontrado. <Button variant="link" onClick={() => refetch()}>Tentar novamente</Button></div>;
+  if (error) return <div className="p-8"><ErrorCard error={error} onRetry={() => refetch()} /></div>;
+  if (!data) return <div className="p-8 text-muted-foreground">Relatório não encontrado.</div>;
 
   const totals = applyFinalValue(computeTotals(data.campaigns ?? []), data.final_value);
   const generatedAt = formatBRDateTime(fromLocalInputValue(generatedIso));

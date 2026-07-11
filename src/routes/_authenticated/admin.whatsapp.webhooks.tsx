@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { listNumbers, updateNumber } from "@/lib/whatsapp-numbers.functions";
 import { listSettings, upsertSetting } from "@/lib/settings.functions";
+import { ErrorCard } from "@/components/admin/query-state";
 
 const KEY = "whatsapp_webhook";
 
@@ -41,11 +42,13 @@ function Page() {
   const upsertFn = useServerFn(upsertSetting);
   const qc = useQueryClient();
 
-  const { data: rows = [], isLoading: numbersLoading } = useQuery({
+  const numbersQuery = useQuery({
     queryKey: ["wa-numbers"],
     queryFn: () => numbersFn(),
   });
-  const { data: settings = [], isLoading } = useQuery({ queryKey: ["settings"], queryFn: () => listFn() });
+  const { data: rows, isLoading: numbersLoading, error: numbersError, refetch: refetchNumbers } = numbersQuery;
+  const settingsQuery = useQuery({ queryKey: ["settings"], queryFn: () => listFn() });
+  const { data: settings, isLoading, error: settingsError, refetch: refetchSettings } = settingsQuery;
 
   const defaultUrl = useMemo(() => {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -61,7 +64,7 @@ function Page() {
   const [visibleTokens, setVisibleTokens] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    const row = settings.find((r: any) => r.key === KEY);
+    const row = (settings ?? []).find((r: any) => r.key === KEY);
     if (row?.value) {
       setForm((f) => ({ ...f, ...(row.value as WebhookConfig) }));
     } else if (!form.callback_url) {
@@ -131,6 +134,8 @@ function Page() {
         <div className="rounded-xl border bg-card p-4 space-y-4">
           {isLoading ? (
             <div className="text-sm text-muted-foreground">Carregando…</div>
+          ) : settingsError ? (
+            <ErrorCard error={settingsError} onRetry={() => refetchSettings()} />
           ) : (
             <>
               <div>
@@ -218,12 +223,13 @@ function Page() {
           </p>
           <div className="mt-2 grid gap-2">
             {numbersLoading && <div className="text-sm text-muted-foreground">Carregando…</div>}
-            {rows.length === 0 && !numbersLoading && (
+            {numbersError && <ErrorCard error={numbersError} onRetry={() => refetchNumbers()} />}
+            {!numbersLoading && !numbersError && (rows ?? []).length === 0 && (
               <div className="text-sm text-muted-foreground">
                 Cadastre um número para configurar o verify token específico.
               </div>
             )}
-            {rows.map((r: any) => {
+            {!numbersError && (rows ?? []).map((r: any) => {
               const visible = visibleTokens[r.id] ?? false;
               const token = r.verify_token ?? "";
               return (

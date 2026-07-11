@@ -18,6 +18,7 @@ import {
   type ListWabaTemplatesResult,
   type SendTestTemplateResult,
 } from "@/lib/whatsapp-test.functions";
+import { ErrorCard } from "@/components/admin/query-state";
 
 const KEY = "whatsapp_credentials";
 
@@ -74,11 +75,12 @@ function Page() {
   const testConnFn = useServerFn(testWhatsappConnection);
   const qc = useQueryClient();
 
-  const { data: rows = [], isLoading } = useQuery({ queryKey: ["settings"], queryFn: () => listFn() });
+  const settingsQuery = useQuery({ queryKey: ["settings"], queryFn: () => listFn() });
+  const { data: rows, isLoading, error: settingsError, refetch: refetchSettings } = settingsQuery;
   const [form, setForm] = useState<Creds>(EMPTY);
 
   useEffect(() => {
-    const row = rows.find((r: any) => r.key === KEY);
+    const row = (rows ?? []).find((r: any) => r.key === KEY);
     if (row?.value) setForm({ ...EMPTY, ...(row.value as Creds) });
   }, [rows]);
 
@@ -173,6 +175,8 @@ function Page() {
       <div className="rounded-xl border bg-card p-6">
         {isLoading ? (
           <div className="text-sm text-muted-foreground">Carregando…</div>
+        ) : settingsError ? (
+          <ErrorCard error={settingsError} onRetry={() => refetchSettings()} />
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>

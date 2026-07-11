@@ -7,6 +7,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { grantNumberToWorkspace, revokeNumberGrant } from "@/lib/admin-whatsapp.functions";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
+import { ErrorCard } from "@/components/admin/query-state";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp/liberacoes")({
   head: () => ({ meta: [{ title: "Liberações de números — Admin" }] }),
@@ -21,20 +22,31 @@ function Page() {
   const [conns, setConns] = useState<Conn[]>([]);
   const [ws, setWs] = useState<WS[]>([]);
   const [grants, setGrants] = useState<Grant[]>([]);
+  const [loadError, setLoadError] = useState<unknown>(null);
+  const [loading, setLoading] = useState(true);
   const [selConn, setSelConn] = useState("");
   const [selWs, setSelWs] = useState("");
   const fnGrant = useServerFn(grantNumberToWorkspace);
   const fnRevoke = useServerFn(revokeNumberGrant);
 
   async function reload() {
+    setLoading(true);
     const [c, w, g] = await Promise.all([
       supabase.from("whatsapp_connections").select("id,display_name,name,display_phone,visibility,paused_at").order("display_name"),
       supabase.from("workspaces").select("id,name").order("name"),
       supabase.from("whatsapp_number_grants").select("id,connection_id,workspace_id,created_at"),
     ]);
-    setConns((c.data as Conn[]) || []);
-    setWs((w.data as WS[]) || []);
-    setGrants((g.data as Grant[]) || []);
+    const firstError = c.error || w.error || g.error;
+    if (firstError) {
+      setLoadError(firstError);
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
+    setConns(c.data as Conn[]);
+    setWs(w.data as WS[]);
+    setGrants(g.data as Grant[]);
+    setLoading(false);
   }
   useEffect(() => { reload(); }, []);
 
@@ -54,6 +66,10 @@ function Page() {
     await fnRevoke({ data: { grant_id: id } });
     toast.success("Liberação removida");
     reload();
+  }
+
+  if (loadError) {
+    return <ErrorCard error={loadError} onRetry={() => reload()} />;
   }
 
   return (
@@ -86,7 +102,9 @@ function Page() {
       <Card>
         <CardHeader><CardTitle>Liberações ativas</CardTitle></CardHeader>
         <CardContent>
-          {grants.length === 0 ? (
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Carregando…</p>
+          ) : grants.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhuma liberação.</p>
           ) : (
             <div className="divide-y text-sm">

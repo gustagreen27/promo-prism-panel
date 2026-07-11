@@ -16,6 +16,7 @@ import {
   getPhoneProfile, updatePhoneProfile, uploadPhoneProfilePicture,
   requestDisplayNameChange, applyDisplayName, diagnoseConnection, listProfileAuditLogs,
 } from "@/lib/wa-profile.functions";
+import { ErrorCard } from "@/components/admin/query-state";
 import {
   updateConnectionToken, toggleGlobalToken, applyFixPhoneNumberId,
   applyFixWabaId, subscribeAppToWaba,
@@ -263,7 +264,7 @@ function Page() {
       {q.isLoading ? (
         <div className="p-6 text-sm text-muted-foreground">Carregando perfil…</div>
       ) : q.isError ? (
-        <div className="rounded-xl border bg-card p-6 text-sm text-destructive">{(q.error as any)?.message ?? "Erro ao carregar."}</div>
+        <ErrorCard error={q.error} onRetry={() => q.refetch()} />
       ) : (
         <div className="space-y-4">
           {(q.data as any)?.meta_error ? (
@@ -432,6 +433,8 @@ function Page() {
             </div>
             {audit.isLoading ? (
               <div className="text-xs text-muted-foreground">Carregando…</div>
+            ) : audit.isError ? (
+              <ErrorCard error={audit.error} onRetry={() => audit.refetch()} />
             ) : (audit.data?.rows ?? []).length === 0 ? (
               <div className="text-xs text-muted-foreground">Nenhuma alteração registrada.</div>
             ) : (

@@ -8,6 +8,7 @@ import {
   Calendar, CheckCircle2, AlertTriangle, Clock, Rocket, MessageSquareText,
 } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
+import { ErrorCard } from "@/components/admin/query-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -103,6 +104,7 @@ function ListView({ onNew }: { onNew: () => void }) {
   });
 
   const campaigns = (campaignsQ.data ?? []) as any[];
+  const listError = campaignsQ.error;
 
   const counts = useMemo(() => {
     const c = { all: campaigns.length, active: 0, scheduled: 0, done: 0, draft: 0 };
@@ -186,6 +188,8 @@ function ListView({ onNew }: { onNew: () => void }) {
         <CardContent className="p-0">
           {campaignsQ.isLoading ? (
             <div className="p-10 text-center text-sm text-muted-foreground">Carregando disparos…</div>
+          ) : listError ? (
+            <div className="p-6"><ErrorCard error={listError} onRetry={() => campaignsQ.refetch()} /></div>
           ) : filtered.length === 0 ? (
             <EmptyState hasAny={campaigns.length > 0} onNew={onNew} />
           ) : (

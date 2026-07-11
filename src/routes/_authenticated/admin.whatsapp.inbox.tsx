@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
+import { ErrorCard } from "@/components/admin/query-state";
 import { listConversations, listMessages } from "@/lib/inbox.functions";
 import { formatDate } from "@/lib/format";
 
@@ -15,16 +16,19 @@ export const Route = createFileRoute("/_authenticated/admin/whatsapp/inbox")({
 function Page() {
   const convFn = useServerFn(listConversations);
   const msgFn = useServerFn(listMessages);
-  const { data: convs = [] } = useQuery({ queryKey: ["wa-conv"], queryFn: () => convFn() });
+  const convQuery = useQuery({ queryKey: ["wa-conv"], queryFn: () => convFn() });
+  const { data: convs, error: convsError, refetch: refetchConvs } = convQuery;
   const [phone, setPhone] = useState<string | null>(null);
-  const { data: msgs = [] } = useQuery({ enabled: !!phone, queryKey: ["wa-msgs", phone], queryFn: () => msgFn({ data: { phone: phone! } }) });
+  const msgQuery = useQuery({ enabled: !!phone, queryKey: ["wa-msgs", phone], queryFn: () => msgFn({ data: { phone: phone! } }) });
+  const { data: msgs, error: msgsError, refetch: refetchMsgs } = msgQuery;
 
   return (
     <>
       <PageHeader title="Inbox" description="Mensagens recebidas dos contatos." />
       <div className="grid gap-4 md:grid-cols-[280px_1fr]">
         <div className="rounded-xl border bg-card">
-          {convs.length === 0 ? <EmptyState title="Sem conversas" />
+          {convsError ? <div className="p-3"><ErrorCard error={convsError} onRetry={() => refetchConvs()} /></div>
+          : !convs || convs.length === 0 ? <EmptyState title="Sem conversas" />
           : <div className="divide-y">
               {convs.map((c: any) => (
                 <button key={c.phone} onClick={() => setPhone(c.phone)}
@@ -38,7 +42,8 @@ function Page() {
         </div>
         <div className="rounded-xl border bg-card p-4 min-h-[400px]">
           {!phone ? <div className="text-sm text-muted-foreground">Selecione uma conversa.</div>
-          : msgs.length === 0 ? <div className="text-sm text-muted-foreground">Sem mensagens.</div>
+          : msgsError ? <ErrorCard error={msgsError} onRetry={() => refetchMsgs()} />
+          : !msgs || msgs.length === 0 ? <div className="text-sm text-muted-foreground">Sem mensagens.</div>
           : <div className="space-y-2">
               {msgs.map((m: any) => (
                 <div key={m.id} className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${m.direction === "in" ? "bg-muted" : "ml-auto bg-primary text-primary-foreground"}`}>

@@ -20,6 +20,7 @@ import { debugToken, createWabaViaApi, importWabasFromBusiness } from "@/lib/wa-
 import { listClients } from "@/lib/clients.functions";
 import { listProjects } from "@/lib/projects.functions";
 import { EmbeddedSignupButton } from "@/components/admin/whatsapp/embedded-signup-button";
+import { ErrorCard } from "@/components/admin/query-state";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp/wabas")({
   head: () => ({ meta: [{ title: "WABAs — WhatsApp Business" }] }),
@@ -41,9 +42,12 @@ function Page() {
   const projectsFn = useServerFn(listProjects);
   const qc = useQueryClient();
 
-  const { data: rows = [], isLoading } = useQuery({ queryKey: ["wa-wabas"], queryFn: () => listFn() });
-  const { data: clients = [] } = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
-  const { data: projects = [] } = useQuery({ queryKey: ["projects"], queryFn: () => projectsFn() });
+  const wabasQuery = useQuery({ queryKey: ["wa-wabas"], queryFn: () => listFn() });
+  const { data: rows, isLoading, error, refetch } = wabasQuery;
+  const clientsQuery = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
+  const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: () => projectsFn() });
+  const clients = clientsQuery.data ?? [];
+  const projects = projectsQuery.data ?? [];
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -127,7 +131,8 @@ function Page() {
       />
       <div className="rounded-xl border bg-card">
         {isLoading ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
-        : rows.length === 0 ? <EmptyState title="Nenhuma WABA cadastrada" description="Cadastre a WABA da Meta para vincular números, templates e campanhas." />
+        : error ? <div className="p-4"><ErrorCard error={error} onRetry={() => refetch()} /></div>
+        : !rows || rows.length === 0 ? <EmptyState title="Nenhuma WABA cadastrada" description="Cadastre a WABA da Meta para vincular números, templates e campanhas." />
         : <Table>
           <TableHeader><TableRow>
             <TableHead>Nome interno</TableHead><TableHead>WABA ID</TableHead><TableHead>Business ID</TableHead>
@@ -262,8 +267,10 @@ function ImportBmDialog({ clients, projects, saving, onSubmit }: any) {
 }
 
 function Children({ id, fetcher }: { id: string; fetcher: any }) {
-  const { data, isLoading } = useQuery({ queryKey: ["waba-children", id], queryFn: () => fetcher({ data: { id } }) });
-  if (isLoading || !data) return <div className="text-sm text-muted-foreground">Carregando…</div>;
+  const { data, isLoading, error, refetch } = useQuery({ queryKey: ["waba-children", id], queryFn: () => fetcher({ data: { id } }) });
+  if (isLoading) return <div className="text-sm text-muted-foreground">Carregando…</div>;
+  if (error) return <ErrorCard error={error} onRetry={() => refetch()} />;
+  if (!data) return <div className="text-sm text-muted-foreground">Sem dados.</div>;
   const { numbers, templates, campaigns } = data;
   return (
     <div className="space-y-4 text-sm">
