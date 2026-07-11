@@ -3,33 +3,74 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 const OPT_OUT_REGEX = /\b(parar|sair|cancelar|cancela|remover|descadastrar|n[ãa]o quero|stop|unsubscribe)\b/i;
 
+// Prioridade — evita regressão de status (ex.: um webhook "sent" atrasado
+// não pode sobrescrever um "read" já registrado).
+const STATUS_PRIORITY: Record<string, number> = {
+  pending: 0,
+  processing: 1,
+  accepted: 2,
+  sent: 3,
+  delivered: 4,
+  read: 5,
+  replied: 6,
+};
+
+// Enum whatsapp_templates.status = approved|pending|rejected|paused|disabled
+function mapTemplateStatus(ev: string | undefined | null): string | null {
+  if (!ev) return null;
+  const s = String(ev).toUpperCase();
+  if (s === "APPROVED") return "approved";
+  if (s === "REJECTED") return "rejected";
+  if (s === "PENDING" || s === "IN_APPEAL" || s === "PENDING_DELETION") return "pending";
+  if (s === "PAUSED" || s === "FLAGGED") return "paused";
+  if (s === "DISABLED" || s === "DELETED") return "disabled";
+  return null;
+}
+
 function verifySignature(rawBody: string, signatureHeader: string | null): boolean {
   const secret = process.env.META_APP_SECRET;
   if (!secret) return false;
   if (!signatureHeader || !signatureHeader.startsWith("sha256=")) return false;
-  const provided = signatureHeader.slice("sha256=".length);
-  const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
+  const provided = signatureHeader.slice("sha256=".length).trim();
+  const expected = createHmac("sha256", secret).update(rawBody, "utf8").digest("hex");
   try {
     const a = Buffer.from(provided, "hex");
     const b = Buffer.from(expected, "hex");
-    if (a.length !== b.length) return false;
+    if (a.length !== b.length || a.length === 0) return false;
     return timingSafeEqual(a, b);
   } catch {
     return false;
   }
 }
 
+// Extrai a mensagem de erro mais informativa de uma entrada `errors[]` da Meta.
+function extractError(err: any) {
+  const code = err?.code != null ? String(err.code) : null;
+  const title: string | null = err?.title ?? null;
+  const message: string | null = err?.message ?? null;
+  const details: string | null = err?.error_data?.details ?? null;
+  const reason = details || message || title || "failed";
+  return { code, title, message, details, reason };
+}
+
 export const Route = createFileRoute("/api/public/whatsapp/webhook")({
   server: {
     handlers: {
+      // ────────────────────────────────────────────────────────────
+      // GET — verificação do webhook (hub.challenge)
+      // ────────────────────────────────────────────────────────────
       GET: async ({ request }) => {
         const url = new URL(request.url);
         const mode = url.searchParams.get("hub.mode");
         const token = url.searchParams.get("hub.verify_token");
         const challenge = url.searchParams.get("hub.challenge");
-        if (mode !== "subscribe" || !token) return new Response("forbidden", { status: 403 });
+        if (mode !== "subscribe" || !token) {
+          return new Response("forbidden", { status: 403 });
+        }
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+        // 1) token global (settings.whatsapp_webhook.verify_token)
         const { data: setting } = await supabaseAdmin
           .from("settings")
           .select("value")
@@ -42,6 +83,8 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
             headers: { "content-type": "text/plain; charset=utf-8" },
           });
         }
+
+        // 2) token por conexão
         const { data: conns } = await supabaseAdmin
           .from("whatsapp_connections")
           .select("id")
@@ -53,190 +96,70 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
             headers: { "content-type": "text/plain; charset=utf-8" },
           });
         }
+
         return new Response("invalid token", { status: 403 });
       },
+
+      // ────────────────────────────────────────────────────────────
+      // POST — eventos (mensagens, status, templates, contas, etc)
+      // ────────────────────────────────────────────────────────────
       POST: async ({ request }) => {
         const rawBody = await request.text();
         const sig = request.headers.get("x-hub-signature-256");
         const strict = !!process.env.META_APP_SECRET;
         const valid = verifySignature(rawBody, sig);
+
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
         if (strict && !valid) {
+          // Log sanitizado — nunca gravar assinatura nem corpo cru.
           await supabaseAdmin.from("whatsapp_webhook_logs").insert({
             event_type: "invalid_signature",
-            payload: { has_signature: !!sig },
+            payload: { has_signature: !!sig, bytes: rawBody.length },
             error: "invalid X-Hub-Signature-256",
           });
           return new Response("invalid signature", { status: 401 });
         }
 
         let payload: any = {};
-        try { payload = JSON.parse(rawBody); } catch {}
+        try {
+          payload = JSON.parse(rawBody);
+        } catch {
+          // corpo inválido — responde 200 para evitar retentativa infinita.
+          await supabaseAdmin.from("whatsapp_webhook_logs").insert({
+            event_type: "invalid_json",
+            payload: { bytes: rawBody.length },
+            error: "invalid JSON body",
+          });
+          return new Response("ok", { status: 200 });
+        }
 
+        // Log do payload cru — a Meta não envia access token nem app secret
+        // aqui, mas usamos um resumo dos campos para diagnóstico rápido.
+        const entries: any[] = Array.isArray(payload?.entry) ? payload.entry : [];
+        const fields = entries
+          .flatMap((e) => (Array.isArray(e?.changes) ? e.changes.map((c: any) => c?.field) : []))
+          .filter(Boolean);
         await supabaseAdmin.from("whatsapp_webhook_logs").insert({
-          event_type: payload?.entry?.[0]?.changes?.[0]?.field ?? "unknown",
-          payload,
+          event_type: fields[0] ?? "unknown",
+          payload: { ...payload, __fields: fields, __entries: entries.length },
         });
 
-        try {
-          for (const entry of payload?.entry ?? []) {
-            for (const change of entry?.changes ?? []) {
-              const field: string = change?.field ?? "";
-              const value = change?.value ?? {};
-
-              // ── phone_number_name_update ─────────────────────────
-              if (field === "phone_number_name_update") {
-                const phoneNumberId = value?.phone_number ?? value?.phone_number_id;
-                const decision: string = value?.decision ?? value?.name_status ?? ""; // APPROVED / REJECTED
-                const requestedName: string | null = value?.requested_verified_name ?? value?.display_name ?? null;
-                const reason: string | null = value?.rejection_reason ?? null;
-                if (phoneNumberId) {
-                  const { data: conn } = await supabaseAdmin
-                    .from("whatsapp_connections")
-                    .select("id, workspace_id, requested_display_name, current_display_name")
-                    .eq("phone_number_id", phoneNumberId)
-                    .maybeSingle();
-                  if (conn) {
-                    const patch: any = {
-                      display_name_reviewed_at: new Date().toISOString(),
-                      last_meta_sync_at: new Date().toISOString(),
-                    };
-                    let action = "DISPLAY_NAME_APPROVED";
-                    if (decision === "APPROVED") {
-                      patch.display_name_status = "APPROVED";
-                      patch.display_name_rejection_reason = null;
-                    } else if (decision === "REJECTED" || decision === "DECLINED") {
-                      patch.display_name_status = "DECLINED";
-                      patch.display_name_rejection_reason = reason ?? "Rejeitado pela Meta";
-                      action = "DISPLAY_NAME_REJECTED";
-                    }
-                    await supabaseAdmin.from("whatsapp_connections").update(patch).eq("id", conn.id);
-                    await supabaseAdmin.from("whatsapp_profile_audit_logs").insert({
-                      workspace_id: conn.workspace_id,
-                      connection_id: conn.id,
-                      phone_number_id: phoneNumberId,
-                      action,
-                      new_value: { requested: requestedName, reason },
-                      status: "success",
-                    });
-                  }
-                }
-                continue;
-              }
-
-              const phoneNumberId = value?.metadata?.phone_number_id;
-              let connectionId: string | null = null;
-              if (phoneNumberId) {
-                const { data: conn } = await supabaseAdmin
-                  .from("whatsapp_connections")
-                  .select("id")
-                  .eq("phone_number_id", phoneNumberId)
-                  .maybeSingle();
-                connectionId = conn?.id ?? null;
-              }
-
-              // Prioridade — evita regressão de status (webhook atrasado).
-              const STATUS_PRIORITY: Record<string, number> = {
-                pending: 0, processing: 1, accepted: 2, sent: 3, delivered: 4, read: 5, replied: 6,
-              };
-
-              for (const s of value?.statuses ?? []) {
-                const id = s?.id;
-                const status = s?.status;
-                if (!id || !status) continue;
-
-                const tsIso = s?.timestamp
-                  ? new Date(Number(s.timestamp) * 1000).toISOString()
-                  : new Date().toISOString();
-
-                // Localiza o recipient pelo wamid.
-                const { data: rec } = await supabaseAdmin
-                  .from("campaign_recipients")
-                  .select("id, status")
-                  .eq("meta_message_id", id)
-                  .maybeSingle();
-
-                const patch: any = {};
-                if (status === "sent") { patch.sent_at = tsIso; }
-                if (status === "delivered") { patch.delivered_at = tsIso; }
-                if (status === "read") { patch.read_at = tsIso; }
-                if (status === "failed") {
-                  patch.status = "failed";
-                  patch.failed_at = tsIso;
-                  patch.failed_reason =
-                    s?.errors?.[0]?.error_data?.details ??
-                    s?.errors?.[0]?.message ??
-                    s?.errors?.[0]?.title ??
-                    "failed";
-                  patch.error_code = s?.errors?.[0]?.code ? String(s.errors[0].code) : null;
-                }
-
-                if (rec && status !== "failed") {
-                  // Só avança status quando a prioridade nova for maior.
-                  const cur = STATUS_PRIORITY[rec.status as string] ?? -1;
-                  const next = STATUS_PRIORITY[status] ?? -1;
-                  if (next > cur) patch.status = status;
-                }
-
-                if (Object.keys(patch).length) {
-                  await supabaseAdmin
-                    .from("campaign_recipients")
-                    .update(patch)
-                    .eq("meta_message_id", id);
-                }
-                const logPatch: any = { message_status: status };
-                if (status === "failed") {
-                  logPatch.failed_reason =
-                    s?.errors?.[0]?.error_data?.details ??
-                    s?.errors?.[0]?.message ??
-                    s?.errors?.[0]?.title ??
-                    "failed";
-                  logPatch.error_code = s?.errors?.[0]?.code ? String(s.errors[0].code) : null;
-                }
-                await supabaseAdmin.from("message_logs").update(logPatch).eq("meta_message_id", id);
-              }
-
-              for (const m of value?.messages ?? []) {
-                const from = m?.from;
-                const body = m?.text?.body ?? "";
-                await supabaseAdmin.from("whatsapp_inbox").insert({
-                  connection_id: connectionId,
-                  phone: from,
-                  direction: "in",
-                  message_type: m?.type ?? "text",
-                  body,
-                  meta_message_id: m?.id ?? null,
-                  raw: m,
-                });
-                if (from) {
-                  await supabaseAdmin
-                    .from("campaign_recipients")
-                    .update({ status: "replied", replied_at: new Date().toISOString() })
-                    .eq("phone", from)
-                    .in("status", ["sent", "delivered", "read"]);
-                  await supabaseAdmin
-                    .from("contacts")
-                    .update({ last_interaction_at: new Date().toISOString() })
-                    .eq("phone", from);
-                }
-                if (body && OPT_OUT_REGEX.test(body) && from) {
-                  await supabaseAdmin
-                    .from("opt_outs")
-                    .upsert({ phone: from, reason: "keyword" }, { onConflict: "phone" });
-                  await supabaseAdmin
-                    .from("contacts")
-                    .update({ opt_out: true, opt_out_at: new Date().toISOString() })
-                    .eq("phone", from);
-                }
-              }
+        // Processamento resiliente — nunca falhe a resposta 200 por causa
+        // de um erro em um dos itens; capture por item e siga.
+        for (const entry of entries) {
+          const changes: any[] = Array.isArray(entry?.changes) ? entry.changes : [];
+          for (const change of changes) {
+            try {
+              await handleChange(supabaseAdmin, change);
+            } catch (e: any) {
+              await supabaseAdmin.from("whatsapp_webhook_logs").insert({
+                event_type: "handler_error",
+                payload: { field: change?.field, message: e?.message },
+                error: e?.message ?? "handler error",
+              });
             }
           }
-        } catch (e: any) {
-          await supabaseAdmin.from("whatsapp_webhook_logs").insert({
-            event_type: "error",
-            payload: { error: e?.message },
-            error: e?.message,
-          });
         }
 
         return new Response("ok", { status: 200 });
@@ -244,3 +167,229 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
     },
   },
 });
+
+// ────────────────────────────────────────────────────────────────────
+// Handler por change (um item em entry.changes[])
+// ────────────────────────────────────────────────────────────────────
+async function handleChange(supabaseAdmin: any, change: any) {
+  const field: string = change?.field ?? "";
+  const value: any = change?.value ?? {};
+
+  // Campos relacionados a templates ────────────────────────────────
+  if (
+    field === "message_template_status_update" ||
+    field === "message_template_quality_update" ||
+    field === "message_template_components_update" ||
+    field === "template_category_update"
+  ) {
+    const metaId = value?.message_template_id
+      ? String(value.message_template_id)
+      : null;
+    const name: string | null = value?.message_template_name ?? null;
+    const language: string | null = value?.message_template_language ?? null;
+    const patch: Record<string, any> = { updated_at: new Date().toISOString() };
+
+    if (field === "message_template_status_update") {
+      const status = mapTemplateStatus(value?.event);
+      if (status) patch.status = status;
+      if (value?.reason) patch.rejection_reason = String(value.reason);
+      patch.reviewed_at = new Date().toISOString();
+    } else if (field === "template_category_update") {
+      if (value?.new_category) patch.category = String(value.new_category);
+    } else if (field === "message_template_components_update") {
+      // Atualiza raw para refletir a nova estrutura recebida.
+      patch.raw = value;
+    }
+
+    if (metaId) {
+      await supabaseAdmin.from("whatsapp_templates").update(patch).eq("meta_template_id", metaId);
+    } else if (name) {
+      const q = supabaseAdmin.from("whatsapp_templates").update(patch).eq("name", name);
+      if (language) await q.eq("language", language);
+      else await q;
+    }
+    return;
+  }
+
+  // Qualidade / limites / alertas por número ───────────────────────
+  if (
+    field === "phone_number_quality_update" ||
+    field === "account_alerts" ||
+    field === "business_capability_update" ||
+    field === "account_update"
+  ) {
+    const phoneNumberId =
+      value?.phone_number ||
+      value?.phone_number_id ||
+      value?.metadata?.phone_number_id ||
+      null;
+    if (phoneNumberId) {
+      const patch: Record<string, any> = { last_meta_sync_at: new Date().toISOString() };
+      if (field === "phone_number_quality_update") {
+        if (value?.current_limit) patch.messaging_limit = String(value.current_limit);
+        if (value?.event) patch.quality_rating = String(value.event);
+      }
+      await supabaseAdmin
+        .from("whatsapp_connections")
+        .update(patch)
+        .eq("phone_number_id", phoneNumberId);
+    }
+    return;
+  }
+
+  // Nome de exibição do número (phone_number_name_update) ──────────
+  if (field === "phone_number_name_update") {
+    const phoneNumberId = value?.phone_number ?? value?.phone_number_id;
+    const decision: string = value?.decision ?? value?.name_status ?? "";
+    const requestedName: string | null =
+      value?.requested_verified_name ?? value?.display_name ?? null;
+    const reason: string | null = value?.rejection_reason ?? null;
+    if (!phoneNumberId) return;
+
+    const { data: conn } = await supabaseAdmin
+      .from("whatsapp_connections")
+      .select("id, workspace_id")
+      .eq("phone_number_id", phoneNumberId)
+      .maybeSingle();
+    if (!conn) return;
+
+    const patch: Record<string, any> = {
+      display_name_reviewed_at: new Date().toISOString(),
+      last_meta_sync_at: new Date().toISOString(),
+    };
+    let action = "DISPLAY_NAME_APPROVED";
+    if (decision === "APPROVED") {
+      patch.display_name_status = "APPROVED";
+      patch.display_name_rejection_reason = null;
+    } else if (decision === "REJECTED" || decision === "DECLINED") {
+      patch.display_name_status = "DECLINED";
+      patch.display_name_rejection_reason = reason ?? "Rejeitado pela Meta";
+      action = "DISPLAY_NAME_REJECTED";
+    }
+    await supabaseAdmin.from("whatsapp_connections").update(patch).eq("id", conn.id);
+    await supabaseAdmin.from("whatsapp_profile_audit_logs").insert({
+      workspace_id: conn.workspace_id,
+      connection_id: conn.id,
+      phone_number_id: phoneNumberId,
+      action,
+      new_value: { requested: requestedName, reason },
+      status: "success",
+    });
+    return;
+  }
+
+  // Campo padrão: messages (statuses + mensagens recebidas) ────────
+  if (field !== "messages") {
+    // Outros campos apenas ficam registrados em whatsapp_webhook_logs.
+    return;
+  }
+
+  const phoneNumberId = value?.metadata?.phone_number_id ?? null;
+  let connectionId: string | null = null;
+  if (phoneNumberId) {
+    const { data: conn } = await supabaseAdmin
+      .from("whatsapp_connections")
+      .select("id")
+      .eq("phone_number_id", phoneNumberId)
+      .maybeSingle();
+    connectionId = conn?.id ?? null;
+  }
+
+  // ── statuses[] ─────────────────────────────────────────────────
+  const statuses: any[] = Array.isArray(value?.statuses) ? value.statuses : [];
+  for (const s of statuses) {
+    const id: string | undefined = s?.id;
+    const status: string | undefined = s?.status;
+    if (!id || !status) continue;
+
+    const tsIso = s?.timestamp
+      ? new Date(Number(s.timestamp) * 1000).toISOString()
+      : new Date().toISOString();
+
+    const { data: rec } = await supabaseAdmin
+      .from("campaign_recipients")
+      .select("id, status, sent_at, delivered_at, read_at, failed_at")
+      .eq("meta_message_id", id)
+      .maybeSingle();
+
+    // Idempotência: se o timestamp do status já existe, é um evento
+    // duplicado — pulamos a atualização mas seguimos com o log.
+    const patch: Record<string, any> = {};
+    if (status === "sent" && !rec?.sent_at) patch.sent_at = tsIso;
+    if (status === "delivered" && !rec?.delivered_at) patch.delivered_at = tsIso;
+    if (status === "read" && !rec?.read_at) patch.read_at = tsIso;
+    if (status === "failed") {
+      const err = extractError(s?.errors?.[0]);
+      if (!rec?.failed_at) patch.failed_at = tsIso;
+      patch.status = "failed";
+      patch.failed_reason = err.reason;
+      patch.error_code = err.code;
+    } else if (rec) {
+      const cur = STATUS_PRIORITY[rec.status as string] ?? -1;
+      const next = STATUS_PRIORITY[status] ?? -1;
+      if (next > cur) patch.status = status;
+    }
+
+    if (rec && Object.keys(patch).length) {
+      await supabaseAdmin.from("campaign_recipients").update(patch).eq("id", rec.id);
+    }
+
+    // Espelha no message_logs (auditoria por mensagem).
+    const logPatch: Record<string, any> = { message_status: status };
+    if (status === "failed") {
+      const err = extractError(s?.errors?.[0]);
+      logPatch.failed_reason = err.reason;
+      logPatch.error_code = err.code;
+    }
+    await supabaseAdmin.from("message_logs").update(logPatch).eq("meta_message_id", id);
+  }
+
+  // ── messages[] (inbound + replies + opt-out) ───────────────────
+  const messages: any[] = Array.isArray(value?.messages) ? value.messages : [];
+  for (const m of messages) {
+    const from: string | undefined = m?.from;
+    const body: string = m?.text?.body ?? "";
+    const wamid: string | null = m?.id ?? null;
+
+    // Dedup por wamid — se já registramos essa mensagem, ignoramos.
+    if (wamid) {
+      const { data: dup } = await supabaseAdmin
+        .from("whatsapp_inbox")
+        .select("id")
+        .eq("meta_message_id", wamid)
+        .maybeSingle();
+      if (dup) continue;
+    }
+
+    await supabaseAdmin.from("whatsapp_inbox").insert({
+      connection_id: connectionId,
+      phone: from,
+      direction: "in",
+      message_type: m?.type ?? "text",
+      body,
+      meta_message_id: wamid,
+      raw: m,
+    });
+
+    if (from) {
+      await supabaseAdmin
+        .from("campaign_recipients")
+        .update({ status: "replied", replied_at: new Date().toISOString() })
+        .eq("phone", from)
+        .in("status", ["sent", "delivered", "read"]);
+      await supabaseAdmin
+        .from("contacts")
+        .update({ last_interaction_at: new Date().toISOString() })
+        .eq("phone", from);
+    }
+    if (body && OPT_OUT_REGEX.test(body) && from) {
+      await supabaseAdmin
+        .from("opt_outs")
+        .upsert({ phone: from, reason: "keyword" }, { onConflict: "phone" });
+      await supabaseAdmin
+        .from("contacts")
+        .update({ opt_out: true, opt_out_at: new Date().toISOString() })
+        .eq("phone", from);
+    }
+  }
+}
