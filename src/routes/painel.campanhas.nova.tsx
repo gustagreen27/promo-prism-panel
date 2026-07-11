@@ -184,7 +184,7 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
     (async () => {
       const [n, b] = await Promise.all([
         // Em adminMode, não filtrar por workspace — mostra TODOS os números.
-        fnListNumbers({ data: adminMode ? {} : { workspace_id: workspaceId } }),
+        fnListNumbers({ data: (adminMode ? {} : { workspace_id: workspaceId }) as any }),
         fnBalance({ data: { workspace_id: workspaceId } }),
       ]);
       setNumbers(n.numbers);
