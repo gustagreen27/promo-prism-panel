@@ -85,10 +85,48 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
           .eq("pause_reason", "network_error")
           .lte("scheduled_at", nowIso);
 
+        // Auto-heal: libera leases expirados de campanhas em execução
+        const leaseCutoff = new Date(Date.now() - 60 * 1000).toISOString();
+        await supabaseAdmin
+          .from("wa_campaigns")
+          .update({ worker_lease_id: null, worker_lease_until: null })
+          .in("status", ["running", "paused"])
+          .not("worker_lease_until", "is", null)
+          .lt("worker_lease_until", leaseCutoff);
+
+        // Auto-heal: reenfileira destinatários "processing" órfãos (>5min sem meta_message_id)
+        const staleCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        const { data: healedRows } = await supabaseAdmin
+          .from("campaign_recipients")
+          .update({ status: "pending", failed_reason: null, error_code: null })
+          .eq("status", "processing")
+          .is("meta_message_id", null)
+          .lt("last_attempt_at", staleCutoff)
+          .select("campaign_id");
+        if (healedRows && healedRows.length > 0) {
+          const perCamp = new Map<string, number>();
+          for (const r of healedRows) perCamp.set(r.campaign_id as string, (perCamp.get(r.campaign_id as string) ?? 0) + 1);
+          for (const [cid, n] of perCamp) {
+            try {
+              await supabaseAdmin.from("campaign_timeline").insert({
+                campaign_id: cid,
+                event_type: "auto_unstuck",
+                message: `${n} destinatário(s) reenfileirados automaticamente`,
+                payload: { count: n },
+              });
+              await supabaseAdmin.rpc("wa_recalc_campaign_progress" as any, { _campaign_id: cid });
+            } catch { /* ignore */ }
+          }
+        }
+
+        // Auto-retomar campanhas "running" com pendentes cuja última tentativa é antiga
+        // (nada a fazer aqui — o próprio processCampaignTick pega todas 'running')
+
         const { data: running } = await supabaseAdmin
           .from("wa_campaigns")
           .select("id, send_rate_per_min")
           .eq("status", "running");
+
 
         const results: any[] = [];
         for (const c of running ?? []) {
