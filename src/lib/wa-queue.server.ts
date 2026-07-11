@@ -452,13 +452,16 @@ export async function processCampaignTick(
       tplButtons.forEach((b: any, idx: number) => {
         if (String(b?.type).toUpperCase() !== "URL") return;
         const url = typeof b?.url === "string" ? b.url : "";
-        if (!url.includes("{{")) return;
-        // Chave preferida: índice do botão; fallback: número da variável {{n}} do URL
+        if (!url.includes("{{")) return; // botão com URL fixa: não envia parameters
         const urlVarNums = [...url.matchAll(/\{\{(\d+)\}\}/g)].map((m) => Number(m[1]));
         const firstVarKey = urlVarNums.length ? String(urlVarNums[0]) : "1";
+        // Legado: _button_url_param aplica ao índice em _button_index (se bater com este botão).
+        const legacyForThisBtn =
+          legacyButtonUrlParam && legacyButtonIndex === idx ? legacyButtonUrlParam : null;
         const mappingSrc =
           btnMapRaw[String(idx)] ??
           btnMapRaw[firstVarKey] ??
+          legacyForThisBtn ??
           (Array.isArray(b?.example) ? b.example[0] : null) ??
           "";
         const value = renderMapping(String(mappingSrc), ctx).trim();
@@ -469,12 +472,26 @@ export async function processCampaignTick(
         dynButtons.push({ index: idx, urlParam: value });
       });
 
-      // Se ainda vier vazio, tenta o legado (botão único).
-      if (!dynButtons.length && legacyButtonUrlParam) {
-        dynButtons.push({ index: legacyButtonIndex, urlParam: legacyButtonUrlParam });
-      }
+      // Log sanitizado (sem tokens) para diagnóstico.
+      console.log("[wa-send] payload", {
+        recipient: r.phone.replace(/\D/g, ""),
+        template: tpl.name,
+        componentTypes: [
+          ...(resolvedHeaderValue ? ["header"] : []),
+          "body",
+          ...dynButtons.map(() => "button"),
+        ],
+        buttons: dynButtons.map((b) => ({
+          index: String(b.index),
+          sub_type: "url",
+          hasParameter: b.urlParam.length > 0,
+        })),
+      });
 
       if (missingButtons.length && !dynButtons.length) {
+        console.error(
+          `[wa-send] Payload bloqueado antes do envio para ${r.phone}: ${missingButtons.join(", ")}`,
+        );
         // Marca esta mensagem como falha determinística — não faz sentido chamar a Meta.
         await supabaseAdmin
           .from("campaign_recipients")
@@ -488,6 +505,7 @@ export async function processCampaignTick(
         lastError = `Parâmetro do botão ausente: ${missingButtons.join(", ")}`;
         continue;
       }
+
 
       const result = await sendTemplateMessage({
         phoneNumberId: conn.phone_number_id!,
