@@ -136,6 +136,25 @@ function Page() {
 
   // Realtime: escuta alterações de campanha, destinatários e timeline
   useEffect(() => {
+    // Throttle: recipients tables can fire thousands of row events during a run.
+    let recipTimer: ReturnType<typeof setTimeout> | null = null;
+    let tlTimer: ReturnType<typeof setTimeout> | null = null;
+    const throttleRecipients = () => {
+      if (recipTimer) return;
+      recipTimer = setTimeout(() => {
+        recipTimer = null;
+        qc.invalidateQueries({ queryKey: ["wa-camp-recipients", id] });
+        qc.invalidateQueries({ queryKey: ["wa-camp-progress", id] });
+        qc.invalidateQueries({ queryKey: ["wa-camp-errors", id] });
+      }, 6000);
+    };
+    const throttleTimeline = () => {
+      if (tlTimer) return;
+      tlTimer = setTimeout(() => {
+        tlTimer = null;
+        qc.invalidateQueries({ queryKey: ["wa-camp-timeline", id] });
+      }, 5000);
+    };
     const channel = supabase
       .channel(`wa-camp-${id}`)
       .on(
@@ -150,21 +169,17 @@ function Page() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "campaign_recipients", filter: `campaign_id=eq.${id}` },
-        () => {
-          qc.invalidateQueries({ queryKey: ["wa-camp-recipients", id] });
-          qc.invalidateQueries({ queryKey: ["wa-camp-progress", id] });
-          qc.invalidateQueries({ queryKey: ["wa-camp-errors", id] });
-        },
+        throttleRecipients,
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "campaign_timeline", filter: `campaign_id=eq.${id}` },
-        () => {
-          qc.invalidateQueries({ queryKey: ["wa-camp-timeline", id] });
-        },
+        throttleTimeline,
       )
       .subscribe();
     return () => {
+      if (recipTimer) clearTimeout(recipTimer);
+      if (tlTimer) clearTimeout(tlTimer);
       supabase.removeChannel(channel);
     };
   }, [id, qc]);
