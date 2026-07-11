@@ -76,6 +76,7 @@ function Page() {
   const campQ = useQuery({
     queryKey: ["wa-camp", id],
     queryFn: () => getCamp({ data: { id } }),
+    retry: false,
   });
   const { data: camp } = campQ;
 
@@ -537,15 +538,15 @@ function Page() {
     toast.success(`${rows.length.toLocaleString("pt-BR")} destinatários exportados`);
   };
 
-  if (campQ.error) {
+  if (campQ.isError || (campQ.isSuccess && !camp)) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Campanha" actions={
+        <PageHeader title="Campanha não encontrada" description="Este disparo não existe mais ou foi removido." actions={
           <Button asChild variant="outline" size="sm">
             <Link to="/admin/disparos"><ArrowLeft className="mr-2 h-4 w-4" />Voltar</Link>
           </Button>
         } />
-        <ErrorCard error={campQ.error} onRetry={() => campQ.refetch()} />
+        <ErrorCard error={campQ.error ?? new Error("Campanha não encontrada")} onRetry={() => campQ.refetch()} />
       </div>
     );
   }

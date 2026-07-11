@@ -45,8 +45,9 @@ export const getWaCampaign = createServerFn({ method: "GET" })
       .from("wa_campaigns")
       .select("*, client:clients(id,name), project:projects(id,name), template:whatsapp_templates(*), connection:whatsapp_connections(id,name,display_phone,phone,phone_number_id)")
       .eq("id", data.id)
-      .single();
+      .maybeSingle();
     if (error) throw error;
+    if (!row) throw new Error("Campanha não encontrada");
     return row;
   });
 
