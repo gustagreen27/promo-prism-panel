@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { formatCallingCode, getCountryCallingCode, summarizeCallingCodes } from "@/lib/phone-country";
 
 const optUuid = z.union([z.string().uuid(), z.literal(""), z.null()]).transform((v) => (v ? (v as string) : null)).optional();
 
@@ -23,33 +22,6 @@ const fields = {
 async function assertAdmin(ctx: { supabase: any; userId: string }) {
   const { data } = await ctx.supabase.rpc("has_role", { _user_id: ctx.userId, _role: "admin" });
   if (!data) throw new Error("Forbidden");
-}
-
-async function assertCampaignDialingCodeMatchesConnection(ctx: { supabase: any }, campaignId: string) {
-  const { data: camp } = await ctx.supabase
-    .from("wa_campaigns")
-    .select("id, connection_id, connection:whatsapp_connections(phone,display_phone)")
-    .eq("id", campaignId)
-    .maybeSingle();
-  const senderCode = getCountryCallingCode((camp as any)?.connection?.phone ?? (camp as any)?.connection?.display_phone);
-  if (!senderCode) return;
-  const PAGE = 1000;
-  const phones: string[] = [];
-  for (let from = 0; ; from += PAGE) {
-    const { data: page, error } = await ctx.supabase
-      .from("campaign_recipients")
-      .select("phone")
-      .eq("campaign_id", campaignId)
-      .not("status", "in", '(cancelled,opt_out,skipped)')
-      .range(from, from + PAGE - 1);
-    if (error) throw error;
-    phones.push(...((page ?? []).map((r: any) => r.phone).filter(Boolean)));
-    if (!page || page.length < PAGE) break;
-  }
-  const audience = summarizeCallingCodes(phones);
-  if (audience.dominantCode && audience.dominantCode !== senderCode && audience.dominantCount / Math.max(1, audience.total) >= 0.9) {
-    throw new Error(`DDI incompatível: os destinatários são majoritariamente ${formatCallingCode(audience.dominantCode)}, mas o WhatsApp selecionado é ${formatCallingCode(senderCode)}. Troque o número de envio antes de iniciar/agendar.`);
-  }
 }
 
 export const listWaCampaigns = createServerFn({ method: "GET" })
@@ -231,8 +203,6 @@ export const startWaCampaign = createServerFn({ method: "POST" })
     if (!camp) throw new Error("Campanha não encontrada");
     if (!camp.connection_id || !camp.template_id) throw new Error("Configure número e template antes de iniciar.");
     if (!camp.total_recipients) throw new Error("Gere a fila de destinatários antes de iniciar.");
-    await assertCampaignDialingCodeMatchesConnection(context, data.id);
-
     // Admin dispatch bypasses stock — não há débito automático de estoque neste fluxo.
     await context.supabase
       .from("wa_campaigns")
@@ -260,8 +230,6 @@ export const scheduleWaCampaign = createServerFn({ method: "POST" })
     if (!camp) throw new Error("Campanha não encontrada");
     if (!camp.connection_id || !camp.template_id) throw new Error("Configure número e template antes de agendar.");
     if (!camp.total_recipients) throw new Error("Gere a fila de destinatários antes de agendar.");
-    await assertCampaignDialingCodeMatchesConnection(context, data.id);
-
     // Admin schedule bypasses stock — dispatches administrativos não descontam estoque neste fluxo.
 
 
@@ -324,17 +292,6 @@ export const scheduleQuickSend = createServerFn({ method: "POST" })
 
     const defaultName = data.name?.trim() ||
       `Disparo agendado ${when.toLocaleString("pt-BR")}`;
-
-    const { data: selectedConnection } = await context.supabase
-      .from("whatsapp_connections")
-      .select("phone,display_phone")
-      .eq("id", data.connection_id)
-      .maybeSingle();
-    const senderCode = getCountryCallingCode((selectedConnection as any)?.phone ?? (selectedConnection as any)?.display_phone);
-    const audience = summarizeCallingCodes(data.recipients.map((r) => r.phone));
-    if (senderCode && audience.dominantCode && audience.dominantCode !== senderCode && audience.dominantCount / Math.max(1, audience.total) >= 0.9) {
-      throw new Error(`DDI incompatível: os destinatários são majoritariamente ${formatCallingCode(audience.dominantCode)}, mas o WhatsApp selecionado é ${formatCallingCode(senderCode)}. Troque o número de envio antes de disparar.`);
-    }
 
     // Dedupe destinatários por telefone
     const seen = new Set<string>();
