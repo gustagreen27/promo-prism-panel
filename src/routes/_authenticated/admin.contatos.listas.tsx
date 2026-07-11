@@ -231,7 +231,7 @@ function ImportDialog({
   contacts: any[];
   saving: boolean;
   onAddExisting: (ids: string[]) => void;
-  onImport: (rows: ImportRow[], source: string) => void;
+  onImport: (rows: ImportRow[], source: string, filename?: string | null) => void;
 }) {
   const [tab, setTab] = useState("existing");
   const [q, setQ] = useState("");
