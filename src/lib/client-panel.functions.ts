@@ -138,6 +138,13 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
       button_url_mapping: z.record(z.string()).optional(),
       header_media_url: z.string().optional().nullable(),
       scheduled_at: z.string().nullish(),
+      // Rate limiter (novo worker)
+      target_per_hour: z.number().int().min(1).nullish(),
+      rate_per_second: z.number().int().min(1).max(80).nullish(),
+      max_concurrency: z.number().int().min(1).max(100).nullish(),
+      scheduled_pause_enabled: z.boolean().optional(),
+      pause_every_messages: z.number().int().min(1).nullish(),
+      pause_duration_seconds: z.number().int().min(1).nullish(),
     }).parse(d)
   )
   .handler(async ({ data, context }) => {
