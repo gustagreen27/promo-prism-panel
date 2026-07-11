@@ -414,16 +414,43 @@ export async function processCampaignTick(
 
       const headerImageOverride = renderedVars._header_image_url || null;
       const rawButtonUrlParam = renderedVars._button_url_param || null;
-      const buttonUrlParam = rawButtonUrlParam ? renderMapping(rawButtonUrlParam, ctx) : null;
+      let buttonUrlParam = rawButtonUrlParam ? renderMapping(rawButtonUrlParam, ctx) : null;
       const buttonIndexRaw = renderedVars._button_index;
-      const buttonIndex = buttonIndexRaw != null && buttonIndexRaw !== "" ? Number(buttonIndexRaw) : 0;
+      let buttonIndex = buttonIndexRaw != null && buttonIndexRaw !== "" ? Number(buttonIndexRaw) : 0;
 
       const tplHeaderType = (tpl.header_type || "").toString().toLowerCase();
       const isMediaHeader = ["image", "video", "document"].includes(tplHeaderType);
       const resolvedHeaderType = headerImageOverride
         ? (isMediaHeader ? tplHeaderType : "image")
         : tpl.header_type;
-      const resolvedHeaderValue = headerImageOverride ?? tpl.header_text;
+      // For media headers, prefer override, then header_media_url, then example URL from Meta raw.
+      let resolvedHeaderValue: string | null = headerImageOverride;
+      if (!resolvedHeaderValue) {
+        if (isMediaHeader) {
+          const rawComponents = ((tpl as any).raw?.components ?? []) as any[];
+          const headerComp = rawComponents.find((c: any) => c?.type === "HEADER");
+          const exampleUrl = headerComp?.example?.header_handle?.[0] ?? headerComp?.example?.header_url?.[0] ?? null;
+          resolvedHeaderValue = (tpl as any).header_media_url || exampleUrl || null;
+        } else {
+          resolvedHeaderValue = tpl.header_text;
+        }
+      }
+
+      // Auto-detect URL button with variable when caller didn't set _button_url_param.
+      if (!buttonUrlParam) {
+        const btns = Array.isArray((tpl as any).buttons) ? ((tpl as any).buttons as any[]) : [];
+        const idx = btns.findIndex(
+          (b: any) => String(b?.type).toUpperCase() === "URL" && typeof b?.url === "string" && b.url.includes("{{"),
+        );
+        if (idx >= 0) {
+          const btn = btns[idx];
+          const example = Array.isArray(btn?.example) ? btn.example[0] : null;
+          if (example) {
+            buttonUrlParam = renderMapping(String(example), ctx);
+            buttonIndex = idx;
+          }
+        }
+      }
 
 
       const result = await sendTemplateMessage({
