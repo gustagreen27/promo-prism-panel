@@ -106,6 +106,21 @@ function Page() {
     onSuccess: (r: any) => { toast.success(`${r.created} nova(s), ${r.updated} atualizada(s)`); setImportOpen(false); refresh(); },
     onError: (e: any) => toast.error(e?.message ?? "Erro"),
   });
+  const quickMut = useMutation({
+    mutationFn: (p: { raw: string; workspace_id: string | null }) => quickFn({ data: p }),
+    onSuccess: (r: any) => {
+      const parts = [
+        r.connection_id ? "número vinculado" : "WABA salva",
+        r.sync?.created ? `${r.sync.created} novo(s) da Meta` : null,
+        r.sync?.updated ? `${r.sync.updated} atualizado(s)` : null,
+        r.sync_error ? `sync pendente: ${r.sync_error}` : null,
+      ].filter(Boolean);
+      toast.success(`Conexão concluída — ${parts.join(" · ")}`);
+      setQuickOpen(false);
+      refresh();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro na conexão rápida"),
+  });
 
   return (
     <>
