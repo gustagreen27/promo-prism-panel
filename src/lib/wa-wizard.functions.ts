@@ -61,7 +61,7 @@ export const previewAudience = createServerFn({ method: "POST" })
     const unique = [...dedup.values()];
     return {
       total: unique.length,
-      raw_count: (items ?? []).length,
+      raw_count: items.length,
       opt_out_removed: optOutCount,
       duplicates_removed: dupCount,
       sample: unique.slice(0, data.sample_size).map((c: any) => ({ id: c.id, name: c.name, phone: c.phone })),
