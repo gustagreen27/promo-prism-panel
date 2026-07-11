@@ -27,7 +27,7 @@ async function assertAdmin(ctx: { supabase: any; userId: string }) {
   if (!data) throw new Error("Forbidden");
 }
 
-// ---- Brazilian phone validator: E.164 with country code 55, 10-11 digits area+number
+// ---- Phone validator: stores E.164 digits without '+'. BR local numbers still default to DDI 55.
 export function normalizeBrPhone(raw: string): string | null {
   const digits = String(raw || "").replace(/\D/g, "");
   if (!digits) return null;
@@ -39,6 +39,7 @@ export function normalizeBrPhone(raw: string): string | null {
     return "55" + full;
   }
   if (full.length === 13 && full.startsWith("55")) return full;
+  if (full.length >= 8 && full.length <= 15) return full;
   return null;
 }
 
