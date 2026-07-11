@@ -317,7 +317,7 @@ export const swapCampaignRouteAndResume = createServerFn({ method: "POST" })
     const finalTplId = newTpl?.id ?? currentTplId;
     const { data: finalTpl } = finalTplId
       ? await supabase.from("whatsapp_templates")
-          .select("id,name,language,status,body,buttons,header_type,header_text")
+          .select("id,name,language,status,body,buttons,header_type,header_text,header_media_url")
           .eq("id", finalTplId).maybeSingle()
       : { data: null };
 
