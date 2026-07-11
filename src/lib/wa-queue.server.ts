@@ -7,11 +7,21 @@ import { renderMapping, buildContext } from "@/lib/wa-variables";
 const OPT_OUT_REGEX = /\b(parar|sair|cancelar|cancela|remover|descadastrar|n[ãa]o quero|stop|unsubscribe)\b/i;
 
 // Temporary/transient Meta error codes eligible for retry
+// Temporary/transient Meta error codes eligible for retry
 const RETRYABLE_CODES = new Set(["130429", "131056", "131048", "131047", "500", "502", "503", "504"]);
-const MAX_ATTEMPTS = 3;
+const MAX_ATTEMPTS = 5;
 const LEASE_MS = 3 * 60 * 1000;
 const PROCESSING_STALE_MS = 5 * 60 * 1000;
 const MAX_TICK_RUNTIME_MS = 90 * 1000;
+// Rate limiter defaults (used to bootstrap wa_rate_limits on first call).
+// The real values live in wa_rate_limits per phone_number_id and are shared
+// by every campaign using the same número.
+const DEFAULT_RATE_PER_SECOND = 6;
+const DEFAULT_MAX_CONCURRENCY = 15;
+// Systemic-error thresholds — pause the campaign only when the whole path is broken,
+// individual errors go through retry-with-backoff instead.
+const SYSTEMIC_NETWORK_STREAK = 10;
+const SYSTEMIC_RATE_LIMIT_STREAK = 6;
 
 async function logEvent(campaignId: string, event_type: string, message: string, payload: any = {}) {
   try {
@@ -330,24 +340,29 @@ export async function processCampaignTick(
       return { processed: 0, done: false, reason: "quota_reached" };
     }
 
-    // Effective batch = min(param, campaign.batch_size, rate/min, remaining cap, runtime budget).
-    // Now we process recipients in PARALLEL sub-batches of `parallelism`, pausing
-    // `batch_pause_ms` between sub-batches, so each tick can push many more messages
-    // than before while respecting Meta's throughput (default 80 mps por número).
-    const cfgBatch = Math.max(1, (camp as any).batch_size ?? 200);
-    const rateMin = Math.max(1, camp.send_rate_per_min ?? cfgBatch);
-    const parallelism = Math.max(1, Math.min(500, (camp as any).parallelism ?? 40));
-    const batchPauseMs = Math.max(0, (camp as any).batch_pause_ms ?? 1500);
-    // Assume ~1.5s média por chamada Meta; garante que N sub-lotes cabem no tick.
-    const perBatchMs = batchPauseMs + 1500;
-    const maxByRuntime = parallelism * Math.max(1, Math.floor(MAX_TICK_RUNTIME_MS / perBatchMs));
-    const eff = Math.min(batchSize ?? cfgBatch, cfgBatch, rateMin, cap, maxByRuntime);
+    // ------------------------------------------------------------------
+    // Rate-limited dispatch (token bucket + concurrency semaphore)
+    // ------------------------------------------------------------------
+    // - Rate/concorrência são globais por phone_number_id (wa_rate_limits),
+    //   então múltiplas campanhas no mesmo número compartilham o mesmo teto.
+    // - Cada envio pega 1 token do bucket via RPC atômica; se não houver,
+    //   o scheduler dorme wait_ms e tenta de novo (sem "burst" de Promise.all).
+    // - Concorrência é limitada por um semáforo em memória (dentro do tick).
+    // - Erros individuais viram retry com backoff exponencial + jitter;
+    //   só pausamos a campanha em falha sistêmica (rede/rate-limit persistente).
+    const phoneNumberId = conn.phone_number_id!;
+    const cfgBatch = Math.max(1, (camp as any).batch_size ?? 1000);
+    // Batch = quanto reservamos do banco por tick; a velocidade real vem do bucket.
+    const eff = Math.min(batchSize ?? cfgBatch, cfgBatch, cap);
 
+    const nowIso = new Date().toISOString();
     const { data: recipients } = await supabaseAdmin
       .from("campaign_recipients")
       .select("*")
       .eq("campaign_id", campaignId)
       .eq("status", "pending")
+      .or(`next_attempt_at.is.null,next_attempt_at.lte.${nowIso}`)
+      .order("next_attempt_at", { ascending: true, nullsFirst: true })
       .limit(eff);
 
     if (!recipients || recipients.length === 0) {
@@ -356,33 +371,65 @@ export async function processCampaignTick(
         .select("id", { count: "exact", head: true })
         .eq("campaign_id", campaignId)
         .eq("status", "processing");
-      if (!processing) {
+      const { count: pendingLater } = await supabaseAdmin
+        .from("campaign_recipients")
+        .select("id", { count: "exact", head: true })
+        .eq("campaign_id", campaignId)
+        .eq("status", "pending");
+      if (!processing && !pendingLater) {
         await finalizeCampaign(campaignId);
         return { processed: 0, done: true };
       }
+      // Ainda há pending futuros (aguardando next_attempt_at) — não finaliza.
       return { processed: 0, done: false };
     }
 
-    // Mark processing
+    // Mark processing upfront (locks these rows against other ticks / campaigns)
     await supabaseAdmin
       .from("campaign_recipients")
       .update({ status: "processing", last_attempt_at: new Date().toISOString() })
       .in("id", recipients.map((r: any) => r.id));
 
-    // Clear any previous pause_reason since we're actively processing
     if ((camp as any).pause_reason) {
       await supabaseAdmin.from("wa_campaigns").update({ pause_reason: null }).eq("id", campaignId);
     }
 
-
     let sent = 0;
     let failed = 0;
     let lastError: string | null = null;
-    let networkError: string | null = null;
+    let consecutiveNetworkErrors = 0;
+    let consecutive429 = 0;
+    let systemicPause: { reason: string; message: string } | null = null;
+
+    const applyBackoff = (attempts: number): number => {
+      // 1s, 2s, 4s, 8s (cap) + up to 30% jitter.
+      const base = Math.min(8000, 1000 * Math.pow(2, Math.max(0, attempts - 1)));
+      const jitter = Math.random() * base * 0.3;
+      return Math.floor(base + jitter);
+    };
+
+    const scheduleRetry = async (
+      r: any,
+      attempts: number,
+      reason: string,
+      code: string | null,
+    ) => {
+      const backoffMs = applyBackoff(attempts);
+      const nextAt = new Date(Date.now() + backoffMs).toISOString();
+      await supabaseAdmin
+        .from("campaign_recipients")
+        .update({
+          status: "pending",
+          failed_reason: reason,
+          error_code: code,
+          attempt: attempts,
+          next_attempt_at: nextAt,
+          last_attempt_at: new Date().toISOString(),
+        })
+        .eq("id", r.id);
+    };
 
     const sendOne = async (r: any): Promise<void> => {
-      if (networkError) return; // abort remaining once one call hits a network error
-
       // Opt-out check
       const { data: oo } = await supabaseAdmin
         .from("opt_outs")
@@ -407,7 +454,6 @@ export async function processCampaignTick(
       const recVars = (r.variables as Record<string, string> | null) || {};
       const mergedVars = { ...campVars, ...recVars };
 
-      // Load contact for this recipient to build the token context
       let contactRow: any = null;
       if ((r as any).contact_id) {
         const { data: c } = await supabaseAdmin.from("contacts").select("*").eq("id", (r as any).contact_id).maybeSingle();
@@ -523,6 +569,8 @@ export async function processCampaignTick(
 
       const attempts = (r.attempt ?? 0) + 1;
       if (result.ok) {
+        consecutiveNetworkErrors = 0;
+        consecutive429 = 0;
         const metaStatus = (result.messageStatus || "").toLowerCase();
         const wamid = result.wamid;
         if (!wamid) {
@@ -557,6 +605,7 @@ export async function processCampaignTick(
             meta_message_id: wamid,
             sent_at: new Date().toISOString(),
             attempt: attempts,
+            next_attempt_at: null,
           })
           .eq("id", r.id);
         await logEvent(
@@ -582,108 +631,144 @@ export async function processCampaignTick(
             _qty: 1,
           });
         }
+        return;
+      }
+
+      // ---- Falha: distinguir rede vs Meta ----
+      const isNetworkErr =
+        result.code === "network_error" ||
+        /failed to fetch|fetch failed|network|econnreset|etimedout|enetunreach|socket hang up/i.test(
+          result.error || "",
+        );
+      const isTokenErr = result.code === "190" || /token|OAuthException/i.test(result.error || "");
+      const isRateLimit = result.code === "130429";
+      const isRetryable = isNetworkErr || isRateLimit ||
+        (result.code ? RETRYABLE_CODES.has(String(result.code)) : false);
+      const shouldRetry = isRetryable && attempts < MAX_ATTEMPTS;
+
+      lastError = result.error;
+
+      if (isNetworkErr) {
+        consecutiveNetworkErrors++;
+        if (consecutiveNetworkErrors >= SYSTEMIC_NETWORK_STREAK) {
+          systemicPause = {
+            reason: "network_errors",
+            message: `Auto-pausada: ${consecutiveNetworkErrors} erros de rede consecutivos`,
+          };
+        }
       } else {
-        const isNetworkErr =
-          result.code === "network_error" ||
-          /failed to fetch|fetch failed|network|econnreset|etimedout|enetunreach|socket hang up/i.test(
-            result.error || "",
-          );
+        consecutiveNetworkErrors = 0;
+      }
 
-        if (isNetworkErr) {
-          networkError = result.error || "network_error";
-          await supabaseAdmin
-            .from("campaign_recipients")
-            .update({
-              status: "pending",
-              failed_reason: null,
-              error_code: null,
-              last_attempt_at: new Date().toISOString(),
-            })
-            .eq("id", r.id);
-          return;
+      if (isRateLimit) {
+        consecutive429++;
+        if (consecutive429 >= SYSTEMIC_RATE_LIMIT_STREAK) {
+          systemicPause = {
+            reason: "rate_limit",
+            message: `Auto-pausada: ${consecutive429} erros 130429 consecutivos — reduzir rate`,
+          };
         }
+      } else {
+        consecutive429 = 0;
+      }
 
-        failed++;
-        lastError = result.error;
-        const isRetryable = result.code ? RETRYABLE_CODES.has(String(result.code)) : false;
-        const shouldRetry = isRetryable && attempts < MAX_ATTEMPTS;
-        await supabaseAdmin
-          .from("campaign_recipients")
-          .update({
-            status: shouldRetry ? "pending" : "failed",
-            failed_at: shouldRetry ? null : new Date().toISOString(),
-            failed_reason: result.error,
-            error_code: result.code,
-            attempt: attempts,
-          })
-          .eq("id", r.id);
-        if (!shouldRetry && (camp as any).reservation_id) {
-          await supabaseAdmin.rpc("wallet_release_reservation" as any, {
-            _reservation_id: (camp as any).reservation_id,
-            _qty: 1,
-          });
-        }
+      if (isTokenErr) {
+        systemicPause = {
+          reason: "invalid_token",
+          message: `Auto-pausada: token inválido/expirado (${result.error})`,
+        };
+      }
+
+      if (shouldRetry) {
+        await scheduleRetry(r, attempts, result.error || "retry", result.code ?? null);
+        return;
+      }
+
+      failed++;
+      await supabaseAdmin
+        .from("campaign_recipients")
+        .update({
+          status: "failed",
+          failed_at: new Date().toISOString(),
+          failed_reason: result.error,
+          error_code: result.code,
+          attempt: attempts,
+        })
+        .eq("id", r.id);
+      if ((camp as any).reservation_id) {
+        await supabaseAdmin.rpc("wallet_release_reservation" as any, {
+          _reservation_id: (camp as any).reservation_id,
+          _qty: 1,
+        });
       }
     };
 
-    // Envia em sub-lotes paralelos com pausa entre eles.
-    // Ex.: parallelism=40 + batch_pause_ms=1500 → 40 mensagens simultâneas
-    // a cada ~2s (respeita o limite Meta de 80 mps por número).
-    const chunks: any[][] = [];
-    for (let i = 0; i < recipients.length; i += parallelism) {
-      chunks.push(recipients.slice(i, i + parallelism));
-    }
-
+    // ---- Scheduler: token bucket global + semáforo de concorrência ----
+    const inflight = new Set<Promise<void>>();
+    let maxConc = DEFAULT_MAX_CONCURRENCY;
+    let idx = 0;
     const tickStart = Date.now();
-    for (let ci = 0; ci < chunks.length; ci++) {
-      if (Date.now() - tickStart > MAX_TICK_RUNTIME_MS) {
-        // Reverte os sub-lotes que ainda não foram processados
-        const laterIds = chunks.slice(ci).flat().map((x: any) => x.id);
-        if (laterIds.length) {
-          await supabaseAdmin
-            .from("campaign_recipients")
-            .update({ status: "pending" })
-            .in("id", laterIds);
-        }
-        break;
+
+    while (idx < recipients.length) {
+      if (systemicPause) break;
+      if (Date.now() - tickStart > MAX_TICK_RUNTIME_MS) break;
+
+      // Concurrency semaphore
+      while (inflight.size >= maxConc) {
+        await Promise.race(inflight);
       }
 
-      const chunk = chunks[ci];
-      await Promise.all(chunk.map(sendOne));
+      // Global token bucket (per phone_number_id, shared across campaigns)
+      const { data: tok } = await supabaseAdmin.rpc("wa_try_consume_token" as any, {
+        _phone_number_id: phoneNumberId,
+        _default_rate: DEFAULT_RATE_PER_SECOND,
+        _default_conc: DEFAULT_MAX_CONCURRENCY,
+      });
+      const row = Array.isArray(tok) ? tok[0] : tok;
+      if (row?.max_concurrency && row.max_concurrency > 0) {
+        maxConc = row.max_concurrency;
+      }
 
-      if (networkError) {
-        const laterIds = chunks.slice(ci + 1).flat().map((x: any) => x.id);
-        if (laterIds.length) {
-          await supabaseAdmin
-            .from("campaign_recipients")
-            .update({ status: "pending" })
-            .in("id", laterIds);
-        }
-        const resumeAt = new Date(Date.now() + 60_000).toISOString();
+      if (!row?.allowed) {
+        const waitMs = Math.max(1, Math.min(row?.wait_ms ?? 100, 500));
+        await new Promise((res) => setTimeout(res, waitMs));
+        continue;
+      }
+
+      const r = recipients[idx++];
+      let p!: Promise<void>;
+      p = sendOne(r)
+        .catch((err) => {
+          console.error("[wa-queue] sendOne threw", err);
+        })
+        .finally(() => {
+          inflight.delete(p);
+        }) as Promise<void>;
+      inflight.add(p);
+    }
+
+    // Drain remaining inflight sends before finalizing tick metrics
+    if (inflight.size) {
+      await Promise.all(inflight);
+    }
+
+    // Rows that were marked "processing" but never dispatched go back to pending
+    if (idx < recipients.length) {
+      const laterIds = recipients.slice(idx).map((x: any) => x.id);
+      if (laterIds.length) {
         await supabaseAdmin
-          .from("wa_campaigns")
-          .update({
-            status: "paused",
-            paused_at: new Date().toISOString(),
-            pause_reason: "network_error",
-            scheduled_at: resumeAt,
-            last_error: networkError,
-          })
-          .eq("id", campaignId);
-        await logEvent(
-          campaignId,
-          "auto_paused",
-          `Pausada por 1 min após erro de rede: ${networkError}`,
-          { reason: "network_error", resume_at: resumeAt },
-        );
-        lastError = networkError;
-        break;
-      }
-
-      if (ci < chunks.length - 1 && batchPauseMs > 0) {
-        await new Promise((res) => setTimeout(res, batchPauseMs));
+          .from("campaign_recipients")
+          .update({ status: "pending" })
+          .in("id", laterIds);
       }
     }
+
+    const sp = systemicPause as { reason: string; message: string } | null;
+    if (sp) {
+      await markPaused(campaignId, sp.reason, sp.message);
+      return { processed: sent + failed, done: false, reason: sp.reason };
+    }
+
 
 
     // Auto-pause on failure-rate threshold — só recalcula quando houve falhas neste lote,

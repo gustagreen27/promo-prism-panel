@@ -386,6 +386,7 @@ export type Database = {
           id: string
           last_attempt_at: string | null
           meta_message_id: string | null
+          next_attempt_at: string | null
           phone: string
           read_at: string | null
           replied_at: string | null
@@ -410,6 +411,7 @@ export type Database = {
           id?: string
           last_attempt_at?: string | null
           meta_message_id?: string | null
+          next_attempt_at?: string | null
           phone: string
           read_at?: string | null
           replied_at?: string | null
@@ -434,6 +436,7 @@ export type Database = {
           id?: string
           last_attempt_at?: string | null
           meta_message_id?: string | null
+          next_attempt_at?: string | null
           phone?: string
           read_at?: string | null
           replied_at?: string | null
@@ -2212,6 +2215,42 @@ export type Database = {
         }
         Relationships: []
       }
+      wa_rate_limits: {
+        Row: {
+          last_refill_at: string
+          max_concurrency: number
+          phone_number_id: string
+          rate_per_second: number
+          throughput_level: string | null
+          throughput_mps: number | null
+          throughput_synced_at: string | null
+          tokens: number
+          updated_at: string
+        }
+        Insert: {
+          last_refill_at?: string
+          max_concurrency?: number
+          phone_number_id: string
+          rate_per_second?: number
+          throughput_level?: string | null
+          throughput_mps?: number | null
+          throughput_synced_at?: string | null
+          tokens?: number
+          updated_at?: string
+        }
+        Update: {
+          last_refill_at?: string
+          max_concurrency?: number
+          phone_number_id?: string
+          rate_per_second?: number
+          throughput_level?: string | null
+          throughput_mps?: number | null
+          throughput_synced_at?: string | null
+          tokens?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       wallet_reservations: {
         Row: {
           campaign_id: string | null
@@ -3613,6 +3652,35 @@ export type Database = {
       wa_recalc_campaign_progress: {
         Args: { _campaign_id: string }
         Returns: undefined
+      }
+      wa_simulate_rate_limiter: {
+        Args: {
+          _conc?: number
+          _duration_ms?: number
+          _phone: string
+          _rate?: number
+        }
+        Returns: {
+          avg_mps: number
+          bucket_by_second: Json
+          duration_ms: number
+          p95_mps: number
+          peak_mps: number
+          total_allowed: number
+        }[]
+      }
+      wa_try_consume_token: {
+        Args: {
+          _default_conc?: number
+          _default_rate?: number
+          _phone_number_id: string
+        }
+        Returns: {
+          allowed: boolean
+          max_concurrency: number
+          rate_per_second: number
+          wait_ms: number
+        }[]
       }
       wallet_available: { Args: { _ws: string }; Returns: number }
       wallet_consume_reservation: {
