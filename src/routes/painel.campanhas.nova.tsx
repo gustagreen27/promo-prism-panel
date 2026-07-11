@@ -866,11 +866,13 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                     <ReviewRow label="Pausa automática" value={`${rate.pause_duration_s}s a cada ${rate.pause_every} envios`} />
                     <ReviewRow label="Duração estimada" value={estimatedDurationMin > 60 ? `${Math.floor(estimatedDurationMin / 60)}h ${estimatedDurationMin % 60}min` : `${estimatedDurationMin} min`} />
                     <ReviewRow label="Custo estimado" value={`R$ ${(estimatedCostCents / 100).toFixed(2)}`} />
-                    <ReviewRow label="Saldo (msgs)" value={balance?.available?.toLocaleString("pt-BR") ?? "—"} />
+                    {!adminMode && (
+                      <ReviewRow label="Saldo (msgs)" value={balance?.available?.toLocaleString("pt-BR") ?? "—"} />
+                    )}
                   </div>
                 </div>
 
-                {balance && balance.available < validContacts && (
+                {!adminMode && balance && balance.available < validContacts && (
                   <div className="flex items-start gap-2 rounded border border-amber-400 bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                     <div>Saldo insuficiente. Você tem <b>{balance.available}</b> mensagens e precisa de <b>{validContacts}</b>.</div>
