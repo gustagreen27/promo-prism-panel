@@ -42,6 +42,8 @@ function Page() {
   const importFn = useServerFn(importWabasFromBusiness);
   const clientsFn = useServerFn(listClients);
   const projectsFn = useServerFn(listProjects);
+  const quickFn = useServerFn(quickConnectWa);
+  const workspacesFn = useServerFn(listWorkspaceConnections);
   const qc = useQueryClient();
 
   const wabasQuery = useQuery({ queryKey: ["wa-wabas"], queryFn: () => listFn() });
