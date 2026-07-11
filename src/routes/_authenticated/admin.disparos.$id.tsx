@@ -76,8 +76,22 @@ function Page() {
   const campQ = useQuery({
     queryKey: ["wa-camp", id],
     queryFn: () => getCamp({ data: { id } }),
+    retry: false,
   });
   const { data: camp } = campQ;
+
+  if (campQ.isError || (campQ.isSuccess && !camp)) {
+    return (
+      <div className="p-6 max-w-2xl mx-auto">
+        <PageHeader title="Campanha não encontrada" description="Este disparo não existe mais ou foi removido." />
+        <div className="mt-6 flex gap-2">
+          <Button variant="outline" onClick={() => nav({ to: "/admin/disparos" })}>
+            <ArrowLeft className="h-4 w-4 mr-2" /> Voltar para disparos
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const progQ = useQuery({
     queryKey: ["wa-camp-progress", id],
