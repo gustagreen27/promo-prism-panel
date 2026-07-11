@@ -176,13 +176,10 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
     }
 
     // Consolida mapeamentos em template_variables (lido pelo worker de envio).
+    // Os botões dinâmicos ficam na coluna button_url_mapping (todos, não só o primeiro).
     const templateVars: Record<string, string> = { ...(data.variables_mapping ?? {}) }
-    for (const [k, v] of Object.entries(data.button_url_mapping ?? {})) {
-      templateVars._button_url_param = String(v)
-      templateVars._button_index = String(k)
-      break
-    }
     if (data.header_media_url) templateVars._header_image_url = data.header_media_url
+
 
     const approval_mode = ws?.approval_mode || 'auto'
     const approval_status = approval_mode === 'manual' ? 'pending' : 'not_required'
