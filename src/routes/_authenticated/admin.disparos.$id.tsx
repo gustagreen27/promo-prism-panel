@@ -203,6 +203,54 @@ function Page() {
   const percent = p.percent ?? 0;
   const status = (prog?.status ?? camp?.status ?? "draft") as string;
   const isRunning = status === "running";
+
+  // Prévia renderizada para o 1º destinatário (substitui {nome}, {{1}} etc.)
+  const previewForFirst = useMemo(() => {
+    const tpl: any = (camp as any)?.template;
+    if (!tpl) return null;
+    const first: any = (recipients as any[] | undefined)?.[0];
+    const contact = first?.contact ?? (first ? { phone: first.phone } : {});
+    const ctx = buildContext({
+      contact,
+      client: (camp as any)?.client,
+      project: (camp as any)?.project,
+      campaign: camp,
+    });
+    const varsMap: Record<string, string> =
+      ((camp as any)?.variables_mapping ?? (camp as any)?.template_variables ?? {}) as any;
+    const resolved: Record<number, string> = {};
+    for (const [k, v] of Object.entries(varsMap)) {
+      if (k.startsWith("_") || !/^\d+$/.test(k)) continue;
+      resolved[Number(k)] = renderMapping(String(v ?? ""), ctx);
+    }
+    const body = fillMetaTemplate(String(tpl.body ?? ""), resolved);
+    const headerText = tpl.header_type === "text"
+      ? fillMetaTemplate(String(tpl.header_text ?? ""), resolved)
+      : tpl.header_text;
+    const buttons = Array.isArray(tpl.buttons)
+      ? tpl.buttons.map((b: any) => {
+          if (String(b?.type).toUpperCase() === "URL" && typeof b?.url === "string" && b.url.includes("{{")) {
+            const btnMap = (varsMap as any)?._button_url ?? {};
+            const urlResolved: Record<number, string> = {};
+            for (const [k, v] of Object.entries(btnMap)) urlResolved[Number(k)] = renderMapping(String(v ?? ""), ctx);
+            return { ...b, url: fillMetaTemplate(String(b.url), urlResolved) };
+          }
+          return b;
+        })
+      : [];
+    return {
+      header: {
+        type: tpl.header_type,
+        text: headerText,
+        media_url: tpl.header_media_url,
+      },
+      body,
+      footer: tpl.footer_text,
+      buttons,
+      first,
+    };
+  }, [camp, recipients]);
+
   const isPaused = status === "paused";
   const isFinished = ["completed", "partial", "cancelled", "error"].includes(status);
 
