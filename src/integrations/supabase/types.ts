@@ -3539,6 +3539,7 @@ export type Database = {
       }
     }
     Functions: {
+      backfill_contact_workspace_ids: { Args: never; Returns: Json }
       get_my_context: { Args: never; Returns: Json }
       has_role: {
         Args: {
