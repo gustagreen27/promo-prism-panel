@@ -94,15 +94,33 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
           .not("worker_lease_until", "is", null)
           .lt("worker_lease_until", leaseCutoff);
 
-        // Auto-heal: reenfileira destinatários "processing" órfãos (>5min sem meta_message_id)
+        // Auto-heal: reenfileira destinatários "processing" órfãos.
+        // Regras (todas devem ser verdadeiras):
+        //  - status = 'processing'
+        //  - meta_message_id IS NULL  (jamais mexe em quem já recebeu wamid)
+        //  - last_attempt_at < now() - 5min  (janela > 5× MAX_TICK_RUNTIME_MS = 55s + 20s HTTP timeout)
+        //  - a campanha do recipient NÃO possui lease ativo (evita colidir com um tick em execução).
+        // A UPDATE é atômica (WHERE reavalia status na hora do write).
         const staleCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-        const { data: healedRows } = await supabaseAdmin
+        const nowIso2 = new Date().toISOString();
+        const { data: activeLeased } = await supabaseAdmin
+          .from("wa_campaigns")
+          .select("id")
+          .in("status", ["running", "paused"])
+          .not("worker_lease_until", "is", null)
+          .gt("worker_lease_until", nowIso2);
+        const activeLeaseIds = (activeLeased ?? []).map((c: any) => c.id as string);
+
+        let healQuery = supabaseAdmin
           .from("campaign_recipients")
           .update({ status: "pending", failed_reason: null, error_code: null })
           .eq("status", "processing")
           .is("meta_message_id", null)
-          .lt("last_attempt_at", staleCutoff)
-          .select("campaign_id");
+          .lt("last_attempt_at", staleCutoff);
+        if (activeLeaseIds.length > 0) {
+          healQuery = healQuery.not("campaign_id", "in", `(${activeLeaseIds.join(",")})`);
+        }
+        const { data: healedRows } = await healQuery.select("campaign_id");
         if (healedRows && healedRows.length > 0) {
           const perCamp = new Map<string, number>();
           for (const r of healedRows) perCamp.set(r.campaign_id as string, (perCamp.get(r.campaign_id as string) ?? 0) + 1);
@@ -111,13 +129,15 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
               await supabaseAdmin.from("campaign_timeline").insert({
                 campaign_id: cid,
                 event_type: "auto_unstuck",
-                message: `${n} destinatário(s) reenfileirados automaticamente`,
-                payload: { count: n },
+                message: `${n} destinatário(s) reenfileirados automaticamente (lease campanha expirado, >5min sem wamid)`,
+                payload: { count: n, stale_cutoff: staleCutoff },
               });
               await supabaseAdmin.rpc("wa_recalc_campaign_progress" as any, { _campaign_id: cid });
             } catch { /* ignore */ }
           }
         }
+
+
 
         // Auto-retomar campanhas "running" com pendentes cuja última tentativa é antiga
         // (nada a fazer aqui — o próprio processCampaignTick pega todas 'running')
