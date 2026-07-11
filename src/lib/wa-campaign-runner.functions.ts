@@ -223,7 +223,7 @@ export const resumeCampaignAsync = createServerFn({ method: "POST" })
  * that route — are eligible. Recipients already accepted/sent/delivered/read
  * are never touched. Transient retryable errors (131000/130429/timeout)
  * preserve locked_route_id; only route-swappable errors
- * (132015/132016/132001, rota/número indisponível) are unlocked.
+ * (132015/132016/132001, 133010, rota/número indisponível) are unlocked.
  *
  * Resume mode:
  *   - "route"    → set only the route to active; leave campaign as-is.
@@ -452,12 +452,20 @@ export const swapCampaignRouteAndResume = createServerFn({ method: "POST" })
     // Only touches: failed recipients and pending retries (attempt > 0 with
     // next_attempt_at set), with meta_message_id IS NULL. Accepted / sent /
     // delivered / read recipients are never touched.
-    const SWAPPABLE_CODES = ["132015", "132016", "132001", "132000", "132007", "132012", "190", "131057", "131037", "131045", "131031"];
+    const SWAPPABLE_CODES = ["132015", "132016", "132001", "132000", "132007", "132012", "133010", "190", "131057", "131037", "131045", "131031"];
     let affectedPending = 0;
     if (data.retry_failed) {
       let q = supabase
         .from("campaign_recipients")
-        .update({ status: "pending" as const, failed_at: null, next_attempt_at: null, locked_route_id: null })
+        .update({
+          status: "pending" as const,
+          failed_at: null,
+          failed_reason: null,
+          error_code: null,
+          next_attempt_at: null,
+          locked_route_id: null,
+          route_id: null,
+        })
         .eq("campaign_id", data.id)
         .eq("status", "failed")
         .is("meta_message_id", null);
@@ -509,6 +517,15 @@ export const swapCampaignRouteAndResume = createServerFn({ method: "POST" })
     );
 
     // ---- 11) Resume ----
+    const { count: pendingAfterSwap } = await supabase
+      .from("campaign_recipients")
+      .select("id", { count: "exact", head: true })
+      .eq("campaign_id", data.id)
+      .eq("status", "pending")
+      .is("meta_message_id", null);
+
+    await supabase.rpc("wa_recalc_campaign_progress" as any, { _campaign_id: data.id });
+
     const mode = data.resume_mode;
     let resumed: "route" | "campaign" | "none" = "none";
     if (mode !== "none") {
@@ -517,7 +534,7 @@ export const swapCampaignRouteAndResume = createServerFn({ method: "POST" })
       const shouldResumeCampaign =
         mode === "campaign" ||
         (mode === "auto" && !wasManual && (camp.status === "paused" || camp.status === "error") &&
-          (pauseReason === "no_active_route" || pauseReason == null));
+          (pauseReason === "no_active_route" || pauseReason == null || (affectedPending > 0 && ["completed", "partial", "error"].includes(String(camp.status)))));
 
       if (shouldResumeCampaign) {
         await supabase
@@ -538,12 +555,32 @@ export const swapCampaignRouteAndResume = createServerFn({ method: "POST" })
       }
     }
 
+    let immediate_tick: any = null;
+    const shouldRunImmediateTick = (resumed === "campaign" || camp.status === "running") && (pendingAfterSwap ?? 0) > 0;
+    if (shouldRunImmediateTick) {
+      try {
+        const budget = Math.max(1, Math.min(50, pendingAfterSwap ?? affectedPending ?? 1));
+        if (isMulti) {
+          const { processMultiRouteTick } = await import("@/lib/wa-multi-route.server");
+          immediate_tick = await processMultiRouteTick(data.id, budget);
+        } else {
+          const { processCampaignTick } = await import("@/lib/wa-queue.server");
+          immediate_tick = await processCampaignTick(data.id, budget);
+        }
+      } catch (e: any) {
+        immediate_tick = { error: e?.message ?? "Falha ao disparar processamento imediato" };
+        await logEvent(supabase, data.id, "route_swap_tick_error", "Troca salva, mas o processamento imediato falhou", context.userId, immediate_tick);
+      }
+    }
+
     return {
       ok: true,
       scope: route ? "route" : "campaign",
       route_id: route?.id ?? null,
       resumed,
       affected_pending_recipients: affectedPending,
+      pending_recipients: pendingAfterSwap ?? 0,
+      immediate_tick,
     };
   });
 
