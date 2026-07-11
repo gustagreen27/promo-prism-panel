@@ -215,7 +215,7 @@ export const trackClick = createServerFn({ method: "POST" })
 
     const { data: campaign } = await supabaseAdmin
       .from("campaigns")
-      .select("id, destination_url, status, utm_source, utm_medium, utm_campaign, utm_term, utm_content")
+      .select("id, workspace_id, destination_url, status, utm_source, utm_medium, utm_campaign, utm_term, utm_content")
       .eq("slug", data.slug)
       .maybeSingle();
     if (!campaign || (campaign.status && campaign.status !== "active")) {
