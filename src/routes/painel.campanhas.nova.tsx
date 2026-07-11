@@ -118,6 +118,7 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   const [bodyVars, setBodyVars] = useState<Record<string, string>>({});
   const [btnVars, setBtnVars] = useState<Record<string, string>>({});
   const [headerMediaUrl, setHeaderMediaUrl] = useState<string>("");
+  const [headerMediaMeta, setHeaderMediaMeta] = useState<{ name?: string; size?: number; contentType?: string } | null>(null);
   const [uploadingMedia, setUploadingMedia] = useState(false);
 
   // Data
@@ -274,7 +275,33 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
     setBodyVars({});
     setBtnVars({});
     setHeaderMediaUrl("");
+    setHeaderMediaMeta(null);
   }, [templateId]);
+
+  // Human-readable file size
+  const formatSize = (bytes?: number) => {
+    if (!bytes || bytes <= 0) return "";
+    const units = ["B", "KB", "MB", "GB"];
+    let i = 0; let v = bytes;
+    while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+    return `${v.toFixed(v >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
+  };
+
+  // Missing-field list for Step 2 (used for the inline summary and per-field flags)
+  const step2Missing = useMemo(() => {
+    const items: string[] = [];
+    if (!connectionId) items.push("Selecione o número de WhatsApp de envio");
+    if (!templateId) items.push("Selecione o template aprovado");
+    if (tplRequiresMedia && !headerMediaUrl.trim()) items.push(`Envie a mídia do cabeçalho (${tplHeaderType})`);
+    for (const n of tplBodyVarNums) {
+      if (!(bodyVars[String(n)] ?? "").trim()) items.push(`Preencha a variável {{${n}}} do corpo`);
+    }
+    for (const n of tplUrlVarNums) {
+      if (!(btnVars[String(n)] ?? "").trim()) items.push(`Preencha a variável {{${n}}} da URL do botão`);
+    }
+    if (rate.interval_s <= 0) items.push("Defina um intervalo válido entre envios");
+    return items;
+  }, [connectionId, templateId, tplRequiresMedia, headerMediaUrl, tplHeaderType, tplBodyVarNums, bodyVars, tplUrlVarNums, btnVars, rate.interval_s]);
 
   // -------- Navigation --------
   const canAdvance = useCallback((from: number): boolean => {
@@ -314,6 +341,7 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
         .createSignedUrl(key, 60 * 60 * 24 * 7);
       if (sErr || !signed?.signedUrl) throw sErr ?? new Error("Falha ao gerar URL");
       setHeaderMediaUrl(signed.signedUrl);
+      setHeaderMediaMeta({ name: file.name, size: file.size, contentType: file.type || undefined });
       toast.success("Mídia carregada.");
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Erro no upload da mídia");
@@ -548,58 +576,101 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
 
                     {tplRequiresMedia && (
                       <div className="space-y-2">
-                        <Label className="flex items-center gap-1.5 text-xs uppercase tracking-wide">
-                          {tplHeaderType === "video" ? <VideoIcon className="h-3.5 w-3.5" />
-                            : tplHeaderType === "document" ? <FileText className="h-3.5 w-3.5" />
-                            : <ImageIcon className="h-3.5 w-3.5" />}
-                          Mídia do cabeçalho ({tplHeaderType})*
-                        </Label>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <Label className="flex items-center gap-1.5 text-xs uppercase tracking-wide">
+                            {tplHeaderType === "video" ? <VideoIcon className="h-3.5 w-3.5" />
+                              : tplHeaderType === "document" ? <FileText className="h-3.5 w-3.5" />
+                              : <ImageIcon className="h-3.5 w-3.5" />}
+                            Mídia do cabeçalho*
+                          </Label>
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant="secondary" className="text-[10px] uppercase">{tplHeaderType}</Badge>
+                            {headerMediaMeta?.size ? (
+                              <Badge variant="outline" className="text-[10px]">{formatSize(headerMediaMeta.size)}</Badge>
+                            ) : null}
+                            {headerMediaUrl ? (
+                              <Badge className="bg-emerald-600 text-white text-[10px]">Pronto</Badge>
+                            ) : uploadingMedia ? (
+                              <Badge variant="outline" className="text-[10px]">Enviando…</Badge>
+                            ) : (
+                              <Badge variant="destructive" className="text-[10px]">Obrigatório</Badge>
+                            )}
+                          </div>
+                        </div>
+
                         {headerMediaUrl ? (
-                          <div className="space-y-2">
-                            {tplHeaderType === "image" && (
-                              <img src={headerMediaUrl} alt="Prévia" className="max-h-40 rounded border object-contain" />
-                            )}
-                            {tplHeaderType === "video" && (
-                              <video src={headerMediaUrl} controls className="max-h-40 rounded border" />
-                            )}
-                            {tplHeaderType === "document" && (
-                              <a href={headerMediaUrl} target="_blank" rel="noreferrer"
-                                className="inline-flex items-center gap-1 text-xs text-primary underline">
-                                <FileText className="h-3 w-3" /> Ver documento
-                              </a>
-                            )}
-                            <div className="flex flex-wrap gap-2">
-                              <Button type="button" variant="outline" size="sm" onClick={() => setHeaderMediaUrl("")}>
-                                <X className="mr-1 h-3.5 w-3.5" /> Remover
-                              </Button>
-                              <label className="inline-flex cursor-pointer">
-                                <Input type="file" className="hidden"
-                                  accept={tplHeaderType === "image" ? "image/*" : tplHeaderType === "video" ? "video/*" : "*"}
-                                  onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadHeaderMedia(f); e.currentTarget.value = ""; }} />
-                                <span className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs hover:bg-muted">
-                                  <Upload className="h-3.5 w-3.5" /> Substituir
-                                </span>
-                              </label>
+                          <div className={cn(
+                            "space-y-2 rounded-lg border p-2",
+                            "bg-muted/20"
+                          )}>
+                            <div className="w-full overflow-hidden rounded-md bg-black/5">
+                              {tplHeaderType === "image" && (
+                                <img
+                                  src={headerMediaUrl}
+                                  alt="Prévia da mídia do cabeçalho"
+                                  className="mx-auto block h-auto w-full max-h-72 object-contain"
+                                />
+                              )}
+                              {tplHeaderType === "video" && (
+                                <video
+                                  src={headerMediaUrl}
+                                  controls
+                                  playsInline
+                                  className="mx-auto block h-auto w-full max-h-72 bg-black"
+                                />
+                              )}
+                              {tplHeaderType === "document" && (
+                                <a href={headerMediaUrl} target="_blank" rel="noreferrer"
+                                  className="flex items-center gap-2 p-4 text-sm text-primary underline">
+                                  <FileText className="h-4 w-4" />
+                                  {headerMediaMeta?.name || "Abrir documento"}
+                                </a>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                              <span className="truncate max-w-[70%]" title={headerMediaMeta?.name || headerMediaUrl}>
+                                {headerMediaMeta?.name || headerMediaUrl}
+                              </span>
+                              <div className="flex flex-wrap gap-2">
+                                <Button type="button" variant="outline" size="sm"
+                                  onClick={() => { setHeaderMediaUrl(""); setHeaderMediaMeta(null); }}>
+                                  <X className="mr-1 h-3.5 w-3.5" /> Remover
+                                </Button>
+                                <label className="inline-flex cursor-pointer">
+                                  <Input type="file" className="hidden"
+                                    accept={tplHeaderType === "image" ? "image/*" : tplHeaderType === "video" ? "video/*" : "*"}
+                                    onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadHeaderMedia(f); e.currentTarget.value = ""; }} />
+                                  <span className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs hover:bg-muted">
+                                    <Upload className="h-3.5 w-3.5" /> Substituir
+                                  </span>
+                                </label>
+                              </div>
                             </div>
                           </div>
                         ) : (
-                          <div className="space-y-2">
+                          <div className={cn(
+                            "space-y-2 rounded-lg border border-dashed p-3",
+                            "border-destructive/40"
+                          )}>
                             <label className="inline-flex cursor-pointer">
                               <Input type="file" className="hidden"
                                 accept={tplHeaderType === "image" ? "image/*" : tplHeaderType === "video" ? "video/*" : "*"}
                                 onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadHeaderMedia(f); e.currentTarget.value = ""; }}
                                 disabled={uploadingMedia} />
-                              <span className="inline-flex items-center gap-2 rounded-md border border-dashed px-4 py-2 text-sm hover:bg-muted">
+                              <span className="inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm hover:bg-muted">
                                 {uploadingMedia ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                                {uploadingMedia ? "Enviando..." : "Fazer upload"}
+                                {uploadingMedia ? "Enviando..." : `Fazer upload de ${tplHeaderType}`}
                               </span>
                             </label>
                             <div className="flex items-center gap-2">
                               <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
                               <Input placeholder="ou cole uma URL pública da mídia"
                                 value={headerMediaUrl}
-                                onChange={(e) => setHeaderMediaUrl(e.target.value)} />
+                                onChange={(e) => { setHeaderMediaUrl(e.target.value); setHeaderMediaMeta(null); }} />
                             </div>
+                            <p className="text-[11px] text-destructive">
+                              Este template exige {tplHeaderType === "image" ? "uma imagem" : tplHeaderType === "video" ? "um vídeo" : "um documento"} no cabeçalho.
+                            </p>
                           </div>
                         )}
                       </div>
@@ -609,16 +680,25 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                       <div className="space-y-2">
                         <Label className="text-xs uppercase tracking-wide">Variáveis do corpo</Label>
                         <div className="grid gap-2 sm:grid-cols-2">
-                          {tplBodyVarNums.map((n) => (
-                            <div key={`body-${n}`}>
-                              <Label className="text-[11px] text-muted-foreground">{`{{${n}}}`}</Label>
-                              <Input
-                                value={bodyVars[String(n)] ?? ""}
-                                onChange={(e) => setBodyVars((v) => ({ ...v, [String(n)]: e.target.value }))}
-                                placeholder='Valor fixo ou token, ex: {nome|"Cliente"}'
-                              />
-                            </div>
-                          ))}
+                          {tplBodyVarNums.map((n) => {
+                            const val = bodyVars[String(n)] ?? "";
+                            const missing = !val.trim();
+                            return (
+                              <div key={`body-${n}`}>
+                                <Label className="flex items-center justify-between text-[11px] text-muted-foreground">
+                                  <span>{`{{${n}}}`}</span>
+                                  {missing && <span className="text-destructive">obrigatório</span>}
+                                </Label>
+                                <Input
+                                  value={val}
+                                  onChange={(e) => setBodyVars((v) => ({ ...v, [String(n)]: e.target.value }))}
+                                  placeholder='Valor fixo ou token, ex: {nome|"Cliente"}'
+                                  aria-invalid={missing}
+                                  className={cn(missing && "border-destructive focus-visible:ring-destructive")}
+                                />
+                              </div>
+                            );
+                          })}
                         </div>
                         <p className="text-[11px] text-muted-foreground">
                           Tokens suportados: <code>{'{nome}'}</code>, <code>{'{email}'}</code>, <code>{'{telefone}'}</code>, <code>{'{cliente.nome}'}</code>, com fallback <code>{'{campo|"padrão"}'}</code>.
@@ -635,16 +715,37 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                           {String(tplUrlButton?.url ?? "")}
                         </div>
                         <div className="grid gap-2 sm:grid-cols-2">
-                          {tplUrlVarNums.map((n) => (
-                            <div key={`btn-${n}`}>
-                              <Label className="text-[11px] text-muted-foreground">{`{{${n}}} da URL`}</Label>
-                              <Input
-                                value={btnVars[String(n)] ?? ""}
-                                onChange={(e) => setBtnVars((v) => ({ ...v, [String(n)]: e.target.value }))}
-                                placeholder="Valor a inserir no link"
-                              />
-                            </div>
-                          ))}
+                          {tplUrlVarNums.map((n) => {
+                            const val = btnVars[String(n)] ?? "";
+                            const missing = !val.trim();
+                            return (
+                              <div key={`btn-${n}`}>
+                                <Label className="flex items-center justify-between text-[11px] text-muted-foreground">
+                                  <span>{`{{${n}}} da URL`}</span>
+                                  {missing && <span className="text-destructive">obrigatório</span>}
+                                </Label>
+                                <Input
+                                  value={val}
+                                  onChange={(e) => setBtnVars((v) => ({ ...v, [String(n)]: e.target.value }))}
+                                  placeholder="Valor a inserir no link"
+                                  aria-invalid={missing}
+                                  className={cn(missing && "border-destructive focus-visible:ring-destructive")}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {step2Missing.length > 0 && (
+                      <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                        <div className="space-y-1">
+                          <div className="font-semibold">Preencha antes de avançar para a revisão:</div>
+                          <ul className="list-disc pl-4 space-y-0.5">
+                            {step2Missing.map((m, i) => <li key={i}>{m}</li>)}
+                          </ul>
                         </div>
                       </div>
                     )}
