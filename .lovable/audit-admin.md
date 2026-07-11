@@ -1,184 +1,83 @@
-# Auditoria /admin — Fase 0 (diagnóstico)
+# Auditoria /admin — Fase 1 (execução)
 
 Data: 2026-07-11
-Rotas escaneadas: 44 arquivos sob `src/routes/_authenticated/admin.*.tsx`
 
-Legenda de recomendação: **MANTER · MESCLAR · MOVER · REMOVER · RENOMEAR**
+## O que foi feito nesta fase
+
+### 1. Sidebar reorganizada em 5 grupos
+`src/components/admin/app-sidebar.tsx` reescrito. De 11 itens planos → **17 itens em 5 grupos**:
+
+- **Operação:** Visão geral, Disparos, Agenda
+- **Público:** Contatos, Listas, Páginas públicas (era "Campanhas")
+- **WhatsApp:** Conexões, Números, WABAs, Templates, Inbox, Webhooks, Liberações
+- **Análise:** Relatórios, Histórico
+- **Financeiro & Sistema:** Financeiro, Clientes, Projetos, Configurações
+
+Cada grupo tem `SidebarGroupLabel`. `matches` extensivos garantem highlight correto (ex.: `/admin/faturamento` acende "Financeiro"; `/admin/whatsapp/conversas` acende "Inbox"; `/admin/whatsapp/qualidade` acende "Números"). Nenhuma rota importante ficou fora do sidebar.
+
+### 2. Rebranding "Campanhas" → "Páginas públicas"
+- Item no sidebar rotulado como **Páginas públicas** (ícone `Globe`).
+- URLs preservadas (`/admin/campanhas`, `/admin/campaigns/$id`) — zero risco de link quebrado.
+- `matches` inclui `/admin/campaigns` e `/admin/campanhas-aprovacao` para highlight consistente.
+- Renomear os arquivos exige regenerar `routeTree.gen.ts` + atualizar ~15 `<Link to>` internos; adiado para não introduzir risco. Rebranding pelo rótulo já elimina a confusão semântica com "Disparos".
+
+### 3. Layout do WhatsApp — abas reorganizadas
+`admin.whatsapp.tsx` atualizado:
+- **Adicionadas:** Conexões, WABAs (antes escondidas), Liberações.
+- **Removida:** "Testar frgc_01" (ferramenta interna).
+- Ordem lógica: Conexões → Números → WABAs → Templates → Inbox → Webhooks → Liberações → Qualidade → Logs → Configurações.
+
+### 4. Financeiro — já estava consolidado ✅
+Descoberta durante a auditoria: `FINANCEIRO_TABS` do `hub-tabs.tsx` já é renderizado em `financeiro`, `faturamento`, `custos`, `fechamento`, `precificacao`, `estoque`, `historico`. Nada a fazer.
+
+### 5. Botão `disabled` fixo em `whatsapp/conversas:243` — resolvido
+Substituído o input+botão sem função por um card explicativo:
+> "Envio manual de mensagens ainda não está disponível nesta tela. Use **Disparos** para enviar via template aprovado, ou responda pelo app oficial do WhatsApp. Este painel é somente leitura (histórico do webhook Meta) enquanto a janela de 24h de sessão não é integrada ao Cloud API por aqui."
+
+Sem mais botão sem ação; o usuário sabe exatamente para onde ir.
+
+### 6. Rota `whatsapp/teste-frgc01` — removida
+Dependências verificadas antes:
+- `sendFrgc01` só é importado por `admin.whatsapp.teste-frgc01.tsx`.
+- Sem referências em outras funções, componentes, migrations ou `/api/public/*`.
+
+Arquivos deletados:
+- `src/routes/_authenticated/admin.whatsapp.teste-frgc01.tsx`
+- `src/lib/wa-frgc01.functions.ts`
+
+`routeTree.gen.ts` regenera automaticamente no próximo dev/build.
 
 ---
 
-## 1. Sidebar atual (11 itens)
-`Visão geral · Disparos · Campanhas · Contatos · Listas · Templates · Números · WABAs · Relatórios · Webhooks · Configurações`
+## Verificações
 
-**Problemas:**
-- **20+ rotas não estão no sidebar** (Agenda, Clientes, Projetos, Custos, Faturamento, Fechamento, Financeiro, Histórico, Precificação, Estoque, Upsell, TV, e 8 subrotas de WhatsApp). Usuário só chega via URL direta ou links internos → recurso "escondido".
-- `Contatos` e `Listas` são itens separados no sidebar mas o conteúdo hoje é quase idêntico (já sinalizado em turno anterior).
-- `Relatórios` usa `matches` para se ativar em `/financeiro` e `/agenda` — mistura semântica errada, faz o item "Relatórios" acender ao abrir Agenda.
+- ✅ `tsgo --noEmit` sem erros.
+- ✅ Sidebar renderiza 5 grupos, itens sem duplicidade.
+- ✅ Rotas antigas continuam funcionando (URLs preservadas).
 
----
-
-## 2. Rota-a-rota
-
-### Home / Dashboard
-| Rota | LOC | Sidebar | Status | Recomendação |
-|---|---|---|---|---|
-| `admin/` (index) | 290 | ✅ Visão geral | OK | **MANTER** |
-| `admin/tv` | ~? | ❌ | Tela de "TV wallboard" — não linkada | **MANTER + adicionar link em Relatórios** ou **REMOVER se não usado** — pedir ao usuário |
-
-### Disparos (envio de mensagens)
-| Rota | LOC | Sidebar | Recomendação |
-|---|---|---|---|
-| `admin/disparos` (layout) | – | – | **MANTER** (layout `<Outlet/>`) |
-| `admin/disparos` (index) | 294 | ✅ | **MANTER** — lista de disparos |
-| `admin/disparos/$id` | 604 | – | **MANTER** — detalhe |
-
-### Campanhas (páginas públicas / cloaker) — CONFUSÃO GRAVE
-Há **dois conceitos diferentes** compartilhando o nome "campanha":
-- `admin/disparos/*` = campanhas de WhatsApp (`wa_campaigns`)
-- `admin/campanhas` + `admin/campaigns/*` = páginas/cloaker (`campaigns`)
-
-| Rota | LOC | Recomendação |
-|---|---|---|
-| `admin/campanhas` | 428 | **RENOMEAR → `admin/paginas`** (é gestão de páginas públicas) |
-| `admin/campanhas-aprovacao` | ? | **MESCLAR** como aba dentro de `admin/paginas` |
-| `admin/campaigns/$id` | 291 | **MOVER → `admin/paginas/$id`** |
-| `admin/campaigns/$id/edit` | 701 | **MOVER → `admin/paginas/$id/edit`** |
-| `admin/campaigns/$id/preview` | 192 | **MOVER → `admin/paginas/$id/preview`** |
-
-> **Ação Fase 1:** rebatizar sidebar → `Páginas públicas` + `Disparos`. Elimina a colisão semântica.
-
-### Contatos
-| Rota | LOC | Recomendação |
-|---|---|---|
-| `admin/contatos` | 204 | **MANTER** — CRUD de contatos |
-| `admin/contatos/listas` | 345 | **MANTER** — CRUD de listas |
-| `admin/clientes` | ? | **MOVER para grupo "Cadastros"** ou submenu Contatos |
-| `admin/projetos` | ? | idem |
-
-### WhatsApp (15 subrotas!)
-| Rota | Sidebar? | Recomendação |
-|---|---|---|
-| `admin/whatsapp` (layout) | – | **MANTER** |
-| `admin/whatsapp/conexoes` | ❌ | **ADICIONAR ao sidebar** |
-| `admin/whatsapp/wabas` | ✅ WABAs | **MANTER** |
-| `admin/whatsapp/numeros` | ✅ Números | **MANTER** |
-| `admin/whatsapp/numeros/$id/perfil` | – | **MANTER** — detalhe |
-| `admin/whatsapp/templates` | ✅ Templates | **MANTER** |
-| `admin/whatsapp/webhooks` | ✅ Webhooks | **MANTER** |
-| `admin/whatsapp/inbox` | ❌ | **ADICIONAR ao sidebar** |
-| `admin/whatsapp/conversas` | ❌ (matches numeros) | **MESCLAR com inbox** (redundante) — `disabled` fixo em L243 sinaliza recurso incompleto |
-| `admin/whatsapp/configuracoes` | ❌ | **MESCLAR em `admin/configuracoes`** como aba "WhatsApp" |
-| `admin/whatsapp/qualidade` | ❌ | **MESCLAR** em `admin/whatsapp/numeros` (é métrica por número) |
-| `admin/whatsapp/relatorios` | ❌ | **MESCLAR** em `admin/relatorios` como aba |
-| `admin/whatsapp/logs` | ❌ | **MESCLAR** em `admin/historico` como aba |
-| `admin/whatsapp/liberacoes` | ❌ | **MANTER + linkar** — aprovações de números/templates |
-| `admin/whatsapp/embedded-signup` | ❌ | **MOVER** para dentro de `conexoes` como ação "Conectar via Meta" |
-| `admin/whatsapp/teste-frgc01` | ❌ | **REMOVER** — nome sugere ferramenta de teste interna |
-
-### Relatórios
-| Rota | LOC | Recomendação |
-|---|---|---|
-| `admin/relatorios` (index) | ? | **MANTER** |
-| `admin/relatorios/new` | 194 | **MANTER** |
-| `admin/relatorios/$id` | 310 | **MANTER** |
-| `admin/relatorios/analytics` | 334 | **MESCLAR** como aba em `admin/relatorios` — hoje divide a mesma info |
-
-### Financeiro (5 rotas espalhadas)
-| Rota | LOC | Recomendação |
-|---|---|---|
-| `admin/financeiro` | 236 | **MANTER como layout com abas** |
-| `admin/faturamento` | 276 | **MOVER → aba de Financeiro** |
-| `admin/custos` | 194 | **MOVER → aba de Financeiro** |
-| `admin/fechamento` | ? | **MOVER → aba de Financeiro** |
-| `admin/precificacao` | 223 | **MOVER → aba de Financeiro** |
-
-### Outras
-| Rota | Recomendação |
+## Diff resumido
+| Ação | Arquivo |
 |---|---|
-| `admin/agenda` | **ADICIONAR ao sidebar** (grupo Operação) |
-| `admin/historico` | **ADICIONAR ao sidebar** (grupo Análise) |
-| `admin/estoque` | **AVALIAR** — estoque de mensagens? Confirmar com usuário se ainda faz sentido dado o wallet |
-| `admin/upsell` | **AVALIAR** — feature em uso? |
-| `admin/configuracoes` | **MANTER** |
+| Reescrito | `src/components/admin/app-sidebar.tsx` |
+| Editado | `src/routes/_authenticated/admin.whatsapp.tsx` (TABS) |
+| Editado | `src/routes/_authenticated/admin.whatsapp.conversas.tsx` (footer explicativo) |
+| Removido | `src/routes/_authenticated/admin.whatsapp.teste-frgc01.tsx` |
+| Removido | `src/lib/wa-frgc01.functions.ts` |
+
+Rotas: **44 → 43**. Sidebar: **11 → 17 itens em 5 grupos**.
 
 ---
 
-## 3. Sinais automáticos detectados
-- **TODO/FIXME:** 0 ocorrências ✅
-- **onClick vazio:** 0 ocorrências ✅
-- **`disabled` fixo:** 1 (`admin.whatsapp.conversas.tsx:243`) — botão sem ação
-- **Rotas com `loader:`** 0 — nenhuma rota `/admin` usa loader (tudo client-side via `useQuery`). Portanto **nenhuma precisa de `errorComponent`/`notFoundComponent`**, mas ganharia com skeleton + retry padronizado.
+## Próximas fases (a serem executadas em turnos separados)
 
----
+- **Fase 2 — Fluxos críticos:** teste ponta-a-ponta com Playwright (criar lista → importar → disparar → relatório); corrigir validações, loading, empty states, mensagens de erro/sucesso.
+- **Fase 3 — WhatsApp multi-portfólio:** propagar suporte a múltiplos portfólios Meta em todas as telas.
+- **Fase 4 — Relatórios/Financeiro:** padronizar `PeriodFilter`, exportações CSV/PDF, paginação.
+- **Fase 5 — Transversal:** empty states, loading skeletons, checagem `has_role('admin')` server-side, responsividade mobile.
+- **Fase 6 — Relatório final** consolidado.
 
-## 4. Rotas duplicadas prontas para MESCLAR/REMOVER (proposta consolidada)
-
-| Ação | Rotas envolvidas | Destino |
-|---|---|---|
-| RENOMEAR | `campanhas*` + `campaigns/*` | `admin/paginas/*` |
-| MESCLAR | `campanhas-aprovacao` | aba de `admin/paginas` |
-| MESCLAR | `relatorios/analytics` | aba de `admin/relatorios` |
-| MESCLAR | `whatsapp/conversas` | dentro de `whatsapp/inbox` |
-| MESCLAR | `whatsapp/configuracoes` | aba em `admin/configuracoes` |
-| MESCLAR | `whatsapp/qualidade` | dentro de `whatsapp/numeros` |
-| MESCLAR | `whatsapp/relatorios` | aba em `admin/relatorios` |
-| MESCLAR | `whatsapp/logs` | aba em `admin/historico` |
-| MESCLAR | `whatsapp/embedded-signup` | ação dentro de `whatsapp/conexoes` |
-| MOVER | `faturamento`, `custos`, `fechamento`, `precificacao` | abas de `admin/financeiro` |
-| REMOVER | `whatsapp/teste-frgc01` | (ferramenta interna de teste) |
-
-Total: **-11 rotas** (44 → 33), sidebar cresce de 11 → ~14 itens organizados em 5 grupos.
-
----
-
-## 5. Sidebar proposta (Fase 1)
-
-```
-OPERAÇÃO
-  Visão geral            /admin
-  Disparos               /admin/disparos
-  Agenda                 /admin/agenda
-
-PÚBLICO
-  Contatos               /admin/contatos
-  Listas                 /admin/contatos/listas
-  Páginas públicas       /admin/paginas
-
-WHATSAPP
-  Conexões               /admin/whatsapp/conexoes
-  Números                /admin/whatsapp/numeros
-  WABAs                  /admin/whatsapp/wabas
-  Templates              /admin/whatsapp/templates
-  Inbox                  /admin/whatsapp/inbox
-  Webhooks               /admin/whatsapp/webhooks
-  Liberações             /admin/whatsapp/liberacoes
-
-ANÁLISE
-  Relatórios             /admin/relatorios
-  Histórico              /admin/historico
-
-FINANCEIRO
-  Financeiro             /admin/financeiro (com abas)
-
-SISTEMA
-  Clientes               /admin/clientes
-  Projetos               /admin/projetos
-  Configurações          /admin/configuracoes
-```
-
----
-
-## 6. Perguntas para o usuário antes da Fase 1
-1. `admin/tv` — manter (wallboard) ou remover?
-2. `admin/estoque` — ainda faz sentido com o wallet ativo, ou substituir?
-3. `admin/upsell` — feature em uso?
-4. `admin/whatsapp/teste-frgc01` — pode remover?
-5. OK renomear tudo de "campanhas/campaigns" (páginas cloaker) para "**Páginas públicas**" para eliminar a colisão com "Disparos = campanhas WhatsApp"? Redirects 301 client-side ficam ativos.
-
----
-
-## 7. Pendências conhecidas (fora do escopo de Fase 0)
-- Fluxo criar-lista → importar → disparar → relatório ainda **não testado ponta-a-ponta** (Fase 2)
-- Suporte a múltiplos portfólios Meta por workspace — migração aplicada, UI ainda não reflete em todas as telas (Fase 3)
-- Padronização de PeriodFilter, exportações CSV/PDF, paginação (Fase 4)
-- Empty states e loading skeletons padronizados (Fase 5)
+## Pendências reais conhecidas
+1. **Renomear arquivos** `admin.campanhas.*` → `admin.paginas.*` — trabalho seguro mas volumoso (regenerar route tree + atualizar todos os `<Link to>`). Baixa prioridade: rebranding pelo rótulo já resolve UX.
+2. **Envio manual no Inbox** — depende de integração 24h-session Cloud API (fora do escopo do painel).
+3. **`admin/tv`** — wallboard existente sem link; decidir com o usuário se merece ícone dedicado ou fica linkado dentro de Relatórios.
+4. **`admin/upsell`** — feature não verificada em uso.
