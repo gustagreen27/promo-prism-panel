@@ -168,6 +168,11 @@ function ListView({ onNew }: { onNew: () => void }) {
     onSuccess: () => { toast.message("Agendamento cancelado — voltou para rascunho"); qc.invalidateQueries({ queryKey: ["wa-campaigns"] }); },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao cancelar agendamento"),
   });
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => deleteFn({ data: { id } }),
+    onSuccess: () => { toast.success("Campanha excluída"); qc.invalidateQueries({ queryKey: ["wa-campaigns"] }); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao excluir campanha"),
+  });
 
   return (
     <div className="space-y-6">
