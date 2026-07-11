@@ -321,6 +321,21 @@ function ListView({ onNew }: { onNew: () => void }) {
                         <XCircle className="h-4 w-4 text-red-600" />
                       </Button>
                     )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Excluir campanha"
+                      disabled={deleteMut.isPending}
+                      onClick={() => {
+                        const running = ["running", "queued", "paused", "scheduled"].includes(c.status);
+                        const msg = running
+                          ? `Excluir "${c.name}"?\n\nA campanha ainda está ativa. A exclusão também remove destinatários, timeline e histórico. Esta ação é permanente.`
+                          : `Excluir "${c.name}"?\n\nEsta ação também remove destinatários e histórico e é permanente.`;
+                        if (confirm(msg)) deleteMut.mutate(c.id);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-600" />
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
