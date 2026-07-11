@@ -61,6 +61,7 @@ function NewReportPage() {
           reference: reference.trim() || null,
           project: project.trim() || null,
           final_value: parsedFinal && parsedFinal > 0 ? parsedFinal : null,
+          generated_at: generatedAt ? new Date(generatedAt).toISOString() : new Date().toISOString(),
           campaigns: JSON.parse(JSON.stringify(campaigns)),
         } as never)
         .select("id")
