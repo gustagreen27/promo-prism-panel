@@ -99,6 +99,7 @@ function Page() {
                   <div className="text-xs text-muted-foreground">{l.client?.name ?? "—"}</div>
                 </button>
                 <Button size="icon" variant="ghost" onClick={() => setAddOpen(l.id)} title="Importar contatos"><ListPlus className="h-4 w-4" /></Button>
+                <Button size="icon" variant="ghost" title="Sincronizar" disabled={resyncMut.isPending} onClick={() => resyncMut.mutate(l.id)}><RefreshCw className={`h-4 w-4 ${resyncMut.isPending ? "animate-spin" : ""}`} /></Button>
                 <Button size="icon" variant="ghost" onClick={() => confirm("Remover?") && del.mutate(l.id)}><Trash2 className="h-4 w-4" /></Button>
               </div>
             ))}
