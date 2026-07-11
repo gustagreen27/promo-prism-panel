@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import Papa from "papaparse";
@@ -34,15 +34,19 @@ export function ContactPicker({
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    let alive = true;
+  const refreshSaved = useCallback(async () => {
     setLoading(true);
-    fnLists({ data: { workspace_id: workspaceId } })
-      .then((r) => { if (alive) setSavedLists(r.lists); })
-      .catch((e) => toast.error(e instanceof Error ? e.message : "Erro ao carregar listas"))
-      .finally(() => { if (alive) setLoading(false); });
-    return () => { alive = false; };
+    try {
+      const r = await fnLists({ data: { workspace_id: workspaceId } });
+      setSavedLists(r.lists);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao carregar listas");
+    } finally {
+      setLoading(false);
+    }
   }, [workspaceId, fnLists]);
+
+  useEffect(() => { refreshSaved(); }, [refreshSaved]);
 
   const filtered = useMemo(
     () => savedLists.filter((l) => l.name.toLowerCase().includes(search.toLowerCase())),
