@@ -331,7 +331,7 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
     return code;
   }, [contactSel]);
   const senderCode = selectedNumber?.phone_country_code ?? getCountryCallingCode(selectedNumber?.phone_display ?? selectedNumber?.phone_masked);
-  const ddiMismatch = !!selectedAudienceCode && !!senderCode && selectedAudienceCode !== senderCode;
+  const ddiDifferent = !!selectedAudienceCode && !!senderCode && selectedAudienceCode !== senderCode;
   const estimatedDurationMin = useMemo(() => {
     if (!validContacts || !rate.interval_s) return 0;
     return Math.ceil((validContacts * rate.interval_s) / 60);
@@ -488,10 +488,6 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   async function handleSubmit(finalMode: Mode) {
     if (!name.trim() || !connectionId || !templateId || !contactSel?.list_id) {
       toast.error("Faltam informações. Volte às etapas anteriores.");
-      return;
-    }
-    if (ddiMismatch) {
-      toast.error(`DDI incompatível: lista ${formatCallingCode(selectedAudienceCode)} e WhatsApp ${formatCallingCode(senderCode)}.`);
       return;
     }
     if (tplRequiresMedia && !headerMediaUrl.trim()) {
@@ -690,9 +686,9 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                         {senderCode && <Badge variant="outline">DDI {formatCallingCode(senderCode)}</Badge>}
                       </div>
                     )}
-                    {ddiMismatch && (
-                      <div className="mt-2 rounded-md border border-red-300 bg-red-50 p-2 text-xs text-red-700 dark:bg-red-950/30 dark:text-red-200">
-                        A lista selecionada é {formatCallingCode(selectedAudienceCode)}, mas este WhatsApp é {formatCallingCode(senderCode)}. Troque o número de envio antes de continuar.
+                    {ddiDifferent && (
+                      <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+                        A lista selecionada é {formatCallingCode(selectedAudienceCode)} e o WhatsApp de envio é {formatCallingCode(senderCode)}. O envio internacional está liberado; os destinatários serão enviados com o DDI salvo na lista.
                       </div>
                     )}
                   </div>
