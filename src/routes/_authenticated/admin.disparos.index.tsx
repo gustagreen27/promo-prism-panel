@@ -37,6 +37,7 @@ const STATUS_META: Record<string, { label: string; className: string }> = {
   completed: { label: "Concluído", className: "bg-primary/10 text-primary" },
   canceled: { label: "Cancelado", className: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200" },
   failed: { label: "Falhou", className: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200" },
+  error: { label: "Erro", className: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200" },
 };
 
 type StatusFilter = "all" | "active" | "scheduled" | "done" | "draft";
