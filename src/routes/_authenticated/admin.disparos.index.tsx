@@ -399,3 +399,66 @@ function EmptyState({ hasAny, onNew }: { hasAny: boolean; onNew: () => void }) {
     </div>
   );
 }
+
+function ErrorPanel({ campaignId, lastError, pauseReason }: { campaignId: string; lastError?: string | null; pauseReason?: string | null }) {
+  const fn = useServerFn(getCampaignErrorContext);
+  const [open, setOpen] = useState(false);
+  const q = useQuery({
+    queryKey: ["campaign-error-ctx", campaignId],
+    queryFn: () => fn({ data: { campaign_id: campaignId } }),
+    enabled: open,
+  });
+  const ctx = q.data as any;
+
+  return (
+    <div className="rounded-md border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 p-2 text-xs space-y-1" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-start gap-1.5 text-red-800 dark:text-red-200">
+        <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+        <div className="min-w-0 flex-1">
+          <div className="font-medium">{lastError || pauseReason || "Erro no disparo"}</div>
+          {pauseReason && lastError && <div className="text-[11px] opacity-80">Motivo pausa: {pauseReason}</div>}
+        </div>
+        <button type="button" className="text-[11px] underline opacity-80 hover:opacity-100" onClick={() => setOpen((v) => !v)}>
+          {open ? "Ocultar" : "Ver contexto"}
+        </button>
+      </div>
+      {open && (
+        <div className="pt-1 border-t border-red-200 dark:border-red-900 space-y-2">
+          {q.isLoading && <div className="text-red-700 dark:text-red-300">Carregando contexto…</div>}
+          {q.error && <div className="text-red-700 dark:text-red-300">Falha ao carregar: {String((q.error as any)?.message)}</div>}
+          {ctx && (
+            <>
+              {ctx.timeline?.length > 0 && (
+                <div>
+                  <div className="font-semibold text-red-800 dark:text-red-200 mb-0.5">Timeline recente</div>
+                  <ul className="space-y-0.5 max-h-40 overflow-auto">
+                    {ctx.timeline.map((e: any, i: number) => (
+                      <li key={i} className="font-mono text-[10.5px] text-red-700 dark:text-red-300">
+                        [{new Date(e.created_at).toLocaleTimeString("pt-BR")}] {e.event_type}: {e.message}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {ctx.failed_recipients?.length > 0 && (
+                <div>
+                  <div className="font-semibold text-red-800 dark:text-red-200 mb-0.5">Últimas falhas por destinatário</div>
+                  <ul className="space-y-0.5 max-h-40 overflow-auto">
+                    {ctx.failed_recipients.map((r: any, i: number) => (
+                      <li key={i} className="font-mono text-[10.5px] text-red-700 dark:text-red-300">
+                        {r.phone} · {r.error_code ?? "—"} · {r.failed_reason ?? "—"}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {(!ctx.timeline?.length && !ctx.failed_recipients?.length) && (
+                <div className="text-red-700 dark:text-red-300">Sem eventos adicionais.</div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
