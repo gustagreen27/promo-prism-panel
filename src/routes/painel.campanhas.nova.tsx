@@ -250,13 +250,45 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   }, [validContacts, rate.interval_s]);
   const estimatedCostCents = useMemo(() => (balance?.unit_price_cents ?? 15) * validContacts, [balance, validContacts]);
 
+  // Template-driven variable maps
+  const tplBodyVarNums = useMemo(
+    () => (selectedTemplate ? metaVarsIn(selectedTemplate.body ?? "") : []),
+    [selectedTemplate]
+  );
+  const tplHeaderType = useMemo(
+    () => (selectedTemplate?.header_type ?? "").toString().toLowerCase(),
+    [selectedTemplate]
+  );
+  const tplRequiresMedia = ["image", "video", "document"].includes(tplHeaderType);
+  const tplUrlButton = useMemo(() => {
+    const btns = (selectedTemplate?.buttons ?? []) as any[];
+    return btns.find((b) => (b?.type || "").toString().toLowerCase() === "url" && b?.url);
+  }, [selectedTemplate]);
+  const tplUrlVarNums = useMemo(
+    () => (tplUrlButton?.url ? metaVarsIn(String(tplUrlButton.url)) : []),
+    [tplUrlButton]
+  );
+
+  // Reset mappings when template changes
+  useEffect(() => {
+    setBodyVars({});
+    setBtnVars({});
+    setHeaderMediaUrl("");
+  }, [templateId]);
+
   // -------- Navigation --------
   const canAdvance = useCallback((from: number): boolean => {
     if (from === 1) return !!contactSel?.list_id;
-    if (from === 2) return !!connectionId && !!templateId && rate.interval_s > 0;
+    if (from === 2) {
+      if (!connectionId || !templateId || rate.interval_s <= 0) return false;
+      if (tplRequiresMedia && !headerMediaUrl.trim()) return false;
+      for (const n of tplBodyVarNums) if (!(bodyVars[String(n)] ?? "").trim()) return false;
+      for (const n of tplUrlVarNums) if (!(btnVars[String(n)] ?? "").trim()) return false;
+      return true;
+    }
     if (from === 3) return !!name.trim();
     return true;
-  }, [contactSel, connectionId, templateId, rate, name]);
+  }, [contactSel, connectionId, templateId, rate, name, tplRequiresMedia, headerMediaUrl, tplBodyVarNums, bodyVars, tplUrlVarNums, btnVars]);
 
   function goTo(id: number) { if (id <= maxReached) setStep(id); }
   function next() {
