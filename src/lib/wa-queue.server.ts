@@ -738,28 +738,61 @@ export async function processCampaignTick(
       }
     };
 
-    // ---- Scheduler: token bucket global + semáforo de concorrência ----
+    // ---- Scheduler: reserva progressiva + token bucket + semáforo ----
     const inflight = new Set<Promise<void>>();
-    // Por campanha (Passo 02) — usados como fallback ao criar wa_rate_limits e como teto local
-    const campRate = Math.max(1, Number((camp as any).rate_per_second ?? DEFAULT_RATE_PER_SECOND));
-    const campConc = Math.max(1, Number((camp as any).max_concurrency ?? DEFAULT_MAX_CONCURRENCY));
     const baseSentCount = Number((camp as any).sent_count ?? 0);
     let maxConc = campConc;
-    let idx = 0;
+    const localQueue: any[] = [];
+    let reservedTotal = 0;
+    let exhausted = false;
     const tickStart = Date.now();
 
-    while (idx < recipients.length) {
-      if (systemicPause) break;
+    const reserveNextChunk = async (): Promise<number> => {
+      if (exhausted || reservedTotal >= budget) return 0;
+      const want = Math.min(chunkSize, budget - reservedTotal);
+      const ts = new Date().toISOString();
+      const { data: chunk } = await supabaseAdmin
+        .from("campaign_recipients")
+        .select("*")
+        .eq("campaign_id", campaignId)
+        .eq("status", "pending")
+        .or(`next_attempt_at.is.null,next_attempt_at.lte.${ts}`)
+        .order("next_attempt_at", { ascending: true, nullsFirst: true })
+        .limit(want);
+      if (!chunk || chunk.length === 0) {
+        exhausted = true;
+        return 0;
+      }
+      await supabaseAdmin
+        .from("campaign_recipients")
+        .update({ status: "processing", last_attempt_at: ts })
+        .in("id", chunk.map((r: any) => r.id));
+      localQueue.push(...chunk);
+      reservedTotal += chunk.length;
+      return chunk.length;
+    };
+
+    await reserveNextChunk();
+
+    while (!systemicPause) {
       if (Date.now() - tickStart > MAX_TICK_RUNTIME_MS) break;
 
-      // Concurrency semaphore
+      // Top up quando a fila local cai abaixo de max_concurrency
+      if (localQueue.length < campConc && !exhausted && reservedTotal < budget) {
+        await reserveNextChunk();
+      }
+
+      if (localQueue.length === 0) {
+        if (inflight.size === 0) break;
+        await Promise.race(inflight);
+        continue;
+      }
+
       while (inflight.size >= maxConc) {
         await Promise.race(inflight);
       }
 
-      // Global token bucket (per phone_number_id, shared across campaigns).
-      // Passamos a config da campanha como default; se o número já tem row,
-      // o teto global do número prevalece (rate efetivo = min(camp, global)).
+      // Global token bucket (por phone_number_id, compartilhado entre campanhas).
       const { data: tok } = await supabaseAdmin.rpc("wa_try_consume_token" as any, {
         _phone_number_id: phoneNumberId,
         _default_rate: campRate,
@@ -767,17 +800,15 @@ export async function processCampaignTick(
       });
       const row = Array.isArray(tok) ? tok[0] : tok;
       if (row?.max_concurrency && row.max_concurrency > 0) {
-        // efetivo = min(camp, global)
         maxConc = Math.min(campConc, row.max_concurrency);
       }
-
       if (!row?.allowed) {
         const waitMs = Math.max(1, Math.min(row?.wait_ms ?? 100, 500));
         await new Promise((res) => setTimeout(res, waitMs));
         continue;
       }
 
-      const r = recipients[idx++];
+      const r = localQueue.shift();
       let p!: Promise<void>;
       p = sendOne(r)
         .catch((err) => {
@@ -789,20 +820,18 @@ export async function processCampaignTick(
       inflight.add(p);
     }
 
-    // Drain remaining inflight sends before finalizing tick metrics
+    // Drena envios em voo
     if (inflight.size) {
       await Promise.all(inflight);
     }
 
-    // Rows that were marked "processing" but never dispatched go back to pending
-    if (idx < recipients.length) {
-      const laterIds = recipients.slice(idx).map((x: any) => x.id);
-      if (laterIds.length) {
-        await supabaseAdmin
-          .from("campaign_recipients")
-          .update({ status: "pending" })
-          .in("id", laterIds);
-      }
+    // Rollback: recipients reservados mas não despachados voltam para pending
+    if (localQueue.length > 0) {
+      const laterIds = localQueue.map((x: any) => x.id);
+      await supabaseAdmin
+        .from("campaign_recipients")
+        .update({ status: "pending" })
+        .in("id", laterIds);
     }
 
     const sp = systemicPause as { reason: string; message: string } | null;
