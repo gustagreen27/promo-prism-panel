@@ -142,6 +142,8 @@ function Page() {
   const [swapConn, setSwapConn] = useState<string>("");
   const [swapTpl, setSwapTpl] = useState<string>("");
   const [swapRetry, setSwapRetry] = useState(true);
+  const [swapBodyVars, setSwapBodyVars] = useState<Record<string, string>>({});
+  const [swapBtnVars, setSwapBtnVars] = useState<Record<string, string>>({});
 
   const connsQ = useQuery({
     queryKey: ["wa-conns-all"],
@@ -153,6 +155,70 @@ function Page() {
     queryFn: () => listTplsFn(),
     enabled: swapOpen,
   });
+
+  // Seed selection + mappings from the current campaign when the dialog opens.
+  useEffect(() => {
+    if (!swapOpen || !camp) return;
+    setSwapConn((camp as any).connection_id ?? "");
+    setSwapTpl((camp as any).template_id ?? "");
+    const vm = ((camp as any).variables_mapping ?? (camp as any).template_variables ?? {}) as Record<string, string>;
+    const bm = ((camp as any).button_url_mapping ?? {}) as Record<string, string>;
+    setSwapBodyVars({ ...vm });
+    setSwapBtnVars({ ...bm });
+  }, [swapOpen, camp]);
+
+  // Flatten connections and resolve current selection's WABA.
+  const swapConnList = useMemo(() => {
+    return (connsQ.data ?? []).flatMap((w: any) =>
+      (w.connections ?? []).map((c: any) => ({ ...c, workspace_name: w.name })),
+    );
+  }, [connsQ.data]);
+  const swapConnRow = useMemo(
+    () => swapConnList.find((c: any) => c.id === swapConn),
+    [swapConnList, swapConn],
+  );
+  const swapConnWaba = swapConnRow?.waba_ref_id ?? null;
+
+  // Only templates approved on the number's WABA.
+  const swapTplList = useMemo(() => {
+    return (tplsQ.data ?? []).filter((t: any) => {
+      const st = String(t.status ?? "").toUpperCase();
+      const approved = !st || st === "APPROVED" || st === "ACTIVE";
+      if (!approved) return false;
+      if (!swapConnWaba) return true;
+      return !t.waba_ref_id || t.waba_ref_id === swapConnWaba;
+    });
+  }, [tplsQ.data, swapConnWaba]);
+
+  const swapTplRow = useMemo(
+    () => (tplsQ.data ?? []).find((t: any) => t.id === swapTpl),
+    [tplsQ.data, swapTpl],
+  );
+
+  // If the currently-selected template does not belong to the new WABA, clear it.
+  useEffect(() => {
+    if (!swapOpen || !swapTpl || !swapTplRow) return;
+    if (swapConnWaba && swapTplRow.waba_ref_id && swapTplRow.waba_ref_id !== swapConnWaba) {
+      setSwapTpl("");
+      setSwapBodyVars({});
+      setSwapBtnVars({});
+    }
+  }, [swapConnWaba, swapTplRow, swapTpl, swapOpen]);
+
+  // Variables required by the selected template.
+  const swapBodyVarNums = useMemo(
+    () => (swapTplRow ? metaVarsIn(swapTplRow.body ?? "") : []),
+    [swapTplRow],
+  );
+  const swapUrlButton = useMemo(() => {
+    const btns = (Array.isArray(swapTplRow?.buttons) ? swapTplRow?.buttons : []) as any[];
+    return btns.find((b: any) => String(b?.type ?? "").toLowerCase() === "url" && b?.url);
+  }, [swapTplRow]);
+  const swapBtnVarNums = useMemo(
+    () => (swapUrlButton?.url ? metaVarsIn(String(swapUrlButton.url)) : []),
+    [swapUrlButton],
+  );
+
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["wa-camp", id] });
