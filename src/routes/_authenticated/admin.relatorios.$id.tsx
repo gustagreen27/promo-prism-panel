@@ -64,15 +64,30 @@ function ReportPage() {
   if (error || !data) return <div className="p-8">Relatório não encontrado. <Button variant="link" onClick={() => refetch()}>Tentar novamente</Button></div>;
 
   const totals = applyFinalValue(computeTotals(data.campaigns ?? []), data.final_value);
-  const generatedAt = formatBRDateTime(new Date());
+  const [generatedIso, setGeneratedIso] = useState<string>(() => toLocalInputValue(new Date()));
+  const generatedAt = formatBRDateTime(fromLocalInputValue(generatedIso));
 
   return (
     <div className="print-root">
-      <div className="no-print flex items-center justify-between mb-4">
+      <div className="no-print flex flex-wrap items-center justify-between gap-3 mb-4">
         <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/admin/relatorios" })}>
           <ArrowLeft className="size-4" /> Voltar
         </Button>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="space-y-1">
+            <Label className="text-xs flex items-center gap-1"><Clock className="size-3" /> Data de geração</Label>
+            <div className="flex gap-1">
+              <Input
+                type="datetime-local"
+                value={generatedIso}
+                onChange={(e) => setGeneratedIso(e.target.value)}
+                className="h-9 w-[210px]"
+              />
+              <Button variant="outline" size="sm" onClick={() => setGeneratedIso(toLocalInputValue(new Date()))}>
+                Agora
+              </Button>
+            </div>
+          </div>
           <Button variant="outline" size="sm" onClick={handleDelete}>
             <Trash2 className="size-4" /> Excluir
           </Button>
@@ -85,6 +100,16 @@ function ReportPage() {
       <ReportDocument report={data} totals={totals} generatedAt={generatedAt} />
     </div>
   );
+}
+
+function toLocalInputValue(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function fromLocalInputValue(v: string): Date {
+  if (!v) return new Date();
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? new Date() : d;
 }
 
 function ReportDocument({
