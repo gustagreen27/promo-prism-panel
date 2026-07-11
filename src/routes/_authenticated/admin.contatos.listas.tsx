@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, ListPlus, Search, Upload, ClipboardPaste, Users } from "lucide-react";
+import { Plus, Trash2, ListPlus, Search, Upload, ClipboardPaste, Users, RefreshCw, Download } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { CLIENTES_TABS, HubTabs } from "@/components/admin/hub-tabs";
 import { EmptyState } from "@/components/admin/empty-state";
@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { listLists, createList, deleteList, addContactsToList, listItems, importPhonesToList } from "@/lib/contact-lists.functions";
+import { listLists, createList, deleteList, addContactsToList, listItems, importPhonesToList, resyncList } from "@/lib/contact-lists.functions";
 import { listContacts } from "@/lib/contacts.functions";
 import { listClients } from "@/lib/clients.functions";
 
