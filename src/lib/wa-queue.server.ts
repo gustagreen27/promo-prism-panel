@@ -688,7 +688,8 @@ export async function processCampaignTick(
       }
 
       // Jitter delay between sends (in-lote)
-      if (jitter > 0) {
+      const isLastInBatch = recipients.indexOf(r) === recipients.length - 1;
+      if (jitter > 0 && !isLastInBatch) {
         const wait = Math.floor(Math.random() * jitter);
         if (wait > 0) await new Promise((res) => setTimeout(res, wait));
       }

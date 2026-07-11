@@ -43,7 +43,7 @@ export const getWaCampaign = createServerFn({ method: "GET" })
     await assertAdmin(context);
     const { data: row, error } = await context.supabase
       .from("wa_campaigns")
-      .select("*, client:clients(id,name), project:projects(id,name), template:whatsapp_templates(*), connection:whatsapp_connections(id,name,display_phone,phone_number_id)")
+      .select("*, client:clients(id,name), project:projects(id,name), template:whatsapp_templates(*), connection:whatsapp_connections(id,name,display_phone,phone,phone_number_id)")
       .eq("id", data.id)
       .single();
     if (error) throw error;
