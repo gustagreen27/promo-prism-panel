@@ -18,6 +18,7 @@ import { listWabas, createWaba, updateWaba, deleteWaba, getWabaChildren } from "
 import { syncWabaNumbers, syncAllWabas } from "@/lib/wa-meta-sync.functions";
 import { debugToken, createWabaViaApi, importWabasFromBusiness } from "@/lib/wa-meta-api.functions";
 import { quickConnectWa } from "@/lib/wa-quick-connect.functions";
+import { listWorkspaceConnections } from "@/lib/wa-connections.functions";
 import { listClients } from "@/lib/clients.functions";
 import { listProjects } from "@/lib/projects.functions";
 import { EmbeddedSignupButton } from "@/components/admin/whatsapp/embedded-signup-button";
