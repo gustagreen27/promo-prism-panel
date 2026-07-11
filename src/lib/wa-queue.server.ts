@@ -763,9 +763,10 @@ export async function processCampaignTick(
       }
     }
 
-    if (systemicPause) {
-      await markPaused(campaignId, systemicPause.reason, systemicPause.message);
-      return { processed: sent + failed, done: false, reason: systemicPause.reason };
+    const sp = systemicPause as { reason: string; message: string } | null;
+    if (sp) {
+      await markPaused(campaignId, sp.reason, sp.message);
+      return { processed: sent + failed, done: false, reason: sp.reason };
     }
 
 
