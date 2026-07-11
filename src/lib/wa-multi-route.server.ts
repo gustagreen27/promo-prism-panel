@@ -122,10 +122,10 @@ async function loadRoutes(campaignId: string): Promise<LoadedRoute[]> {
   return loaded;
 }
 
-async function failoverRoute(routeId: string, campaignId: string, status: string, message: string, code: string) {
+async function failoverRoute(routeId: string, campaignId: string, status: "template_unavailable" | "number_unavailable" | "rate_limited" | "disabled" | "paused", message: string, code: string) {
   await supabaseAdmin
     .from("wa_campaign_routes")
-    .update({ status, last_error_code: code, last_error_message: message, last_error_at: new Date().toISOString(), disabled_reason: message })
+    .update({ status: status as any, last_error_code: code, last_error_message: message, last_error_at: new Date().toISOString(), disabled_reason: message })
     .eq("id", routeId);
   // Unlock pending recipients affine to this route so another route can pick them up.
   await supabaseAdmin
