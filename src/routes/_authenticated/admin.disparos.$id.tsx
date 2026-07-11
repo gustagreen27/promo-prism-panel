@@ -860,22 +860,29 @@ function Page() {
               Selecione o número, o template aprovado para esse número e ajuste as variáveis. Destinatários já enviados não serão reenviados.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="grid gap-4 py-2 md:grid-cols-2">
+            <div className="space-y-4">
             <div className="space-y-1.5">
               <Label>Número de envio</Label>
               <Select value={swapConn} onValueChange={setSwapConn}>
                 <SelectTrigger><SelectValue placeholder="Selecione um número" /></SelectTrigger>
                 <SelectContent>
-                  {swapConnList
-                    .filter((c: any) => ["ativo","active","connected"].includes(String(c.status ?? "").toLowerCase()))
-                    .map((c: any) => (
+                  {swapConnList.map((c: any) => {
+                    const st = String(c.status ?? "").toLowerCase();
+                    const active = ["ativo","active","connected"].includes(st);
+                    return (
                       <SelectItem key={c.id} value={c.id}>
                         {c.display_phone ?? c.name} — {c.workspace_name}
                         {c.id === (camp as any)?.connection_id ? " (atual)" : ""}
+                        {!active ? ` · ${c.status ?? "inativo"}` : ""}
                       </SelectItem>
-                    ))}
+                    );
+                  })}
                 </SelectContent>
               </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Pode manter o número atual e trocar apenas o template.
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label>Template aprovado</Label>
@@ -933,7 +940,26 @@ function Page() {
               />
               Reenfileirar destinatários que falharam ({p.failed ?? 0})
             </label>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Pré-visualização</Label>
+              {swapPreview ? (
+                <WhatsAppPreview
+                  header={swapPreview.header as any}
+                  body={swapPreview.body}
+                  footer={swapPreview.footer}
+                  buttons={swapPreview.buttons as any}
+                  senderName={swapPreview.first?.phone ? `Destinatário ${formatPhoneDisplay(swapPreview.first.phone)}` : "Destinatário"}
+                />
+              ) : (
+                <div className="rounded-md border border-dashed p-6 text-center text-xs text-muted-foreground">
+                  Selecione um template para visualizar a mensagem.
+                </div>
+              )}
+            </div>
           </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setSwapOpen(false)}>Cancelar</Button>
             <Button
