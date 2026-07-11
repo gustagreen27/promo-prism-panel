@@ -68,6 +68,7 @@ import { Route as AuthenticatedAdminWhatsappLogsRouteImport } from './routes/_au
 import { Route as AuthenticatedAdminWhatsappLiberacoesRouteImport } from './routes/_authenticated/admin.whatsapp.liberacoes'
 import { Route as AuthenticatedAdminWhatsappInboxRouteImport } from './routes/_authenticated/admin.whatsapp.inbox'
 import { Route as AuthenticatedAdminWhatsappEmbeddedSignupRouteImport } from './routes/_authenticated/admin.whatsapp.embedded-signup'
+import { Route as AuthenticatedAdminWhatsappDiagnosticoRouteImport } from './routes/_authenticated/admin.whatsapp.diagnostico'
 import { Route as AuthenticatedAdminWhatsappConversasRouteImport } from './routes/_authenticated/admin.whatsapp.conversas'
 import { Route as AuthenticatedAdminWhatsappConfiguracoesRouteImport } from './routes/_authenticated/admin.whatsapp.configuracoes'
 import { Route as AuthenticatedAdminWhatsappConexoesRouteImport } from './routes/_authenticated/admin.whatsapp.conexoes'
@@ -412,6 +413,12 @@ const AuthenticatedAdminWhatsappEmbeddedSignupRoute =
     path: '/embedded-signup',
     getParentRoute: () => AuthenticatedAdminWhatsappRoute,
   } as any)
+const AuthenticatedAdminWhatsappDiagnosticoRoute =
+  AuthenticatedAdminWhatsappDiagnosticoRouteImport.update({
+    id: '/diagnostico',
+    path: '/diagnostico',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
 const AuthenticatedAdminWhatsappConversasRoute =
   AuthenticatedAdminWhatsappConversasRouteImport.update({
     id: '/conversas',
@@ -547,6 +554,7 @@ export interface FileRoutesByFullPath {
   '/admin/whatsapp/conexoes': typeof AuthenticatedAdminWhatsappConexoesRoute
   '/admin/whatsapp/configuracoes': typeof AuthenticatedAdminWhatsappConfiguracoesRoute
   '/admin/whatsapp/conversas': typeof AuthenticatedAdminWhatsappConversasRoute
+  '/admin/whatsapp/diagnostico': typeof AuthenticatedAdminWhatsappDiagnosticoRoute
   '/admin/whatsapp/embedded-signup': typeof AuthenticatedAdminWhatsappEmbeddedSignupRoute
   '/admin/whatsapp/inbox': typeof AuthenticatedAdminWhatsappInboxRoute
   '/admin/whatsapp/liberacoes': typeof AuthenticatedAdminWhatsappLiberacoesRoute
@@ -619,6 +627,7 @@ export interface FileRoutesByTo {
   '/admin/whatsapp/conexoes': typeof AuthenticatedAdminWhatsappConexoesRoute
   '/admin/whatsapp/configuracoes': typeof AuthenticatedAdminWhatsappConfiguracoesRoute
   '/admin/whatsapp/conversas': typeof AuthenticatedAdminWhatsappConversasRoute
+  '/admin/whatsapp/diagnostico': typeof AuthenticatedAdminWhatsappDiagnosticoRoute
   '/admin/whatsapp/embedded-signup': typeof AuthenticatedAdminWhatsappEmbeddedSignupRoute
   '/admin/whatsapp/inbox': typeof AuthenticatedAdminWhatsappInboxRoute
   '/admin/whatsapp/liberacoes': typeof AuthenticatedAdminWhatsappLiberacoesRoute
@@ -695,6 +704,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/whatsapp/conexoes': typeof AuthenticatedAdminWhatsappConexoesRoute
   '/_authenticated/admin/whatsapp/configuracoes': typeof AuthenticatedAdminWhatsappConfiguracoesRoute
   '/_authenticated/admin/whatsapp/conversas': typeof AuthenticatedAdminWhatsappConversasRoute
+  '/_authenticated/admin/whatsapp/diagnostico': typeof AuthenticatedAdminWhatsappDiagnosticoRoute
   '/_authenticated/admin/whatsapp/embedded-signup': typeof AuthenticatedAdminWhatsappEmbeddedSignupRoute
   '/_authenticated/admin/whatsapp/inbox': typeof AuthenticatedAdminWhatsappInboxRoute
   '/_authenticated/admin/whatsapp/liberacoes': typeof AuthenticatedAdminWhatsappLiberacoesRoute
@@ -771,6 +781,7 @@ export interface FileRouteTypes {
     | '/admin/whatsapp/conexoes'
     | '/admin/whatsapp/configuracoes'
     | '/admin/whatsapp/conversas'
+    | '/admin/whatsapp/diagnostico'
     | '/admin/whatsapp/embedded-signup'
     | '/admin/whatsapp/inbox'
     | '/admin/whatsapp/liberacoes'
@@ -843,6 +854,7 @@ export interface FileRouteTypes {
     | '/admin/whatsapp/conexoes'
     | '/admin/whatsapp/configuracoes'
     | '/admin/whatsapp/conversas'
+    | '/admin/whatsapp/diagnostico'
     | '/admin/whatsapp/embedded-signup'
     | '/admin/whatsapp/inbox'
     | '/admin/whatsapp/liberacoes'
@@ -918,6 +930,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/whatsapp/conexoes'
     | '/_authenticated/admin/whatsapp/configuracoes'
     | '/_authenticated/admin/whatsapp/conversas'
+    | '/_authenticated/admin/whatsapp/diagnostico'
     | '/_authenticated/admin/whatsapp/embedded-signup'
     | '/_authenticated/admin/whatsapp/inbox'
     | '/_authenticated/admin/whatsapp/liberacoes'
@@ -1378,6 +1391,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminWhatsappEmbeddedSignupRouteImport
       parentRoute: typeof AuthenticatedAdminWhatsappRoute
     }
+    '/_authenticated/admin/whatsapp/diagnostico': {
+      id: '/_authenticated/admin/whatsapp/diagnostico'
+      path: '/diagnostico'
+      fullPath: '/admin/whatsapp/diagnostico'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappDiagnosticoRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
     '/_authenticated/admin/whatsapp/conversas': {
       id: '/_authenticated/admin/whatsapp/conversas'
       path: '/conversas'
@@ -1499,6 +1519,7 @@ interface AuthenticatedAdminWhatsappRouteChildren {
   AuthenticatedAdminWhatsappConexoesRoute: typeof AuthenticatedAdminWhatsappConexoesRoute
   AuthenticatedAdminWhatsappConfiguracoesRoute: typeof AuthenticatedAdminWhatsappConfiguracoesRoute
   AuthenticatedAdminWhatsappConversasRoute: typeof AuthenticatedAdminWhatsappConversasRoute
+  AuthenticatedAdminWhatsappDiagnosticoRoute: typeof AuthenticatedAdminWhatsappDiagnosticoRoute
   AuthenticatedAdminWhatsappEmbeddedSignupRoute: typeof AuthenticatedAdminWhatsappEmbeddedSignupRoute
   AuthenticatedAdminWhatsappInboxRoute: typeof AuthenticatedAdminWhatsappInboxRoute
   AuthenticatedAdminWhatsappLiberacoesRoute: typeof AuthenticatedAdminWhatsappLiberacoesRoute
@@ -1520,6 +1541,8 @@ const AuthenticatedAdminWhatsappRouteChildren: AuthenticatedAdminWhatsappRouteCh
       AuthenticatedAdminWhatsappConfiguracoesRoute,
     AuthenticatedAdminWhatsappConversasRoute:
       AuthenticatedAdminWhatsappConversasRoute,
+    AuthenticatedAdminWhatsappDiagnosticoRoute:
+      AuthenticatedAdminWhatsappDiagnosticoRoute,
     AuthenticatedAdminWhatsappEmbeddedSignupRoute:
       AuthenticatedAdminWhatsappEmbeddedSignupRoute,
     AuthenticatedAdminWhatsappInboxRoute: AuthenticatedAdminWhatsappInboxRoute,
