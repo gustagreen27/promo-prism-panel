@@ -77,6 +77,7 @@ function DisparosIndex() {
         </div>
         <CampaignWizard
           workspaceId={workspaceId}
+          adminMode
           onExit={() => setMode("list")}
         />
       </div>

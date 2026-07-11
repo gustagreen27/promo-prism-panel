@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   listMyNumbers, listMyTemplates, getMyBalance, createClientCampaign, startClientCampaign,
 } from "@/lib/client-panel.functions";
+import { adminListAllNumbers, adminListAllTemplates } from "@/lib/admin-dispatch.functions";
 import { linkEventToCampaign } from "@/lib/calendar.functions";
 import { checkSchedulingConflict } from "@/lib/wa-schedule.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -84,11 +85,13 @@ export interface CampaignWizardProps {
   scheduled_for?: string;
   onExit?: () => void;
   onOpenCalendar?: () => void;
+  /** Se true, usa fetchers administrativos (todos os números/templates, sem filtro de grants). */
+  adminMode?: boolean;
 }
 
-export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, onOpenCalendar }: CampaignWizardProps) {
-  const fnListNumbers = useServerFn(listMyNumbers);
-  const fnListTemplates = useServerFn(listMyTemplates);
+export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, onOpenCalendar, adminMode }: CampaignWizardProps) {
+  const fnListNumbers = useServerFn(adminMode ? adminListAllNumbers : listMyNumbers);
+  const fnListTemplates = useServerFn(adminMode ? adminListAllTemplates : listMyTemplates);
   const fnBalance = useServerFn(getMyBalance);
   const fnCreate = useServerFn(createClientCampaign);
   const fnStart = useServerFn(startClientCampaign);
