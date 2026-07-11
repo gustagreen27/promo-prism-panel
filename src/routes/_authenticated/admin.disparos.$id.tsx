@@ -375,9 +375,17 @@ function Page() {
         variables_mapping: swapBodyVars,
         button_url_mapping: swapBtnVars,
         retry_failed: swapRetry,
+        resume_mode: "campaign",
       } }),
-      onSuccess: () => {
-        toast.success("Rota trocada e campanha retomada");
+      onSuccess: (r: any) => {
+        const processed = Number(r?.immediate_tick?.processed ?? r?.immediate_tick?.dispatched ?? 0);
+        if (r?.immediate_tick?.error) {
+          toast.warning(`Troca salva, mas o processamento imediato falhou: ${r.immediate_tick.error}`);
+        } else if ((r?.pending_recipients ?? 0) === 0) {
+          toast.info("Troca salva, mas não havia falhas elegíveis para reenviar.");
+        } else {
+          toast.success(`Troca salva e retomada · ${r.pending_recipients} pendente(s) · ${processed} processado(s) agora`);
+        }
         setSwapOpen(false);
         invalidate();
       },

@@ -27,7 +27,7 @@ const RETRYABLE_CODES = new Set([
   "368", "500", "502", "503", "504",
 ]);
 const TEMPLATE_FAIL_CODES = new Set(["132015", "132016", "132001", "132000", "132007", "132012"]);
-const NUMBER_FAIL_CODES = new Set(["190", "131057", "131037", "131045", "131031"]);
+const NUMBER_FAIL_CODES = new Set(["133010", "190", "131057", "131037", "131045", "131031"]);
 
 type Route = {
   id: string;
