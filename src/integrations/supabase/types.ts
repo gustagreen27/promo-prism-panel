@@ -3653,6 +3653,22 @@ export type Database = {
         Args: { _campaign_id: string }
         Returns: undefined
       }
+      wa_simulate_rate_limiter: {
+        Args: {
+          _conc?: number
+          _duration_ms?: number
+          _phone: string
+          _rate?: number
+        }
+        Returns: {
+          avg_mps: number
+          bucket_by_second: Json
+          duration_ms: number
+          p95_mps: number
+          peak_mps: number
+          total_allowed: number
+        }[]
+      }
       wa_try_consume_token: {
         Args: {
           _default_conc?: number
