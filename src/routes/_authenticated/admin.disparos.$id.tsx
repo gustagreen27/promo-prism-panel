@@ -134,6 +134,25 @@ function Page() {
   const dupFn = useServerFn(duplicateCampaign);
   const preflight = useServerFn(preflightCampaign);
   const unstickFn = useServerFn(unstickCampaignAsync);
+  const swapFn = useServerFn(swapCampaignRouteAndResume);
+  const listConnsFn = useServerFn(listWorkspaceConnections);
+  const listTplsFn = useServerFn(listTemplates);
+
+  const [swapOpen, setSwapOpen] = useState(false);
+  const [swapConn, setSwapConn] = useState<string>("");
+  const [swapTpl, setSwapTpl] = useState<string>("");
+  const [swapRetry, setSwapRetry] = useState(true);
+
+  const connsQ = useQuery({
+    queryKey: ["wa-conns-all"],
+    queryFn: () => listConnsFn(),
+    enabled: swapOpen,
+  });
+  const tplsQ = useQuery({
+    queryKey: ["wa-tpls-all"],
+    queryFn: () => listTplsFn(),
+    enabled: swapOpen,
+  });
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["wa-camp", id] });
