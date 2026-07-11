@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   Plus, Search, Play, Pause, XCircle, Eye, RefreshCw, ArrowLeft,
-  Calendar, CheckCircle2, AlertTriangle, Clock, Rocket, MessageSquareText, CalendarClock,
+  Calendar, CheckCircle2, AlertTriangle, Clock, Rocket, MessageSquareText, CalendarClock, Trash2,
 } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { ErrorCard } from "@/components/admin/query-state";
@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
-  listWaCampaigns, startWaCampaign, pauseWaCampaign, cancelWaCampaign, scheduleWaCampaign, unscheduleWaCampaign,
+  listWaCampaigns, startWaCampaign, pauseWaCampaign, cancelWaCampaign, scheduleWaCampaign, unscheduleWaCampaign, deleteWaCampaign,
 } from "@/lib/wa-campaigns.functions";
 import { getCampaignErrorContext } from "@/lib/wa-diagnosis.functions";
 import { supabase } from "@/integrations/supabase/client";
