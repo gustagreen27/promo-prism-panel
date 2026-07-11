@@ -11,6 +11,7 @@ import { whatsappReport } from "@/lib/wa-reports.functions";
 import { listWabas } from "@/lib/wa-wabas.functions";
 import { listNumbers } from "@/lib/whatsapp-numbers.functions";
 import { listClients } from "@/lib/clients.functions";
+import { ErrorCard } from "@/components/admin/query-state";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp/relatorios")({
   head: () => ({ meta: [{ title: "Relatórios WhatsApp" }] }),
@@ -23,14 +24,18 @@ function Page() {
   const numsFn = useServerFn(listNumbers);
   const clientsFn = useServerFn(listClients);
 
-  const { data: wabas = [] } = useQuery({ queryKey: ["wa-wabas"], queryFn: () => wabasFn() });
-  const { data: numbers = [] } = useQuery({ queryKey: ["wa-numbers"], queryFn: () => numsFn() });
-  const { data: clients = [] } = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
+  const wabasQuery = useQuery({ queryKey: ["wa-wabas"], queryFn: () => wabasFn() });
+  const numbersQuery = useQuery({ queryKey: ["wa-numbers"], queryFn: () => numsFn() });
+  const clientsQuery = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
+  const wabas = wabasQuery.data ?? [];
+  const numbers = numbersQuery.data ?? [];
+  const clients = clientsQuery.data ?? [];
+  const filtersError = wabasQuery.error || numbersQuery.error || clientsQuery.error;
 
   const [f, setF] = useState<any>({ waba_ref_id: null, connection_id: null, client_id: null, from: "", to: "" });
   const set = (k: string, v: any) => setF((p: any) => ({ ...p, [k]: v === "__all" ? null : v }));
 
-  const { data: metrics, isFetching, refetch } = useQuery({
+  const { data: metrics, isFetching, refetch, error: metricsError } = useQuery({
     queryKey: ["wa-report", f],
     queryFn: () => reportFn({ data: { ...f, from: f.from || null, to: f.to || null } }),
   });
@@ -52,6 +57,12 @@ function Page() {
   return (
     <>
       <PageHeader title="Relatórios WhatsApp" description="Métricas por WABA, número, cliente e período." />
+      {filtersError && (
+        <ErrorCard
+          error={filtersError}
+          onRetry={() => { wabasQuery.refetch(); numbersQuery.refetch(); clientsQuery.refetch(); }}
+        />
+      )}
       <div className="rounded-xl border bg-card p-4 mb-4 grid gap-3 md:grid-cols-5">
         <div><Label>WABA</Label>
           <Select value={f.waba_ref_id ?? "__all"} onValueChange={(v) => set("waba_ref_id", v)}>
@@ -75,6 +86,9 @@ function Page() {
         <div><Label>Até</Label><Input type="date" value={f.to} onChange={(e) => set("to", e.target.value)} /></div>
         <div className="md:col-span-5 flex justify-end"><Button onClick={() => refetch()} disabled={isFetching}>{isFetching ? "Calculando…" : "Atualizar"}</Button></div>
       </div>
+      {metricsError ? (
+        <ErrorCard error={metricsError} onRetry={() => refetch()} />
+      ) : (
       <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
         {cards.map((c) => (
           <div key={c.label} className="rounded-xl border bg-card p-4">
@@ -83,6 +97,7 @@ function Page() {
           </div>
         ))}
       </div>
+      )}
     </>
   );
 }
