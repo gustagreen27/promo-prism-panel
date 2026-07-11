@@ -74,7 +74,7 @@ export const createWorkspaceListWithPhones = createServerFn({ method: "POST" })
       rows: z.array(z.object({
         phone: z.string().min(1),
         name: z.string().max(160).optional().nullable(),
-      })).min(1).max(20000),
+      })).min(1).max(200000),
     }).parse(d)
   )
   .handler(async ({ data, context }) => {

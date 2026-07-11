@@ -120,7 +120,7 @@ export const importContactsCsv = createServerFn({ method: "POST" })
       project_id: optUuid,
       opt_in: z.boolean().default(true),
       source: z.string().default("csv"),
-      rows: z.array(z.record(z.string(), z.any())).min(1).max(20000),
+      rows: z.array(z.record(z.string(), z.any())).min(1).max(200000),
     }).parse(d)
   )
   .handler(async ({ data, context }) => {
