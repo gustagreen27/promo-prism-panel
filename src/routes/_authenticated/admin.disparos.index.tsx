@@ -220,10 +220,12 @@ function ListView({ onNew }: { onNew: () => void }) {
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((c: any) => {
             const meta = STATUS_META[c.status] ?? { label: c.status ?? "—", className: "bg-muted" };
-            const total = c.total_recipients ?? c.total ?? 0;
-            const sent = c.sent_count ?? c.sent ?? 0;
-            const failed = c.failed_count ?? c.failed ?? 0;
-            const pct = total > 0 ? Math.round(((sent + failed) / total) * 100) : 0;
+            const progress = (c.progress ?? {}) as any;
+            const total = progress.total ?? c.total_recipients ?? c.total ?? 0;
+            const sent = progress.sent ?? c.sent_count ?? c.sent ?? 0;
+            const failed = progress.failed ?? c.failed_count ?? c.failed ?? 0;
+            const processed = progress.processed ?? (sent + failed + (progress.opt_out ?? 0) + (progress.cancelled ?? 0) + (progress.skipped ?? 0));
+            const pct = total > 0 ? Math.round((processed / total) * 100) : 0;
             const whenLabel = c.scheduled_at
               ? `Agendado para ${new Date(c.scheduled_at).toLocaleString("pt-BR")}`
               : c.created_at
@@ -260,7 +262,7 @@ function ListView({ onNew }: { onNew: () => void }) {
                   <div>
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-muted-foreground">Progresso</span>
-                      <span className="font-medium">{sent}/{total}{pct > 0 ? ` · ${pct}%` : ""}</span>
+                      <span className="font-medium">{processed}/{total}{pct > 0 ? ` · ${pct}%` : ""}</span>
                     </div>
                     <div className="mt-1 h-1.5 w-full rounded-full bg-muted overflow-hidden">
                       <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
