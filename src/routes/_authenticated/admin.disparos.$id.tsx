@@ -220,6 +220,50 @@ function Page() {
     [swapUrlButton],
   );
 
+  // Prévia renderizada dentro do diálogo de troca — usa template + mappings escolhidos.
+  const swapPreview = useMemo(() => {
+    if (!swapTplRow) return null;
+    const first: any = (recipients as any[] | undefined)?.[0];
+    const contact = first?.contact ?? (first ? { phone: first.phone } : {});
+    const ctx = buildContext({
+      contact,
+      client: (camp as any)?.client,
+      project: (camp as any)?.project,
+      campaign: camp,
+    });
+    const resolved: Record<number, string> = {};
+    for (const [k, v] of Object.entries(swapBodyVars)) {
+      if (!/^\d+$/.test(k)) continue;
+      resolved[Number(k)] = renderMapping(String(v ?? ""), ctx);
+    }
+    const body = fillMetaTemplate(String(swapTplRow.body ?? ""), resolved);
+    const headerText = swapTplRow.header_type === "text"
+      ? fillMetaTemplate(String(swapTplRow.header_text ?? ""), resolved)
+      : swapTplRow.header_text;
+    const buttons = Array.isArray(swapTplRow.buttons)
+      ? swapTplRow.buttons.map((b: any) => {
+          if (String(b?.type).toUpperCase() === "URL" && typeof b?.url === "string" && b.url.includes("{{")) {
+            const urlResolved: Record<number, string> = {};
+            for (const [k, v] of Object.entries(swapBtnVars)) urlResolved[Number(k)] = renderMapping(String(v ?? ""), ctx);
+            return { ...b, url: fillMetaTemplate(String(b.url), urlResolved) };
+          }
+          return b;
+        })
+      : [];
+    return {
+      header: {
+        type: swapTplRow.header_type,
+        text: headerText,
+        media_url: swapTplRow.header_media_url,
+      },
+      body,
+      footer: swapTplRow.footer_text,
+      buttons,
+      first,
+    };
+  }, [swapTplRow, swapBodyVars, swapBtnVars, camp, recipients]);
+
+
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["wa-camp", id] });
