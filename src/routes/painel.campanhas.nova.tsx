@@ -218,6 +218,9 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   }, [mode, connectionId, scheduledAt, workspaceId, fnConflict]);
 
   // -------- Live progress polling --------
+  const [recipientsLive, setRecipientsLive] = useState<Array<{
+    id: string; name: string | null; phone: string; status: string; failed_reason?: string | null;
+  }>>([]);
   useEffect(() => {
     if (!campaignId || step < 4) return;
     let alive = true;
@@ -238,6 +241,23 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
         pending: p.pending ?? 0,
         processing: p.processing ?? 0,
       });
+      // Recipients (nome via contatos, telefone + status individual)
+      const { data: rs } = await supabase
+        .from("campaign_recipients")
+        .select("id, phone, status, failed_reason, contact:contacts(name)")
+        .eq("campaign_id", campaignId!)
+        .order("created_at", { ascending: true })
+        .limit(500);
+      if (!alive) return;
+      setRecipientsLive(
+        (rs ?? []).map((r: any) => ({
+          id: r.id,
+          name: r.contact?.name ?? null,
+          phone: r.phone,
+          status: r.status,
+          failed_reason: r.failed_reason,
+        })),
+      );
     }
     tick();
     const id = setInterval(tick, 3000);
