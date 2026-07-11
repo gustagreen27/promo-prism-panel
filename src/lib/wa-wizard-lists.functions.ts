@@ -58,7 +58,7 @@ export const previewWorkspaceList = createServerFn({ method: "POST" })
       total: all.length,
       valid: valid.length,
       opt_out: all.length - valid.length,
-      sample: valid.slice(0, 500).map((c: any) => ({ id: c.id, name: c.name, phone: c.phone })),
+      sample: valid.map((c: any) => ({ id: c.id, name: c.name, phone: c.phone })),
     };
   });
 
