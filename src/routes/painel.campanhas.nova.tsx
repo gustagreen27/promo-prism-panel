@@ -21,11 +21,12 @@ import {
   CalendarClock, CheckCircle2, Plus, AlertTriangle, ArrowLeft, ArrowRight,
   Phone, MessageSquareText, Save, Clock, Signal, Wifi, WifiOff, Loader2,
   Send, Pause, Play, Ban, XOctagon, Timer, Users2, Activity, PhoneCall, Sliders,
-  BarChart3,
+  BarChart3, Image as ImageIcon, Video as VideoIcon, FileText, Upload, X, Link2,
 } from "lucide-react";
 import { Stepper, type WizardStep } from "@/components/campaigns/wizard/Stepper";
 import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
 import { ContactsStep, type ContactSelValue } from "@/components/campaigns/wizard/ContactsStep";
+import { metaVarsIn } from "@/lib/wa-variables";
 import { cn } from "@/lib/utils";
 
 const searchSchema = z.object({
