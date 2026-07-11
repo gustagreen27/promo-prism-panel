@@ -266,6 +266,11 @@ function ListView({ onNew }: { onNew: () => void }) {
                     )}
                   </div>
 
+                  {(c.last_error || c.pause_reason || c.status === "error" || c.status === "failed") && (
+                    <ErrorPanel campaignId={c.id} lastError={c.last_error} pauseReason={c.pause_reason} />
+                  )}
+
+
                   <div className="flex flex-wrap justify-end gap-1 pt-1 border-t" onClick={(e) => e.stopPropagation()}>
                     <Button variant="ghost" size="icon" title="Abrir" onClick={() => nav({ to: "/admin/disparos/$id", params: { id: c.id } })}>
                       <Eye className="h-4 w-4" />
