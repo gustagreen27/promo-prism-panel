@@ -1894,6 +1894,7 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           avg_speed_per_min: number | null
+          batch_pause_ms: number | null
           batch_size: number
           button_url_mapping: Json | null
           canceled_at: string | null
@@ -1923,6 +1924,7 @@ export type Database = {
           min_processed_for_abort: number
           name: string
           notes: string | null
+          parallelism: number | null
           participants: Database["public"]["Enums"]["partner_participant"][]
           pause_reason: string | null
           paused_at: string | null
@@ -1963,6 +1965,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           avg_speed_per_min?: number | null
+          batch_pause_ms?: number | null
           batch_size?: number
           button_url_mapping?: Json | null
           canceled_at?: string | null
@@ -1992,6 +1995,7 @@ export type Database = {
           min_processed_for_abort?: number
           name: string
           notes?: string | null
+          parallelism?: number | null
           participants?: Database["public"]["Enums"]["partner_participant"][]
           pause_reason?: string | null
           paused_at?: string | null
@@ -2032,6 +2036,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           avg_speed_per_min?: number | null
+          batch_pause_ms?: number | null
           batch_size?: number
           button_url_mapping?: Json | null
           canceled_at?: string | null
@@ -2061,6 +2066,7 @@ export type Database = {
           min_processed_for_abort?: number
           name?: string
           notes?: string | null
+          parallelism?: number | null
           participants?: Database["public"]["Enums"]["partner_participant"][]
           pause_reason?: string | null
           paused_at?: string | null
