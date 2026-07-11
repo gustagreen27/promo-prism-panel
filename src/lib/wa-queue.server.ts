@@ -351,6 +351,11 @@ export async function processCampaignTick(
     let failed = 0;
     let lastError: string | null = null;
 
+    // Sender's DDI (country calling code) derived from the connected WhatsApp number.
+    // Any recipient whose DDI differs is skipped with a clear reason — Meta would otherwise
+    // silently drop or return misleading errors for cross-country sends.
+    const senderCode = getCountryCallingCode((conn as any).display_phone);
+
     for (const r of recipients) {
       // Opt-out check
       const { data: oo } = await supabaseAdmin
