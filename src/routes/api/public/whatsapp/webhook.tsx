@@ -135,26 +135,62 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
                 connectionId = conn?.id ?? null;
               }
 
+              // Prioridade — evita regressão de status (webhook atrasado).
+              const STATUS_PRIORITY: Record<string, number> = {
+                pending: 0, processing: 1, accepted: 2, sent: 3, delivered: 4, read: 5, replied: 6,
+              };
+
               for (const s of value?.statuses ?? []) {
                 const id = s?.id;
                 const status = s?.status;
                 if (!id || !status) continue;
+
+                const tsIso = s?.timestamp
+                  ? new Date(Number(s.timestamp) * 1000).toISOString()
+                  : new Date().toISOString();
+
+                // Localiza o recipient pelo wamid.
+                const { data: rec } = await supabaseAdmin
+                  .from("campaign_recipients")
+                  .select("id, status")
+                  .eq("meta_message_id", id)
+                  .maybeSingle();
+
                 const patch: any = {};
-                if (status === "sent") patch.sent_at = new Date().toISOString();
-                if (status === "delivered") { patch.status = "delivered"; patch.delivered_at = new Date().toISOString(); }
-                if (status === "read") { patch.status = "read"; patch.read_at = new Date().toISOString(); }
+                if (status === "sent") { patch.sent_at = tsIso; }
+                if (status === "delivered") { patch.delivered_at = tsIso; }
+                if (status === "read") { patch.read_at = tsIso; }
                 if (status === "failed") {
                   patch.status = "failed";
-                  patch.failed_at = new Date().toISOString();
-                  patch.failed_reason = s?.errors?.[0]?.title ?? "failed";
+                  patch.failed_at = tsIso;
+                  patch.failed_reason =
+                    s?.errors?.[0]?.error_data?.details ??
+                    s?.errors?.[0]?.message ??
+                    s?.errors?.[0]?.title ??
+                    "failed";
                   patch.error_code = s?.errors?.[0]?.code ? String(s.errors[0].code) : null;
                 }
+
+                if (rec && status !== "failed") {
+                  // Só avança status quando a prioridade nova for maior.
+                  const cur = STATUS_PRIORITY[rec.status as string] ?? -1;
+                  const next = STATUS_PRIORITY[status] ?? -1;
+                  if (next > cur) patch.status = status;
+                }
+
                 if (Object.keys(patch).length) {
-                  await supabaseAdmin.from("campaign_recipients").update(patch).eq("meta_message_id", id);
+                  await supabaseAdmin
+                    .from("campaign_recipients")
+                    .update(patch)
+                    .eq("meta_message_id", id);
                 }
                 const logPatch: any = { message_status: status };
                 if (status === "failed") {
-                  logPatch.failed_reason = s?.errors?.[0]?.title ?? "failed";
+                  logPatch.failed_reason =
+                    s?.errors?.[0]?.error_data?.details ??
+                    s?.errors?.[0]?.message ??
+                    s?.errors?.[0]?.title ??
+                    "failed";
                   logPatch.error_code = s?.errors?.[0]?.code ? String(s.errors[0].code) : null;
                 }
                 await supabaseAdmin.from("message_logs").update(logPatch).eq("meta_message_id", id);

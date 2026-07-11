@@ -137,7 +137,7 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   // Live progress
   const [progress, setProgress] = useState<{
     status: string; total: number; sent: number; delivered: number; failed: number;
-    pending: number; processing: number;
+    pending: number; processing: number; accepted?: number; read?: number;
   } | null>(null);
 
   // -------- Load reference data --------
@@ -217,14 +217,18 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
     return () => clearTimeout(t);
   }, [mode, connectionId, scheduledAt, workspaceId, fnConflict]);
 
-  // -------- Live progress polling --------
+  // -------- Live progress polling + realtime --------
   const [recipientsLive, setRecipientsLive] = useState<Array<{
-    id: string; name: string | null; phone: string; status: string; failed_reason?: string | null;
+    id: string; name: string | null; phone: string; status: string;
+    failed_reason?: string | null; error_code?: string | null;
   }>>([]);
+  const [recSearch, setRecSearch] = useState("");
+  const [recFilter, setRecFilter] = useState<"all" | "processing" | "accepted" | "sent" | "delivered" | "read" | "failed">("all");
+
   useEffect(() => {
     if (!campaignId || step < 4) return;
     let alive = true;
-    async function tick() {
+    async function loadCamp() {
       const { data } = await supabase
         .from("wa_campaigns")
         .select("status,progress,total_recipients")
@@ -240,14 +244,17 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
         failed: p.failed ?? 0,
         pending: p.pending ?? 0,
         processing: p.processing ?? 0,
-      });
-      // Recipients (nome via contatos, telefone + status individual)
+        accepted: p.accepted ?? 0,
+        read: p.read ?? 0,
+      } as any);
+    }
+    async function loadRecipients() {
       const { data: rs } = await supabase
         .from("campaign_recipients")
-        .select("id, phone, status, failed_reason, contact:contacts(name)")
+        .select("id, phone, status, failed_reason, error_code, contact:contacts(name)")
         .eq("campaign_id", campaignId!)
         .order("created_at", { ascending: true })
-        .limit(500);
+        .limit(1000);
       if (!alive) return;
       setRecipientsLive(
         (rs ?? []).map((r: any) => ({
@@ -256,13 +263,51 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
           phone: r.phone,
           status: r.status,
           failed_reason: r.failed_reason,
+          error_code: r.error_code,
         })),
       );
     }
-    tick();
-    const id = setInterval(tick, 3000);
-    return () => { alive = false; clearInterval(id); };
+    loadCamp();
+    loadRecipients();
+    // Polling fallback
+    const pollId = setInterval(() => { loadCamp(); loadRecipients(); }, 5000);
+    // Realtime — atualiza sem esperar o polling
+    const chan = supabase
+      .channel(`camp-live-${campaignId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "campaign_recipients", filter: `campaign_id=eq.${campaignId}` },
+        () => { loadRecipients(); loadCamp(); },
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "campaign_recipients", filter: `campaign_id=eq.${campaignId}` },
+        () => { loadRecipients(); },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "wa_campaigns", filter: `id=eq.${campaignId}` },
+        () => { loadCamp(); },
+      )
+      .subscribe();
+    return () => { alive = false; clearInterval(pollId); supabase.removeChannel(chan); };
   }, [campaignId, step]);
+
+  const filteredRecipients = useMemo(() => {
+    const q = recSearch.trim().toLowerCase();
+    return recipientsLive.filter((r) => {
+      if (q) {
+        const hay = `${r.name ?? ""} ${r.phone ?? ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      if (recFilter === "all") return true;
+      const s = (r.status || "").toLowerCase();
+      if (recFilter === "failed") return s === "failed";
+      if (recFilter === "processing") return s === "processing" || s === "pending";
+      return s === recFilter;
+    });
+  }, [recipientsLive, recSearch, recFilter]);
+
 
   // -------- Derived --------
   const selectedNumber = useMemo(() => numbers.find((n) => n.id === connectionId), [numbers, connectionId]);
@@ -1124,19 +1169,63 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                 <span className="flex items-center gap-2"><Users2 className="h-4 w-4" /> Contatos</span>
                 <Badge variant="outline">{progress.total} Total</Badge>
               </div>
+              <Input
+                value={recSearch}
+                onChange={(e) => setRecSearch(e.target.value)}
+                placeholder="Pesquisar por nome ou telefone"
+                className="h-8 text-xs"
+              />
+              <div className="flex flex-wrap gap-1">
+                {([
+                  ["all", "Todos"],
+                  ["processing", "Processando"],
+                  ["accepted", "Aceitos"],
+                  ["sent", "Enviados"],
+                  ["delivered", "Entregues"],
+                  ["read", "Lidos"],
+                  ["failed", "Falhas"],
+                ] as const).map(([k, label]) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setRecFilter(k as any)}
+                    className={cn(
+                      "rounded-full border px-2 py-0.5 text-[11px]",
+                      recFilter === k
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-muted",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
               <div className="max-h-[420px] space-y-1.5 overflow-y-auto pr-1">
-                {recipientsLive.length === 0 ? (
+                {filteredRecipients.length === 0 ? (
                   <div className="rounded-md border p-3 text-center text-xs text-muted-foreground">
-                    Carregando destinatários…
+                    {recipientsLive.length === 0 ? "Carregando destinatários…" : "Nenhum contato para este filtro."}
                   </div>
                 ) : (
-                  recipientsLive.map((r) => {
+                  filteredRecipients.map((r) => {
                     const s = (r.status || "").toLowerCase();
-                    const ok = ["sent", "delivered", "read", "accepted", "responded"].includes(s);
-                    const err = ["failed", "error", "canceled", "cancelled"].includes(s);
+                    const isRead = s === "read" || s === "replied";
+                    const isDelivered = s === "delivered";
+                    const isSent = s === "sent";
+                    const isAccepted = s === "accepted";
+                    const isProcessing = s === "processing" || s === "pending";
+                    const err = s === "failed" || s === "cancelled";
+                    const ok = isRead || isDelivered || isSent || isAccepted;
                     const initial = (r.name?.trim()?.[0] || r.phone?.[0] || "?").toUpperCase();
+                    const label =
+                      isRead ? "Lido"
+                      : isDelivered ? "Entregue"
+                      : isSent ? "Enviado"
+                      : isAccepted ? "Aceito pela Meta"
+                      : err ? "Falhou"
+                      : s === "processing" ? "Processando"
+                      : "Pendente";
                     return (
-                      <div key={r.id} className="flex items-center gap-2 rounded-md border p-2 text-sm">
+                      <div key={r.id} className="flex items-start gap-2 rounded-md border p-2 text-sm">
                         <div className={cn(
                           "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
                           ok ? "bg-emerald-500/15 text-emerald-600"
@@ -1146,17 +1235,34 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                         <div className="min-w-0 flex-1">
                           <div className="truncate font-medium">{r.name || "Sem nome"}</div>
                           <div className="truncate text-[11px] text-muted-foreground">{r.phone}</div>
+                          <div className={cn(
+                            "mt-0.5 text-[11px] font-medium",
+                            err ? "text-red-600"
+                              : ok ? "text-emerald-600"
+                              : "text-muted-foreground",
+                          )}>{label}</div>
+                          {err && (r.failed_reason || r.error_code) && (
+                            <div className="mt-0.5 text-[11px] text-red-600/90">
+                              {r.error_code ? `Código ${r.error_code}. ` : ""}{r.failed_reason ?? ""}
+                            </div>
+                          )}
                         </div>
-                        <div
-                          className="shrink-0"
-                          title={r.failed_reason ?? s}
-                          aria-label={s}
-                        >
-                          {ok ? (
+                        <div className="shrink-0 pt-0.5" title={r.failed_reason ?? label} aria-label={label}>
+                          {isRead ? (
+                            <span className="inline-flex text-blue-500">
+                              <CheckCircle2 className="h-4 w-4" />
+                              <CheckCircle2 className="-ml-2 h-4 w-4" />
+                            </span>
+                          ) : isDelivered ? (
+                            <span className="inline-flex text-emerald-500">
+                              <CheckCircle2 className="h-4 w-4" />
+                              <CheckCircle2 className="-ml-2 h-4 w-4" />
+                            </span>
+                          ) : isSent || isAccepted ? (
                             <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                           ) : err ? (
                             <XOctagon className="h-5 w-5 text-red-500" />
-                          ) : s === "processing" || s === "sending" ? (
+                          ) : isProcessing && s === "processing" ? (
                             <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
                           ) : (
                             <Clock className="h-4 w-4 text-muted-foreground" />
@@ -1166,6 +1272,14 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                     );
                   })
                 )}
+              </div>
+              <div className="grid grid-cols-3 gap-1 pt-1 text-[10px] text-muted-foreground">
+                <div>Aceitos: <span className="font-semibold text-foreground">{progress.accepted ?? 0}</span></div>
+                <div>Enviados: <span className="font-semibold text-foreground">{progress.sent}</span></div>
+                <div>Entregues: <span className="font-semibold text-foreground">{progress.delivered}</span></div>
+                <div>Lidos: <span className="font-semibold text-foreground">{progress.read ?? 0}</span></div>
+                <div>Falhas: <span className="font-semibold text-foreground">{progress.failed}</span></div>
+                <div>Pendentes: <span className="font-semibold text-foreground">{progress.pending}</span></div>
               </div>
               <p className="pt-2 text-[11px] text-muted-foreground">
                 Você pode sair desta página. O envio continua em segundo plano.
