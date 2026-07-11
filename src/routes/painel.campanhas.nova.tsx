@@ -367,10 +367,11 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   }, [contactSel]);
   const senderCode = selectedNumber?.phone_country_code ?? getCountryCallingCode(selectedNumber?.phone_display ?? selectedNumber?.phone_masked);
   const ddiDifferent = !!selectedAudienceCode && !!senderCode && selectedAudienceCode !== senderCode;
+  // Duração estimada usa a taxa efetiva do rate limiter (msg/s).
   const estimatedDurationMin = useMemo(() => {
-    if (!validContacts || !rate.interval_s) return 0;
-    return Math.ceil((validContacts * rate.interval_s) / 60);
-  }, [validContacts, rate.interval_s]);
+    if (!validContacts || dispatch.rate_per_second <= 0) return 0;
+    return Math.ceil(validContacts / dispatch.rate_per_second / 60);
+  }, [validContacts, dispatch.rate_per_second]);
   const estimatedCostCents = useMemo(() => (balance?.unit_price_cents ?? 15) * validContacts, [balance, validContacts]);
 
   // Template-driven variable maps
