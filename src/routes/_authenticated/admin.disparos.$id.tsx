@@ -21,7 +21,7 @@ import {
   getCampaignProgress, getCampaignTimeline, getCampaignRecipients,
   getCampaignFinalReport, getCampaignErrors, getRecipientPreviews,
   startCampaignAsync, pauseCampaignAsync, resumeCampaignAsync, cancelCampaignAsync,
-  retryFailedRecipients, duplicateCampaign, preflightCampaign,
+  retryFailedRecipients, duplicateCampaign, preflightCampaign, unstickCampaignAsync,
 } from "@/lib/wa-campaign-runner.functions";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
