@@ -134,10 +134,69 @@ function Page() {
           contacts={contacts}
           saving={addMut.isPending || importMut.isPending}
           onAddExisting={(ids) => addMut.mutate({ list_id: addOpen, contact_ids: ids })}
-          onImport={(rows, source) => importMut.mutate({ list_id: addOpen, rows, source })}
+          onImport={(rows, source, filename) => importMut.mutate({ list_id: addOpen, rows, source, filename })}
         />
       </Dialog>
+
+      <Dialog open={!!importResult} onOpenChange={(v) => !v && setImportResult(null)}>
+        <ImportResultDialog result={importResult} onClose={() => setImportResult(null)} />
+      </Dialog>
     </>
+  );
+}
+
+function ImportResultDialog({ result, onClose }: { result: any; onClose: () => void }) {
+  if (!result) return null;
+  const downloadInvalid = () => {
+    const rows = result.invalidRows ?? [];
+    const csv = ["input,name,reason", ...rows.map((r: any) => `"${(r.input ?? "").replace(/"/g, '""')}","${(r.name ?? "").toString().replace(/"/g, '""')}","${r.reason}"`)].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `invalidos-${Date.now()}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <DialogContent className="max-w-lg">
+      <DialogHeader><DialogTitle>Resultado do import</DialogTitle></DialogHeader>
+      <div className="grid grid-cols-2 gap-3 text-sm">
+        <Stat label="Linhas recebidas" value={result.total_input} />
+        <Stat label="Válidas após normalização" value={result.normalized} />
+        <Stat label="Duplicadas no arquivo" value={result.duplicates} />
+        <Stat label="Inválidas" value={result.invalid} tone={result.invalid ? "warn" : undefined} />
+        <Stat label="Contatos existentes" value={result.existing_contacts} />
+        <Stat label="Contatos criados" value={result.created_contacts} tone="good" />
+        <Stat label="Novos links na lista" value={result.linked} tone="good" />
+        <Stat label="Já linkados antes" value={result.already_linked} />
+      </div>
+      {result.invalidRows?.length > 0 && (
+        <div className="mt-3 max-h-40 overflow-auto rounded border bg-muted/40 p-2 text-xs">
+          {result.invalidRows.slice(0, 50).map((r: any, i: number) => (
+            <div key={i} className="flex justify-between gap-2 py-0.5">
+              <span className="font-mono truncate">{r.input || "(vazio)"}</span>
+              <span className="text-muted-foreground">{r.reason}</span>
+            </div>
+          ))}
+          {result.invalidRows.length > 50 && <div className="text-muted-foreground pt-1">…e mais {result.invalidRows.length - 50}. Baixe o CSV para ver todos.</div>}
+        </div>
+      )}
+      <DialogFooter>
+        {result.invalidRows?.length > 0 && (
+          <Button variant="outline" onClick={downloadInvalid}><Download className="mr-2 h-4 w-4" />CSV dos inválidos</Button>
+        )}
+        <Button onClick={onClose}>Fechar</Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+}
+
+function Stat({ label, value, tone }: { label: string; value: number; tone?: "good" | "warn" }) {
+  const color = tone === "good" ? "text-emerald-600" : tone === "warn" ? "text-amber-600" : "";
+  return (
+    <div className="rounded border bg-card p-2">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className={`text-lg font-semibold ${color}`}>{value ?? 0}</div>
+    </div>
   );
 }
 
