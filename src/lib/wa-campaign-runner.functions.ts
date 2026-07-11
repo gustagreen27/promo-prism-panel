@@ -260,12 +260,43 @@ export const getCampaignProgress = createServerFn({ method: "GET" })
       .single();
     if (error) throw error;
 
-    const p = (camp.progress as any) ?? {};
+    const statuses = ["pending", "processing", "accepted", "sent", "delivered", "read", "replied", "failed", "opt_out", "cancelled", "skipped"];
+    const counts: Record<string, number> = {};
+    await Promise.all(
+      statuses.map(async (status) => {
+        const { count, error: countError } = await context.supabase
+          .from("campaign_recipients")
+          .select("id", { count: "exact", head: true })
+          .eq("campaign_id", data.id)
+          .eq("status", status as any);
+        if (countError) throw countError;
+        counts[status] = count ?? 0;
+      }),
+    );
+    const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
+    const processed = total - counts.pending - counts.processing;
+    const liveProgress = {
+      total,
+      pending: counts.pending,
+      processing: counts.processing,
+      accepted: counts.accepted,
+      sent: counts.sent + counts.delivered + counts.read + counts.replied,
+      delivered: counts.delivered + counts.read + counts.replied,
+      read: counts.read + counts.replied,
+      replied: counts.replied,
+      failed: counts.failed,
+      opt_out: counts.opt_out,
+      cancelled: counts.cancelled,
+      skipped: counts.skipped,
+      processed,
+      percent: total > 0 ? Number(((processed / total) * 100).toFixed(2)) : 0,
+    };
+    const p = liveProgress;
     const remaining = (p.pending ?? 0) + (p.processing ?? 0);
     const speed = Number(camp.avg_speed_per_min ?? 0);
     const etaMinutes = speed > 0 ? Math.ceil(remaining / speed) : null;
 
-    return { ...camp, eta_minutes: etaMinutes };
+    return { ...camp, total_recipients: total || camp.total_recipients, progress: liveProgress, eta_minutes: etaMinutes };
   });
 
 export const getCampaignTimeline = createServerFn({ method: "GET" })
@@ -287,15 +318,26 @@ export const getCampaignRecipients = createServerFn({ method: "GET" })
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid(), status: z.string().optional(), limit: z.number().optional() }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    let q = context.supabase
-      .from("campaign_recipients")
-      .select("id,phone,status,attempt,sent_at,delivered_at,read_at,replied_at,failed_at,failed_reason,error_code,meta_message_id,contact:contacts(name)")
-      .eq("campaign_id", data.id)
-      .order("created_at", { ascending: true })
-      .limit(data.limit ?? 1000);
-    if (data.status) q = q.eq("status", data.status as any);
-    const { data: rows } = await q;
-    return rows ?? [];
+    const PAGE = 1000;
+    const requestedLimit = data.limit && data.limit > 0 ? Math.floor(data.limit) : null;
+    const rows: any[] = [];
+
+    for (let from = 0; ; from += PAGE) {
+      const to = requestedLimit ? Math.min(from + PAGE - 1, requestedLimit - 1) : from + PAGE - 1;
+      let q = context.supabase
+        .from("campaign_recipients")
+        .select("id,phone,status,attempt,sent_at,delivered_at,read_at,replied_at,failed_at,failed_reason,error_code,meta_message_id,contact:contacts(name)")
+        .eq("campaign_id", data.id)
+        .order("created_at", { ascending: true })
+        .range(from, to);
+      if (data.status) q = q.eq("status", data.status as any);
+      const { data: page, error } = await q;
+      if (error) throw error;
+      rows.push(...(page ?? []));
+      if (!page || page.length < PAGE || (requestedLimit && rows.length >= requestedLimit)) break;
+    }
+
+    return requestedLimit ? rows.slice(0, requestedLimit) : rows;
   });
 
 export const getCampaignFinalReport = createServerFn({ method: "GET" })
@@ -368,7 +410,7 @@ export const getRecipientPreviews = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({
     id: z.string().uuid(),
-    limit: z.number().int().min(1).max(500).optional().default(100),
+    limit: z.number().int().min(1).optional(),
   }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
@@ -386,19 +428,28 @@ export const getRecipientPreviews = createServerFn({ method: "GET" })
     const tpl = (tplRes as any).data;
     if (!tpl) throw new Error("Template não encontrado");
 
-    const { data: recs } = await supabase
-      .from("campaign_recipients")
-      .select("id,phone,status,contact:contacts(id,name,email,phone,metadata)")
-      .eq("campaign_id", data.id)
-      .order("created_at", { ascending: true })
-      .limit(data.limit);
+    const PAGE = 1000;
+    const requestedLimit = data.limit && data.limit > 0 ? Math.floor(data.limit) : null;
+    const recs: any[] = [];
+    for (let from = 0; ; from += PAGE) {
+      const to = requestedLimit ? Math.min(from + PAGE - 1, requestedLimit - 1) : from + PAGE - 1;
+      const { data: page, error } = await supabase
+        .from("campaign_recipients")
+        .select("id,phone,status,contact:contacts(id,name,email,phone,metadata)")
+        .eq("campaign_id", data.id)
+        .order("created_at", { ascending: true })
+        .range(from, to);
+      if (error) throw error;
+      recs.push(...(page ?? []));
+      if (!page || page.length < PAGE || (requestedLimit && recs.length >= requestedLimit)) break;
+    }
 
     const varsMap = ((camp.variables_mapping ?? camp.template_variables) as any) ?? {};
     const btnMap = (camp.button_url_mapping as any) ?? {};
     const bodyVars = metaVarsIn(tpl.body ?? "");
     const btns = (Array.isArray(tpl.buttons) ? tpl.buttons : []) as any[];
 
-    const result = (recs ?? []).map((r: any) => {
+    const result = recs.map((r: any) => {
       const ctx = buildContext({
         contact: r.contact ?? { phone: r.phone },
         client: (clientRes as any).data,
