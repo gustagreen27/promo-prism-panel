@@ -224,7 +224,7 @@ export const scheduleQuickSend = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
     z.object({
-      name: z.string().trim().min(1).max(160).optional(),
+      name: z.string().trim().min(1).optional(),
       connection_id: z.string().uuid(),
       template_id: z.string().uuid(),
       scheduled_at: z.string().min(1),
@@ -232,13 +232,13 @@ export const scheduleQuickSend = createServerFn({ method: "POST" })
         phone: z.string().min(4),
         name: z.string().optional().nullable(),
         extras: z.record(z.string()).optional().nullable(),
-      })).min(1),
+      })),
 
       body_mapping: z.record(z.string()).optional().default({}),
       button_url_mapping: z.record(z.string()).optional().default({}),
       header_media_url: z.string().optional().nullable(),
       header_text_param: z.string().optional().nullable(),
-      send_rate_per_min: z.number().int().min(1).max(2400).optional(),
+      send_rate_per_min: z.number().int().min(1).optional(),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
