@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, ListPlus, Search, Upload, ClipboardPaste, Users } from "lucide-react";
+import { Plus, Trash2, ListPlus, Search, Upload, ClipboardPaste, Users, RefreshCw, Download } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { CLIENTES_TABS, HubTabs } from "@/components/admin/hub-tabs";
 import { EmptyState } from "@/components/admin/empty-state";
@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { listLists, createList, deleteList, addContactsToList, listItems, importPhonesToList } from "@/lib/contact-lists.functions";
+import { listLists, createList, deleteList, addContactsToList, listItems, importPhonesToList, resyncList } from "@/lib/contact-lists.functions";
 import { listContacts } from "@/lib/contacts.functions";
 import { listClients } from "@/lib/clients.functions";
 
@@ -34,6 +34,7 @@ function Page() {
   const itemsFn = useServerFn(listItems);
   const contactsFn = useServerFn(listContacts);
   const clientsFn = useServerFn(listClients);
+  const resync = useServerFn(resyncList);
   const qc = useQueryClient();
   const { data: lists = [] } = useQuery({ queryKey: ["lists"], queryFn: () => listFn() });
   const { data: contacts = [] } = useQuery({ queryKey: ["contacts"], queryFn: () => contactsFn() });
@@ -41,24 +42,34 @@ function Page() {
   const [open, setOpen] = useState(false);
   const [addOpen, setAddOpen] = useState<string | null>(null);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
+  const [importResult, setImportResult] = useState<any | null>(null);
   const { data: members = [] } = useQuery({ enabled: !!selectedListId, queryKey: ["list-items", selectedListId], queryFn: () => itemsFn({ data: { list_id: selectedListId! } }) });
 
-  const refresh = () => qc.invalidateQueries({ queryKey: ["lists"] });
+  const refresh = () => { qc.invalidateQueries({ queryKey: ["lists"] }); qc.invalidateQueries({ queryKey: ["list-items"] }); };
   const save = useMutation({ mutationFn: (p: any) => create({ data: p }), onSuccess: () => { toast.success("Lista criada"); setOpen(false); refresh(); } });
   const del = useMutation({ mutationFn: (id: string) => remove({ data: { id } }), onSuccess: () => { toast.success("Removida"); refresh(); setSelectedListId(null); } });
   const addMut = useMutation({
     mutationFn: (p: any) => add({ data: p }),
-    onSuccess: (r: any) => { toast.success(`${r.added} contatos adicionados`); setAddOpen(null); qc.invalidateQueries({ queryKey: ["list-items"] }); },
+    onSuccess: (r: any) => { toast.success(`${r.added} contatos adicionados`); setAddOpen(null); refresh(); },
   });
   const importMut = useMutation({
     mutationFn: (p: any) => importFn({ data: p }),
     onSuccess: (r: any) => {
-      toast.success(`${r.added} contatos vinculados${r.invalid ? ` · ${r.invalid} inválidos` : ""}`);
       setAddOpen(null);
-      qc.invalidateQueries({ queryKey: ["list-items"] });
+      setImportResult(r);
+      refresh();
       qc.invalidateQueries({ queryKey: ["contacts"] });
+      qc.invalidateQueries({ queryKey: ["import-jobs"] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Falha ao importar"),
+  });
+  const resyncMut = useMutation({
+    mutationFn: (id: string) => resync({ data: { list_id: id } }),
+    onSuccess: (r: any) => {
+      toast.success(`Lista sincronizada · ${r.linked_now} contatos${r.removed_orphans ? ` · ${r.removed_orphans} links órfãos removidos` : ""}`);
+      refresh();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao sincronizar"),
   });
 
   return (
@@ -88,6 +99,7 @@ function Page() {
                   <div className="text-xs text-muted-foreground">{l.client?.name ?? "—"}</div>
                 </button>
                 <Button size="icon" variant="ghost" onClick={() => setAddOpen(l.id)} title="Importar contatos"><ListPlus className="h-4 w-4" /></Button>
+                <Button size="icon" variant="ghost" title="Sincronizar" disabled={resyncMut.isPending} onClick={() => resyncMut.mutate(l.id)}><RefreshCw className={`h-4 w-4 ${resyncMut.isPending ? "animate-spin" : ""}`} /></Button>
                 <Button size="icon" variant="ghost" onClick={() => confirm("Remover?") && del.mutate(l.id)}><Trash2 className="h-4 w-4" /></Button>
               </div>
             ))}
@@ -122,10 +134,69 @@ function Page() {
           contacts={contacts}
           saving={addMut.isPending || importMut.isPending}
           onAddExisting={(ids) => addMut.mutate({ list_id: addOpen, contact_ids: ids })}
-          onImport={(rows, source) => importMut.mutate({ list_id: addOpen, rows, source })}
+          onImport={(rows, source, filename) => importMut.mutate({ list_id: addOpen, rows, source, filename })}
         />
       </Dialog>
+
+      <Dialog open={!!importResult} onOpenChange={(v) => !v && setImportResult(null)}>
+        <ImportResultDialog result={importResult} onClose={() => setImportResult(null)} />
+      </Dialog>
     </>
+  );
+}
+
+function ImportResultDialog({ result, onClose }: { result: any; onClose: () => void }) {
+  if (!result) return null;
+  const downloadInvalid = () => {
+    const rows = result.invalidRows ?? [];
+    const csv = ["input,name,reason", ...rows.map((r: any) => `"${(r.input ?? "").replace(/"/g, '""')}","${(r.name ?? "").toString().replace(/"/g, '""')}","${r.reason}"`)].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `invalidos-${Date.now()}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <DialogContent className="max-w-lg">
+      <DialogHeader><DialogTitle>Resultado do import</DialogTitle></DialogHeader>
+      <div className="grid grid-cols-2 gap-3 text-sm">
+        <Stat label="Linhas recebidas" value={result.total_input} />
+        <Stat label="Válidas após normalização" value={result.normalized} />
+        <Stat label="Duplicadas no arquivo" value={result.duplicates} />
+        <Stat label="Inválidas" value={result.invalid} tone={result.invalid ? "warn" : undefined} />
+        <Stat label="Contatos existentes" value={result.existing_contacts} />
+        <Stat label="Contatos criados" value={result.created_contacts} tone="good" />
+        <Stat label="Novos links na lista" value={result.linked} tone="good" />
+        <Stat label="Já linkados antes" value={result.already_linked} />
+      </div>
+      {result.invalidRows?.length > 0 && (
+        <div className="mt-3 max-h-40 overflow-auto rounded border bg-muted/40 p-2 text-xs">
+          {result.invalidRows.slice(0, 50).map((r: any, i: number) => (
+            <div key={i} className="flex justify-between gap-2 py-0.5">
+              <span className="font-mono truncate">{r.input || "(vazio)"}</span>
+              <span className="text-muted-foreground">{r.reason}</span>
+            </div>
+          ))}
+          {result.invalidRows.length > 50 && <div className="text-muted-foreground pt-1">…e mais {result.invalidRows.length - 50}. Baixe o CSV para ver todos.</div>}
+        </div>
+      )}
+      <DialogFooter>
+        {result.invalidRows?.length > 0 && (
+          <Button variant="outline" onClick={downloadInvalid}><Download className="mr-2 h-4 w-4" />CSV dos inválidos</Button>
+        )}
+        <Button onClick={onClose}>Fechar</Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+}
+
+function Stat({ label, value, tone }: { label: string; value: number; tone?: "good" | "warn" }) {
+  const color = tone === "good" ? "text-emerald-600" : tone === "warn" ? "text-amber-600" : "";
+  return (
+    <div className="rounded border bg-card p-2">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className={`text-lg font-semibold ${color}`}>{value ?? 0}</div>
+    </div>
   );
 }
 
@@ -160,7 +231,7 @@ function ImportDialog({
   contacts: any[];
   saving: boolean;
   onAddExisting: (ids: string[]) => void;
-  onImport: (rows: ImportRow[], source: string) => void;
+  onImport: (rows: ImportRow[], source: string, filename?: string | null) => void;
 }) {
   const [tab, setTab] = useState("existing");
   const [q, setQ] = useState("");
@@ -333,7 +404,7 @@ function ImportDialog({
           <DialogFooter>
             <Button
               disabled={saving || !csvRows?.length}
-              onClick={() => csvRows && onImport(csvRows, "csv")}
+              onClick={() => csvRows && onImport(csvRows, "csv", csvName)}
             >
               Importar {csvRows?.length ?? 0}
             </Button>

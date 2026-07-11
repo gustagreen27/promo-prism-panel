@@ -76,6 +76,7 @@ import { Route as AuthenticatedAdminRelatoriosAnalyticsRouteImport } from './rou
 import { Route as AuthenticatedAdminRelatoriosIdRouteImport } from './routes/_authenticated/admin.relatorios.$id'
 import { Route as AuthenticatedAdminDisparosIdRouteImport } from './routes/_authenticated/admin.disparos.$id'
 import { Route as AuthenticatedAdminContatosListasRouteImport } from './routes/_authenticated/admin.contatos.listas'
+import { Route as AuthenticatedAdminContatosAuditoriaRouteImport } from './routes/_authenticated/admin.contatos.auditoria'
 import { Route as AuthenticatedAdminCampaignsIdRouteImport } from './routes/_authenticated/admin.campaigns.$id'
 import { Route as AuthenticatedAdminWhatsappNumerosIndexRouteImport } from './routes/_authenticated/admin.whatsapp.numeros.index'
 import { Route as AuthenticatedAdminCampaignsIdPreviewRouteImport } from './routes/_authenticated/admin.campaigns.$id.preview'
@@ -459,6 +460,12 @@ const AuthenticatedAdminContatosListasRoute =
     path: '/listas',
     getParentRoute: () => AuthenticatedAdminContatosRoute,
   } as any)
+const AuthenticatedAdminContatosAuditoriaRoute =
+  AuthenticatedAdminContatosAuditoriaRouteImport.update({
+    id: '/auditoria',
+    path: '/auditoria',
+    getParentRoute: () => AuthenticatedAdminContatosRoute,
+  } as any)
 const AuthenticatedAdminCampaignsIdRoute =
   AuthenticatedAdminCampaignsIdRouteImport.update({
     id: '/admin/campaigns/$id',
@@ -532,6 +539,7 @@ export interface FileRoutesByFullPath {
   '/painel/campanhas/nova': typeof PainelCampanhasNovaRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
+  '/admin/contatos/auditoria': typeof AuthenticatedAdminContatosAuditoriaRoute
   '/admin/contatos/listas': typeof AuthenticatedAdminContatosListasRoute
   '/admin/disparos/$id': typeof AuthenticatedAdminDisparosIdRoute
   '/admin/relatorios/$id': typeof AuthenticatedAdminRelatoriosIdRoute
@@ -603,6 +611,7 @@ export interface FileRoutesByTo {
   '/painel/campanhas/nova': typeof PainelCampanhasNovaRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
+  '/admin/contatos/auditoria': typeof AuthenticatedAdminContatosAuditoriaRoute
   '/admin/contatos/listas': typeof AuthenticatedAdminContatosListasRoute
   '/admin/disparos/$id': typeof AuthenticatedAdminDisparosIdRoute
   '/admin/relatorios/$id': typeof AuthenticatedAdminRelatoriosIdRoute
@@ -678,6 +687,7 @@ export interface FileRoutesById {
   '/painel/campanhas/nova': typeof PainelCampanhasNovaRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
+  '/_authenticated/admin/contatos/auditoria': typeof AuthenticatedAdminContatosAuditoriaRoute
   '/_authenticated/admin/contatos/listas': typeof AuthenticatedAdminContatosListasRoute
   '/_authenticated/admin/disparos/$id': typeof AuthenticatedAdminDisparosIdRoute
   '/_authenticated/admin/relatorios/$id': typeof AuthenticatedAdminRelatoriosIdRoute
@@ -753,6 +763,7 @@ export interface FileRouteTypes {
     | '/painel/campanhas/nova'
     | '/admin/'
     | '/admin/campaigns/$id'
+    | '/admin/contatos/auditoria'
     | '/admin/contatos/listas'
     | '/admin/disparos/$id'
     | '/admin/relatorios/$id'
@@ -824,6 +835,7 @@ export interface FileRouteTypes {
     | '/painel/campanhas/nova'
     | '/admin'
     | '/admin/campaigns/$id'
+    | '/admin/contatos/auditoria'
     | '/admin/contatos/listas'
     | '/admin/disparos/$id'
     | '/admin/relatorios/$id'
@@ -898,6 +910,7 @@ export interface FileRouteTypes {
     | '/painel/campanhas/nova'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/campaigns/$id'
+    | '/_authenticated/admin/contatos/auditoria'
     | '/_authenticated/admin/contatos/listas'
     | '/_authenticated/admin/disparos/$id'
     | '/_authenticated/admin/relatorios/$id'
@@ -1421,6 +1434,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminContatosListasRouteImport
       parentRoute: typeof AuthenticatedAdminContatosRoute
     }
+    '/_authenticated/admin/contatos/auditoria': {
+      id: '/_authenticated/admin/contatos/auditoria'
+      path: '/auditoria'
+      fullPath: '/admin/contatos/auditoria'
+      preLoaderRoute: typeof AuthenticatedAdminContatosAuditoriaRouteImport
+      parentRoute: typeof AuthenticatedAdminContatosRoute
+    }
     '/_authenticated/admin/campaigns/$id': {
       id: '/_authenticated/admin/campaigns/$id'
       path: '/admin/campaigns/$id'
@@ -1460,11 +1480,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedAdminContatosRouteChildren {
+  AuthenticatedAdminContatosAuditoriaRoute: typeof AuthenticatedAdminContatosAuditoriaRoute
   AuthenticatedAdminContatosListasRoute: typeof AuthenticatedAdminContatosListasRoute
 }
 
 const AuthenticatedAdminContatosRouteChildren: AuthenticatedAdminContatosRouteChildren =
   {
+    AuthenticatedAdminContatosAuditoriaRoute:
+      AuthenticatedAdminContatosAuditoriaRoute,
     AuthenticatedAdminContatosListasRoute:
       AuthenticatedAdminContatosListasRoute,
   }
