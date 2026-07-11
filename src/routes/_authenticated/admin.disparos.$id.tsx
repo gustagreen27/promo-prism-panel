@@ -24,8 +24,7 @@ import {
   retryFailedRecipients, duplicateCampaign, preflightCampaign, unstickCampaignAsync,
   swapCampaignRouteAndResume,
 } from "@/lib/wa-campaign-runner.functions";
-import { listWorkspaceConnections } from "@/lib/wa-connections.functions";
-import { listTemplates } from "@/lib/whatsapp-templates.functions";
+import { adminListAllNumbers, adminListAllTemplates } from "@/lib/admin-dispatch.functions";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
@@ -135,8 +134,8 @@ function Page() {
   const preflight = useServerFn(preflightCampaign);
   const unstickFn = useServerFn(unstickCampaignAsync);
   const swapFn = useServerFn(swapCampaignRouteAndResume);
-  const listConnsFn = useServerFn(listWorkspaceConnections);
-  const listTplsFn = useServerFn(listTemplates);
+  const listConnsFn = useServerFn(adminListAllNumbers);
+  const listTplsFn = useServerFn(adminListAllTemplates);
 
   const [swapOpen, setSwapOpen] = useState(false);
   const [swapConn, setSwapConn] = useState<string>("");
@@ -148,14 +147,14 @@ function Page() {
   const [swapUploadingMedia, setSwapUploadingMedia] = useState(false);
 
   const connsQ = useQuery({
-    queryKey: ["wa-conns-all"],
-    queryFn: () => listConnsFn(),
+    queryKey: ["wa-conns-all-admin"],
+    queryFn: () => listConnsFn({ data: {} }),
     enabled: swapOpen,
   });
   const tplsQ = useQuery({
-    queryKey: ["wa-tpls-all"],
-    queryFn: () => listTplsFn(),
-    enabled: swapOpen,
+    queryKey: ["wa-tpls-admin", swapConn || null],
+    queryFn: () => listTplsFn({ data: { connection_id: swapConn || null } }),
+    enabled: swapOpen && !!swapConn,
   });
 
   // Seed selection + mappings from the current campaign when the dialog opens.
@@ -170,45 +169,43 @@ function Page() {
     setSwapHeaderMediaUrl(String(vm._header_image_url ?? vm._header_url ?? (camp as any)?.template?.header_media_url ?? "").trim());
   }, [swapOpen, camp]);
 
-  // Flatten connections and resolve current selection's WABA.
-  const swapConnList = useMemo(() => {
-    return (connsQ.data ?? []).flatMap((w: any) =>
-      (w.connections ?? []).map((c: any) => ({ ...c, workspace_name: w.name })),
-    );
-  }, [connsQ.data]);
+  // All active numbers (admin — ignores workspace grants), same as wizard step 2.
+  const swapConnList = useMemo(
+    () => (connsQ.data?.numbers ?? []) as any[],
+    [connsQ.data],
+  );
   const swapConnRow = useMemo(
     () => swapConnList.find((c: any) => c.id === swapConn),
     [swapConnList, swapConn],
   );
-  const swapConnWaba = swapConnRow?.waba_ref_id ?? null;
 
-  // Only templates approved on the selected number's WABA.
-  // Strict: without a selected connection or without a resolvable WABA we
-  // show nothing — a template must belong to that number's WABA.
+  // Approved templates for the selected number (server filters by connection_id).
   const swapTplList = useMemo(() => {
-    if (!swapConn || !swapConnWaba) return [];
-    return (tplsQ.data ?? []).filter((t: any) => {
-      if (t.waba_ref_id !== swapConnWaba) return false;
+    if (!swapConn) return [];
+    return (tplsQ.data?.templates ?? []).filter((t: any) => {
       const st = String(t.status ?? "").toUpperCase();
       return st === "APPROVED" || st === "ACTIVE";
     });
-  }, [tplsQ.data, swapConn, swapConnWaba]);
+  }, [tplsQ.data, swapConn]);
+
 
   const swapTplRow = useMemo(
-    () => (tplsQ.data ?? []).find((t: any) => t.id === swapTpl),
+    () => (tplsQ.data?.templates ?? []).find((t: any) => t.id === swapTpl),
     [tplsQ.data, swapTpl],
   );
 
-  // If the currently-selected template does not belong to the new WABA, clear it.
+  // If the currently-selected template does not belong to the new connection, clear it.
   useEffect(() => {
-    if (!swapOpen || !swapTpl || !swapTplRow) return;
-    if (!swapConnWaba || swapTplRow.waba_ref_id !== swapConnWaba) {
+    if (!swapOpen || !swapTpl) return;
+    if (tplsQ.isLoading || !tplsQ.data) return;
+    if (!swapTplRow) {
       setSwapTpl("");
       setSwapBodyVars({});
       setSwapBtnVars({});
       setSwapHeaderMediaUrl("");
     }
-  }, [swapConnWaba, swapTplRow, swapTpl, swapOpen]);
+  }, [swapConn, swapTplRow, swapTpl, swapOpen, tplsQ.isLoading, tplsQ.data]);
+
 
   // Variables required by the selected template.
   const swapBodyVarNums = useMemo(
@@ -931,14 +928,17 @@ function Page() {
                   {swapConnList.map((c: any) => {
                     const st = String(c.status ?? "").toLowerCase();
                     const active = ["ativo","active","connected"].includes(st);
+                    const phone = c.phone_display ?? c.phone_masked ?? "";
+                    const label = c.display_name ?? c.name ?? "—";
                     return (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.display_phone ?? c.name} — {c.workspace_name}
+                        {phone ? `${formatPhoneDisplay(phone)} — ` : ""}{label}
                         {c.id === (camp as any)?.connection_id ? " (atual)" : ""}
                         {!active ? ` · ${c.status ?? "inativo"}` : ""}
                       </SelectItem>
                     );
                   })}
+
                 </SelectContent>
               </Select>
               <p className="text-[11px] text-muted-foreground">
@@ -961,8 +961,9 @@ function Page() {
                 </SelectContent>
               </Select>
               {swapConn && swapTplList.length === 0 && (
-                <p className="text-[11px] text-muted-foreground">Nenhum template aprovado para esta WABA.</p>
+                <p className="text-[11px] text-muted-foreground">Nenhum template aprovado para este número.</p>
               )}
+
             </div>
 
             {swapTplRow && (swapBodyVarNums.length > 0 || swapBtnVarNums.length > 0) && (
