@@ -48,15 +48,15 @@ export function ContactsStep({
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    let alive = true;
+  const refreshLists = useCallback(() => {
     setLoading(true);
-    fnLists({ data: { workspace_id: workspaceId } })
-      .then((r) => { if (alive) setLists(r.lists); })
+    return fnLists({ data: { workspace_id: workspaceId } })
+      .then((r) => setLists(r.lists))
       .catch((e) => toast.error(e instanceof Error ? e.message : "Erro ao carregar listas"))
-      .finally(() => { if (alive) setLoading(false); });
-    return () => { alive = false; };
+      .finally(() => setLoading(false));
   }, [workspaceId, fnLists]);
+
+  useEffect(() => { refreshLists(); }, [refreshLists]);
 
   const filtered = useMemo(
     () => lists.filter((l) => l.name.toLowerCase().includes(search.toLowerCase())),
