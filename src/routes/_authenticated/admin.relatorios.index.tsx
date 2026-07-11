@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_authenticated/admin/relatorios/")({
 });
 
 function ReportsPage() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["reports"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -53,7 +53,13 @@ function ReportsPage() {
         }
       />
 
-      {isLoading ? (
+      {error ? (
+        <Card className="p-6 border-destructive/30 bg-destructive/5 text-sm">
+          <p className="font-semibold text-destructive">Não foi possível carregar os relatórios.</p>
+          <p className="text-xs text-muted-foreground mt-1">{error instanceof Error ? error.message : "Erro desconhecido"}</p>
+          <Button size="sm" variant="outline" className="mt-3" onClick={() => refetch()}>Tentar novamente</Button>
+        </Card>
+      ) : isLoading ? (
         <div className="text-muted-foreground">Carregando…</div>
       ) : !data?.length ? (
         <Card className="p-12 text-center">
