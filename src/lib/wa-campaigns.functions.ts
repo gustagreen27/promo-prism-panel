@@ -170,6 +170,10 @@ export const startWaCampaign = createServerFn({ method: "POST" })
       .from("wa_campaigns")
       .update({ status: "running", started_at: new Date().toISOString() })
       .eq("id", data.id);
+    try {
+      const url = new URL("/api/public/whatsapp/queue-tick", process.env.SUPABASE_URL?.replace(".supabase.co", ".lovable.app") ?? "https://project--9c7682d6-edcd-4388-a36c-36249d4d6ab8.lovable.app");
+      fetch(url.toString(), { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).catch(() => {});
+    } catch {}
     return { ok: true };
   });
 
