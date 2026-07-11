@@ -101,6 +101,9 @@ function ReportPage() {
               <Button variant="outline" size="sm" onClick={() => setGeneratedIso(toLocalInputValue(new Date()))}>
                 Agora
               </Button>
+              <Button size="sm" onClick={handleSaveGenerated}>
+                Salvar
+              </Button>
             </div>
           </div>
           <Button variant="outline" size="sm" onClick={handleDelete}>
