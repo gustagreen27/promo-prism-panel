@@ -271,7 +271,7 @@ export const getCampaignProgress = createServerFn({ method: "GET" })
     const replied = num("replied");
     const delivered = deliveredBase + readBase + replied;
     const read = readBase + replied;
-    const sent = accepted + num("sent") + delivered;
+    const sent = num("sent");
     const processed = Number(stored.processed ?? (total - pending - processing)) || 0;
     const liveProgress = {
       total,
