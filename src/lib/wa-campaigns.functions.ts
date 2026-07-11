@@ -85,7 +85,22 @@ export const deleteWaCampaign = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    await context.supabase.from("wa_campaigns").delete().eq("id", data.id);
+    // Se ainda houver reserva de saldo ativa, libera antes de excluir para não travar o wallet.
+    const { data: camp } = await context.supabase
+      .from("wa_campaigns")
+      .select("id, status, reservation_id")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (camp?.reservation_id) {
+      try {
+        await context.supabase.rpc("wallet_release_reservation" as any, {
+          _reservation_id: camp.reservation_id,
+        });
+      } catch { /* segue exclusão mesmo se já estiver liberada */ }
+    }
+    // Cascata do FK remove recipients / timeline / audit_log automaticamente.
+    const { error } = await context.supabase.from("wa_campaigns").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
     return { ok: true };
   });
 
