@@ -853,7 +853,7 @@ function Page() {
       </Tabs>
 
       <Dialog open={swapOpen} onOpenChange={setSwapOpen}>
-        <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Trocar número/template e retomar</DialogTitle>
             <DialogDescription>
