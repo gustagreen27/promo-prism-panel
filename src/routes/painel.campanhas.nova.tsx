@@ -115,7 +115,7 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   const [connectionId, setConnectionId] = useState<string>("");
   const [templateId, setTemplateId] = useState<string>("");
   const [contactSel, setContactSel] = useState<ContactSelValue | null>(null);
-  const [rate, setRate] = useState({ interval_s: 10, pause_every: 10, pause_duration_s: 60 });
+  const [dispatch, setDispatch] = useState<DispatchConfig>(defaultDispatch("target_20k"));
   const [mode, setMode] = useState<Mode>(scheduled_for ? "schedule" : "now");
   const [scheduledAt, setScheduledAt] = useState<string>(toLocal(scheduled_for));
   const [timezone, setTimezone] = useState<string>(Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo");
