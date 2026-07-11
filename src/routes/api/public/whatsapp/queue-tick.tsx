@@ -28,7 +28,8 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
               .eq("id", camp.connection_id).maybeSingle();
             if (!conn) errors.push("Número não encontrado");
             else if (conn.status && !["ativo", "active", "connected"].includes(String(conn.status).toLowerCase())) errors.push(`Número inativo (${conn.status})`);
-            else if (!conn.access_token || !conn.phone_number_id) errors.push("Token/phone_number_id ausente");
+            else if (!conn.phone_number_id) errors.push("phone_number_id ausente");
+            else if (!conn.access_token && !process.env.WHATSAPP_ACCESS_TOKEN) errors.push("Token de acesso ausente (sem token global)");
           }
           if (camp.template_id) {
             const { data: tpl } = await supabaseAdmin.from("whatsapp_templates")
