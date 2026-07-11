@@ -737,7 +737,11 @@ export async function processCampaignTick(
 
     // ---- Scheduler: token bucket global + semáforo de concorrência ----
     const inflight = new Set<Promise<void>>();
-    let maxConc = DEFAULT_MAX_CONCURRENCY;
+    // Por campanha (Passo 02) — usados como fallback ao criar wa_rate_limits e como teto local
+    const campRate = Math.max(1, Number((camp as any).rate_per_second ?? DEFAULT_RATE_PER_SECOND));
+    const campConc = Math.max(1, Number((camp as any).max_concurrency ?? DEFAULT_MAX_CONCURRENCY));
+    const baseSentCount = Number((camp as any).sent_count ?? 0);
+    let maxConc = campConc;
     let idx = 0;
     const tickStart = Date.now();
 
@@ -750,15 +754,18 @@ export async function processCampaignTick(
         await Promise.race(inflight);
       }
 
-      // Global token bucket (per phone_number_id, shared across campaigns)
+      // Global token bucket (per phone_number_id, shared across campaigns).
+      // Passamos a config da campanha como default; se o número já tem row,
+      // o teto global do número prevalece (rate efetivo = min(camp, global)).
       const { data: tok } = await supabaseAdmin.rpc("wa_try_consume_token" as any, {
         _phone_number_id: phoneNumberId,
-        _default_rate: DEFAULT_RATE_PER_SECOND,
-        _default_conc: DEFAULT_MAX_CONCURRENCY,
+        _default_rate: campRate,
+        _default_conc: campConc,
       });
       const row = Array.isArray(tok) ? tok[0] : tok;
       if (row?.max_concurrency && row.max_concurrency > 0) {
-        maxConc = row.max_concurrency;
+        // efetivo = min(camp, global)
+        maxConc = Math.min(campConc, row.max_concurrency);
       }
 
       if (!row?.allowed) {
