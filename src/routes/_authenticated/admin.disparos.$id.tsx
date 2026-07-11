@@ -27,6 +27,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
 import { renderMapping, fillMetaTemplate, buildContext } from "@/lib/wa-variables";
+import { formatPhoneDisplay } from "@/lib/phone-country";
 
 export const Route = createFileRoute("/_authenticated/admin/disparos/$id")({
   head: () => ({ meta: [{ title: "Campanha WhatsApp" }] }),
@@ -416,7 +417,7 @@ function Page() {
                   {previewForFirst.first && (
                     <span className="ml-2 text-xs font-normal text-muted-foreground">
                       1º destinatário: {previewForFirst.first.contact?.name ?? "—"}
-                      {previewForFirst.first.phone ? ` • ${previewForFirst.first.phone}` : ""}
+                      {previewForFirst.first.phone ? ` • ${formatPhoneDisplay(previewForFirst.first.phone)}` : ""}
                     </span>
                   )}
                 </CardTitle>
@@ -460,7 +461,7 @@ function Page() {
                 <tbody>
                   {(recipients ?? []).map((r: any) => (
                     <tr key={r.id} className="border-t">
-                      <td className="p-2 font-mono text-xs">{r.phone}</td>
+                      <td className="p-2 font-mono text-xs">{formatPhoneDisplay(r.phone)}</td>
                       <td className="p-2">{r.contact?.name ?? "—"}</td>
                       <td className="p-2"><StatusBadge status={r.status} /></td>
                       <td className="p-2 text-xs text-muted-foreground">{r.sent_at ? new Date(r.sent_at).toLocaleTimeString("pt-BR") : "—"}</td>
@@ -517,7 +518,7 @@ function Page() {
                         <div className="flex items-center justify-between gap-2">
                           <div className="min-w-0">
                             <div className="font-medium truncate">{p.name ?? "Sem nome"}</div>
-                            <div className="text-xs font-mono text-muted-foreground">{p.phone}</div>
+                            <div className="text-xs font-mono text-muted-foreground">{formatPhoneDisplay(p.phone)}</div>
                           </div>
                           <StatusBadge status={p.status} />
                         </div>
