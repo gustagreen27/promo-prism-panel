@@ -2,6 +2,7 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendTemplateMessage } from "@/lib/wa-send.server";
 import { renderMapping, buildContext } from "@/lib/wa-variables";
+import { formatCallingCode, getCountryCallingCode, summarizeCallingCodes } from "@/lib/phone-country";
 
 
 const OPT_OUT_REGEX = /\b(parar|sair|cancelar|cancela|remover|descadastrar|n[ãa]o quero|stop|unsubscribe)\b/i;
@@ -187,6 +188,33 @@ async function markPaused(campaignId: string, reason: string, message: string) {
   await logEvent(campaignId, "auto_paused", message, { reason });
 }
 
+async function stopIfDialingCodeMismatch(campaignId: string, senderPhone: string | null | undefined): Promise<boolean> {
+  const senderCode = getCountryCallingCode(senderPhone);
+  if (!senderCode) return false;
+  const { data: sample } = await supabaseAdmin
+    .from("campaign_recipients")
+    .select("phone")
+    .eq("campaign_id", campaignId)
+    .not("status", "in", '(cancelled,opt_out,skipped)')
+    .limit(1000);
+  const audience = summarizeCallingCodes((sample ?? []).map((r: any) => r.phone));
+  if (!audience.dominantCode || audience.dominantCode === senderCode || audience.dominantCount / Math.max(1, audience.total) < 0.9) {
+    return false;
+  }
+  const msg = `Envio bloqueado: WhatsApp ${formatCallingCode(senderCode)} incompatível com destinatários ${formatCallingCode(audience.dominantCode)}`;
+  await supabaseAdmin
+    .from("wa_campaigns")
+    .update({ status: "error", pause_reason: "ddi_mismatch", last_error: msg })
+    .eq("id", campaignId);
+  await supabaseAdmin
+    .from("campaign_recipients")
+    .update({ status: "cancelled", failed_reason: msg })
+    .eq("campaign_id", campaignId)
+    .in("status", ["pending", "processing"]);
+  await logEvent(campaignId, "blocked", msg, { senderCode, recipientCode: audience.dominantCode });
+  return true;
+}
+
 export async function processCampaignTick(
   campaignId: string,
   batchSize?: number,
@@ -265,6 +293,9 @@ export async function processCampaignTick(
         .eq("id", campaignId);
       await logEvent(campaignId, "error", msg);
       return { processed: 0, done: true };
+    }
+    if (await stopIfDialingCodeMismatch(campaignId, conn.phone ?? conn.display_phone)) {
+      return { processed: 0, done: true, reason: "ddi_mismatch" };
     }
     // Load client / project / responsavel once for token context
     const [clientRes, projectRes, respRes] = await Promise.all([
