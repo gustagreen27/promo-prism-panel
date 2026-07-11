@@ -56,6 +56,7 @@ import { Route as ApiPublicWhatsappWebhookHealthRouteImport } from './routes/api
 import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp/webhook'
 import { Route as ApiPublicWhatsappSyncNumbersRouteImport } from './routes/api/public/whatsapp/sync-numbers'
 import { Route as ApiPublicWhatsappQueueTickRouteImport } from './routes/api/public/whatsapp/queue-tick'
+import { Route as ApiPublicHooksWaTemplatesSyncRouteImport } from './routes/api/public/hooks/wa-templates-sync'
 import { Route as ApiPublicHooksNotifyUpcomingCampaignsRouteImport } from './routes/api/public/hooks/notify-upcoming-campaigns'
 import { Route as ApiPublicGoogleOauthCallbackRouteImport } from './routes/api/public/google/oauth-callback'
 import { Route as ApiPublicCiSplatRouteImport } from './routes/api/public/ci.$'
@@ -342,6 +343,12 @@ const ApiPublicWhatsappQueueTickRoute =
     path: '/api/public/whatsapp/queue-tick',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksWaTemplatesSyncRoute =
+  ApiPublicHooksWaTemplatesSyncRouteImport.update({
+    id: '/api/public/hooks/wa-templates-sync',
+    path: '/api/public/hooks/wa-templates-sync',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksNotifyUpcomingCampaignsRoute =
   ApiPublicHooksNotifyUpcomingCampaignsRouteImport.update({
     id: '/api/public/hooks/notify-upcoming-campaigns',
@@ -567,6 +574,7 @@ export interface FileRoutesByFullPath {
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
   '/api/public/google/oauth-callback': typeof ApiPublicGoogleOauthCallbackRoute
   '/api/public/hooks/notify-upcoming-campaigns': typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
+  '/api/public/hooks/wa-templates-sync': typeof ApiPublicHooksWaTemplatesSyncRoute
   '/api/public/whatsapp/queue-tick': typeof ApiPublicWhatsappQueueTickRoute
   '/api/public/whatsapp/sync-numbers': typeof ApiPublicWhatsappSyncNumbersRoute
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
@@ -640,6 +648,7 @@ export interface FileRoutesByTo {
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
   '/api/public/google/oauth-callback': typeof ApiPublicGoogleOauthCallbackRoute
   '/api/public/hooks/notify-upcoming-campaigns': typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
+  '/api/public/hooks/wa-templates-sync': typeof ApiPublicHooksWaTemplatesSyncRoute
   '/api/public/whatsapp/queue-tick': typeof ApiPublicWhatsappQueueTickRoute
   '/api/public/whatsapp/sync-numbers': typeof ApiPublicWhatsappSyncNumbersRoute
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
@@ -717,6 +726,7 @@ export interface FileRoutesById {
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
   '/api/public/google/oauth-callback': typeof ApiPublicGoogleOauthCallbackRoute
   '/api/public/hooks/notify-upcoming-campaigns': typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
+  '/api/public/hooks/wa-templates-sync': typeof ApiPublicHooksWaTemplatesSyncRoute
   '/api/public/whatsapp/queue-tick': typeof ApiPublicWhatsappQueueTickRoute
   '/api/public/whatsapp/sync-numbers': typeof ApiPublicWhatsappSyncNumbersRoute
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
@@ -794,6 +804,7 @@ export interface FileRouteTypes {
     | '/api/public/ci/$'
     | '/api/public/google/oauth-callback'
     | '/api/public/hooks/notify-upcoming-campaigns'
+    | '/api/public/hooks/wa-templates-sync'
     | '/api/public/whatsapp/queue-tick'
     | '/api/public/whatsapp/sync-numbers'
     | '/api/public/whatsapp/webhook'
@@ -867,6 +878,7 @@ export interface FileRouteTypes {
     | '/api/public/ci/$'
     | '/api/public/google/oauth-callback'
     | '/api/public/hooks/notify-upcoming-campaigns'
+    | '/api/public/hooks/wa-templates-sync'
     | '/api/public/whatsapp/queue-tick'
     | '/api/public/whatsapp/sync-numbers'
     | '/api/public/whatsapp/webhook'
@@ -943,6 +955,7 @@ export interface FileRouteTypes {
     | '/api/public/ci/$'
     | '/api/public/google/oauth-callback'
     | '/api/public/hooks/notify-upcoming-campaigns'
+    | '/api/public/hooks/wa-templates-sync'
     | '/api/public/whatsapp/queue-tick'
     | '/api/public/whatsapp/sync-numbers'
     | '/api/public/whatsapp/webhook'
@@ -970,6 +983,7 @@ export interface RootRouteChildren {
   ApiPublicCiSplatRoute: typeof ApiPublicCiSplatRoute
   ApiPublicGoogleOauthCallbackRoute: typeof ApiPublicGoogleOauthCallbackRoute
   ApiPublicHooksNotifyUpcomingCampaignsRoute: typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
+  ApiPublicHooksWaTemplatesSyncRoute: typeof ApiPublicHooksWaTemplatesSyncRoute
   ApiPublicWhatsappQueueTickRoute: typeof ApiPublicWhatsappQueueTickRoute
   ApiPublicWhatsappSyncNumbersRoute: typeof ApiPublicWhatsappSyncNumbersRoute
   ApiPublicWhatsappWebhookRoute: typeof ApiPublicWhatsappWebhookRoute
@@ -1305,6 +1319,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/whatsapp/queue-tick'
       fullPath: '/api/public/whatsapp/queue-tick'
       preLoaderRoute: typeof ApiPublicWhatsappQueueTickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/wa-templates-sync': {
+      id: '/api/public/hooks/wa-templates-sync'
+      path: '/api/public/hooks/wa-templates-sync'
+      fullPath: '/api/public/hooks/wa-templates-sync'
+      preLoaderRoute: typeof ApiPublicHooksWaTemplatesSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/notify-upcoming-campaigns': {
@@ -1711,6 +1732,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicGoogleOauthCallbackRoute: ApiPublicGoogleOauthCallbackRoute,
   ApiPublicHooksNotifyUpcomingCampaignsRoute:
     ApiPublicHooksNotifyUpcomingCampaignsRoute,
+  ApiPublicHooksWaTemplatesSyncRoute: ApiPublicHooksWaTemplatesSyncRoute,
   ApiPublicWhatsappQueueTickRoute: ApiPublicWhatsappQueueTickRoute,
   ApiPublicWhatsappSyncNumbersRoute: ApiPublicWhatsappSyncNumbersRoute,
   ApiPublicWhatsappWebhookRoute: ApiPublicWhatsappWebhookRoute,
