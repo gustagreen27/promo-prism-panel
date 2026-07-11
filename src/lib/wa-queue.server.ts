@@ -243,12 +243,27 @@ export async function processCampaignTick(
       .select("*")
       .eq("id", camp.template_id)
       .single();
+    // Fallback: se a conexão não tem token, usar o token global do ambiente
+    if (conn && !conn.access_token) {
+      const globalToken = process.env.WHATSAPP_ACCESS_TOKEN;
+      if (globalToken) {
+        (conn as any).access_token = globalToken;
+      }
+    }
     if (!conn?.phone_number_id || !conn?.access_token || !tpl) {
+      const missing: string[] = [];
+      if (!conn) missing.push("conexão não encontrada");
+      else {
+        if (!conn.phone_number_id) missing.push("phone_number_id ausente");
+        if (!conn.access_token) missing.push("access_token ausente (sem token global)");
+      }
+      if (!tpl) missing.push("template não encontrado");
+      const msg = `Número ou template inválido: ${missing.join(", ")}`;
       await supabaseAdmin
         .from("wa_campaigns")
-        .update({ status: "error", last_error: "Número ou template inválido" })
+        .update({ status: "error", last_error: msg })
         .eq("id", campaignId);
-      await logEvent(campaignId, "error", "Número ou template inválido");
+      await logEvent(campaignId, "error", msg);
       return { processed: 0, done: true };
     }
     // Load client / project / responsavel once for token context
