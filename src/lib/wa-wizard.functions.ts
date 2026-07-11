@@ -20,11 +20,21 @@ export const previewAudience = createServerFn({ method: "POST" })
   }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { data: items } = await context.supabase
-      .from("contact_list_items")
-      .select("contact:contacts(id,phone,name,email,opt_in,opt_out)")
-      .eq("list_id", data.list_id);
-    let contacts = (items ?? []).map((i: any) => i.contact).filter((c: any) => c && c.phone && c.opt_in && !c.opt_out);
+    // Pagina para superar o teto default de 1000 linhas do PostgREST.
+    const PAGE = 1000;
+    const rawItems: any[] = [];
+    for (let from = 0; ; from += PAGE) {
+      const { data: page, error } = await context.supabase
+        .from("contact_list_items")
+        .select("contact:contacts(id,phone,name,email,opt_in,opt_out)")
+        .eq("list_id", data.list_id)
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      rawItems.push(...(page ?? []));
+      if (!page || page.length < PAGE) break;
+    }
+    const items = rawItems;
+    let contacts = items.map((i: any) => i.contact).filter((c: any) => c && c.phone && c.opt_in && !c.opt_out);
 
     if (data.tag_filters.length) {
       const { data: tagged } = await context.supabase
