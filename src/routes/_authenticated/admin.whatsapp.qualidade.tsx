@@ -4,6 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/admin/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ErrorCard } from "@/components/admin/query-state";
+import { EmptyState } from "@/components/admin/empty-state";
 import { listNumbers } from "@/lib/whatsapp-numbers.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp/qualidade")({
@@ -15,12 +17,15 @@ const COLORS: Record<string, string> = { GREEN: "bg-green-500", YELLOW: "bg-yell
 
 function Page() {
   const fn = useServerFn(listNumbers);
-  const { data: rows = [] } = useQuery({ queryKey: ["wa-numbers"], queryFn: () => fn() });
+  const { data: rows, isLoading, error, refetch } = useQuery({ queryKey: ["wa-numbers"], queryFn: () => fn() });
   return (
     <>
       <PageHeader title="Qualidade & Limites" description="Acompanhe a saúde dos números." />
       <div className="rounded-xl border bg-card">
-        <Table>
+        {isLoading ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
+        : error ? <div className="p-4"><ErrorCard error={error} onRetry={() => refetch()} /></div>
+        : !rows || rows.length === 0 ? <EmptyState title="Nenhum número cadastrado" />
+        : <Table>
           <TableHeader><TableRow>
             <TableHead>Número</TableHead><TableHead>Telefone</TableHead><TableHead>Qualidade</TableHead>
             <TableHead>Limite diário</TableHead><TableHead>Status</TableHead>
@@ -41,7 +46,7 @@ function Page() {
               </TableRow>
             ))}
           </TableBody>
-        </Table>
+        </Table>}
       </div>
     </>
   );

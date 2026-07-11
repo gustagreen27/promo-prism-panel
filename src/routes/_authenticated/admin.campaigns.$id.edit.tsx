@@ -31,6 +31,7 @@ import { applyIntentPreset, getIntentPreset, PRESET_TARGET_FIELDS } from "@/lib/
 import { validateCampaignForm, type FieldIssue } from "@/lib/campaign-validation";
 import { CAMPAIGN_TYPES, LINK_INTENTS, OPEN_MODES, PAGE_CATEGORIES } from "@/lib/campaign-options";
 import { ImageUpload } from "@/components/image-upload";
+import { ErrorCard } from "@/components/admin/query-state";
 
 export const Route = createFileRoute("/_authenticated/admin/campaigns/$id/edit")({
   head: () => ({ meta: [{ title: "Editar campanha" }] }),
@@ -62,7 +63,7 @@ function EditCampaign() {
   const analyzeFn = useServerFn(analyzeCampaignIntent);
   const checkSlugFn = useServerFn(checkSlugAvailability);
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["campaign", id],
     queryFn: () => getFn({ data: { id } }),
   });
@@ -217,6 +218,10 @@ function EditCampaign() {
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Falha na análise"),
   });
+
+  if (error) {
+    return <ErrorCard error={error} onRetry={() => refetch()} />;
+  }
 
   if (isLoading || !data) {
     return <p className="text-sm text-muted-foreground">Carregando...</p>;

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, ExternalLink, MonitorSmartphone, Smartphone } from "lucide-react";
+import { ErrorCard } from "@/components/admin/query-state";
 
 export const Route = createFileRoute("/_authenticated/admin/campaigns/$id/preview")({
   head: () => ({ meta: [{ title: "Pré-visualizar campanha" }] }),
@@ -19,7 +20,7 @@ type Device = "desktop" | "mobile";
 function PreviewCampaign() {
   const { id } = Route.useParams();
   const getFn = useServerFn(getCampaign);
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["campaign", id],
     queryFn: () => getFn({ data: { id } }),
   });
@@ -31,6 +32,10 @@ function PreviewCampaign() {
   useEffect(() => {
     setIframeBlocked(false);
   }, [mode, data?.destination_url]);
+
+  if (error) {
+    return <ErrorCard error={error} onRetry={() => refetch()} />;
+  }
 
   if (isLoading || !data) {
     return <p className="text-sm text-muted-foreground">Carregando...</p>;

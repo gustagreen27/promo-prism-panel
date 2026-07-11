@@ -25,6 +25,7 @@ import {
 import { ArrowLeft, Pencil } from "lucide-react";
 import { IntentScoreBadge, StatusBadge } from "@/components/campaign-badges";
 import { CampaignAnalytics } from "@/components/CampaignAnalytics";
+import { ErrorCard } from "@/components/admin/query-state";
 
 export const Route = createFileRoute("/_authenticated/admin/campaigns/$id")({
   head: () => ({ meta: [{ title: "Métricas da campanha" }] }),
@@ -34,7 +35,7 @@ export const Route = createFileRoute("/_authenticated/admin/campaigns/$id")({
 function CampaignDetail() {
   const { id } = Route.useParams();
   const fn = useServerFn(getCampaignAnalytics);
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["campaign-analytics", id],
     queryFn: () => fn({ data: { id } }),
   });
@@ -80,6 +81,10 @@ function CampaignDetail() {
       browsers: top("browser"),
     };
   }, [data]);
+
+  if (error) {
+    return <ErrorCard error={error} onRetry={() => refetch()} />;
+  }
 
   if (isLoading || !data || !stats) {
     return <p className="text-sm text-muted-foreground">Carregando métricas...</p>;

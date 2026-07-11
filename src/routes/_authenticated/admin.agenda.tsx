@@ -7,6 +7,7 @@ import { Plus, Trash2, Pencil, CalendarPlus, ExternalLink, RefreshCw } from "luc
 import { PageHeader } from "@/components/admin/page-header";
 import { RELATORIOS_TABS } from "@/components/admin/hub-tabs";
 import { EmptyState } from "@/components/admin/empty-state";
+import { ErrorCard } from "@/components/admin/query-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,9 +39,12 @@ function Page() {
   const clientsFn = useServerFn(listClients);
   const projectsFn = useServerFn(listProjects);
   const qc = useQueryClient();
-  const { data = [], isLoading } = useQuery({ queryKey: ["events"], queryFn: () => list() });
-  const { data: clients = [] } = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
-  const { data: projects = [] } = useQuery({ queryKey: ["projects"], queryFn: () => projectsFn() });
+  const eventsQ = useQuery({ queryKey: ["events"], queryFn: () => list() });
+  const { data = [], isLoading, error: eventsError } = eventsQ;
+  const clientsQ = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
+  const { data: clients = [] } = clientsQ;
+  const projectsQ = useQuery({ queryKey: ["projects"], queryFn: () => projectsFn() });
+  const { data: projects = [] } = projectsQ;
   const { data: gcal } = useQuery({ queryKey: ["gcal-status"], queryFn: () => gcalStatus() });
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -100,6 +104,7 @@ function Page() {
       )}
       <div className="rounded-xl border bg-card">
         {isLoading ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
+          : eventsError ? <div className="p-4"><ErrorCard error={eventsError} onRetry={() => eventsQ.refetch()} /></div>
           : data.length === 0 ? <EmptyState title="Sem eventos" />
           : <Table>
             <TableHeader><TableRow>

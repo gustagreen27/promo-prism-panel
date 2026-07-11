@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
+import { ErrorCard } from "@/components/admin/query-state";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { listWebhookLogs } from "@/lib/inbox.functions";
@@ -15,13 +16,14 @@ export const Route = createFileRoute("/_authenticated/admin/whatsapp/logs")({
 
 function Page() {
   const fn = useServerFn(listWebhookLogs);
-  const { data: rows = [], isLoading } = useQuery({ queryKey: ["wa-logs"], queryFn: () => fn() });
+  const { data: rows, isLoading, error, refetch } = useQuery({ queryKey: ["wa-logs"], queryFn: () => fn() });
   return (
     <>
       <PageHeader title="Logs de Webhook" description="Eventos recebidos da Meta." />
       <div className="rounded-xl border bg-card">
         {isLoading ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
-        : rows.length === 0 ? <EmptyState title="Nenhum evento recebido" />
+        : error ? <div className="p-4"><ErrorCard error={error} onRetry={() => refetch()} /></div>
+        : !rows || rows.length === 0 ? <EmptyState title="Nenhum evento recebido" />
         : <Table>
           <TableHeader><TableRow>
             <TableHead>Data</TableHead><TableHead>Evento</TableHead><TableHead>Processado</TableHead><TableHead>Erro</TableHead>
