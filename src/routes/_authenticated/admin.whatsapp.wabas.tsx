@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, Eye, RefreshCw, ShieldCheck, Cloud, Download, Zap } from "lucide-react";
+import { Plus, Trash2, Pencil, Eye, RefreshCw, ShieldCheck, Cloud, Download, Zap, CheckCircle2, XCircle, Loader2, AlertTriangle, Circle } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { listWabas, createWaba, updateWaba, deleteWaba, getWabaChildren } from "@/lib/wa-wabas.functions";
 import { syncWabaNumbers, syncAllWabas } from "@/lib/wa-meta-sync.functions";
 import { debugToken, createWabaViaApi, importWabasFromBusiness } from "@/lib/wa-meta-api.functions";
-import { quickConnectWa } from "@/lib/wa-quick-connect.functions";
+import { quickConnectWa, parseQuickConnect } from "@/lib/wa-quick-connect.functions";
 import { listWorkspaceConnections } from "@/lib/wa-connections.functions";
 import { listClients } from "@/lib/clients.functions";
 import { listProjects } from "@/lib/projects.functions";
@@ -106,21 +106,8 @@ function Page() {
     onSuccess: (r: any) => { toast.success(`${r.created} nova(s), ${r.updated} atualizada(s)`); setImportOpen(false); refresh(); },
     onError: (e: any) => toast.error(e?.message ?? "Erro"),
   });
-  const quickMut = useMutation({
-    mutationFn: (p: { raw: string; workspace_id: string | null }) => quickFn({ data: p }),
-    onSuccess: (r: any) => {
-      const parts = [
-        r.connection_id ? "número vinculado" : "WABA salva",
-        r.sync?.created ? `${r.sync.created} novo(s) da Meta` : null,
-        r.sync?.updated ? `${r.sync.updated} atualizado(s)` : null,
-        r.sync_error ? `sync pendente: ${r.sync_error}` : null,
-      ].filter(Boolean);
-      toast.success(`Conexão concluída — ${parts.join(" · ")}`);
-      setQuickOpen(false);
-      refresh();
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Erro na conexão rápida"),
-  });
+  const parseFn = useServerFn(parseQuickConnect);
+
 
   return (
     <>
@@ -231,8 +218,10 @@ function Page() {
       <Dialog open={quickOpen} onOpenChange={setQuickOpen}>
         <QuickConnectDialog
           workspaces={workspacesQuery.data ?? []}
-          saving={quickMut.isPending}
-          onSubmit={(p: { raw: string; workspace_id: string | null }) => quickMut.mutate(p)}
+          parseFn={parseFn}
+          quickFn={quickFn}
+          onDone={() => refresh()}
+          onClose={() => setQuickOpen(false)}
         />
       </Dialog>
     </>
@@ -363,15 +352,46 @@ function FormDialog({ editing, clients, projects, onSubmit, saving }: any) {
   );
 }
 
+type StepStatus = "idle" | "running" | "ok" | "warn" | "error";
+type StepState = { key: string; label: string; status: StepStatus; detail?: string };
+
+function StepRow({ s }: { s: StepState }) {
+  const Icon =
+    s.status === "running" ? Loader2 :
+    s.status === "ok" ? CheckCircle2 :
+    s.status === "warn" ? AlertTriangle :
+    s.status === "error" ? XCircle : Circle;
+  const color =
+    s.status === "running" ? "text-blue-500 animate-spin" :
+    s.status === "ok" ? "text-emerald-500" :
+    s.status === "warn" ? "text-amber-500" :
+    s.status === "error" ? "text-red-500" : "text-muted-foreground";
+  return (
+    <div className="flex items-start gap-2 text-xs">
+      <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${color}`} />
+      <div className="flex-1">
+        <div className="font-medium">{s.label}</div>
+        {s.detail && <div className="text-muted-foreground whitespace-pre-wrap break-words">{s.detail}</div>}
+      </div>
+    </div>
+  );
+}
+
 function QuickConnectDialog({
-  workspaces, saving, onSubmit,
+  workspaces, parseFn, quickFn, onDone, onClose,
 }: {
   workspaces: any[];
-  saving: boolean;
-  onSubmit: (p: { raw: string; workspace_id: string | null }) => void;
+  parseFn: (args: { data: { raw: string } }) => Promise<any>;
+  quickFn: (args: { data: { raw: string; workspace_id: string | null } }) => Promise<any>;
+  onDone: () => void;
+  onClose: () => void;
 }) {
   const [raw, setRaw] = useState("");
   const [ws, setWs] = useState<string>("__none__");
+  const [running, setRunning] = useState(false);
+  const [steps, setSteps] = useState<StepState[]>([]);
+  const [result, setResult] = useState<any>(null);
+
   const example = `WABA:
 Jéssica
 Identificação:
@@ -384,6 +404,109 @@ Identificação:
 1133638443176122
 Jéssica
 +55 11 95502-2059`;
+
+  const patchStep = (key: string, patch: Partial<StepState>) =>
+    setSteps((prev) => prev.map((s) => (s.key === key ? { ...s, ...patch } : s)));
+
+  const runConnect = async () => {
+    setRunning(true);
+    setResult(null);
+    const initial: StepState[] = [
+      { key: "parse", label: "Analisando dados colados", status: "running" },
+      { key: "db", label: "Criando/atualizando WABA e número no banco", status: "idle" },
+      { key: "meta", label: "Sincronizando com a Meta", status: "idle" },
+      { key: "link", label: "Vinculando ao workspace (se informado)", status: "idle" },
+    ];
+    setSteps(initial);
+
+    // 1) Parse
+    let parsed: any = null;
+    try {
+      parsed = await parseFn({ data: { raw } });
+      const detail = [
+        parsed.waba_nome ? `WABA: ${parsed.waba_nome}` : null,
+        parsed.waba_id ? `WABA ID: ${parsed.waba_id}` : "WABA ID: (não encontrado)",
+        parsed.business_name ? `Propriedade: ${parsed.business_name}` : null,
+        parsed.phone_number_id ? `Phone ID: ${parsed.phone_number_id}` : "Phone ID: (não encontrado)",
+        parsed.phone_display_name ? `Nome do número: ${parsed.phone_display_name}` : null,
+        parsed.display_phone ? `Telefone: ${parsed.display_phone}` : null,
+      ].filter(Boolean).join("\n");
+      const ok = !!parsed.waba_id && (!!parsed.phone_number_id || !!parsed.display_phone);
+      patchStep("parse", { status: ok ? "ok" : "warn", detail });
+      if (!ok) {
+        patchStep("db", { status: "error", detail: "Interrompido: dados obrigatórios ausentes." });
+        setRunning(false);
+        toast.error("Parse falhou — verifique os dados colados.");
+        return;
+      }
+    } catch (e: any) {
+      patchStep("parse", { status: "error", detail: e?.message ?? "Falha ao analisar" });
+      setRunning(false);
+      toast.error(e?.message ?? "Erro no parse");
+      return;
+    }
+
+    // 2 + 3 + 4) Server-side atomic op
+    patchStep("db", { status: "running" });
+    patchStep("meta", { status: "running" });
+    try {
+      const r = await quickFn({ data: { raw, workspace_id: ws === "__none__" ? null : ws } });
+      setResult(r);
+
+      // DB step
+      const dbDetail = [
+        r.waba_ref_id ? `WABA salva (ref ${String(r.waba_ref_id).slice(0, 8)}…)` : null,
+        r.connection_id ? `Número vinculado (conn ${String(r.connection_id).slice(0, 8)}…)` : "Sem número vinculado",
+      ].filter(Boolean).join("\n");
+      patchStep("db", { status: "ok", detail: dbDetail });
+
+      // Meta sync step
+      if (r.sync_error) {
+        patchStep("meta", {
+          status: "warn",
+          detail: `Sync pendente: ${r.sync_error}\nO número foi salvo com status "aguardando_verificacao".`,
+        });
+      } else if (r.sync) {
+        const s = r.sync;
+        patchStep("meta", {
+          status: "ok",
+          detail: `Meta: ${s.created ?? 0} novo(s), ${s.updated ?? 0} atualizado(s)${
+            typeof s.total === "number" ? `, ${s.total} total` : ""
+          }`,
+        });
+      } else {
+        patchStep("meta", { status: "warn", detail: "Sync não executado (sem retorno da Meta)." });
+      }
+
+      // Link step
+      if (ws === "__none__") {
+        patchStep("link", { status: "ok", detail: "Nenhum workspace selecionado." });
+      } else {
+        patchStep("link", {
+          status: "ok",
+          detail: r.connection_id
+            ? "Vinculado ao workspace. Definido como conexão padrão se o workspace estava vazio."
+            : "Workspace informado, mas nenhum número foi criado para vincular.",
+        });
+      }
+
+      toast.success("Conexão concluída");
+      onDone();
+    } catch (e: any) {
+      patchStep("db", { status: "error", detail: e?.message ?? "Falha ao salvar" });
+      patchStep("meta", { status: "idle" });
+      patchStep("link", { status: "idle" });
+      toast.error(e?.message ?? "Erro na conexão rápida");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const reset = () => {
+    setSteps([]);
+    setResult(null);
+  };
+
   return (
     <DialogContent className="max-w-2xl">
       <DialogHeader>
@@ -398,16 +521,17 @@ Jéssica
         <div>
           <Label>Dados colados *</Label>
           <Textarea
-            rows={12}
+            rows={10}
             value={raw}
             onChange={(e) => setRaw(e.target.value)}
             placeholder={example}
             className="font-mono text-xs"
+            disabled={running}
           />
         </div>
         <div>
           <Label>Workspace do cliente (opcional)</Label>
-          <Select value={ws} onValueChange={setWs}>
+          <Select value={ws} onValueChange={setWs} disabled={running}>
             <SelectTrigger><SelectValue placeholder="Não vincular agora" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__none__">Não vincular agora</SelectItem>
@@ -420,14 +544,38 @@ Jéssica
             Se escolher um workspace vazio, esse número vira o padrão para disparos.
           </p>
         </div>
+
+        {steps.length > 0 && (
+          <div className="rounded-md border bg-muted/30 p-3">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Status da conexão
+            </div>
+            <div className="space-y-2">
+              {steps.map((s) => <StepRow key={s.key} s={s} />)}
+            </div>
+            {result && (
+              <div className="mt-3 border-t pt-2 text-[11px] text-muted-foreground">
+                {result.connection_id && <div>Conexão: <code>{result.connection_id}</code></div>}
+                {result.waba_ref_id && <div>WABA ref: <code>{result.waba_ref_id}</code></div>}
+              </div>
+            )}
+          </div>
+        )}
       </div>
-      <DialogFooter>
-        <Button
-          disabled={saving || raw.trim().length < 10}
-          onClick={() => onSubmit({ raw, workspace_id: ws === "__none__" ? null : ws })}
-        >
-          {saving ? "Conectando…" : "Conectar"}
-        </Button>
+      <DialogFooter className="gap-2">
+        {steps.length > 0 && !running && (
+          <Button variant="outline" onClick={reset}>Reiniciar</Button>
+        )}
+        {result && !running ? (
+          <Button onClick={onClose}>Fechar</Button>
+        ) : (
+          <Button
+            disabled={running || raw.trim().length < 10}
+            onClick={runConnect}
+          >
+            {running ? "Conectando…" : "Conectar"}
+          </Button>
+        )}
       </DialogFooter>
     </DialogContent>
   );
