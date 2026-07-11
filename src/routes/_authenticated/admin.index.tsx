@@ -15,6 +15,7 @@ import { PageHeader } from "@/components/admin/page-header";
 import { PeriodFilter } from "@/components/admin/period-filter";
 import { MetricCard } from "@/components/admin/metric-card";
 import { EmptyState } from "@/components/admin/empty-state";
+import { ErrorCard } from "@/components/admin/query-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -33,13 +34,18 @@ function DashboardPage() {
   const range = useMemo(() => getPeriodRange(period), [period]);
   const fetcher = useServerFn(getDashboardSummary);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["dashboard-summary", period, range.start.toISOString(), range.end.toISOString()],
     queryFn: () =>
       fetcher({ data: { start: range.start.toISOString(), end: range.end.toISOString() } }),
   });
 
   const goalPct = Math.max(0, Math.min(100, data?.goalProgress ?? 0));
+  const dash = (v: number | null | undefined, format: (n: number) => string) => {
+    if (isLoading) return "—";
+    if (v == null) return "—";
+    return format(v);
+  };
 
   return (
     <div className="space-y-6">
@@ -49,25 +55,27 @@ function DashboardPage() {
         actions={<PeriodFilter value={period} onChange={setPeriod} />}
       />
 
+      {error && <ErrorCard error={error} onRetry={() => refetch()} />}
+
       {/* Metric cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           label="Faturamento"
-          value={isLoading ? "—" : formatBRL(data?.totalRevenue ?? 0)}
+          value={dash(data?.totalRevenue ?? null, formatBRL)}
           subtext="Recebido no período"
           color="green"
           icon={<Wallet className="h-5 w-5" />}
         />
         <MetricCard
           label="Custos"
-          value={isLoading ? "—" : formatBRL(data?.totalCost ?? 0)}
+          value={dash(data?.totalCost ?? null, formatBRL)}
           subtext="Despesas no período"
           color="red"
           icon={<TrendingDown className="h-5 w-5" />}
         />
         <MetricCard
           label="Lucro"
-          value={isLoading ? "—" : formatBRL(data?.profit ?? 0)}
+          value={dash(data?.profit ?? null, formatBRL)}
           subtext={
             data?.margin != null ? `Margem ${formatPercent(data.margin)}` : "Sem faturamento"
           }
@@ -76,7 +84,7 @@ function DashboardPage() {
         />
         <MetricCard
           label="Mensagens"
-          value={isLoading ? "—" : formatNumber(data?.totalMessages ?? 0)}
+          value={dash(data?.totalMessages ?? null, formatNumber)}
           subtext={
             data?.deliveryRate != null
               ? `Entrega ${formatPercent(data.deliveryRate)}`
