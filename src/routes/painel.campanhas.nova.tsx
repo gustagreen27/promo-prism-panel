@@ -234,13 +234,13 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
     const t = setTimeout(() => {
       try {
         localStorage.setItem(DRAFT_KEY, JSON.stringify({
-          name, connectionId, templateId, contactSel, rate, mode, scheduledAt, timezone, step, maxReached,
+          name, connectionId, templateId, contactSel, dispatch, mode, scheduledAt, timezone, step, maxReached,
           savedAt: Date.now(),
         }));
       } catch { /* ignore */ }
     }, 400);
     return () => clearTimeout(t);
-  }, [name, connectionId, templateId, contactSel, rate, mode, scheduledAt, timezone, step, maxReached, campaignId, DRAFT_KEY]);
+  }, [name, connectionId, templateId, contactSel, dispatch, mode, scheduledAt, timezone, step, maxReached, campaignId, DRAFT_KEY]);
 
   // -------- Conflict check --------
   useEffect(() => {
