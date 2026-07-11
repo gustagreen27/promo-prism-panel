@@ -46,6 +46,9 @@ function buildHeaderComponent(headerType?: string | null, value?: string | null)
   if (!headerType || !value) return [];
   const t = headerType.toLowerCase();
   if (t === "text") {
+    // Only include a header component when the template header actually has a variable ({{n}}).
+    // Static header text has 0 params and Meta rejects extra params with error 132000.
+    if (!/\{\{\s*\d+\s*\}\}/.test(value)) return [];
     return [{ type: "header", parameters: [{ type: "text", text: value }] }];
   }
   if (t === "image") return [{ type: "header", parameters: [{ type: "image", image: { link: value } }] }];
