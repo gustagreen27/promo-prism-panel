@@ -125,7 +125,7 @@ export const quickConnectWa = createServerFn({ method: "POST" })
 
     let wabaRow = existingWaba;
     if (!wabaRow) {
-      const insertPayload: Record<string, unknown> = {
+      const insertPayload: Record<string, any> = {
         waba_id: parsed.waba_id,
         nome_interno: parsed.waba_nome || parsed.business_name || `WABA ${parsed.waba_id.slice(-6)}`,
         business_id: null,
@@ -139,7 +139,7 @@ export const quickConnectWa = createServerFn({ method: "POST" })
       if (cErr) throw cErr;
       wabaRow = created;
     } else {
-      const patch: Record<string, unknown> = {};
+      const patch: Record<string, any> = {};
       if (!wabaRow.nome_interno && parsed.waba_nome) patch.nome_interno = parsed.waba_nome;
       if (data.workspace_id && !wabaRow.workspace_id) patch.workspace_id = data.workspace_id;
       if (Object.keys(patch).length) {
@@ -149,7 +149,7 @@ export const quickConnectWa = createServerFn({ method: "POST" })
     }
 
     // 2) Try to sync from Meta (creates/updates whatsapp_connections rows).
-    let syncStats: unknown = null;
+    let syncStats: any = null;
     let syncError: string | null = null;
     try {
       syncStats = await _syncOneWabaInternal(supabase, wabaRow as any);
@@ -169,7 +169,7 @@ export const quickConnectWa = createServerFn({ method: "POST" })
 
       if (existingConn) {
         connectionId = existingConn.id;
-        const patch: Record<string, unknown> = { waba_ref_id: wabaRow.id };
+        const patch: Record<string, any> = { waba_ref_id: wabaRow.id };
         if (data.workspace_id && !existingConn.workspace_id) patch.workspace_id = data.workspace_id;
         if (parsed.phone_display_name && !existingConn.nome_interno) patch.nome_interno = parsed.phone_display_name;
         await supabase.from("whatsapp_connections").update(patch).eq("id", existingConn.id);
