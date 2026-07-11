@@ -248,6 +248,35 @@ export function ContactsStep({
                   </div>
                 </div>
               </div>
+
+              {value.contacts && value.contacts.length > 0 && (
+                <div className="max-h-[320px] space-y-1 overflow-y-auto pr-1">
+                  {value.contacts.map((c) => (
+                    <div
+                      key={c.id}
+                      className="flex items-center gap-2 rounded-md border bg-background/50 px-2 py-1.5"
+                    >
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground">
+                        {(c.name?.trim()?.[0] ?? c.phone.slice(-2, -1) ?? "?").toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-xs font-medium">
+                          {c.name?.trim() || "Sem nome"}
+                        </div>
+                        <div className="truncate text-[10px] text-muted-foreground">
+                          {c.phone}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {value.valid > value.contacts.length && (
+                    <div className="pt-1 text-center text-[10px] text-muted-foreground">
+                      + {value.valid - value.contacts.length} contato{value.valid - value.contacts.length === 1 ? "" : "s"} não exibido{value.valid - value.contacts.length === 1 ? "" : "s"}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <Button className="w-full" disabled title="Em breve">
                 Criar Agrupamento
               </Button>
