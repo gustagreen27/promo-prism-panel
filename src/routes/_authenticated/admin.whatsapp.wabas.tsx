@@ -218,8 +218,10 @@ function Page() {
       <Dialog open={quickOpen} onOpenChange={setQuickOpen}>
         <QuickConnectDialog
           workspaces={workspacesQuery.data ?? []}
-          saving={quickMut.isPending}
-          onSubmit={(p: { raw: string; workspace_id: string | null }) => quickMut.mutate(p)}
+          parseFn={parseFn}
+          quickFn={quickFn}
+          onDone={() => refresh()}
+          onClose={() => setQuickOpen(false)}
         />
       </Dialog>
     </>
