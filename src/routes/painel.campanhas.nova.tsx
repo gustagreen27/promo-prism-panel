@@ -218,6 +218,9 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   }, [mode, connectionId, scheduledAt, workspaceId, fnConflict]);
 
   // -------- Live progress polling --------
+  const [recipientsLive, setRecipientsLive] = useState<Array<{
+    id: string; name: string | null; phone: string; status: string; failed_reason?: string | null;
+  }>>([]);
   useEffect(() => {
     if (!campaignId || step < 4) return;
     let alive = true;
@@ -238,6 +241,23 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
         pending: p.pending ?? 0,
         processing: p.processing ?? 0,
       });
+      // Recipients (nome via contatos, telefone + status individual)
+      const { data: rs } = await supabase
+        .from("campaign_recipients")
+        .select("id, phone, status, failed_reason, contact:contacts(name)")
+        .eq("campaign_id", campaignId!)
+        .order("created_at", { ascending: true })
+        .limit(500);
+      if (!alive) return;
+      setRecipientsLive(
+        (rs ?? []).map((r: any) => ({
+          id: r.id,
+          name: r.contact?.name ?? null,
+          phone: r.phone,
+          status: r.status,
+          failed_reason: r.failed_reason,
+        })),
+      );
     }
     tick();
     const id = setInterval(tick, 3000);
@@ -1104,18 +1124,48 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                 <span className="flex items-center gap-2"><Users2 className="h-4 w-4" /> Contatos</span>
                 <Badge variant="outline">{progress.total} Total</Badge>
               </div>
-              <div className="rounded-md border p-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/15 text-xs font-semibold text-emerald-600">
-                    {contactSel?.list_name?.slice(0, 1).toUpperCase()}
+              <div className="max-h-[420px] space-y-1.5 overflow-y-auto pr-1">
+                {recipientsLive.length === 0 ? (
+                  <div className="rounded-md border p-3 text-center text-xs text-muted-foreground">
+                    Carregando destinatários…
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-medium">{contactSel?.list_name}</div>
-                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                      {progress.status === "running" ? "Processando..." : progress.status}
-                    </div>
-                  </div>
-                </div>
+                ) : (
+                  recipientsLive.map((r) => {
+                    const s = (r.status || "").toLowerCase();
+                    const ok = ["sent", "delivered", "read", "accepted", "responded"].includes(s);
+                    const err = ["failed", "error", "canceled", "cancelled"].includes(s);
+                    const initial = (r.name?.trim()?.[0] || r.phone?.[0] || "?").toUpperCase();
+                    return (
+                      <div key={r.id} className="flex items-center gap-2 rounded-md border p-2 text-sm">
+                        <div className={cn(
+                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+                          ok ? "bg-emerald-500/15 text-emerald-600"
+                             : err ? "bg-red-500/15 text-red-600"
+                             : "bg-muted text-muted-foreground",
+                        )}>{initial}</div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-medium">{r.name || "Sem nome"}</div>
+                          <div className="truncate text-[11px] text-muted-foreground">{r.phone}</div>
+                        </div>
+                        <div
+                          className="shrink-0"
+                          title={r.failed_reason ?? s}
+                          aria-label={s}
+                        >
+                          {ok ? (
+                            <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                          ) : err ? (
+                            <XOctagon className="h-5 w-5 text-red-500" />
+                          ) : s === "processing" || s === "sending" ? (
+                            <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                          ) : (
+                            <Clock className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
               <p className="pt-2 text-[11px] text-muted-foreground">
                 Você pode sair desta página. O envio continua em segundo plano.
