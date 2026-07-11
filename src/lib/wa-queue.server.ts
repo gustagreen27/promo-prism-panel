@@ -680,7 +680,7 @@ export async function processCampaignTick(
       }
 
       if (shouldRetry) {
-        await scheduleRetry(r, attempts, result.error || "retry", result.code);
+        await scheduleRetry(r, attempts, result.error || "retry", result.code ?? null);
         return;
       }
 
