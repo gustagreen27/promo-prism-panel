@@ -440,7 +440,7 @@ function Page() {
                   body={previewForFirst.body}
                   footer={previewForFirst.footer}
                   buttons={previewForFirst.buttons as any}
-                  senderName={(camp as any)?.connection?.display_phone ?? (camp as any)?.connection?.name ?? "Seu negócio"}
+                  senderName={previewForFirst.first?.phone ? `Destinatário ${formatPhoneDisplay(previewForFirst.first.phone)}` : "Destinatário"}
                 />
               </CardContent>
             </Card>
