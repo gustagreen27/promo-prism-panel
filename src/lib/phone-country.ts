@@ -42,3 +42,16 @@ export function summarizeCallingCodes(phones: unknown[]): { dominantCode: string
 export function formatCallingCode(code: string | null | undefined): string {
   return code ? `+${code}` : "DDI desconhecido";
 }
+
+/**
+ * Formats a phone for display, preserving the real DDI stored in the digits.
+ * Never assumes +55: uses getCountryCallingCode. Example: "923000000000" -> "+92 3000000000".
+ */
+export function formatPhoneDisplay(value: unknown): string {
+  const digits = digitsOnly(value);
+  if (!digits) return "—";
+  const code = getCountryCallingCode(digits);
+  if (!code) return `+${digits}`;
+  const rest = digits.slice(code.length);
+  return `+${code} ${rest}`.trim();
+}
