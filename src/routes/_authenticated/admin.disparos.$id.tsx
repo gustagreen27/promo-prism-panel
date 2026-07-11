@@ -88,7 +88,7 @@ function Page() {
 
   const recipientsQ = useQuery({
     queryKey: ["wa-camp-recipients", id],
-    queryFn: () => getRec({ data: { id, limit: 500 } }),
+    queryFn: () => getRec({ data: { id } }),
     refetchInterval: 8000,
   });
   const { data: recipients } = recipientsQ;
@@ -107,7 +107,7 @@ function Page() {
 
   const previewsQ = useQuery({
     queryKey: ["wa-camp-previews", id],
-    queryFn: () => getPrev({ data: { id, limit: 200 } }),
+    queryFn: () => getPrev({ data: { id } }),
   });
   const { data: previews } = previewsQ;
 
@@ -437,7 +437,9 @@ function Page() {
 
         <TabsContent value="recipients" className="space-y-3">
           <div className="flex justify-between items-center">
-            <div className="text-sm text-muted-foreground">{recipients?.length ?? 0} destinatários</div>
+            <div className="text-sm text-muted-foreground">
+              {(recipients?.length ?? 0).toLocaleString("pt-BR")} de {total.toLocaleString("pt-BR")} destinatários carregados
+            </div>
             <Button size="sm" variant="outline" onClick={exportCsv}><Download className="mr-2 h-4 w-4" />Exportar CSV</Button>
           </div>
           {recipientsQ.error && <ErrorCard error={recipientsQ.error} onRetry={() => recipientsQ.refetch()} />}
@@ -492,7 +494,9 @@ function Page() {
                     {(previews as any)?.template?.name && (
                       <span>· Template <span className="font-mono">{(previews as any).template.name}</span></span>
                     )}
-                    {all.length > 0 && <span> · {filtered.length} de {all.length}</span>}
+                    {all.length > 0 && (
+                      <span> · {filtered.length.toLocaleString("pt-BR")} de {all.length.toLocaleString("pt-BR")} prévias carregadas</span>
+                    )}
                   </div>
                   <Input
                     className="max-w-xs"
@@ -544,7 +548,7 @@ function Page() {
                 </div>
                 {filtered.length > 60 && (
                   <div className="text-xs text-muted-foreground text-center">
-                    Mostrando 60 de {filtered.length}. Refine a busca para ver mais.
+                    Mostrando 60 de {filtered.length.toLocaleString("pt-BR")}. Refine a busca para ver mais.
                   </div>
                 )}
               </>
