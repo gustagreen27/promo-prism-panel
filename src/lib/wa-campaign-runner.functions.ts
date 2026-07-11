@@ -300,7 +300,7 @@ export const swapCampaignRouteAndResume = createServerFn({ method: "POST" })
     if (data.template_id && data.template_id !== currentTplId) {
       const { data: tpl } = await supabase
         .from("whatsapp_templates")
-        .select("id,name,language,status,waba_ref_id,category,body,buttons,header_type,header_text")
+        .select("id,name,language,status,waba_ref_id,category,body,buttons,header_type,header_text,header_media_url,raw")
         .eq("id", data.template_id).maybeSingle();
       if (!tpl) throw new Error("Template não encontrado");
       const st = String(tpl.status ?? "").toUpperCase();
@@ -317,7 +317,7 @@ export const swapCampaignRouteAndResume = createServerFn({ method: "POST" })
     const finalTplId = newTpl?.id ?? currentTplId;
     const { data: finalTpl } = finalTplId
       ? await supabase.from("whatsapp_templates")
-          .select("id,name,language,status,body,buttons,header_type,header_text,header_media_url")
+          .select("id,name,language,status,body,buttons,header_type,header_text,header_media_url,raw")
           .eq("id", finalTplId).maybeSingle()
       : { data: null };
 
@@ -359,20 +359,26 @@ export const swapCampaignRouteAndResume = createServerFn({ method: "POST" })
       const ht = String(finalTpl.header_type ?? "").toUpperCase();
       if (["IMAGE", "VIDEO", "DOCUMENT"].includes(ht)) {
         const prevMap: any = (route?.variables_mapping ?? (camp as any).variables_mapping ?? (camp as any).template_variables ?? {}) as any;
+        const rawComponents = (((finalTpl as any).raw?.components ?? []) as any[]);
+        const rawHeader = rawComponents.find((c: any) => String(c?.type ?? "").toUpperCase() === "HEADER");
+        const exampleHeaderUrl = rawHeader?.example?.header_url?.[0] ?? rawHeader?.example?.header_handle?.[0] ?? null;
         const headerVal = String(
           previousBody?._header_image_url
           ?? previousBody?._header_url
+          ?? previousBody?._header_media_url
           ?? prevMap?._header_image_url
           ?? prevMap?._header_url
+          ?? prevMap?._header_media_url
           ?? (finalTpl as any).header_media_url
+          ?? exampleHeaderUrl
           ?? ""
         ).trim();
         if (!headerVal) {
-          throw new Error(`Template exige mídia no cabeçalho (${ht}); informe _header_image_url no mapping`);
+          throw new Error(`Template exige mídia no cabeçalho (${ht}); informe a URL da mídia antes de retomar.`);
         }
         // Ensure downstream sending has the header URL in the mapping.
         if (data.variables_mapping && !data.variables_mapping._header_image_url) {
-          data.variables_mapping = { ...data.variables_mapping, _header_image_url: headerVal };
+          data.variables_mapping = { ...data.variables_mapping, _header_image_url: headerVal, _header_url: headerVal };
         }
       }
     }
