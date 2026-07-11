@@ -7,6 +7,7 @@ import { Plus, Trash2, Pencil } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { CLIENTES_TABS } from "@/components/admin/hub-tabs";
 import { EmptyState } from "@/components/admin/empty-state";
+import { ErrorCard } from "@/components/admin/query-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,8 +34,10 @@ function Page() {
   const remove = useServerFn(deleteProject);
   const clientsFn = useServerFn(listClients);
   const qc = useQueryClient();
-  const { data = [], isLoading } = useQuery({ queryKey: ["projects"], queryFn: () => list() });
-  const { data: clients = [] } = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
+  const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: () => list() });
+  const { data = [], isLoading, error, refetch } = projectsQuery;
+  const clientsQuery = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
+  const { data: clients = [] } = clientsQuery;
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const refresh = () => qc.invalidateQueries({ queryKey: ["projects"] });
@@ -54,8 +57,10 @@ function Page() {
           <FormDialog editing={editing} clients={clients} onSubmit={(p: any) => saveMut.mutate(p)} saving={saveMut.isPending} />
         </Dialog>
       } />
+      {clientsQuery.error && <ErrorCard error={clientsQuery.error} onRetry={() => clientsQuery.refetch()} />}
       <div className="rounded-xl border bg-card">
         {isLoading ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
+          : error ? <ErrorCard error={error} onRetry={() => refetch()} />
           : data.length === 0 ? <EmptyState title="Sem projetos" />
           : <Table>
             <TableHeader><TableRow>

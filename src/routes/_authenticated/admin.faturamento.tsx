@@ -8,6 +8,7 @@ import { toCSV, downloadCSV, participantsLabel } from "@/lib/csv";
 import { PageHeader } from "@/components/admin/page-header";
 import { FINANCEIRO_TABS } from "@/components/admin/hub-tabs";
 import { EmptyState } from "@/components/admin/empty-state";
+import { ErrorCard } from "@/components/admin/query-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,9 +53,13 @@ function Page() {
   const remove = useServerFn(deleteRevenue);
   const qc = useQueryClient();
 
-  const { data = [], isLoading } = useQuery({ queryKey: ["revenues"], queryFn: () => list() });
-  const { data: clients = [] } = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
-  const { data: projects = [] } = useQuery({ queryKey: ["projects"], queryFn: () => projectsFn() });
+  const revenuesQuery = useQuery({ queryKey: ["revenues"], queryFn: () => list() });
+  const clientsQuery = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
+  const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: () => projectsFn() });
+  const data = revenuesQuery.data ?? [];
+  const isLoading = revenuesQuery.isLoading;
+  const clients = clientsQuery.data ?? [];
+  const projects = projectsQuery.data ?? [];
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Row | null>(null);
@@ -129,11 +134,16 @@ function Page() {
         </div>
       </div>
 
+      {clientsQuery.error && <ErrorCard error={clientsQuery.error} onRetry={() => clientsQuery.refetch()} />}
+      {projectsQuery.error && <ErrorCard error={projectsQuery.error} onRetry={() => projectsQuery.refetch()} />}
+
       <div className="rounded-xl border bg-card">
-        {isLoading ? (
+        {revenuesQuery.error ? (
+          <ErrorCard error={revenuesQuery.error} onRetry={() => revenuesQuery.refetch()} />
+        ) : isLoading ? (
           <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
         ) : filtered.length === 0 ? (
-          <EmptyState title="Sem lançamentos" description="Crie o primeiro faturamento." />
+          <EmptyState title="Nenhum lançamento encontrado" description="Crie o primeiro faturamento." />
         ) : (
           <Table>
             <TableHeader>

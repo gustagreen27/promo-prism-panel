@@ -31,6 +31,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { ErrorCard } from "@/components/admin/query-state";
 import { Copy, ExternalLink, Trash2, BarChart3, Pencil, Play, Pause } from "lucide-react";
 import { IntentScoreBadge, StatusBadge } from "@/components/campaign-badges";
 import {
@@ -48,7 +49,7 @@ export const Route = createFileRoute("/_authenticated/admin/campanhas")({
 
 function CampaignsList() {
   const list = useServerFn(listCampaigns);
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["campaigns"],
     queryFn: () => list(),
   });
@@ -78,6 +79,8 @@ function CampaignsList() {
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Carregando...</p>
+      ) : error ? (
+        <ErrorCard error={error} onRetry={() => refetch()} />
       ) : !filtered || filtered.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">

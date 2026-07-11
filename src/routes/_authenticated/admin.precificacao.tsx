@@ -16,6 +16,7 @@ import {
   adminListWorkspacesWithBalance, adminSetCustomPrice, adminSetCustomMinimumMessages,
 } from "@/lib/billing.functions";
 import { DollarSign, Building2, Calculator, Sparkles } from "lucide-react";
+import { ErrorCard } from "@/components/admin/query-state";
 
 export const Route = createFileRoute("/_authenticated/admin/precificacao")({
   head: () => ({ meta: [{ title: "Precificação — Admin" }] }),
@@ -36,8 +37,10 @@ function Page() {
   const setMin = useServerFn(adminSetCustomMinimumMessages);
   const qc = useQueryClient();
 
-  const { data: settings } = useQuery({ queryKey: ["billing-settings"], queryFn: () => getSettings() });
-  const { data: workspaces = [] } = useQuery({ queryKey: ["admin-ws-balance"], queryFn: () => listWs() });
+  const settingsQuery = useQuery({ queryKey: ["billing-settings"], queryFn: () => getSettings() });
+  const wsQuery = useQuery({ queryKey: ["admin-ws-balance"], queryFn: () => listWs() });
+  const settings = settingsQuery.data;
+  const workspaces = wsQuery.data ?? [];
 
   // Global defaults form
   const [defPrice, setDefPrice] = useState("0,23");
@@ -80,6 +83,8 @@ function Page() {
         title="Precificação"
         description="Preço padrão por disparo e overrides por workspace"
       />
+
+      {settingsQuery.error && <ErrorCard error={settingsQuery.error} onRetry={() => settingsQuery.refetch()} />}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <Card>
@@ -136,6 +141,13 @@ function Page() {
           <CardDescription>Deixe em branco para usar o preço global.</CardDescription>
         </CardHeader>
         <CardContent>
+          {wsQuery.error ? (
+            <ErrorCard error={wsQuery.error} onRetry={() => wsQuery.refetch()} />
+          ) : wsQuery.isLoading ? (
+            <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
+          ) : workspaces.length === 0 ? (
+            <div className="p-6 text-sm text-muted-foreground">Nenhum workspace encontrado.</div>
+          ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -167,6 +179,7 @@ function Page() {
               ))}
             </TableBody>
           </Table>
+          )}
         </CardContent>
       </Card>
     </div>

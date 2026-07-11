@@ -32,6 +32,7 @@ import { PeriodFilter } from "@/components/admin/period-filter";
 import { ParticipantsFilter, matchesParticipants, type Participant } from "@/components/participants";
 import { PERIOD_OPTIONS, getPeriodRange, type PeriodKey } from "@/lib/period";
 import { fmtNum, fmtPct, formatBRDateTime } from "@/lib/report-utils";
+import { ErrorCard } from "@/components/admin/query-state";
 
 type MetricType = "all" | "clicks" | "unique" | "ctr";
 
@@ -53,7 +54,7 @@ function AnalyticsPage() {
 
   const { start: from, end: to } = getPeriodRange(period);
 
-  const { data: campaigns } = useQuery({
+  const campaignsQuery = useQuery({
     queryKey: ["analytics-campaigns"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -64,13 +65,14 @@ function AnalyticsPage() {
       return data ?? [];
     },
   });
+  const { data: campaigns, error: campaignsError, refetch: refetchCampaigns } = campaignsQuery;
 
   const allowedCampaignIds = useMemo(() => {
     if (partFilter.length === 0) return null;
     return new Set((campaigns ?? []).filter((c: any) => matchesParticipants(c, partFilter)).map((c) => c.id));
   }, [campaigns, partFilter]);
 
-  const { data: clicks, isLoading } = useQuery({
+  const clicksQuery = useQuery({
     queryKey: ["analytics-clicks", period, campaignId, partFilter.join(",")],
     queryFn: async () => {
       let q = supabase
@@ -87,6 +89,7 @@ function AnalyticsPage() {
       return allowedCampaignIds ? list.filter((r) => allowedCampaignIds.has(r.campaign_id)) : list;
     },
   });
+  const { data: clicks, isLoading, error: clicksError, refetch: refetchClicks } = clicksQuery;
 
   const stats = useMemo(() => {
     const list = clicks ?? [];
@@ -227,7 +230,10 @@ function AnalyticsPage() {
         </div>
 
         <div className="px-6 py-5 space-y-6">
-          {isLoading ? (
+          {campaignsError && <ErrorCard error={campaignsError} onRetry={() => refetchCampaigns()} />}
+          {clicksError ? (
+            <ErrorCard error={clicksError} onRetry={() => refetchClicks()} />
+          ) : isLoading ? (
             <div className="text-muted-foreground text-sm">Carregando…</div>
           ) : stats.series.length === 0 ? (
             <div className="border rounded-lg p-10 text-center text-muted-foreground text-sm">

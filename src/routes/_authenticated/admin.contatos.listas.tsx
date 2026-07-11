@@ -7,6 +7,7 @@ import { Plus, Trash2, ListPlus, Search, Upload, ClipboardPaste, Users, RefreshC
 import { PageHeader } from "@/components/admin/page-header";
 import { CLIENTES_TABS, HubTabs } from "@/components/admin/hub-tabs";
 import { EmptyState } from "@/components/admin/empty-state";
+import { ErrorCard } from "@/components/admin/query-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,14 +37,18 @@ function Page() {
   const clientsFn = useServerFn(listClients);
   const resync = useServerFn(resyncList);
   const qc = useQueryClient();
-  const { data: lists = [] } = useQuery({ queryKey: ["lists"], queryFn: () => listFn() });
-  const { data: contacts = [] } = useQuery({ queryKey: ["contacts"], queryFn: () => contactsFn() });
-  const { data: clients = [] } = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
+  const listsQuery = useQuery({ queryKey: ["lists"], queryFn: () => listFn() });
+  const { data: lists = [] } = listsQuery;
+  const contactsQuery = useQuery({ queryKey: ["contacts"], queryFn: () => contactsFn() });
+  const { data: contacts = [] } = contactsQuery;
+  const clientsQuery = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
+  const { data: clients = [] } = clientsQuery;
   const [open, setOpen] = useState(false);
   const [addOpen, setAddOpen] = useState<string | null>(null);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [importResult, setImportResult] = useState<any | null>(null);
-  const { data: members = [] } = useQuery({ enabled: !!selectedListId, queryKey: ["list-items", selectedListId], queryFn: () => itemsFn({ data: { list_id: selectedListId! } }) });
+  const membersQuery = useQuery({ enabled: !!selectedListId, queryKey: ["list-items", selectedListId], queryFn: () => itemsFn({ data: { list_id: selectedListId! } }) });
+  const { data: members = [] } = membersQuery;
 
   const refresh = () => { qc.invalidateQueries({ queryKey: ["lists"] }); qc.invalidateQueries({ queryKey: ["list-items"] }); };
   const save = useMutation({ mutationFn: (p: any) => create({ data: p }), onSuccess: () => { toast.success("Lista criada"); setOpen(false); refresh(); } });
@@ -88,9 +93,13 @@ function Page() {
       <div className="mb-4 rounded-lg border bg-muted/40 p-3 text-sm">
         📣 Fluxo do disparo: <b>Criar lista</b> → <b>Importar leads</b> (colar, CSV ou selecionar contatos) → em <b>/admin/disparos</b> escolher esta lista na etapa <i>Contatos</i>.
       </div>
+      {(contactsQuery.error || clientsQuery.error) && (
+        <ErrorCard error={contactsQuery.error ?? clientsQuery.error} onRetry={() => { contactsQuery.refetch(); clientsQuery.refetch(); }} />
+      )}
       <div className="grid gap-4 md:grid-cols-[320px_1fr]">
         <div className="rounded-xl border bg-card">
-          {lists.length === 0 ? <EmptyState title="Nenhuma lista" />
+          {listsQuery.error ? <ErrorCard error={listsQuery.error} onRetry={() => listsQuery.refetch()} />
+          : lists.length === 0 ? <EmptyState title="Nenhuma lista" />
           : <div className="divide-y">
             {lists.map((l: any) => (
               <div key={l.id} className={`flex items-center justify-between p-3 ${selectedListId === l.id ? "bg-muted" : ""}`}>
@@ -115,7 +124,8 @@ function Page() {
                   <ListPlus className="mr-2 h-4 w-4" />Importar leads
                 </Button>
               </div>
-              {members.length === 0 ? <EmptyState title="Lista vazia" description="Importe leads existentes, cole telefones ou envie um CSV." />
+              {membersQuery.error ? <ErrorCard error={membersQuery.error} onRetry={() => membersQuery.refetch()} />
+              : members.length === 0 ? <EmptyState title="Lista vazia" description="Importe leads existentes, cole telefones ou envie um CSV." />
               : <Table>
                 <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Telefone</TableHead><TableHead>Opt-in</TableHead></TableRow></TableHeader>
                 <TableBody>

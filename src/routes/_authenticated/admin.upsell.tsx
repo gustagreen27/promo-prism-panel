@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, Pencil, ExternalLink } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
+import { ErrorCard } from "@/components/admin/query-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,9 +34,13 @@ function Page() {
   const clientsFn = useServerFn(listClients);
   const projectsFn = useServerFn(listProjects);
   const qc = useQueryClient();
-  const { data = [], isLoading } = useQuery({ queryKey: ["upsells"], queryFn: () => list() });
-  const { data: clients = [] } = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
-  const { data: projects = [] } = useQuery({ queryKey: ["projects"], queryFn: () => projectsFn() });
+  const upsellsQuery = useQuery({ queryKey: ["upsells"], queryFn: () => list() });
+  const clientsQuery = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
+  const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: () => projectsFn() });
+  const data = upsellsQuery.data ?? [];
+  const isLoading = upsellsQuery.isLoading;
+  const clients = clientsQuery.data ?? [];
+  const projects = projectsQuery.data ?? [];
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const refresh = () => qc.invalidateQueries({ queryKey: ["upsells"] });
@@ -45,7 +50,8 @@ function Page() {
     onError: (e: any) => toast.error(e?.message ?? "Erro"),
   });
   const delMut = useMutation({ mutationFn: (id: string) => remove({ data: { id } }),
-    onSuccess: () => { toast.success("Removido"); refresh(); } });
+    onSuccess: () => { toast.success("Removido"); refresh(); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao remover") });
 
   const totalRevenue = data.reduce((s: number, r: any) => s + Number(r.revenue ?? 0), 0);
   const totalClicks = data.reduce((s: number, r: any) => s + Number(r.clicks ?? 0), 0);
@@ -64,9 +70,13 @@ function Page() {
         <Stat label="Cliques" value={formatNumber(totalClicks)} />
         <Stat label="Conversões" value={`${formatNumber(totalConv)} (${formatPercent(totalClicks ? (totalConv / totalClicks) * 100 : null)})`} />
       </div>
+      {clientsQuery.error && <ErrorCard error={clientsQuery.error} onRetry={() => clientsQuery.refetch()} />}
+      {projectsQuery.error && <ErrorCard error={projectsQuery.error} onRetry={() => projectsQuery.refetch()} />}
+
       <div className="rounded-xl border bg-card">
-        {isLoading ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
-          : data.length === 0 ? <EmptyState title="Sem campanhas" />
+        {upsellsQuery.error ? <ErrorCard error={upsellsQuery.error} onRetry={() => upsellsQuery.refetch()} />
+          : isLoading ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
+          : data.length === 0 ? <EmptyState title="Nenhuma campanha encontrada" />
           : <Table>
             <TableHeader><TableRow>
               <TableHead>Nome</TableHead><TableHead>Cliente</TableHead>

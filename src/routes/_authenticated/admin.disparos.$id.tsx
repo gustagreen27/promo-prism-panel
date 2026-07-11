@@ -9,6 +9,7 @@ import {
   Users, Send, CheckCircle2, Eye, MessageSquare, Ban, TrendingUp, Clock, AlertTriangle, Activity,
 } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
+import { ErrorCard } from "@/components/admin/query-state";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,12 +61,13 @@ function Page() {
   const getPrev = useServerFn(getRecipientPreviews);
   const [previewSearch, setPreviewSearch] = useState("");
 
-  const { data: camp } = useQuery({
+  const campQ = useQuery({
     queryKey: ["wa-camp", id],
     queryFn: () => getCamp({ data: { id } }),
   });
+  const { data: camp } = campQ;
 
-  const { data: prog } = useQuery({
+  const progQ = useQuery({
     queryKey: ["wa-camp-progress", id],
     queryFn: () => getProg({ data: { id } }),
     refetchInterval: (q) => {
@@ -73,33 +75,39 @@ function Page() {
       return s === "running" || s === "scheduled" ? 3000 : false;
     },
   });
+  const { data: prog } = progQ;
 
-  const { data: timeline } = useQuery({
+  const timelineQ = useQuery({
     queryKey: ["wa-camp-timeline", id],
     queryFn: () => getTL({ data: { id, limit: 200 } }),
     refetchInterval: 10000,
   });
+  const { data: timeline } = timelineQ;
 
-  const { data: recipients } = useQuery({
+  const recipientsQ = useQuery({
     queryKey: ["wa-camp-recipients", id],
     queryFn: () => getRec({ data: { id, limit: 500 } }),
     refetchInterval: 8000,
   });
+  const { data: recipients } = recipientsQ;
 
-  const { data: errors } = useQuery({
+  const errorsQ = useQuery({
     queryKey: ["wa-camp-errors", id],
     queryFn: () => getErrs({ data: { id } }),
   });
+  const { data: errors } = errorsQ;
 
-  const { data: report } = useQuery({
+  const reportQ = useQuery({
     queryKey: ["wa-camp-report", id],
     queryFn: () => getReport({ data: { id } }),
   });
+  const { data: report } = reportQ;
 
-  const { data: previews } = useQuery({
+  const previewsQ = useQuery({
     queryKey: ["wa-camp-previews", id],
     queryFn: () => getPrev({ data: { id, limit: 200 } }),
   });
+  const { data: previews } = previewsQ;
 
   const startFn = useServerFn(startCampaignAsync);
   const pauseFn = useServerFn(pauseCampaignAsync);
@@ -212,6 +220,19 @@ function Page() {
     URL.revokeObjectURL(url);
   };
 
+  if (campQ.error) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Campanha" actions={
+          <Button asChild variant="outline" size="sm">
+            <Link to="/admin/disparos"><ArrowLeft className="mr-2 h-4 w-4" />Voltar</Link>
+          </Button>
+        } />
+        <ErrorCard error={campQ.error} onRetry={() => campQ.refetch()} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -259,6 +280,7 @@ function Page() {
       />
 
       {/* Progress hero */}
+      {progQ.error && <ErrorCard error={progQ.error} onRetry={() => progQ.refetch()} />}
       <Card>
         <CardContent className="pt-6">
           <div className="flex items-baseline justify-between mb-2">
@@ -342,6 +364,7 @@ function Page() {
             <div className="text-sm text-muted-foreground">{recipients?.length ?? 0} destinatários</div>
             <Button size="sm" variant="outline" onClick={exportCsv}><Download className="mr-2 h-4 w-4" />Exportar CSV</Button>
           </div>
+          {recipientsQ.error && <ErrorCard error={recipientsQ.error} onRetry={() => recipientsQ.refetch()} />}
           <Card>
             <CardContent className="p-0 overflow-auto max-h-[600px]">
               <table className="w-full text-sm">
@@ -375,7 +398,8 @@ function Page() {
         </TabsContent>
 
         <TabsContent value="previews" className="space-y-3">
-          {(() => {
+          {previewsQ.error && <ErrorCard error={previewsQ.error} onRetry={() => previewsQ.refetch()} />}
+          {!previewsQ.error && (() => {
             const all = (previews as any)?.previews ?? [];
             const q = previewSearch.trim().toLowerCase();
             const filtered = q
@@ -454,6 +478,7 @@ function Page() {
 
 
         <TabsContent value="timeline" className="space-y-3">
+          {timelineQ.error && <ErrorCard error={timelineQ.error} onRetry={() => timelineQ.refetch()} />}
           <Card>
             <CardContent className="p-4 space-y-3 max-h-[600px] overflow-auto">
               {(timeline ?? []).map((ev: any) => (
@@ -471,6 +496,7 @@ function Page() {
         </TabsContent>
 
         <TabsContent value="errors" className="space-y-3">
+          {errorsQ.error && <ErrorCard error={errorsQ.error} onRetry={() => errorsQ.refetch()} />}
           <Card>
             <CardContent className="p-0 overflow-auto">
               <table className="w-full text-sm">
@@ -505,6 +531,7 @@ function Page() {
         </TabsContent>
 
         <TabsContent value="report" className="space-y-3">
+          {reportQ.error && <ErrorCard error={reportQ.error} onRetry={() => reportQ.refetch()} />}
           {(report as any)?.final_report ? (
             <FinalReport report={(report as any).final_report} onPrint={() => window.print()} onExport={exportCsv} />
           ) : (

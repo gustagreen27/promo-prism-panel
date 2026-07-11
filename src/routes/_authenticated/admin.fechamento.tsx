@@ -7,6 +7,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { FINANCEIRO_TABS } from "@/components/admin/hub-tabs";
 import { EmptyState } from "@/components/admin/empty-state";
+import { ErrorCard } from "@/components/admin/query-state";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -29,7 +30,9 @@ function Page() {
   const gen = useServerFn(generateClosing);
   const remove = useServerFn(deleteClosing);
   const qc = useQueryClient();
-  const { data = [], isLoading } = useQuery({ queryKey: ["closings"], queryFn: () => list() });
+  const closingsQuery = useQuery({ queryKey: ["closings"], queryFn: () => list() });
+  const data = closingsQuery.data ?? [];
+  const isLoading = closingsQuery.isLoading;
   const [open, setOpen] = useState(false);
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -41,7 +44,8 @@ function Page() {
     onError: (e: any) => toast.error(e?.message ?? "Erro"),
   });
   const delMut = useMutation({ mutationFn: (id: string) => remove({ data: { id } }),
-    onSuccess: () => { toast.success("Removido"); qc.invalidateQueries({ queryKey: ["closings"] }); } });
+    onSuccess: () => { toast.success("Removido"); qc.invalidateQueries({ queryKey: ["closings"] }); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao remover") });
 
   return (
     <>
@@ -64,8 +68,9 @@ function Page() {
         </Dialog>
       } />
       <div className="rounded-xl border bg-card">
-        {isLoading ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
-          : data.length === 0 ? <EmptyState title="Sem fechamentos" description="Gere o primeiro fechamento mensal." />
+        {closingsQuery.error ? <ErrorCard error={closingsQuery.error} onRetry={() => closingsQuery.refetch()} />
+          : isLoading ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
+          : data.length === 0 ? <EmptyState title="Nenhum fechamento encontrado" description="Gere o primeiro fechamento mensal." />
           : <Table>
             <TableHeader><TableRow>
               <TableHead>Período</TableHead><TableHead>Receita</TableHead><TableHead>Custo</TableHead>

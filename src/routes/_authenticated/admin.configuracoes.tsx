@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { listSettings, upsertSetting } from "@/lib/settings.functions";
 import { getBillingSettings, adminUpdateBillingSettings } from "@/lib/billing.functions";
+import { ErrorCard } from "@/components/admin/query-state";
 
 const searchSchema = z.object({
   tab: fallback(z.string(), "geral").default("geral"),
@@ -29,7 +30,8 @@ function Page() {
   const list = useServerFn(listSettings);
   const save = useServerFn(upsertSetting);
   const qc = useQueryClient();
-  const { data = [] } = useQuery({ queryKey: ["settings"], queryFn: () => list() });
+  const settingsQuery = useQuery({ queryKey: ["settings"], queryFn: () => list() });
+  const { data = [], error: settingsError, refetch: refetchSettings } = settingsQuery;
 
   const [goal, setGoal] = useState("");
   const [costPerMsg, setCostPerMsg] = useState("");
@@ -54,6 +56,7 @@ function Page() {
 
       {tab === "geral" && (
         <div className="space-y-6">
+          {settingsError && <ErrorCard error={settingsError} onRetry={() => refetchSettings()} />}
           <section className="rounded-xl border bg-card p-5">
             <h3 className="text-sm font-semibold">Meta mensal de faturamento</h3>
             <p className="text-xs text-muted-foreground">Usada no dashboard para a barra de progresso.</p>
@@ -98,7 +101,8 @@ function BillingSection() {
   const getBilling = useServerFn(getBillingSettings);
   const updateBilling = useServerFn(adminUpdateBillingSettings);
   const qc = useQueryClient();
-  const { data } = useQuery({ queryKey: ["billing-settings"], queryFn: () => getBilling() });
+  const billingQuery = useQuery({ queryKey: ["billing-settings"], queryFn: () => getBilling() });
+  const { data, error: billingError, refetch: refetchBilling } = billingQuery;
 
   const [price, setPrice] = useState("");
   const [minimum, setMinimum] = useState("");
@@ -128,6 +132,10 @@ function BillingSection() {
   const minDepCents = parse(minimum || "0");
   const requiredCents = Math.max(minDepCents, priceCents * minMsgN);
   const fmtBRL = (c: number) => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  if (billingError) {
+    return <ErrorCard error={billingError} onRetry={() => refetchBilling()} />;
+  }
 
   return (
     <section className="rounded-xl border bg-card p-5">

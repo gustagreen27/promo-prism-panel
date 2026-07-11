@@ -7,6 +7,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { FINANCEIRO_TABS } from "@/components/admin/hub-tabs";
 import { EmptyState } from "@/components/admin/empty-state";
+import { ErrorCard } from "@/components/admin/query-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,7 +29,9 @@ function Page() {
   const create = useServerFn(createStockEntry);
   const remove = useServerFn(deleteStockEntry);
   const qc = useQueryClient();
-  const { data = [], isLoading } = useQuery({ queryKey: ["stock"], queryFn: () => list() });
+  const stockQuery = useQuery({ queryKey: ["stock"], queryFn: () => list() });
+  const data = stockQuery.data ?? [];
+  const isLoading = stockQuery.isLoading;
   const [open, setOpen] = useState(false);
   const refresh = () => qc.invalidateQueries({ queryKey: ["stock"] });
   const saveMut = useMutation({
@@ -37,7 +40,8 @@ function Page() {
     onError: (e: any) => toast.error(e?.message ?? "Erro"),
   });
   const delMut = useMutation({ mutationFn: (id: string) => remove({ data: { id } }),
-    onSuccess: () => { toast.success("Removido"); refresh(); } });
+    onSuccess: () => { toast.success("Removido"); refresh(); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao remover") });
 
   const saldo = data.reduce((s: number, r: any) =>
     s + (r.type === "entrada" ? Number(r.quantity) : -Number(r.quantity)), 0);
@@ -63,8 +67,9 @@ function Page() {
         </div>
       </div>
       <div className="rounded-xl border bg-card">
-        {isLoading ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
-          : data.length === 0 ? <EmptyState title="Sem lançamentos" />
+        {stockQuery.error ? <ErrorCard error={stockQuery.error} onRetry={() => stockQuery.refetch()} />
+          : isLoading ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
+          : data.length === 0 ? <EmptyState title="Nenhum lançamento encontrado" />
           : <Table>
             <TableHeader><TableRow>
               <TableHead>Data</TableHead><TableHead>Tipo</TableHead>
