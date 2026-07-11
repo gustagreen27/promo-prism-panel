@@ -229,6 +229,15 @@ export const startClientCampaign = createServerFn({ method: 'POST' })
       .eq('id', data.campaign_id)
       .maybeSingle()
     if (!c) throw new Error('Campanha não encontrada')
+    const isAdmin = await isAdminUser(supabase, userId)
+    if (isAdmin) {
+      await supabase
+        .from('wa_campaigns')
+        .update({ status: 'queued', approval_status: 'approved', approved_at: new Date().toISOString(), approved_by: userId, reservation_id: null })
+        .eq('id', c.id)
+      return { status: 'queued' as const }
+    }
+
     await assertWorkspaceMember(supabase, userId, c.workspace_id)
     await assertWorkspaceNotBlocked(supabase, c.workspace_id)
 
