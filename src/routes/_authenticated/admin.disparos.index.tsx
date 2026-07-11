@@ -154,6 +154,20 @@ function ListView({ onNew }: { onNew: () => void }) {
     onSuccess: () => { toast.message("Campanha cancelada"); qc.invalidateQueries({ queryKey: ["wa-campaigns"] }); },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao cancelar"),
   });
+  const scheduleMut = useMutation({
+    mutationFn: (p: { id: string; scheduled_at: string }) => scheduleFn({ data: p }),
+    onSuccess: () => {
+      toast.success("Campanha reagendada");
+      qc.invalidateQueries({ queryKey: ["wa-campaigns"] });
+      setReschedule(null);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao reagendar"),
+  });
+  const unscheduleMut = useMutation({
+    mutationFn: (id: string) => unscheduleFn({ data: { id } }),
+    onSuccess: () => { toast.message("Agendamento cancelado — voltou para rascunho"); qc.invalidateQueries({ queryKey: ["wa-campaigns"] }); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao cancelar agendamento"),
+  });
 
   return (
     <div className="space-y-6">
