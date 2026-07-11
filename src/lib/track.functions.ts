@@ -262,6 +262,7 @@ export const trackClick = createServerFn({ method: "POST" })
       .from("campaign_clicks")
       .insert({
         campaign_id: campaign.id,
+        workspace_id: (campaign as { workspace_id?: string | null }).workspace_id ?? null,
         ip,
         country: (geo?.country as string) ?? null,
         country_code: (geo?.countryCode as string) ?? null,
