@@ -67,7 +67,13 @@ export function ContactsStep({
     if (value?.list_id === list.id) { onChange(null); return; }
     try {
       const p = await fnPreview({ data: { workspace_id: workspaceId, list_id: list.id } });
-      onChange({ list_id: list.id, list_name: list.name, total: p.total, valid: p.valid });
+      onChange({
+        list_id: list.id,
+        list_name: list.name,
+        total: p.total,
+        valid: p.valid,
+        contacts: (p as any).sample ?? [],
+      });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao carregar lista");
     }
