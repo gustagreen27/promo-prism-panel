@@ -96,9 +96,13 @@ function ListView({ onNew }: { onNew: () => void }) {
   const startFn = useServerFn(startWaCampaign);
   const pauseFn = useServerFn(pauseWaCampaign);
   const cancelFn = useServerFn(cancelWaCampaign);
+  const scheduleFn = useServerFn(scheduleWaCampaign);
+  const unscheduleFn = useServerFn(unscheduleWaCampaign);
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<StatusFilter>("all");
+  const [reschedule, setReschedule] = useState<{ id: string; name: string; scheduled_at?: string | null } | null>(null);
+  const [rescheduleAt, setRescheduleAt] = useState<string>("");
 
   const campaignsQ = useQuery({
     queryKey: ["wa-campaigns", "all"],
