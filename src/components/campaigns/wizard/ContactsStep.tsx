@@ -197,7 +197,23 @@ export function ContactsStep({
             <ContactPicker
               workspaceId={workspaceId}
               value={value}
-              onChange={(v) => onChange(v as ContactSelValue)}
+              onChange={async (v) => {
+                // Enrich with a fresh preview so the aside shows contacts + accurate valid count.
+                try {
+                  const p = await fnPreview({ data: { workspace_id: workspaceId, list_id: v.list_id } });
+                  onChange({
+                    list_id: v.list_id,
+                    list_name: v.list_name,
+                    total: p.total,
+                    valid: p.valid,
+                    contacts: (p as any).sample ?? [],
+                  });
+                } catch {
+                  onChange(v as ContactSelValue);
+                }
+                // Refresh saved-lists counts so the left card no longer shows "0 contatos".
+                refreshLists();
+              }}
             />
           </div>
         )}
