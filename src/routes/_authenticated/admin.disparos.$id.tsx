@@ -22,12 +22,22 @@ import {
   getCampaignFinalReport, getCampaignErrors, getRecipientPreviews,
   startCampaignAsync, pauseCampaignAsync, resumeCampaignAsync, cancelCampaignAsync,
   retryFailedRecipients, duplicateCampaign, preflightCampaign, unstickCampaignAsync,
+  swapCampaignRouteAndResume,
 } from "@/lib/wa-campaign-runner.functions";
+import { listWorkspaceConnections } from "@/lib/wa-connections.functions";
+import { listTemplates } from "@/lib/whatsapp-templates.functions";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
 import { renderMapping, fillMetaTemplate, buildContext } from "@/lib/wa-variables";
 import { formatCallingCode, formatPhoneDisplay, summarizeCallingCodes } from "@/lib/phone-country";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Shuffle } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/disparos/$id")({
   head: () => ({ meta: [{ title: "Campanha WhatsApp" }] }),
