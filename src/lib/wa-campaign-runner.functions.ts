@@ -248,6 +248,93 @@ export const retryFailedRecipients = createServerFn({ method: "POST" })
     return { ok: true, count: updated?.length ?? 0 };
   });
 
+/**
+ * Destrava campanha presa: libera lease, reenfileira "processing" órfãos
+ * (sem meta_message_id) para "pending", retoma status quando estiver
+ * paused/error e dispara um tick imediato. Usa apenas dados reais.
+ */
+export const unstickCampaignAsync = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => idSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabase } = context;
+
+    const { data: camp, error: campErr } = await supabase
+      .from("wa_campaigns")
+      .select("id,status,worker_lease_until,total_recipients")
+      .eq("id", data.id)
+      .single();
+    if (campErr) throw campErr;
+    if (!camp) throw new Error("Campanha não encontrada");
+
+    // 1) Libera lease
+    await supabase
+      .from("wa_campaigns")
+      .update({ worker_lease_id: null, worker_lease_until: null })
+      .eq("id", data.id);
+
+    // 2) Reseta "processing" sem confirmação para "pending"
+    const { data: resetRows, error: resetErr } = await supabase
+      .from("campaign_recipients")
+      .update({ status: "pending", failed_reason: null, error_code: null })
+      .eq("campaign_id", data.id)
+      .eq("status", "processing")
+      .is("meta_message_id", null)
+      .select("id");
+    if (resetErr) throw resetErr;
+    const reenqueued = resetRows?.length ?? 0;
+
+    // 3) Conta pendentes reais e decide status
+    const { count: pendingCount } = await supabase
+      .from("campaign_recipients")
+      .select("id", { count: "exact", head: true })
+      .eq("campaign_id", data.id)
+      .eq("status", "pending");
+
+    let newStatus: string | null = null;
+    if ((pendingCount ?? 0) > 0 && ["paused", "error", "completed", "partial"].includes(camp.status as string)) {
+      newStatus = "running";
+      await supabase
+        .from("wa_campaigns")
+        .update({
+          status: "running",
+          pause_reason: null,
+          paused_at: null,
+          finished_at: null,
+          last_error: null,
+          resumed_at: new Date().toISOString(),
+        })
+        .eq("id", data.id);
+    }
+
+    // 4) Recalcula progresso a partir dos dados reais
+    await supabase.rpc("wa_recalc_campaign_progress" as any, { _campaign_id: data.id });
+
+    await logEvent(
+      supabase,
+      data.id,
+      "unstuck",
+      `Campanha destravada (reenfileirados: ${reenqueued}, pendentes: ${pendingCount ?? 0}${newStatus ? `, status → ${newStatus}` : ""})`,
+      context.userId,
+      { reenqueued, pending: pendingCount ?? 0, new_status: newStatus },
+    );
+
+    // 5) Dispara tick imediato (fire and forget)
+    try {
+      const url = new URL(
+        "/api/public/whatsapp/queue-tick",
+        process.env.SUPABASE_URL?.replace(".supabase.co", ".lovable.app") ??
+          "https://project--9c7682d6-edcd-4388-a36c-36249d4d6ab8.lovable.app",
+      );
+      fetch(url.toString(), { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).catch(() => {});
+    } catch {}
+
+    return { ok: true, reenqueued, pending: pendingCount ?? 0, status: newStatus ?? camp.status };
+  });
+
+
+
 export const getCampaignProgress = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => idSchema.parse(d))

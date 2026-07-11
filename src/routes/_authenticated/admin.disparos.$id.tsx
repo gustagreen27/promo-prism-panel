@@ -21,7 +21,7 @@ import {
   getCampaignProgress, getCampaignTimeline, getCampaignRecipients,
   getCampaignFinalReport, getCampaignErrors, getRecipientPreviews,
   startCampaignAsync, pauseCampaignAsync, resumeCampaignAsync, cancelCampaignAsync,
-  retryFailedRecipients, duplicateCampaign, preflightCampaign,
+  retryFailedRecipients, duplicateCampaign, preflightCampaign, unstickCampaignAsync,
 } from "@/lib/wa-campaign-runner.functions";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
@@ -119,6 +119,7 @@ function Page() {
   const retryFn = useServerFn(retryFailedRecipients);
   const dupFn = useServerFn(duplicateCampaign);
   const preflight = useServerFn(preflightCampaign);
+  const unstickFn = useServerFn(unstickCampaignAsync);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["wa-camp", id] });
@@ -196,6 +197,16 @@ function Page() {
     dup: useMutation({
       mutationFn: () => dupFn({ data: { id } }),
       onSuccess: (r: any) => { toast.success("Campanha duplicada"); nav({ to: "/admin/disparos/$id", params: { id: r.id } }); },
+    }),
+    unstick: useMutation({
+      mutationFn: () => unstickFn({ data: { id } }),
+      onSuccess: (r: any) => {
+        toast.success(
+          `Destravada · ${r.reenqueued} reenfileirados · ${r.pending} pendentes${r.status ? ` · ${r.status}` : ""}`,
+        );
+        invalidate();
+      },
+      onError: (e: any) => toast.error(e?.message ?? "Erro ao destravar"),
     }),
   };
 
@@ -332,6 +343,12 @@ function Page() {
             {(isFinished || isPaused) && (p.failed ?? 0) > 0 && (
               <Button size="sm" variant="outline" onClick={() => m.retry.mutate()}>
                 <RefreshCw className="mr-2 h-4 w-4" />Reprocessar falhas
+              </Button>
+            )}
+            {(isRunning || isPaused || status === "error") && (
+              <Button size="sm" variant="outline" onClick={() => m.unstick.mutate()} disabled={m.unstick.isPending}>
+                {m.unstick.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                Destravar fila
               </Button>
             )}
             <Button size="sm" variant="outline" onClick={() => m.dup.mutate()}>
