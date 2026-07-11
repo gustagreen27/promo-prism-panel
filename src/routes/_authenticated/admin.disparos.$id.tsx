@@ -199,7 +199,7 @@ function Page() {
   // If the currently-selected template does not belong to the new WABA, clear it.
   useEffect(() => {
     if (!swapOpen || !swapTpl || !swapTplRow) return;
-    if (swapConnWaba && swapTplRow.waba_ref_id && swapTplRow.waba_ref_id !== swapConnWaba) {
+    if (!swapConnWaba || swapTplRow.waba_ref_id !== swapConnWaba) {
       setSwapTpl("");
       setSwapBodyVars({});
       setSwapBtnVars({});
