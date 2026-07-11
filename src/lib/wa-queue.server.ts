@@ -378,8 +378,11 @@ export async function processCampaignTick(
     let sent = 0;
     let failed = 0;
     let lastError: string | null = null;
+    let networkError: string | null = null;
 
-    for (const r of recipients) {
+    const sendOne = async (r: any): Promise<void> => {
+      if (networkError) return; // abort remaining once one call hits a network error
+
       // Opt-out check
       const { data: oo } = await supabaseAdmin
         .from("opt_outs")
@@ -397,7 +400,7 @@ export async function processCampaignTick(
             _qty: 1,
           });
         }
-        continue;
+        return;
       }
 
       const campVars = (camp.template_variables as Record<string, string> | null) || {};
@@ -422,23 +425,18 @@ export async function processCampaignTick(
         responsavel: responsavelRow,
       });
 
-      // Render mapping strings (e.g. "{nome} como você está?") into final text per recipient.
       const renderedVars: Record<string, string> = {};
       for (const [k, v] of Object.entries(mergedVars)) {
         if (k.startsWith("_")) { renderedVars[k] = String(v ?? ""); continue; }
         renderedVars[k] = renderMapping(String(v ?? ""), ctx);
       }
 
-      // Pad any missing numeric template variables so we send exactly the count Meta expects.
-      // Prevents error #132000 ("Number of parameters does not match the expected number of params").
       const tplVars: string[] = Array.isArray((tpl as any).variables)
         ? ((tpl as any).variables as any[]).map((x) => String(x)).filter((x) => /^\d+$/.test(x))
         : [];
       for (const key of tplVars) {
         const cur = renderedVars[key];
-        if (cur == null || cur === "") {
-          renderedVars[key] = " "; // Meta rejects empty strings; single space is accepted
-        }
+        if (cur == null || cur === "") renderedVars[key] = " ";
       }
 
       const headerImageOverride = renderedVars._header_image_url || null;
@@ -452,7 +450,6 @@ export async function processCampaignTick(
       const resolvedHeaderType = headerImageOverride
         ? (isMediaHeader ? tplHeaderType : "image")
         : tpl.header_type;
-      // For media headers, prefer override, then header_media_url, then example URL from Meta raw.
       let resolvedHeaderValue: string | null = headerImageOverride;
       if (!resolvedHeaderValue) {
         if (isMediaHeader) {
@@ -465,12 +462,6 @@ export async function processCampaignTick(
         }
       }
 
-      // Monta componentes de botão URL para cada botão dinâmico do template.
-      // Fontes do mapeamento (em ordem):
-      //   camp.button_url_mapping  → coluna { "<n>" | "<btnIdx>": "curso-{slug}" }
-      //   camp.template_variables._button_url  → mesmo formato (fallback)
-      //   camp.template_variables._button_url_param + _button_index (legado, botão único)
-      //   btn.example[0] do próprio template (auto-detect)
       const btnMapRaw =
         ((camp as any).button_url_mapping as Record<string, string> | null | undefined) ??
         (renderedVars._button_url as unknown as Record<string, string> | undefined) ??
@@ -481,10 +472,9 @@ export async function processCampaignTick(
       tplButtons.forEach((b: any, idx: number) => {
         if (String(b?.type).toUpperCase() !== "URL") return;
         const url = typeof b?.url === "string" ? b.url : "";
-        if (!url.includes("{{")) return; // botão com URL fixa: não envia parameters
+        if (!url.includes("{{")) return;
         const urlVarNums = [...url.matchAll(/\{\{(\d+)\}\}/g)].map((m) => Number(m[1]));
         const firstVarKey = urlVarNums.length ? String(urlVarNums[0]) : "1";
-        // Legado: _button_url_param aplica ao índice em _button_index (se bater com este botão).
         const legacyForThisBtn =
           legacyButtonUrlParam && legacyButtonIndex === idx ? legacyButtonUrlParam : null;
         const mappingSrc =
@@ -501,27 +491,10 @@ export async function processCampaignTick(
         dynButtons.push({ index: idx, urlParam: value });
       });
 
-      // Log sanitizado (sem tokens) para diagnóstico.
-      console.log("[wa-send] payload", {
-        recipient: r.phone.replace(/\D/g, ""),
-        template: tpl.name,
-        componentTypes: [
-          ...(resolvedHeaderValue ? ["header"] : []),
-          "body",
-          ...dynButtons.map(() => "button"),
-        ],
-        buttons: dynButtons.map((b) => ({
-          index: String(b.index),
-          sub_type: "url",
-          hasParameter: b.urlParam.length > 0,
-        })),
-      });
-
       if (missingButtons.length && !dynButtons.length) {
         console.error(
           `[wa-send] Payload bloqueado antes do envio para ${r.phone}: ${missingButtons.join(", ")}`,
         );
-        // Marca esta mensagem como falha determinística — não faz sentido chamar a Meta.
         await supabaseAdmin
           .from("campaign_recipients")
           .update({
@@ -532,9 +505,8 @@ export async function processCampaignTick(
           .eq("id", r.id);
         failed++;
         lastError = `Parâmetro do botão ausente: ${missingButtons.join(", ")}`;
-        continue;
+        return;
       }
-
 
       const result = await sendTemplateMessage({
         phoneNumberId: conn.phone_number_id!,
@@ -549,16 +521,11 @@ export async function processCampaignTick(
         buttons: dynButtons,
       });
 
-
       const attempts = (r.attempt ?? 0) + 1;
       if (result.ok) {
-        // Só considera "accepted" quando a Meta retornou wamid + message_status="accepted".
-        // Se vier wamid mas sem message_status, marcamos "sent" (id existe, status desconhecido).
-        // Sem wamid nunca chega aqui (result.ok=false).
         const metaStatus = (result.messageStatus || "").toLowerCase();
         const wamid = result.wamid;
         if (!wamid) {
-          // Blindagem extra: sem wamid não é envio confirmado.
           failed++;
           lastError = "Meta não retornou wamid";
           await supabaseAdmin
@@ -576,7 +543,7 @@ export async function processCampaignTick(
             http_status: (result as any).httpStatus,
             raw: result.raw,
           });
-          continue;
+          return;
         }
 
         const finalRecipientStatus: "accepted" | "sent" =
@@ -603,8 +570,6 @@ export async function processCampaignTick(
             http_status: (result as any).httpStatus,
           },
         );
-        // Cobrança: consome 1 unidade da reserva de saldo em R$ (novo modelo).
-        // Fallback: se a campanha ainda usa estoque legado, desconta do estoque.
         if ((camp as any).reservation_id) {
           await supabaseAdmin.rpc("wallet_consume_reservation" as any, {
             _reservation_id: (camp as any).reservation_id,
@@ -618,14 +583,14 @@ export async function processCampaignTick(
           });
         }
       } else {
-        const isNetworkError =
+        const isNetworkErr =
           result.code === "network_error" ||
           /failed to fetch|fetch failed|network|econnreset|etimedout|enetunreach|socket hang up/i.test(
             result.error || "",
           );
 
-        if (isNetworkError) {
-          // Não conta como falha do destinatário: volta para pending e pausa a campanha por 1 minuto.
+        if (isNetworkErr) {
+          networkError = result.error || "network_error";
           await supabaseAdmin
             .from("campaign_recipients")
             .update({
@@ -635,37 +600,7 @@ export async function processCampaignTick(
               last_attempt_at: new Date().toISOString(),
             })
             .eq("id", r.id);
-
-          // Reverte os demais recipients ainda em "processing" para pending
-          const remainingIds = recipients
-            .slice(recipients.indexOf(r) + 1)
-            .map((x: any) => x.id);
-          if (remainingIds.length) {
-            await supabaseAdmin
-              .from("campaign_recipients")
-              .update({ status: "pending" })
-              .in("id", remainingIds);
-          }
-
-          const resumeAt = new Date(Date.now() + 60_000).toISOString();
-          await supabaseAdmin
-            .from("wa_campaigns")
-            .update({
-              status: "paused",
-              paused_at: new Date().toISOString(),
-              pause_reason: "network_error",
-              scheduled_at: resumeAt,
-              last_error: result.error,
-            })
-            .eq("id", campaignId);
-          await logEvent(
-            campaignId,
-            "auto_paused",
-            `Pausada por 1 min após erro de rede: ${result.error}`,
-            { reason: "network_error", resume_at: resumeAt },
-          );
-          lastError = result.error;
-          break;
+          return;
         }
 
         failed++;
@@ -682,7 +617,6 @@ export async function processCampaignTick(
             attempt: attempts,
           })
           .eq("id", r.id);
-        // Falha permanente: libera 1 unidade da reserva
         if (!shouldRetry && (camp as any).reservation_id) {
           await supabaseAdmin.rpc("wallet_release_reservation" as any, {
             _reservation_id: (camp as any).reservation_id,
@@ -690,14 +624,67 @@ export async function processCampaignTick(
           });
         }
       }
+    };
 
-      // Jitter delay between sends (in-lote)
-      const isLastInBatch = recipients.indexOf(r) === recipients.length - 1;
-      if (jitter > 0 && !isLastInBatch) {
-        const wait = Math.floor(Math.random() * jitter);
-        if (wait > 0) await new Promise((res) => setTimeout(res, wait));
+    // Envia em sub-lotes paralelos com pausa entre eles.
+    // Ex.: parallelism=40 + batch_pause_ms=1500 → 40 mensagens simultâneas
+    // a cada ~2s (respeita o limite Meta de 80 mps por número).
+    const chunks: any[][] = [];
+    for (let i = 0; i < recipients.length; i += parallelism) {
+      chunks.push(recipients.slice(i, i + parallelism));
+    }
+
+    const tickStart = Date.now();
+    for (let ci = 0; ci < chunks.length; ci++) {
+      if (Date.now() - tickStart > MAX_TICK_RUNTIME_MS) {
+        // Reverte os sub-lotes que ainda não foram processados
+        const laterIds = chunks.slice(ci).flat().map((x: any) => x.id);
+        if (laterIds.length) {
+          await supabaseAdmin
+            .from("campaign_recipients")
+            .update({ status: "pending" })
+            .in("id", laterIds);
+        }
+        break;
+      }
+
+      const chunk = chunks[ci];
+      await Promise.all(chunk.map(sendOne));
+
+      if (networkError) {
+        const laterIds = chunks.slice(ci + 1).flat().map((x: any) => x.id);
+        if (laterIds.length) {
+          await supabaseAdmin
+            .from("campaign_recipients")
+            .update({ status: "pending" })
+            .in("id", laterIds);
+        }
+        const resumeAt = new Date(Date.now() + 60_000).toISOString();
+        await supabaseAdmin
+          .from("wa_campaigns")
+          .update({
+            status: "paused",
+            paused_at: new Date().toISOString(),
+            pause_reason: "network_error",
+            scheduled_at: resumeAt,
+            last_error: networkError,
+          })
+          .eq("id", campaignId);
+        await logEvent(
+          campaignId,
+          "auto_paused",
+          `Pausada por 1 min após erro de rede: ${networkError}`,
+          { reason: "network_error", resume_at: resumeAt },
+        );
+        lastError = networkError;
+        break;
+      }
+
+      if (ci < chunks.length - 1 && batchPauseMs > 0) {
+        await new Promise((res) => setTimeout(res, batchPauseMs));
       }
     }
+
 
     // Auto-pause on failure-rate threshold — só recalcula quando houve falhas neste lote,
     // evitando um full-scan de status a cada tick.
