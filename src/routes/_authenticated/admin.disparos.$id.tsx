@@ -220,6 +220,50 @@ function Page() {
     [swapUrlButton],
   );
 
+  // Prévia renderizada dentro do diálogo de troca — usa template + mappings escolhidos.
+  const swapPreview = useMemo(() => {
+    if (!swapTplRow) return null;
+    const first: any = (recipients as any[] | undefined)?.[0];
+    const contact = first?.contact ?? (first ? { phone: first.phone } : {});
+    const ctx = buildContext({
+      contact,
+      client: (camp as any)?.client,
+      project: (camp as any)?.project,
+      campaign: camp,
+    });
+    const resolved: Record<number, string> = {};
+    for (const [k, v] of Object.entries(swapBodyVars)) {
+      if (!/^\d+$/.test(k)) continue;
+      resolved[Number(k)] = renderMapping(String(v ?? ""), ctx);
+    }
+    const body = fillMetaTemplate(String(swapTplRow.body ?? ""), resolved);
+    const headerText = swapTplRow.header_type === "text"
+      ? fillMetaTemplate(String(swapTplRow.header_text ?? ""), resolved)
+      : swapTplRow.header_text;
+    const buttons = Array.isArray(swapTplRow.buttons)
+      ? swapTplRow.buttons.map((b: any) => {
+          if (String(b?.type).toUpperCase() === "URL" && typeof b?.url === "string" && b.url.includes("{{")) {
+            const urlResolved: Record<number, string> = {};
+            for (const [k, v] of Object.entries(swapBtnVars)) urlResolved[Number(k)] = renderMapping(String(v ?? ""), ctx);
+            return { ...b, url: fillMetaTemplate(String(b.url), urlResolved) };
+          }
+          return b;
+        })
+      : [];
+    return {
+      header: {
+        type: swapTplRow.header_type,
+        text: headerText,
+        media_url: swapTplRow.header_media_url,
+      },
+      body,
+      footer: (swapTplRow as any).footer ?? (swapTplRow as any).footer_text ?? null,
+      buttons,
+      first,
+    };
+  }, [swapTplRow, swapBodyVars, swapBtnVars, camp, recipients]);
+
+
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["wa-camp", id] });
@@ -809,29 +853,36 @@ function Page() {
       </Tabs>
 
       <Dialog open={swapOpen} onOpenChange={setSwapOpen}>
-        <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Trocar número/template e retomar</DialogTitle>
             <DialogDescription>
               Selecione o número, o template aprovado para esse número e ajuste as variáveis. Destinatários já enviados não serão reenviados.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="grid gap-4 py-2 md:grid-cols-2">
+            <div className="space-y-4">
             <div className="space-y-1.5">
               <Label>Número de envio</Label>
               <Select value={swapConn} onValueChange={setSwapConn}>
                 <SelectTrigger><SelectValue placeholder="Selecione um número" /></SelectTrigger>
                 <SelectContent>
-                  {swapConnList
-                    .filter((c: any) => ["ativo","active","connected"].includes(String(c.status ?? "").toLowerCase()))
-                    .map((c: any) => (
+                  {swapConnList.map((c: any) => {
+                    const st = String(c.status ?? "").toLowerCase();
+                    const active = ["ativo","active","connected"].includes(st);
+                    return (
                       <SelectItem key={c.id} value={c.id}>
                         {c.display_phone ?? c.name} — {c.workspace_name}
                         {c.id === (camp as any)?.connection_id ? " (atual)" : ""}
+                        {!active ? ` · ${c.status ?? "inativo"}` : ""}
                       </SelectItem>
-                    ))}
+                    );
+                  })}
                 </SelectContent>
               </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Pode manter o número atual e trocar apenas o template.
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label>Template aprovado</Label>
@@ -889,7 +940,26 @@ function Page() {
               />
               Reenfileirar destinatários que falharam ({p.failed ?? 0})
             </label>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Pré-visualização</Label>
+              {swapPreview ? (
+                <WhatsAppPreview
+                  header={swapPreview.header as any}
+                  body={swapPreview.body}
+                  footer={swapPreview.footer}
+                  buttons={swapPreview.buttons as any}
+                  senderName={swapPreview.first?.phone ? `Destinatário ${formatPhoneDisplay(swapPreview.first.phone)}` : "Destinatário"}
+                />
+              ) : (
+                <div className="rounded-md border border-dashed p-6 text-center text-xs text-muted-foreground">
+                  Selecione um template para visualizar a mensagem.
+                </div>
+              )}
+            </div>
           </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setSwapOpen(false)}>Cancelar</Button>
             <Button
