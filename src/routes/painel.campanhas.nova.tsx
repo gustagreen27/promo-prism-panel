@@ -744,6 +744,23 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                     <ReviewRow label="Nome" value={name || <em className="text-muted-foreground">sem nome</em>} />
                     <ReviewRow label="Número" value={selectedNumber ? `${selectedNumber.display_name} (${selectedNumber.phone_masked})` : "—"} />
                     <ReviewRow label="Template" value={selectedTemplate?.name ?? "—"} />
+                    {tplRequiresMedia && (
+                      <ReviewRow label={`Mídia (${tplHeaderType})`} value={headerMediaUrl
+                        ? <a href={headerMediaUrl} target="_blank" rel="noreferrer" className="text-primary underline">Ver mídia</a>
+                        : <em className="text-muted-foreground">não enviada</em>} />
+                    )}
+                    {tplBodyVarNums.map((n) => (
+                      <ReviewRow key={`rv-body-${n}`} label={`Var. corpo {{${n}}}`}
+                        value={bodyVars[String(n)] || <em className="text-muted-foreground">vazio</em>} />
+                    ))}
+                    {tplUrlVarNums.map((n) => (
+                      <ReviewRow key={`rv-btn-${n}`} label={`Var. URL {{${n}}}`}
+                        value={btnVars[String(n)] || <em className="text-muted-foreground">vazio</em>} />
+                    ))}
+                    {mode === "schedule" && scheduledAt && (
+                      <ReviewRow label="Agendamento"
+                        value={`${new Date(scheduledAt).toLocaleString("pt-BR")} (${timezone})`} />
+                    )}
                     <ReviewRow label="Intervalo" value={`${rate.interval_s}s entre envios`} />
                     <ReviewRow label="Pausa automática" value={`${rate.pause_duration_s}s a cada ${rate.pause_every} envios`} />
                     <ReviewRow label="Duração estimada" value={estimatedDurationMin > 60 ? `${Math.floor(estimatedDurationMin / 60)}h ${estimatedDurationMin % 60}min` : `${estimatedDurationMin} min`} />
