@@ -68,12 +68,12 @@ export const createWorkspaceListWithPhones = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z.object({
       workspace_id: z.string().uuid(),
-      name: z.string().min(1).max(160),
-      source: z.string().max(80).default("wizard"),
+      name: z.string().min(1),
+      source: z.string().default("wizard"),
       rows: z.array(z.object({
         phone: z.string().min(1),
-        name: z.string().max(160).optional().nullable(),
-      })).min(1).max(200000),
+        name: z.string().optional().nullable(),
+      })),
     }).parse(d)
   )
   .handler(async ({ data, context }) => {
