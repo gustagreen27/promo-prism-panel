@@ -128,11 +128,8 @@ export const startCampaignAsync = createServerFn({ method: "POST" })
       .eq("campaign_id", data.id);
     if (!recCount) throw new Error("Gere a fila de destinatários antes de iniciar.");
 
-    const { data: avail } = await supabase.rpc("wa_available_stock", {
-      _client_id: camp.client_id ?? undefined,
-      _project_id: camp.project_id ?? undefined,
-    } as any);
-    if (Number(avail ?? 0) < recCount) throw new Error(`Estoque insuficiente: ${avail ?? 0} disponíveis, ${recCount} necessárias.`);
+    // Admin async dispatch bypasses stock check.
+
 
     await supabase
       .from("wa_campaigns")
