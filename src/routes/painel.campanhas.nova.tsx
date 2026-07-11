@@ -956,41 +956,8 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
 
 
 
-                {/* Config */}
-                <div className="rounded-lg border p-4">
-                  <div className="mb-3">
-                    <div className="flex items-center gap-2 text-sm font-semibold">
-                      <Sliders className="h-4 w-4" /> Configurações de Disparo
-                    </div>
-                    <div className="text-xs text-muted-foreground">Ajuste os intervalos e pausas para garantir a segurança dos envios.</div>
-                  </div>
-                  <div className="space-y-2">
-                    <RateRow icon={<Timer className="h-4 w-4" />}
-                      title="Intervalo (s)"
-                      subtitle="Tempo de espera entre cada disparo"
-                      unit="s"
-                      value={rate.interval_s}
-                      min={1} max={600}
-                      onChange={(v) => setRate((r) => ({ ...r, interval_s: v }))}
-                    />
-                    <RateRow icon={<Users2 className="h-4 w-4" />}
-                      title="Pausa (a cada X envios)"
-                      subtitle="Gatilho para iniciar uma pausa longa"
-                      unit="ctts"
-                      value={rate.pause_every}
-                      min={1} max={500}
-                      onChange={(v) => setRate((r) => ({ ...r, pause_every: v }))}
-                    />
-                    <RateRow icon={<Clock className="h-4 w-4" />}
-                      title="Tempo de pausa em (s)"
-                      subtitle="Duração do descanso do sistema"
-                      unit="s"
-                      value={rate.pause_duration_s}
-                      min={0} max={3600}
-                      onChange={(v) => setRate((r) => ({ ...r, pause_duration_s: v }))}
-                    />
-                  </div>
-                </div>
+                {/* Config — Rate limiter (Passo 02) */}
+                <DispatchConfigCard value={dispatch} onChange={setDispatch} />
               </div>
 
               <div>
