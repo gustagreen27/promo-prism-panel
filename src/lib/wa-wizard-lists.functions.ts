@@ -104,38 +104,67 @@ export const createWorkspaceListWithPhones = createServerFn({ method: "POST" })
       return { list_id: list.id, list_name: list.name, added: 0, created: 0, invalid };
     }
 
-    // 3. Upsert contacts (scope: workspace, client_id NULL)
-    const toUpsert = normalized.map((n) => ({
-      phone: n.phone,
-      name: n.name,
-      workspace_id: data.workspace_id,
-      client_id: null,
-      source: data.source,
-      opt_in: true,
-      opt_in_at: new Date().toISOString(),
-    }));
-    await supabase.from("contacts").upsert(toUpsert, { onConflict: "phone,client_id" as any, ignoreDuplicates: true });
+    const phones = normalized.map((n) => n.phone);
 
-    // 4. Re-abrir opt-in se contato já existir bloqueado
-    await supabase
-      .from("contacts")
-      .update({ opt_in: true, opt_out: false, opt_in_at: new Date().toISOString() })
-      .in("phone", normalized.map((n) => n.phone))
-      .eq("workspace_id", data.workspace_id);
-
-    // 5. Buscar ids
-    const { data: rows } = await supabase
-      .from("contacts")
-      .select("id,phone")
-      .in("phone", normalized.map((n) => n.phone))
-      .eq("workspace_id", data.workspace_id);
-    const contacts = (rows ?? []) as { id: string; phone: string }[];
-
-    // 6. Linkar na lista
-    if (contacts.length) {
-      const items = contacts.map((c) => ({ list_id: list.id, contact_id: c.id, workspace_id: data.workspace_id }));
-      await supabase.from("contact_list_items").upsert(items, { onConflict: "list_id,contact_id" });
+    // 3. Buscar contatos já existentes no workspace por telefone (em chunks p/ evitar URLs enormes)
+    const existing: { id: string; phone: string }[] = [];
+    const CHUNK = 500;
+    for (let i = 0; i < phones.length; i += CHUNK) {
+      const slice = phones.slice(i, i + CHUNK);
+      const { data: rows, error: selErr } = await supabase
+        .from("contacts")
+        .select("id,phone")
+        .eq("workspace_id", data.workspace_id)
+        .in("phone", slice);
+      if (selErr) throw selErr;
+      for (const r of rows ?? []) existing.push(r);
     }
+    const existingByPhone = new Map(existing.map((c) => [c.phone, c.id]));
+
+    // 4. Inserir apenas os novos
+    const toInsert = normalized
+      .filter((n) => !existingByPhone.has(n.phone))
+      .map((n) => ({
+        phone: n.phone,
+        name: n.name,
+        workspace_id: data.workspace_id,
+        client_id: null,
+        source: data.source,
+        opt_in: true,
+        opt_in_at: new Date().toISOString(),
+      }));
+
+    const insertedIds: { id: string; phone: string }[] = [];
+    for (let i = 0; i < toInsert.length; i += 1000) {
+      const chunk = toInsert.slice(i, i + 1000);
+      const { data: ins, error: insErr } = await supabase
+        .from("contacts")
+        .insert(chunk)
+        .select("id,phone");
+      if (insErr) throw insErr;
+      for (const r of ins ?? []) insertedIds.push(r);
+    }
+
+    // 5. Reabrir opt-in dos existentes (mantém contatos previamente bloqueados fora)
+    if (existing.length) {
+      await supabase
+        .from("contacts")
+        .update({ opt_in: true, opt_out: false, opt_in_at: new Date().toISOString() })
+        .eq("workspace_id", data.workspace_id)
+        .in("id", existing.map((c) => c.id));
+    }
+
+    // 6. Linkar na lista (existentes + novos)
+    const allContacts = [...existing, ...insertedIds];
+    for (let i = 0; i < allContacts.length; i += 1000) {
+      const chunk = allContacts.slice(i, i + 1000);
+      const items = chunk.map((c) => ({ list_id: list.id, contact_id: c.id, workspace_id: data.workspace_id }));
+      const { error: linkErr } = await supabase
+        .from("contact_list_items")
+        .upsert(items, { onConflict: "list_id,contact_id" });
+      if (linkErr) throw linkErr;
+    }
+    const contacts = allContacts;
 
     return { list_id: list.id, list_name: list.name, added: contacts.length, created: normalized.length, invalid };
   });
