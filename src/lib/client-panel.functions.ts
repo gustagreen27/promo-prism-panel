@@ -207,21 +207,36 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
     if (error) throw error
 
     if (data.list_id) {
-      const { data: items, error: itemsErr } = await supabase
-        .from('contact_list_items')
-        .select('contact:contacts(id,phone,opt_in,opt_out,name)')
-        .eq('list_id', data.list_id)
-      if (itemsErr) throw itemsErr
+      const PAGE = 1000
+      const allItems: any[] = []
+      for (let from = 0; ; from += PAGE) {
+        const { data: items, error: itemsErr } = await supabase
+          .from('contact_list_items')
+          .select('contact:contacts(id,phone,opt_in,opt_out,name)')
+          .eq('list_id', data.list_id)
+          .range(from, from + PAGE - 1)
+        if (itemsErr) throw itemsErr
+        allItems.push(...(items ?? []))
+        if (!items || items.length < PAGE) break
+      }
 
-      const contacts = ((items ?? []) as any[])
+      const contacts = allItems
         .map((i) => i.contact)
         .filter((c) => c?.phone && c.opt_in !== false && !c.opt_out)
 
       const phones = contacts.map((c) => c.phone)
       let blocked = new Set<string>()
       if (phones.length) {
-        const { data: optOuts } = await supabase.from('opt_outs').select('phone').in('phone', phones)
-        blocked = new Set((optOuts ?? []).map((r: any) => r.phone))
+        const blockedPhones: string[] = []
+        for (let i = 0; i < phones.length; i += PAGE) {
+          const { data: optOuts, error: optOutsErr } = await supabase
+            .from('opt_outs')
+            .select('phone')
+            .in('phone', phones.slice(i, i + PAGE))
+          if (optOutsErr) throw optOutsErr
+          blockedPhones.push(...((optOuts ?? []).map((r: any) => r.phone)))
+        }
+        blocked = new Set(blockedPhones)
       }
 
       const unique = new Map<string, any>()

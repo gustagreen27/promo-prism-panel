@@ -117,28 +117,52 @@ export const buildRecipients = createServerFn({ method: "POST" })
     if (error) throw error;
     if (!camp.list_id) throw new Error("Selecione uma lista de contatos.");
 
-    // Fetch contacts via list, optionally intersected with tag filters
-    const { data: items } = await context.supabase
-      .from("contact_list_items")
-      .select("contact:contacts(id,phone,opt_in,opt_out,name)")
-      .eq("list_id", camp.list_id);
+    // Fetch contacts via list, optionally intersected with tag filters.
+    // PostgREST returns 1000 rows by default, so campaigns must page large lists.
+    const PAGE = 1000;
+    const items: any[] = [];
+    for (let from = 0; ; from += PAGE) {
+      const { data: page, error: pageErr } = await context.supabase
+        .from("contact_list_items")
+        .select("contact:contacts(id,phone,opt_in,opt_out,name)")
+        .eq("list_id", camp.list_id)
+        .range(from, from + PAGE - 1);
+      if (pageErr) throw pageErr;
+      items.push(...(page ?? []));
+      if (!page || page.length < PAGE) break;
+    }
 
-    let contacts = (items ?? []).map((i: any) => i.contact).filter((c: any) => c && c.phone && c.opt_in && !c.opt_out);
+    let contacts = items.map((i: any) => i.contact).filter((c: any) => c && c.phone && c.opt_in && !c.opt_out);
 
     if (camp.tag_filters && camp.tag_filters.length) {
-      const { data: tagged } = await context.supabase
-        .from("contact_tag_assignments")
-        .select("contact_id")
-        .in("tag_id", camp.tag_filters);
-      const ok = new Set((tagged ?? []).map((r: any) => r.contact_id));
+      const tagged: any[] = [];
+      for (let from = 0; ; from += PAGE) {
+        const { data: page, error: tagErr } = await context.supabase
+          .from("contact_tag_assignments")
+          .select("contact_id")
+          .in("tag_id", camp.tag_filters)
+          .range(from, from + PAGE - 1);
+        if (tagErr) throw tagErr;
+        tagged.push(...(page ?? []));
+        if (!page || page.length < PAGE) break;
+      }
+      const ok = new Set(tagged.map((r: any) => r.contact_id));
       contacts = contacts.filter((c: any) => ok.has(c.id));
     }
 
     // Exclude opt-outs (global)
     const phones = contacts.map((c: any) => c.phone);
     if (phones.length) {
-      const { data: oo } = await context.supabase.from("opt_outs").select("phone").in("phone", phones);
-      const blocked = new Set((oo ?? []).map((r: any) => r.phone));
+      const optOuts: any[] = [];
+      for (let i = 0; i < phones.length; i += PAGE) {
+        const { data: page, error: ooErr } = await context.supabase
+          .from("opt_outs")
+          .select("phone")
+          .in("phone", phones.slice(i, i + PAGE));
+        if (ooErr) throw ooErr;
+        optOuts.push(...(page ?? []));
+      }
+      const blocked = new Set(optOuts.map((r: any) => r.phone));
       contacts = contacts.filter((c: any) => !blocked.has(c.phone));
     }
 
