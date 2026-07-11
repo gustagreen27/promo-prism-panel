@@ -408,20 +408,31 @@ function Page() {
   const isPaused = status === "paused";
   const isFinished = ["completed", "partial", "cancelled", "error"].includes(status);
 
-  const exportCsv = () => {
-    if (!recipients?.length) { toast.warning("Sem dados"); return; }
-    const rows = recipients as any[];
+  const exportCsv = async () => {
+    let rows: any[] = [];
+    try {
+      rows = (await getRec({ data: { id } })) as any[];
+    } catch (e: any) {
+      toast.error(`Falha ao carregar destinatários: ${e?.message ?? e}`);
+      return;
+    }
+    if (!rows?.length) { toast.warning("Sem dados"); return; }
+    const esc = (v: any) => {
+      const s = v == null ? "" : String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
     const header = ["phone","nome","status","tentativas","enviada","entregue","lida","respondida","erro"];
     const csv = [header.join(","), ...rows.map((r: any) => [
       r.phone, r.contact?.name ?? "", r.status, r.attempt ?? 0,
       r.sent_at ?? "", r.delivered_at ?? "", r.read_at ?? "", r.replied_at ?? "",
-      (r.failed_reason ?? "").replace(/,/g, ";"),
-    ].join(","))].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      r.failed_reason ?? "",
+    ].map(esc).join(","))].join("\n");
+    const blob = new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url; a.download = `campanha-${id}.csv`; a.click();
     URL.revokeObjectURL(url);
+    toast.success(`${rows.length.toLocaleString("pt-BR")} destinatários exportados`);
   };
 
   if (campQ.error) {
