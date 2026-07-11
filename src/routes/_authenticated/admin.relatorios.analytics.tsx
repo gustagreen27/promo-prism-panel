@@ -24,7 +24,8 @@ import {
   Tooltip as RTooltip,
   Legend,
 } from "recharts";
-import { ArrowLeft, Printer, BarChart3 } from "lucide-react";
+import { ArrowLeft, Printer, BarChart3, Clock } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/admin/page-header";
 import { RELATORIOS_TABS } from "@/components/admin/hub-tabs";
 import { PeriodFilter } from "@/components/admin/period-filter";
