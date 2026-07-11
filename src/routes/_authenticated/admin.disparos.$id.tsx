@@ -961,8 +961,9 @@ function Page() {
                 </SelectContent>
               </Select>
               {swapConn && swapTplList.length === 0 && (
-                <p className="text-[11px] text-muted-foreground">Nenhum template aprovado para esta WABA.</p>
+                <p className="text-[11px] text-muted-foreground">Nenhum template aprovado para este número.</p>
               )}
+
             </div>
 
             {swapTplRow && (swapBodyVarNums.length > 0 || swapBtnVarNums.length > 0) && (
