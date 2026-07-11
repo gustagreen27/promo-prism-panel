@@ -377,6 +377,29 @@ export async function processCampaignTick(
         continue;
       }
 
+      // DDI mismatch: recipient's country code must match the sender number's country code.
+      if (senderCode) {
+        const recCode = getCountryCallingCode(r.phone);
+        if (recCode && recCode !== senderCode) {
+          const reason = `DDI incompatível: destinatário +${recCode} × remetente +${senderCode}`;
+          await supabaseAdmin
+            .from("campaign_recipients")
+            .update({ status: "failed", failed_reason: reason, error_code: "ddi_mismatch" })
+            .eq("id", r.id);
+          if ((camp as any).reservation_id) {
+            await supabaseAdmin.rpc("wallet_release_reservation" as any, {
+              _reservation_id: (camp as any).reservation_id,
+              _qty: 1,
+            });
+          }
+          failed++;
+          lastError = reason;
+          continue;
+        }
+      }
+
+
+
       const campVars = (camp.template_variables as Record<string, string> | null) || {};
       const recVars = (r.variables as Record<string, string> | null) || {};
       const mergedVars = { ...campVars, ...recVars };
