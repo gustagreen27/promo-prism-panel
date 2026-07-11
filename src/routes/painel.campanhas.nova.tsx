@@ -14,6 +14,7 @@ import {
   listMyNumbers, listMyTemplates, getMyBalance, createClientCampaign, startClientCampaign,
 } from "@/lib/client-panel.functions";
 import { adminListAllNumbers, adminListAllTemplates } from "@/lib/admin-dispatch.functions";
+import { startWaCampaign as adminStartWaCampaign, scheduleWaCampaign as adminScheduleWaCampaign } from "@/lib/wa-campaigns.functions";
 import { linkEventToCampaign } from "@/lib/calendar.functions";
 import { checkSchedulingConflict } from "@/lib/wa-schedule.functions";
 import { supabase } from "@/integrations/supabase/client";
