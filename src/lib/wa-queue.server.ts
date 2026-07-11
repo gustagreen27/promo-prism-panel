@@ -242,6 +242,18 @@ export async function processCampaignTick(
 
     // pause/cancel guard
     if (camp.status === "paused") return { processed: 0, done: false };
+
+    // Scheduled pause (configurada no wizard, Passo 02): aguarda até scheduled_pause_until
+    {
+      const spUntil = (camp as any).scheduled_pause_until as string | null;
+      if ((camp as any).scheduled_pause_enabled && spUntil && new Date(spUntil).getTime() > Date.now()) {
+        await supabaseAdmin
+          .from("wa_campaigns")
+          .update({ pause_reason: "scheduled_pause" })
+          .eq("id", campaignId);
+        return { processed: 0, done: false, reason: "scheduled_pause" };
+      }
+    }
     if (camp.status === "cancelled") {
       await supabaseAdmin
         .from("campaign_recipients")
