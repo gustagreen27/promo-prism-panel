@@ -64,8 +64,8 @@ function Page() {
   return (
     <>
       <PageHeader
-        title="Listas de Contatos"
-        description="Agrupe contatos para campanhas."
+        title="Listas de contatos"
+        description="Agrupamentos usados nos disparos. Cada campanha escolhe uma lista aqui."
         actions={
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Nova lista</Button></DialogTrigger>
@@ -73,6 +73,10 @@ function Page() {
           </Dialog>
         }
       />
+      <HubTabs tabs={CLIENTES_TABS} />
+      <div className="mb-4 rounded-lg border bg-muted/40 p-3 text-sm">
+        📣 Fluxo do disparo: <b>Criar lista</b> → <b>Importar leads</b> (colar, CSV ou selecionar contatos) → em <b>/admin/disparos</b> escolher esta lista na etapa <i>Contatos</i>.
+      </div>
       <div className="grid gap-4 md:grid-cols-[320px_1fr]">
         <div className="rounded-xl border bg-card">
           {lists.length === 0 ? <EmptyState title="Nenhuma lista" />
