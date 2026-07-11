@@ -55,15 +55,24 @@ function buildHeaderComponent(headerType?: string | null, value?: string | null)
   return [];
 }
 
-function buildButtonComponents(urlParam?: string | null, index = 0) {
-  if (!urlParam) return [];
-  return [{
+function buildButtonComponents(
+  buttons?: WaSendButton[],
+  legacyUrlParam?: string | null,
+  legacyIndex = 0,
+) {
+  const list: WaSendButton[] = Array.isArray(buttons) && buttons.length
+    ? buttons.filter((b) => b && typeof b.urlParam === "string" && b.urlParam.length > 0)
+    : legacyUrlParam
+      ? [{ index: legacyIndex, urlParam: legacyUrlParam }]
+      : [];
+  return list.map((b) => ({
     type: "button",
     sub_type: "url",
-    index: String(index),
-    parameters: [{ type: "text", text: urlParam }],
-  }];
+    index: String(b.index),
+    parameters: [{ type: "text", text: b.urlParam }],
+  }));
 }
+
 
 export async function sendTemplateMessage(input: WaSendInput): Promise<WaSendResult> {
   const ver = input.graphVersion || "v21.0";
