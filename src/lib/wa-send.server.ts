@@ -89,9 +89,11 @@ export async function sendTemplateMessage(input: WaSendInput): Promise<WaSendRes
     const json: any = await res.json().catch(() => ({}));
     if (!res.ok) {
       const err = json?.error;
+      const details = err?.error_data?.details;
+      const baseMsg = err?.message ?? `HTTP ${res.status}`;
       return {
         ok: false,
-        error: err?.message ?? `HTTP ${res.status}`,
+        error: details ? `${baseMsg} — ${details}` : baseMsg,
         code: err?.code ? String(err.code) : String(res.status),
         raw: json,
         httpStatus: res.status,
