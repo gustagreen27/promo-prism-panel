@@ -165,16 +165,7 @@ export const startWaCampaign = createServerFn({ method: "POST" })
     if (!camp.connection_id || !camp.template_id) throw new Error("Configure número e template antes de iniciar.");
     if (!camp.total_recipients) throw new Error("Gere a fila de destinatários antes de iniciar.");
 
-    // Check stock
-    const { data: avail } = await context.supabase.rpc("wa_available_stock" as any, {
-      _client_id: camp.client_id,
-      _project_id: camp.project_id,
-    });
-    const available = Number(avail ?? 0);
-    if (available < camp.total_recipients) {
-      throw new Error(`Estoque insuficiente: ${available} disponíveis, ${camp.total_recipients} necessárias.`);
-    }
-
+    // Admin dispatch bypasses stock — não há débito automático de estoque neste fluxo.
     await context.supabase
       .from("wa_campaigns")
       .update({ status: "running", started_at: new Date().toISOString() })
@@ -198,14 +189,8 @@ export const scheduleWaCampaign = createServerFn({ method: "POST" })
     if (!camp.connection_id || !camp.template_id) throw new Error("Configure número e template antes de agendar.");
     if (!camp.total_recipients) throw new Error("Gere a fila de destinatários antes de agendar.");
 
-    const { data: avail } = await context.supabase.rpc("wa_available_stock" as any, {
-      _client_id: camp.client_id,
-      _project_id: camp.project_id,
-    });
-    const available = Number(avail ?? 0);
-    if (available < camp.total_recipients) {
-      throw new Error(`Estoque insuficiente: ${available} disponíveis, ${camp.total_recipients} necessárias.`);
-    }
+    // Admin schedule bypasses stock — dispatches administrativos não descontam estoque neste fluxo.
+
 
     const { error } = await context.supabase
       .from("wa_campaigns")
