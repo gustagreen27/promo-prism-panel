@@ -461,7 +461,7 @@ function Page() {
                 <tbody>
                   {(recipients ?? []).map((r: any) => (
                     <tr key={r.id} className="border-t">
-                      <td className="p-2 font-mono text-xs">{r.phone}</td>
+                      <td className="p-2 font-mono text-xs">{formatPhoneDisplay(r.phone)}</td>
                       <td className="p-2">{r.contact?.name ?? "—"}</td>
                       <td className="p-2"><StatusBadge status={r.status} /></td>
                       <td className="p-2 text-xs text-muted-foreground">{r.sent_at ? new Date(r.sent_at).toLocaleTimeString("pt-BR") : "—"}</td>
