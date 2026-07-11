@@ -203,7 +203,7 @@ export const runWhatsAppDiagnostics = createServerFn({ method: "POST" })
           const j: any = await r.json().catch(() => ({}));
           if (r.ok && !j?.error) tokenValid = true;
           else { tokenValid = false; tokenError = j?.error?.message ?? `HTTP ${r.status}`; problems.push(`Token não valida no phone_number_id: ${tokenError}`); }
-        } catch (e: any) { tokenValid = false; tokenError = e?.message ?? "Falha"; problems.push(tokenError); }
+        } catch (e: any) { tokenValid = false; tokenError = e?.message ?? "Falha"; problems.push(tokenError ?? "Falha"); }
       }
       connReports.push({
         id: c.id,
