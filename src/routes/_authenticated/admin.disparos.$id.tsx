@@ -727,6 +727,73 @@ function Page() {
           )}
         </TabsContent>
       </Tabs>
+
+      <Dialog open={swapOpen} onOpenChange={setSwapOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Trocar número/template e retomar</DialogTitle>
+            <DialogDescription>
+              Selecione um número e/ou template diferentes. Destinatários já enviados não serão reenviados.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Número de envio</Label>
+              <Select value={swapConn} onValueChange={setSwapConn}>
+                <SelectTrigger><SelectValue placeholder="Selecione um número" /></SelectTrigger>
+                <SelectContent>
+                  {(connsQ.data ?? []).flatMap((w: any) =>
+                    (w.connections ?? [])
+                      .filter((c: any) => ["ativo","active","connected"].includes(String(c.status ?? "").toLowerCase()))
+                      .map((c: any) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.display_phone ?? c.name} — {w.name}
+                          {c.id === (camp as any)?.connection_id ? " (atual)" : ""}
+                        </SelectItem>
+                      )),
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Template</Label>
+              <Select value={swapTpl} onValueChange={setSwapTpl}>
+                <SelectTrigger><SelectValue placeholder="Selecione um template" /></SelectTrigger>
+                <SelectContent>
+                  {(tplsQ.data ?? [])
+                    .filter((t: any) => {
+                      const st = String(t.status ?? "").toUpperCase();
+                      return !st || st === "APPROVED" || st === "ACTIVE";
+                    })
+                    .map((t: any) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name} ({t.language})
+                        {t.id === (camp as any)?.template_id ? " (atual)" : ""}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={swapRetry}
+                onCheckedChange={(v) => setSwapRetry(v === true)}
+              />
+              Reenfileirar destinatários que falharam ({p.failed ?? 0})
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSwapOpen(false)}>Cancelar</Button>
+            <Button
+              onClick={() => m.swap.mutate()}
+              disabled={m.swap.isPending || (!swapConn && !swapTpl)}
+            >
+              {m.swap.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+              Trocar e retomar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
