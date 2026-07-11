@@ -22,7 +22,7 @@ import { listContacts, createContact, deleteContact, importContactsCsv, optOutCo
 import { listClients } from "@/lib/clients.functions";
 import { listProjects } from "@/lib/projects.functions";
 
-export const Route = createFileRoute("/_authenticated/admin/contatos")({
+export const Route = createFileRoute("/_authenticated/admin/contatos/")({
   head: () => ({ meta: [{ title: "Contatos — Painel" }] }),
   component: Page,
 });
