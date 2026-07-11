@@ -327,6 +327,8 @@ function Page() {
         id,
         connection_id: swapConn || undefined,
         template_id: swapTpl || undefined,
+        variables_mapping: swapBodyVars,
+        button_url_mapping: swapBtnVars,
         retry_failed: swapRetry,
       } }),
       onSuccess: () => {
