@@ -40,12 +40,17 @@ export function WhatsAppPreview({
                 : <ImageIcon className="h-8 w-8" />}
             </div>
           ) : header?.type?.toLowerCase() === "video" || headerMediaType === "video" ? (
-            <div className="mb-2 flex aspect-video w-full items-center justify-center rounded bg-neutral-200 text-neutral-500 dark:bg-neutral-600">
-              <Video className="h-8 w-8" />
+            <div className="mb-2 flex aspect-video w-full items-center justify-center overflow-hidden rounded bg-neutral-200 text-neutral-500 dark:bg-neutral-600">
+              {header?.media_url
+                ? <video src={header.media_url} controls className="h-full w-full object-cover" />
+                : <Video className="h-8 w-8" />}
             </div>
           ) : header?.type?.toLowerCase() === "document" || headerMediaType === "document" ? (
             <div className="mb-2 flex items-center gap-2 rounded bg-neutral-100 p-2 text-xs dark:bg-neutral-600">
-              <FileText className="h-5 w-5 text-neutral-500" /> Documento anexado
+              <FileText className="h-5 w-5 text-neutral-500" />
+              {header?.media_url
+                ? <a href={header.media_url} target="_blank" rel="noreferrer" className="truncate text-primary underline">Abrir documento</a>
+                : "Documento anexado"}
             </div>
           ) : header?.text ? (
             <div className="mb-1 text-sm font-bold text-neutral-900 dark:text-neutral-100">{header.text}</div>

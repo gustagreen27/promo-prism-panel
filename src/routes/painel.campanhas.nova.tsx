@@ -281,6 +281,43 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
     setHeaderMediaMeta(null);
   }, [templateId]);
 
+  // ---- Preview data (substitui {{n}} pelas variáveis preenchidas) ----
+  const substituteVars = useCallback((text: string, vars: Record<string, string>) => {
+    if (!text) return "";
+    return text.replace(/\{\{\s*(\d+)\s*\}\}/g, (_m, n) => {
+      const v = vars[String(n)];
+      return v && v.trim() !== "" ? v : `{{${n}}}`;
+    });
+  }, []);
+
+  const previewBody = useMemo(
+    () => substituteVars(selectedTemplate?.body ?? "", bodyVars),
+    [selectedTemplate, bodyVars, substituteVars],
+  );
+  const previewHeaderText = useMemo(
+    () => (selectedTemplate?.header_text ? substituteVars(selectedTemplate.header_text, bodyVars) : undefined),
+    [selectedTemplate, bodyVars, substituteVars],
+  );
+  const previewButtons = useMemo(() => {
+    const btns = (selectedTemplate?.buttons ?? []) as any[];
+    return btns.map((b) => {
+      const t = (b?.type ?? "").toString().toLowerCase();
+      if (t === "url" && typeof b?.url === "string") {
+        return { ...b, url: substituteVars(b.url, btnVars) };
+      }
+      return b;
+    });
+  }, [selectedTemplate, btnVars, substituteVars]);
+  const previewHeader = useMemo(() => {
+    if (!selectedTemplate) return null;
+    const type = selectedTemplate.header_type ?? undefined;
+    const t = (type ?? "").toString().toLowerCase();
+    if (["image", "video", "document"].includes(t)) {
+      return { type, media_type: t, media_url: headerMediaUrl || undefined };
+    }
+    return { type, text: previewHeaderText };
+  }, [selectedTemplate, headerMediaUrl, previewHeaderText]);
+
   // Human-readable file size
   const formatSize = (bytes?: number) => {
     if (!bytes || bytes <= 0) return "";
@@ -811,10 +848,10 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                 <Label className="mb-1 block text-xs">Pré-visualização</Label>
                 <WhatsAppPreview
                   senderName={selectedNumber?.display_name}
-                  header={selectedTemplate ? { type: selectedTemplate.header_type ?? undefined, text: selectedTemplate.header_text ?? undefined } : null}
-                  body={selectedTemplate?.body ?? ""}
+                  header={previewHeader}
+                  body={previewBody}
                   footer={selectedTemplate?.footer ?? null}
-                  buttons={selectedTemplate?.buttons ?? []}
+                  buttons={previewButtons}
                 />
               </div>
             </div>
@@ -900,10 +937,10 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                 <Label className="mb-1 block text-xs">Prévia da mensagem</Label>
                 <WhatsAppPreview
                   senderName={selectedNumber?.display_name}
-                  header={selectedTemplate ? { type: selectedTemplate.header_type ?? undefined, text: selectedTemplate.header_text ?? undefined } : null}
-                  body={selectedTemplate?.body ?? ""}
+                  header={previewHeader}
+                  body={previewBody}
                   footer={selectedTemplate?.footer ?? null}
-                  buttons={selectedTemplate?.buttons ?? []}
+                  buttons={previewButtons}
                 />
               </div>
             </div>
