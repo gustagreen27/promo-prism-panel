@@ -129,8 +129,9 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
       connection_id: z.string().uuid(),
       template_id: z.string().uuid(),
       list_id: z.string().uuid().nullish(),
-      variables_mapping: z.any().optional(),
-      button_url_mapping: z.any().optional(),
+      variables_mapping: z.record(z.string()).optional(),
+      button_url_mapping: z.record(z.string()).optional(),
+      header_media_url: z.string().optional().nullable(),
       scheduled_at: z.string().nullish(),
     }).parse(d)
   )
@@ -159,6 +160,15 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
       .maybeSingle()
     if (!tplGrant) throw new Error('Este template não está liberado para o seu workspace')
 
+    // Consolida mapeamentos em template_variables (lido pelo worker de envio).
+    const templateVars: Record<string, string> = { ...(data.variables_mapping ?? {}) }
+    for (const [k, v] of Object.entries(data.button_url_mapping ?? {})) {
+      templateVars._button_url_param = String(v)
+      templateVars._button_index = String(k)
+      break
+    }
+    if (data.header_media_url) templateVars._header_image_url = data.header_media_url
+
     const approval_mode = ws?.approval_mode || 'auto'
     const approval_status = approval_mode === 'manual' ? 'pending' : 'not_required'
 
@@ -173,6 +183,7 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
         list_id: data.list_id ?? null,
         variables_mapping: data.variables_mapping ?? null,
         button_url_mapping: data.button_url_mapping ?? null,
+        template_variables: templateVars,
         scheduled_at: data.scheduled_at ?? null,
         status: 'draft',
         approval_mode,
