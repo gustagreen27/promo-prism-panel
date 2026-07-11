@@ -17,7 +17,7 @@ export const adminListAllNumbers = createServerFn({ method: "POST" })
     await assertAdmin(supabase, userId);
     const { data, error } = await supabase
       .from("whatsapp_connections")
-      .select("id, display_name, nome_interno, name, display_phone, phone, status, quality_rating, daily_cap, paused_at, visibility, messaging_limit_tier")
+      .select("id, display_name, nome_interno, name, display_phone, phone, status, quality_rating, daily_cap, paused_at, visibility")
       .is("paused_at", null)
       .not("status", "in", '("inactive")')
       .order("display_name", { ascending: true });
@@ -28,7 +28,7 @@ export const adminListAllNumbers = createServerFn({ method: "POST" })
       phone_masked: String(c.display_phone ?? c.phone ?? "").replace(/(\d{2,4})$/, "****"),
       status: c.status,
       quality_rating: c.quality_rating ?? null,
-      messaging_limit_tier: c.messaging_limit_tier ?? null,
+      messaging_limit_tier: null,
       daily_cap: c.daily_cap ?? null,
     }));
     return { numbers: rows };
