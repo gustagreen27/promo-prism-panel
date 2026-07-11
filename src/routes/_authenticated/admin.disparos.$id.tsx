@@ -25,6 +25,8 @@ import {
 } from "@/lib/wa-campaign-runner.functions";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
+import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
+import { renderMapping, fillMetaTemplate, buildContext } from "@/lib/wa-variables";
 
 export const Route = createFileRoute("/_authenticated/admin/disparos/$id")({
   head: () => ({ meta: [{ title: "Campanha WhatsApp" }] }),
@@ -201,6 +203,54 @@ function Page() {
   const percent = p.percent ?? 0;
   const status = (prog?.status ?? camp?.status ?? "draft") as string;
   const isRunning = status === "running";
+
+  // Prévia renderizada para o 1º destinatário (substitui {nome}, {{1}} etc.)
+  const previewForFirst = useMemo(() => {
+    const tpl: any = (camp as any)?.template;
+    if (!tpl) return null;
+    const first: any = (recipients as any[] | undefined)?.[0];
+    const contact = first?.contact ?? (first ? { phone: first.phone } : {});
+    const ctx = buildContext({
+      contact,
+      client: (camp as any)?.client,
+      project: (camp as any)?.project,
+      campaign: camp,
+    });
+    const varsMap: Record<string, string> =
+      ((camp as any)?.variables_mapping ?? (camp as any)?.template_variables ?? {}) as any;
+    const resolved: Record<number, string> = {};
+    for (const [k, v] of Object.entries(varsMap)) {
+      if (k.startsWith("_") || !/^\d+$/.test(k)) continue;
+      resolved[Number(k)] = renderMapping(String(v ?? ""), ctx);
+    }
+    const body = fillMetaTemplate(String(tpl.body ?? ""), resolved);
+    const headerText = tpl.header_type === "text"
+      ? fillMetaTemplate(String(tpl.header_text ?? ""), resolved)
+      : tpl.header_text;
+    const buttons = Array.isArray(tpl.buttons)
+      ? tpl.buttons.map((b: any) => {
+          if (String(b?.type).toUpperCase() === "URL" && typeof b?.url === "string" && b.url.includes("{{")) {
+            const btnMap = (varsMap as any)?._button_url ?? {};
+            const urlResolved: Record<number, string> = {};
+            for (const [k, v] of Object.entries(btnMap)) urlResolved[Number(k)] = renderMapping(String(v ?? ""), ctx);
+            return { ...b, url: fillMetaTemplate(String(b.url), urlResolved) };
+          }
+          return b;
+        })
+      : [];
+    return {
+      header: {
+        type: tpl.header_type,
+        text: headerText,
+        media_url: tpl.header_media_url,
+      },
+      body,
+      footer: tpl.footer_text,
+      buttons,
+      first,
+    };
+  }, [camp, recipients]);
+
   const isPaused = status === "paused";
   const isFinished = ["completed", "partial", "cancelled", "error"].includes(status);
 
@@ -357,7 +407,33 @@ function Page() {
               <KV k="Finalizada em" v={fmtDate(camp?.finished_at)} />
             </CardContent>
           </Card>
+
+          {previewForFirst && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">
+                  Prévia da mensagem
+                  {previewForFirst.first && (
+                    <span className="ml-2 text-xs font-normal text-muted-foreground">
+                      1º destinatário: {previewForFirst.first.contact?.name ?? "—"}
+                      {previewForFirst.first.phone ? ` • ${previewForFirst.first.phone}` : ""}
+                    </span>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <WhatsAppPreview
+                  header={previewForFirst.header as any}
+                  body={previewForFirst.body}
+                  footer={previewForFirst.footer}
+                  buttons={previewForFirst.buttons as any}
+                  senderName={(camp as any)?.connection?.display_phone ?? (camp as any)?.connection?.name ?? "Seu negócio"}
+                />
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
+
 
         <TabsContent value="recipients" className="space-y-3">
           <div className="flex justify-between items-center">
