@@ -124,7 +124,8 @@ function AnalyticsPage() {
     return { total, uniqueIps, ctr, series, top };
   }, [clicks, campaigns]);
 
-  const generatedAt = formatBRDateTime(new Date());
+  const [generatedIso, setGeneratedIso] = useState<string>(() => toLocalInputValue(new Date()));
+  const generatedAt = formatBRDateTime(fromLocalInputValue(generatedIso));
   const periodLabel = PERIOD_OPTIONS.find((o) => o.key === period)?.label ?? "";
   const campaignLabel =
     campaignId === "all"
