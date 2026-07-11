@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { ErrorCard } from "@/components/admin/query-state";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp/conversas")({
   head: () => ({ meta: [{ title: "Conversas — WhatsApp" }] }),
@@ -37,24 +38,27 @@ function formatTime(iso?: string | null) {
 function Page() {
   const convFn = useServerFn(listConversations);
   const msgFn = useServerFn(listMessages);
-  const { data: convs = [], isLoading: convsLoading } = useQuery({
+  const convQuery = useQuery({
     queryKey: ["wa-conv"],
     queryFn: () => convFn(),
     refetchInterval: 15_000,
   });
+  const { data: convs, isLoading: convsLoading, error: convsError, refetch: refetchConvs } = convQuery;
   const [phone, setPhone] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const { data: msgs = [], isLoading: msgsLoading } = useQuery({
+  const msgQuery = useQuery({
     enabled: !!phone,
     queryKey: ["wa-msgs", phone],
     queryFn: () => msgFn({ data: { phone: phone! } }),
     refetchInterval: 10_000,
   });
+  const { data: msgs, isLoading: msgsLoading, error: msgsError, refetch: refetchMsgs } = msgQuery;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return convs as any[];
-    return (convs as any[]).filter((c) => {
+    const list = convs ?? [];
+    if (!q) return list as any[];
+    return (list as any[]).filter((c) => {
       const name = (c.contact?.name ?? "").toLowerCase();
       return name.includes(q) || String(c.phone).includes(q);
     });
@@ -76,7 +80,7 @@ function Page() {
                 <h2 className="text-sm font-semibold">Conversas</h2>
               </div>
               <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                {(convs as any[]).length}
+                {(convs ?? []).length}
               </span>
             </div>
             <div className="relative">
@@ -103,6 +107,8 @@ function Page() {
                   </div>
                 ))}
               </div>
+            ) : convsError ? (
+              <div className="p-3"><ErrorCard error={convsError} onRetry={() => refetchConvs()} /></div>
             ) : filtered.length === 0 ? (
               <div className="p-6 text-center text-sm text-muted-foreground">Nenhuma conversa</div>
             ) : (
@@ -194,7 +200,9 @@ function Page() {
                     <Skeleton className="ml-auto h-10 w-1/2" />
                     <Skeleton className="h-10 w-1/3" />
                   </div>
-                ) : (msgs as any[]).length === 0 ? (
+                ) : msgsError ? (
+                  <ErrorCard error={msgsError} onRetry={() => refetchMsgs()} />
+                ) : !msgs || (msgs as any[]).length === 0 ? (
                   <div className="text-center text-sm text-muted-foreground">Sem mensagens.</div>
                 ) : (
                   <div className="mx-auto flex max-w-2xl flex-col gap-2">
@@ -267,7 +275,7 @@ function Page() {
                   <Row label="Direção" value={active.direction === "in" ? "Recebida" : "Enviada"} />
                 </Section>
                 <Section title="Atividade">
-                  <Row label="Mensagens" value={String((msgs as any[]).length)} />
+                  <Row label="Mensagens" value={String((msgs ?? []).length)} />
                 </Section>
               </div>
             </div>

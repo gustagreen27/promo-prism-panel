@@ -19,6 +19,7 @@ import { submitTemplateForApproval, refreshTemplateStatus } from "@/lib/wa-meta.
 import { duplicateTemplate } from "@/lib/wa-meta-api.functions";
 import { listNumbers } from "@/lib/whatsapp-numbers.functions";
 import { listWabas } from "@/lib/wa-wabas.functions";
+import { ErrorCard } from "@/components/admin/query-state";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp/templates")({
   head: () => ({ meta: [{ title: "Templates WhatsApp" }] }),
@@ -37,9 +38,12 @@ function Page() {
   const dupFn = useServerFn(duplicateTemplate);
   const wabasFn = useServerFn(listWabas);
   const qc = useQueryClient();
-  const { data: rows = [], isLoading } = useQuery({ queryKey: ["wa-templates"], queryFn: () => listFn() });
-  const { data: numbers = [] } = useQuery({ queryKey: ["wa-numbers"], queryFn: () => numFn() });
-  const { data: wabas = [] } = useQuery({ queryKey: ["wa-wabas"], queryFn: () => wabasFn() });
+  const templatesQuery = useQuery({ queryKey: ["wa-templates"], queryFn: () => listFn() });
+  const { data: rows, isLoading, error, refetch } = templatesQuery;
+  const numbersQuery = useQuery({ queryKey: ["wa-numbers"], queryFn: () => numFn() });
+  const wabasQuery = useQuery({ queryKey: ["wa-wabas"], queryFn: () => wabasFn() });
+  const numbers = numbersQuery.data ?? [];
+  const wabas = wabasQuery.data ?? [];
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [syncConn, setSyncConn] = useState<string>("");
@@ -95,7 +99,8 @@ function Page() {
       />
       <div className="rounded-xl border bg-card">
         {isLoading ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
-        : rows.length === 0 ? <EmptyState title="Nenhum template" description="Cadastre manualmente ou sincronize com a Meta." />
+        : error ? <div className="p-4"><ErrorCard error={error} onRetry={() => refetch()} /></div>
+        : !rows || rows.length === 0 ? <EmptyState title="Nenhum template" description="Cadastre manualmente ou sincronize com a Meta." />
         : <Table>
           <TableHeader><TableRow>
             <TableHead>Nome</TableHead><TableHead>WABA</TableHead><TableHead>Idioma</TableHead><TableHead>Categoria</TableHead>
