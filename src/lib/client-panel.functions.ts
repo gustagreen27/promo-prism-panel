@@ -137,28 +137,43 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any
-    await assertWorkspaceMember(supabase, userId, data.workspace_id)
-    const ws = await assertWorkspaceNotBlocked(supabase, data.workspace_id)
+    const { data: adminRole } = await supabase.rpc('has_role', { _user_id: userId, _role: 'admin' })
+    const isAdmin = !!adminRole
+    let ws: any = null
 
-    // Validar número liberado
-    const { data: grant } = await supabase
-      .from('whatsapp_number_grants')
-      .select('id')
-      .eq('workspace_id', data.workspace_id)
-      .eq('connection_id', data.connection_id)
-      .limit(1)
-      .maybeSingle()
-    if (!grant) throw new Error('Este número não está liberado para o seu workspace')
+    if (isAdmin) {
+      const { data: workspace } = await supabase
+        .from('workspaces')
+        .select('approval_mode')
+        .eq('id', data.workspace_id)
+        .maybeSingle()
+      ws = workspace
+    } else {
+      await assertWorkspaceMember(supabase, userId, data.workspace_id)
+      ws = await assertWorkspaceNotBlocked(supabase, data.workspace_id)
+    }
 
-    // Validar template liberado
-    const { data: tplGrant } = await supabase
-      .from('whatsapp_template_grants')
-      .select('id')
-      .eq('template_id', data.template_id)
-      .or(`workspace_id.eq.${data.workspace_id},workspace_id.is.null`)
-      .limit(1)
-      .maybeSingle()
-    if (!tplGrant) throw new Error('Este template não está liberado para o seu workspace')
+    if (!isAdmin) {
+      // Validar número liberado
+      const { data: grant } = await supabase
+        .from('whatsapp_number_grants')
+        .select('id')
+        .eq('workspace_id', data.workspace_id)
+        .eq('connection_id', data.connection_id)
+        .limit(1)
+        .maybeSingle()
+      if (!grant) throw new Error('Este número não está liberado para o seu workspace')
+
+      // Validar template liberado
+      const { data: tplGrant } = await supabase
+        .from('whatsapp_template_grants')
+        .select('id')
+        .eq('template_id', data.template_id)
+        .or(`workspace_id.eq.${data.workspace_id},workspace_id.is.null`)
+        .limit(1)
+        .maybeSingle()
+      if (!tplGrant) throw new Error('Este template não está liberado para o seu workspace')
+    }
 
     // Consolida mapeamentos em template_variables (lido pelo worker de envio).
     const templateVars: Record<string, string> = { ...(data.variables_mapping ?? {}) }
@@ -193,6 +208,55 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
       .select()
       .single()
     if (error) throw error
+
+    if (data.list_id) {
+      const { data: items, error: itemsErr } = await supabase
+        .from('contact_list_items')
+        .select('contact:contacts(id,phone,opt_in,opt_out,name)')
+        .eq('list_id', data.list_id)
+      if (itemsErr) throw itemsErr
+
+      const contacts = ((items ?? []) as any[])
+        .map((i) => i.contact)
+        .filter((c) => c?.phone && c.opt_in !== false && !c.opt_out)
+
+      const phones = contacts.map((c) => c.phone)
+      let blocked = new Set<string>()
+      if (phones.length) {
+        const { data: optOuts } = await supabase.from('opt_outs').select('phone').in('phone', phones)
+        blocked = new Set((optOuts ?? []).map((r: any) => r.phone))
+      }
+
+      const unique = new Map<string, any>()
+      for (const c of contacts) {
+        const phone = String(c.phone ?? '').replace(/\D/g, '')
+        if (!phone || blocked.has(c.phone) || unique.has(phone)) continue
+        unique.set(phone, c)
+      }
+
+      const recipients = Array.from(unique.values()).map((c: any) => ({
+        campaign_id: campaign.id,
+        contact_id: c.id,
+        phone: String(c.phone ?? '').replace(/\D/g, ''),
+        variables: c.name ? { nome: c.name, name: c.name } : {},
+        status: 'pending' as const,
+      }))
+
+      for (let i = 0; i < recipients.length; i += 1000) {
+        const { error: recErr } = await supabase
+          .from('campaign_recipients')
+          .insert(recipients.slice(i, i + 1000))
+        if (recErr) throw recErr
+      }
+
+      const { error: totalErr } = await supabase
+        .from('wa_campaigns')
+        .update({ total_recipients: recipients.length })
+        .eq('id', campaign.id)
+      if (totalErr) throw totalErr
+      campaign.total_recipients = recipients.length
+    }
+
     return { campaign }
   })
 
@@ -210,6 +274,16 @@ export const startClientCampaign = createServerFn({ method: 'POST' })
       .eq('id', data.campaign_id)
       .maybeSingle()
     if (!c) throw new Error('Campanha não encontrada')
+    const { data: adminRole } = await supabase.rpc('has_role', { _user_id: userId, _role: 'admin' })
+    const isAdmin = !!adminRole
+    if (isAdmin) {
+      await supabase
+        .from('wa_campaigns')
+        .update({ status: 'queued', approval_status: 'approved', approved_at: new Date().toISOString(), approved_by: userId, reservation_id: null })
+        .eq('id', c.id)
+      return { status: 'queued' as const }
+    }
+
     await assertWorkspaceMember(supabase, userId, c.workspace_id)
     await assertWorkspaceNotBlocked(supabase, c.workspace_id)
 

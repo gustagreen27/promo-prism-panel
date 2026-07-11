@@ -201,6 +201,15 @@ export async function processCampaignTick(
       .eq("id", campaignId)
       .single();
     if (!camp) return { processed: 0, done: true };
+    const { data: adminCreator } = camp.created_by
+      ? await supabaseAdmin
+          .from("user_roles")
+          .select("id")
+          .eq("user_id", camp.created_by)
+          .eq("role", "admin")
+          .maybeSingle()
+      : { data: null };
+    const isAdminDispatch = !!adminCreator;
 
     // pause/cancel guard
     if (camp.status === "paused") return { processed: 0, done: false };
@@ -464,7 +473,7 @@ export async function processCampaignTick(
             _reservation_id: (camp as any).reservation_id,
             _recipient_id: r.id,
           });
-        } else {
+        } else if (!isAdminDispatch) {
           await supabaseAdmin.rpc("wa_consume_stock" as any, {
             _client_id: camp.client_id,
             _project_id: camp.project_id,

@@ -27,7 +27,7 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
               .select("status,access_token,phone_number_id")
               .eq("id", camp.connection_id).maybeSingle();
             if (!conn) errors.push("Número não encontrado");
-            else if (conn.status && String(conn.status).toLowerCase() !== "active" && String(conn.status).toLowerCase() !== "connected") errors.push(`Número inativo (${conn.status})`);
+            else if (conn.status && !["ativo", "active", "connected"].includes(String(conn.status).toLowerCase())) errors.push(`Número inativo (${conn.status})`);
             else if (!conn.access_token || !conn.phone_number_id) errors.push("Token/phone_number_id ausente");
           }
           if (camp.template_id) {
