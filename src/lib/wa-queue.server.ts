@@ -414,9 +414,9 @@ export async function processCampaignTick(
 
       const headerImageOverride = renderedVars._header_image_url || null;
       const rawButtonUrlParam = renderedVars._button_url_param || null;
-      let buttonUrlParam = rawButtonUrlParam ? renderMapping(rawButtonUrlParam, ctx) : null;
+      const legacyButtonUrlParam = rawButtonUrlParam ? renderMapping(rawButtonUrlParam, ctx) : null;
       const buttonIndexRaw = renderedVars._button_index;
-      let buttonIndex = buttonIndexRaw != null && buttonIndexRaw !== "" ? Number(buttonIndexRaw) : 0;
+      const legacyButtonIndex = buttonIndexRaw != null && buttonIndexRaw !== "" ? Number(buttonIndexRaw) : 0;
 
       const tplHeaderType = (tpl.header_type || "").toString().toLowerCase();
       const isMediaHeader = ["image", "video", "document"].includes(tplHeaderType);
@@ -436,22 +436,58 @@ export async function processCampaignTick(
         }
       }
 
-      // Auto-detect URL button with variable when caller didn't set _button_url_param.
-      if (!buttonUrlParam) {
-        const btns = Array.isArray((tpl as any).buttons) ? ((tpl as any).buttons as any[]) : [];
-        const idx = btns.findIndex(
-          (b: any) => String(b?.type).toUpperCase() === "URL" && typeof b?.url === "string" && b.url.includes("{{"),
-        );
-        if (idx >= 0) {
-          const btn = btns[idx];
-          const example = Array.isArray(btn?.example) ? btn.example[0] : null;
-          if (example) {
-            buttonUrlParam = renderMapping(String(example), ctx);
-            buttonIndex = idx;
-          }
+      // Monta componentes de botão URL para cada botão dinâmico do template.
+      // Fontes do mapeamento (em ordem):
+      //   camp.button_url_mapping  → coluna { "<n>" | "<btnIdx>": "curso-{slug}" }
+      //   camp.template_variables._button_url  → mesmo formato (fallback)
+      //   camp.template_variables._button_url_param + _button_index (legado, botão único)
+      //   btn.example[0] do próprio template (auto-detect)
+      const btnMapRaw =
+        ((camp as any).button_url_mapping as Record<string, string> | null | undefined) ??
+        (renderedVars._button_url as unknown as Record<string, string> | undefined) ??
+        {};
+      const tplButtons = Array.isArray((tpl as any).buttons) ? ((tpl as any).buttons as any[]) : [];
+      const dynButtons: { index: number; urlParam: string }[] = [];
+      const missingButtons: string[] = [];
+      tplButtons.forEach((b: any, idx: number) => {
+        if (String(b?.type).toUpperCase() !== "URL") return;
+        const url = typeof b?.url === "string" ? b.url : "";
+        if (!url.includes("{{")) return;
+        // Chave preferida: índice do botão; fallback: número da variável {{n}} do URL
+        const urlVarNums = [...url.matchAll(/\{\{(\d+)\}\}/g)].map((m) => Number(m[1]));
+        const firstVarKey = urlVarNums.length ? String(urlVarNums[0]) : "1";
+        const mappingSrc =
+          btnMapRaw[String(idx)] ??
+          btnMapRaw[firstVarKey] ??
+          (Array.isArray(b?.example) ? b.example[0] : null) ??
+          "";
+        const value = renderMapping(String(mappingSrc), ctx).trim();
+        if (!value) {
+          missingButtons.push(`{{${firstVarKey}}} do botão "${b?.text ?? `#${idx}`}"`);
+          return;
         }
+        dynButtons.push({ index: idx, urlParam: value });
+      });
+
+      // Se ainda vier vazio, tenta o legado (botão único).
+      if (!dynButtons.length && legacyButtonUrlParam) {
+        dynButtons.push({ index: legacyButtonIndex, urlParam: legacyButtonUrlParam });
       }
 
+      if (missingButtons.length && !dynButtons.length) {
+        // Marca esta mensagem como falha determinística — não faz sentido chamar a Meta.
+        await supabaseAdmin
+          .from("campaign_recipients")
+          .update({
+            status: "failed",
+            failed_reason: `Parâmetro do botão ausente: ${missingButtons.join(", ")}`,
+            attempt: (r.attempt ?? 0) + 1,
+          })
+          .eq("id", r.id);
+        failed++;
+        lastError = `Parâmetro do botão ausente: ${missingButtons.join(", ")}`;
+        continue;
+      }
 
       const result = await sendTemplateMessage({
         phoneNumberId: conn.phone_number_id!,
@@ -463,9 +499,9 @@ export async function processCampaignTick(
         variables: renderedVars,
         headerType: resolvedHeaderType,
         headerValue: resolvedHeaderValue,
-        buttonUrlParam,
-        buttonIndex,
+        buttons: dynButtons,
       });
+
 
       const attempts = (r.attempt ?? 0) + 1;
       if (result.ok) {
