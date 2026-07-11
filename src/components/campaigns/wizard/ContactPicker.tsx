@@ -309,7 +309,9 @@ function ImportPanel({
           {rows.length > 0 && (
             <div className="rounded-md border">
               <div className="border-b bg-muted/30 px-3 py-1.5 text-xs font-medium">
-                Prévia · {rows.length} contatos válidos {rawRows.length !== rows.length && `(${rawRows.length - rows.length} descartados)`}
+                {rawRows.length > 500
+                  ? `Prévia · exibindo 500 de ${rawRows.length.toLocaleString("pt-BR")} linhas (todas serão importadas ao salvar)`
+                  : `Prévia · ${rows.length} contato(s) válido(s)${rawRows.length !== rows.length ? ` · ${rawRows.length - rows.length} sem telefone ignorado(s)` : ""}`}
               </div>
               <div className="max-h-48 overflow-auto text-xs">
                 <table className="w-full">
