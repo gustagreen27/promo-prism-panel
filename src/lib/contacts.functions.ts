@@ -49,8 +49,7 @@ export const listContacts = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("contacts")
       .select("*, client:clients(id,name), project:projects(id,name)")
-      .order("created_at", { ascending: false })
-      .limit(1000);
+      .order("created_at", { ascending: false });
     if (error) throw error;
     return data ?? [];
   });
