@@ -29,7 +29,7 @@ import { listTemplates } from "@/lib/whatsapp-templates.functions";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
-import { renderMapping, fillMetaTemplate, buildContext } from "@/lib/wa-variables";
+import { renderMapping, fillMetaTemplate, buildContext, metaVarsIn } from "@/lib/wa-variables";
 import { formatCallingCode, formatPhoneDisplay, summarizeCallingCodes } from "@/lib/phone-country";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
