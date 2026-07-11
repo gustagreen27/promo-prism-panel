@@ -417,7 +417,7 @@ function Page() {
                   {previewForFirst.first && (
                     <span className="ml-2 text-xs font-normal text-muted-foreground">
                       1º destinatário: {previewForFirst.first.contact?.name ?? "—"}
-                      {previewForFirst.first.phone ? ` • ${previewForFirst.first.phone}` : ""}
+                      {previewForFirst.first.phone ? ` • ${formatPhoneDisplay(previewForFirst.first.phone)}` : ""}
                     </span>
                   )}
                 </CardTitle>
