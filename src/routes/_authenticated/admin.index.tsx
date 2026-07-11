@@ -15,6 +15,7 @@ import { PageHeader } from "@/components/admin/page-header";
 import { PeriodFilter } from "@/components/admin/period-filter";
 import { MetricCard } from "@/components/admin/metric-card";
 import { EmptyState } from "@/components/admin/empty-state";
+import { ErrorCard } from "@/components/admin/query-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -33,13 +34,18 @@ function DashboardPage() {
   const range = useMemo(() => getPeriodRange(period), [period]);
   const fetcher = useServerFn(getDashboardSummary);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["dashboard-summary", period, range.start.toISOString(), range.end.toISOString()],
     queryFn: () =>
       fetcher({ data: { start: range.start.toISOString(), end: range.end.toISOString() } }),
   });
 
   const goalPct = Math.max(0, Math.min(100, data?.goalProgress ?? 0));
+  const dash = (v: number | null | undefined, format: (n: number) => string) => {
+    if (isLoading) return "—";
+    if (v == null) return "—";
+    return format(v);
+  };
 
   return (
     <div className="space-y-6">
