@@ -89,8 +89,12 @@ function Page() {
 
   const recipientsQ = useQuery({
     queryKey: ["wa-camp-recipients", id],
-    queryFn: () => getRec({ data: { id } }),
-    refetchInterval: 8000,
+    queryFn: () => getRec({ data: { id, limit: 500 } }),
+    refetchInterval: (q) => {
+      const s = (progQ.data as any)?.status;
+      return s === "running" ? 20000 : false;
+    },
+    staleTime: 15000,
   });
   const { data: recipients } = recipientsQ;
 
