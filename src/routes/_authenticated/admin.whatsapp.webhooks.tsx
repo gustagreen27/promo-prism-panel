@@ -16,11 +16,16 @@ import { ErrorCard } from "@/components/admin/query-state";
 const KEY = "whatsapp_webhook";
 
 const EVENTS = [
-  { id: "messages", label: "messages", hint: "Mensagens recebidas e status de entrega" },
-  { id: "message_template_status_update", label: "message_template_status_update", hint: "Aprovação de templates" },
-  { id: "account_update", label: "account_update", hint: "Alterações na conta WABA" },
-  { id: "phone_number_quality_update", label: "phone_number_quality_update", hint: "Qualidade do número" },
-  { id: "phone_number_name_update", label: "phone_number_name_update", hint: "Nome de exibição" },
+  { id: "messages", label: "messages", hint: "Mensagens recebidas e status de entrega (accepted/sent/delivered/read/failed)" },
+  { id: "message_template_status_update", label: "message_template_status_update", hint: "Aprovação, rejeição, pausa e exclusão de templates" },
+  { id: "message_template_quality_update", label: "message_template_quality_update", hint: "Mudanças de qualidade dos templates" },
+  { id: "message_template_components_update", label: "message_template_components_update", hint: "Alterações nos componentes de templates" },
+  { id: "template_category_update", label: "template_category_update", hint: "Recategorização de templates pela Meta" },
+  { id: "account_update", label: "account_update", hint: "Alterações e desligamentos da conta WABA" },
+  { id: "account_alerts", label: "account_alerts", hint: "Alertas de limite, perfil e OBA" },
+  { id: "business_capability_update", label: "business_capability_update", hint: "Alterações de capacidades e limites da conta" },
+  { id: "phone_number_quality_update", label: "phone_number_quality_update", hint: "Qualidade e throughput do número" },
+  { id: "phone_number_name_update", label: "phone_number_name_update", hint: "Verificação do nome de exibição" },
 ];
 
 type WebhookConfig = {
@@ -52,7 +57,7 @@ function Page() {
 
   const defaultUrl = useMemo(() => {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    return `${origin}/api/public/whatsapp-webhook`;
+    return `${origin}/api/public/whatsapp/webhook`;
   }, []);
 
   const [form, setForm] = useState<WebhookConfig>({
