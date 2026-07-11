@@ -179,16 +179,17 @@ function Page() {
   );
   const swapConnWaba = swapConnRow?.waba_ref_id ?? null;
 
-  // Only templates approved on the number's WABA.
+  // Only templates approved on the selected number's WABA.
+  // Strict: without a selected connection or without a resolvable WABA we
+  // show nothing — a template must belong to that number's WABA.
   const swapTplList = useMemo(() => {
+    if (!swapConn || !swapConnWaba) return [];
     return (tplsQ.data ?? []).filter((t: any) => {
+      if (t.waba_ref_id !== swapConnWaba) return false;
       const st = String(t.status ?? "").toUpperCase();
-      const approved = !st || st === "APPROVED" || st === "ACTIVE";
-      if (!approved) return false;
-      if (!swapConnWaba) return true;
-      return !t.waba_ref_id || t.waba_ref_id === swapConnWaba;
+      return st === "APPROVED" || st === "ACTIVE";
     });
-  }, [tplsQ.data, swapConnWaba]);
+  }, [tplsQ.data, swapConn, swapConnWaba]);
 
   const swapTplRow = useMemo(
     () => (tplsQ.data ?? []).find((t: any) => t.id === swapTpl),
