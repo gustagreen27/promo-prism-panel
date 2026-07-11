@@ -407,7 +407,33 @@ function Page() {
               <KV k="Finalizada em" v={fmtDate(camp?.finished_at)} />
             </CardContent>
           </Card>
+
+          {previewForFirst && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">
+                  Prévia da mensagem
+                  {previewForFirst.first && (
+                    <span className="ml-2 text-xs font-normal text-muted-foreground">
+                      1º destinatário: {previewForFirst.first.contact?.name ?? "—"}
+                      {previewForFirst.first.phone ? ` • ${previewForFirst.first.phone}` : ""}
+                    </span>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <WhatsAppPreview
+                  header={previewForFirst.header as any}
+                  body={previewForFirst.body}
+                  footer={previewForFirst.footer}
+                  buttons={previewForFirst.buttons as any}
+                  senderName={(camp as any)?.connection?.display_phone ?? (camp as any)?.connection?.name ?? "Seu negócio"}
+                />
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
+
 
         <TabsContent value="recipients" className="space-y-3">
           <div className="flex justify-between items-center">
