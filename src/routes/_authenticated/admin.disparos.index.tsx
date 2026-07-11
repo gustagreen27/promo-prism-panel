@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import {
   listWaCampaigns, startWaCampaign, pauseWaCampaign, cancelWaCampaign, scheduleWaCampaign, unscheduleWaCampaign,
 } from "@/lib/wa-campaigns.functions";
+import { getCampaignErrorContext } from "@/lib/wa-diagnosis.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { CampaignWizard } from "@/routes/painel.campanhas.nova";
 
