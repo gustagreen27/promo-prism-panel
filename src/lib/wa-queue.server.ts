@@ -643,6 +643,26 @@ export async function processCampaignTick(
             _qty: 1,
           });
         }
+
+        // Pausa programada (Passo 02): a cada N mensagens enviadas, agenda pausa curta
+        if ((camp as any).scheduled_pause_enabled) {
+          const every = Number((camp as any).pause_every_messages ?? 0);
+          const dur = Number((camp as any).pause_duration_seconds ?? 0);
+          if (every > 0 && dur > 0) {
+            const totalSent = baseSentCount + sent;
+            if (totalSent > 0 && totalSent % every === 0) {
+              const until = new Date(Date.now() + dur * 1000).toISOString();
+              await supabaseAdmin
+                .from("wa_campaigns")
+                .update({ scheduled_pause_until: until, pause_reason: "scheduled_pause" })
+                .eq("id", campaignId);
+              systemicPause = {
+                reason: "scheduled_pause",
+                message: `Pausa programada: ${dur}s após ${every} envios`,
+              };
+            }
+          }
+        }
         return;
       }
 
