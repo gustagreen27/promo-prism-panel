@@ -92,6 +92,11 @@ function NewReportPage() {
               <Input id="date" type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} required />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="genAt">Data de geração *</Label>
+              <Input id="genAt" type="datetime-local" value={generatedAt} onChange={(e) => setGeneratedAt(e.target.value)} required />
+              <p className="text-[11px] text-muted-foreground">Aparece como "Gerado em ..." no cabeçalho.</p>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="ref">Referência</Label>
               <Input id="ref" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="opcional" />
             </div>
