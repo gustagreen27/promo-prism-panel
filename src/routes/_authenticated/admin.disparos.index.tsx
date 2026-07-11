@@ -5,19 +5,21 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   Plus, Search, Play, Pause, XCircle, Eye, RefreshCw, ArrowLeft,
-  Calendar, CheckCircle2, AlertTriangle, Clock, Rocket, MessageSquareText,
+  Calendar, CheckCircle2, AlertTriangle, Clock, Rocket, MessageSquareText, CalendarClock,
 } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { ErrorCard } from "@/components/admin/query-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  listWaCampaigns, startWaCampaign, pauseWaCampaign, cancelWaCampaign,
+  listWaCampaigns, startWaCampaign, pauseWaCampaign, cancelWaCampaign, scheduleWaCampaign, unscheduleWaCampaign,
 } from "@/lib/wa-campaigns.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { CampaignWizard } from "@/routes/painel.campanhas.nova";
