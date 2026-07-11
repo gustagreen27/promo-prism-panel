@@ -55,8 +55,8 @@ function Page() {
             </TableHeader>
             <TableBody>
               {jobs.map((j: any) => (
-                <>
-                  <TableRow key={j.id}>
+                <Fragment key={j.id}>
+                  <TableRow>
                     <TableCell>
                       <button onClick={() => setOpen((s) => ({ ...s, [j.id]: !s[j.id] }))}>
                         {open[j.id] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
