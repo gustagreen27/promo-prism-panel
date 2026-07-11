@@ -188,6 +188,20 @@ function AnalyticsPage() {
               <Label className="text-xs">Sócio responsável</Label>
               <ParticipantsFilter value={partFilter} onChange={setPartFilter} />
             </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label className="text-xs flex items-center gap-1"><Clock className="size-3" /> Data de geração do relatório</Label>
+              <div className="flex gap-1">
+                <Input
+                  type="datetime-local"
+                  value={generatedIso}
+                  onChange={(e) => setGeneratedIso(e.target.value)}
+                  className="h-9 w-[220px]"
+                />
+                <Button variant="outline" size="sm" onClick={() => setGeneratedIso(toLocalInputValue(new Date()))}>
+                  Agora
+                </Button>
+              </div>
+            </div>
           </div>
         </Card>
       </div>
