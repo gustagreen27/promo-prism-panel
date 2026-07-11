@@ -24,8 +24,7 @@ import {
   retryFailedRecipients, duplicateCampaign, preflightCampaign, unstickCampaignAsync,
   swapCampaignRouteAndResume,
 } from "@/lib/wa-campaign-runner.functions";
-import { listWorkspaceConnections } from "@/lib/wa-connections.functions";
-import { listTemplates } from "@/lib/whatsapp-templates.functions";
+import { adminListAllNumbers, adminListAllTemplates } from "@/lib/admin-dispatch.functions";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
