@@ -14,6 +14,7 @@ import {
   listMyNumbers, listMyTemplates, getMyBalance, createClientCampaign, startClientCampaign,
 } from "@/lib/client-panel.functions";
 import { adminListAllNumbers, adminListAllTemplates } from "@/lib/admin-dispatch.functions";
+import { startWaCampaign as adminStartWaCampaign, scheduleWaCampaign as adminScheduleWaCampaign } from "@/lib/wa-campaigns.functions";
 import { linkEventToCampaign } from "@/lib/calendar.functions";
 import { checkSchedulingConflict } from "@/lib/wa-schedule.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -96,6 +97,7 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   const fnBalance = useServerFn(getMyBalance);
   const fnCreate = useServerFn(createClientCampaign);
   const fnStart = useServerFn(startClientCampaign);
+  const fnAdminStart = useServerFn(adminStartWaCampaign);
   const fnLink = useServerFn(linkEventToCampaign);
   const fnConflict = useServerFn(checkSchedulingConflict);
 
@@ -397,8 +399,13 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
       }).eq("id", campaign.id);
 
       if (finalMode === "now") {
-        const r = await fnStart({ data: { campaign_id: campaign.id } });
-        toast.success(r.status === "queued" ? "Campanha na fila!" : "Aguardando aprovação.");
+        if (adminMode) {
+          await fnAdminStart({ data: { id: campaign.id } });
+          toast.success("Campanha iniciada.");
+        } else {
+          const r = await fnStart({ data: { campaign_id: campaign.id } });
+          toast.success(r.status === "queued" ? "Campanha na fila!" : "Aguardando aprovação.");
+        }
       } else if (finalMode === "schedule") {
         toast.success("Campanha agendada.");
       } else {
