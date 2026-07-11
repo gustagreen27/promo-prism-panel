@@ -22,6 +22,11 @@ async function assertWorkspaceNotBlocked(supabase: any, workspaceId: string) {
   return data
 }
 
+async function isAdminUser(supabase: any, userId: string) {
+  const { data } = await supabase.rpc('has_role', { _user_id: userId, _role: 'admin' })
+  return !!data
+}
+
 // ---- Listar números liberados ----
 export const listMyNumbers = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
@@ -137,28 +142,42 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any
-    await assertWorkspaceMember(supabase, userId, data.workspace_id)
-    const ws = await assertWorkspaceNotBlocked(supabase, data.workspace_id)
+    const isAdmin = await isAdminUser(supabase, userId)
+    let ws: any = null
 
-    // Validar número liberado
-    const { data: grant } = await supabase
-      .from('whatsapp_number_grants')
-      .select('id')
-      .eq('workspace_id', data.workspace_id)
-      .eq('connection_id', data.connection_id)
-      .limit(1)
-      .maybeSingle()
-    if (!grant) throw new Error('Este número não está liberado para o seu workspace')
+    if (isAdmin) {
+      const { data: workspace } = await supabase
+        .from('workspaces')
+        .select('approval_mode')
+        .eq('id', data.workspace_id)
+        .maybeSingle()
+      ws = workspace
+    } else {
+      await assertWorkspaceMember(supabase, userId, data.workspace_id)
+      ws = await assertWorkspaceNotBlocked(supabase, data.workspace_id)
+    }
 
-    // Validar template liberado
-    const { data: tplGrant } = await supabase
-      .from('whatsapp_template_grants')
-      .select('id')
-      .eq('template_id', data.template_id)
-      .or(`workspace_id.eq.${data.workspace_id},workspace_id.is.null`)
-      .limit(1)
-      .maybeSingle()
-    if (!tplGrant) throw new Error('Este template não está liberado para o seu workspace')
+    if (!isAdmin) {
+      // Validar número liberado
+      const { data: grant } = await supabase
+        .from('whatsapp_number_grants')
+        .select('id')
+        .eq('workspace_id', data.workspace_id)
+        .eq('connection_id', data.connection_id)
+        .limit(1)
+        .maybeSingle()
+      if (!grant) throw new Error('Este número não está liberado para o seu workspace')
+
+      // Validar template liberado
+      const { data: tplGrant } = await supabase
+        .from('whatsapp_template_grants')
+        .select('id')
+        .eq('template_id', data.template_id)
+        .or(`workspace_id.eq.${data.workspace_id},workspace_id.is.null`)
+        .limit(1)
+        .maybeSingle()
+      if (!tplGrant) throw new Error('Este template não está liberado para o seu workspace')
+    }
 
     // Consolida mapeamentos em template_variables (lido pelo worker de envio).
     const templateVars: Record<string, string> = { ...(data.variables_mapping ?? {}) }
