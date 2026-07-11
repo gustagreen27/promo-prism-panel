@@ -203,6 +203,95 @@ export const resumeCampaignAsync = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/**
+ * Swap connection (WhatsApp number) and/or template on a legacy single-route campaign
+ * and immediately resume it. Also unlocks failed recipients so they retry on the new
+ * number/template. Language must match when swapping template (or user must accept).
+ */
+export const swapCampaignRouteAndResume = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({
+    id: z.string().uuid(),
+    connection_id: z.string().uuid().optional().nullable(),
+    template_id: z.string().uuid().optional().nullable(),
+    retry_failed: z.boolean().optional().default(true),
+  }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const supabase = context.supabase;
+
+    const { data: camp, error: campErr } = await supabase
+      .from("wa_campaigns").select("*").eq("id", data.id).single();
+    if (campErr || !camp) throw new Error("Campanha não encontrada");
+
+    const patch: Record<string, any> = {};
+
+    if (data.connection_id && data.connection_id !== camp.connection_id) {
+      const { data: conn } = await supabase
+        .from("whatsapp_connections")
+        .select("id,status,access_token,phone_number_id,waba_ref_id")
+        .eq("id", data.connection_id).single();
+      if (!conn) throw new Error("Número não encontrado");
+      const ok = ["ativo", "active", "connected"].includes(String(conn.status ?? "").toLowerCase());
+      if (!ok || !conn.access_token || !conn.phone_number_id) {
+        throw new Error("Número selecionado não está ativo ou sem token válido");
+      }
+      patch.connection_id = data.connection_id;
+    }
+
+    if (data.template_id && data.template_id !== camp.template_id) {
+      const { data: tpl } = await supabase
+        .from("whatsapp_templates")
+        .select("id,name,language,status,waba_ref_id")
+        .eq("id", data.template_id).single();
+      if (!tpl) throw new Error("Template não encontrado");
+      const st = String(tpl.status ?? "").toUpperCase();
+      if (st && st !== "APPROVED" && st !== "ACTIVE") {
+        throw new Error(`Template não está aprovado (status: ${tpl.status})`);
+      }
+      patch.template_id = data.template_id;
+    }
+
+    if (Object.keys(patch).length === 0) {
+      // Nothing swapped, behave like plain resume.
+    } else {
+      const { error: upErr } = await supabase.from("wa_campaigns").update(patch as any).eq("id", data.id);
+      if (upErr) throw upErr;
+      await logEvent(
+        context.supabase, data.id, "route_swapped",
+        `Rota alterada: ${patch.connection_id ? "número " : ""}${patch.connection_id && patch.template_id ? "e " : ""}${patch.template_id ? "template" : ""}`.trim(),
+        context.userId, patch,
+      );
+    }
+
+    if (data.retry_failed) {
+      const { data: reset } = await supabase
+        .from("campaign_recipients")
+        .update({ status: "pending", failed_at: null, failed_reason: null, error_code: null })
+        .eq("campaign_id", data.id)
+        .eq("status", "failed")
+        .select("id");
+      if (reset?.length) {
+        await logEvent(context.supabase, data.id, "retry", `${reset.length} falhas reenfileiradas`, context.userId);
+      }
+    }
+
+    // Clear pause reason and resume.
+    await supabase
+      .from("wa_campaigns")
+      .update({
+        status: "running",
+        resumed_at: new Date().toISOString(),
+        pause_reason: null,
+        paused_at: null,
+        finished_at: null,
+      })
+      .eq("id", data.id);
+    await logEvent(context.supabase, data.id, "resumed", "Campanha retomada após troca de rota", context.userId);
+
+    return { ok: true, patched: patch };
+  });
+
 export const cancelCampaignAsync = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => idSchema.parse(d))

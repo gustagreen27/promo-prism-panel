@@ -22,12 +22,22 @@ import {
   getCampaignFinalReport, getCampaignErrors, getRecipientPreviews,
   startCampaignAsync, pauseCampaignAsync, resumeCampaignAsync, cancelCampaignAsync,
   retryFailedRecipients, duplicateCampaign, preflightCampaign, unstickCampaignAsync,
+  swapCampaignRouteAndResume,
 } from "@/lib/wa-campaign-runner.functions";
+import { listWorkspaceConnections } from "@/lib/wa-connections.functions";
+import { listTemplates } from "@/lib/whatsapp-templates.functions";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
 import { renderMapping, fillMetaTemplate, buildContext } from "@/lib/wa-variables";
 import { formatCallingCode, formatPhoneDisplay, summarizeCallingCodes } from "@/lib/phone-country";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Shuffle } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/disparos/$id")({
   head: () => ({ meta: [{ title: "Campanha WhatsApp" }] }),
@@ -124,6 +134,25 @@ function Page() {
   const dupFn = useServerFn(duplicateCampaign);
   const preflight = useServerFn(preflightCampaign);
   const unstickFn = useServerFn(unstickCampaignAsync);
+  const swapFn = useServerFn(swapCampaignRouteAndResume);
+  const listConnsFn = useServerFn(listWorkspaceConnections);
+  const listTplsFn = useServerFn(listTemplates);
+
+  const [swapOpen, setSwapOpen] = useState(false);
+  const [swapConn, setSwapConn] = useState<string>("");
+  const [swapTpl, setSwapTpl] = useState<string>("");
+  const [swapRetry, setSwapRetry] = useState(true);
+
+  const connsQ = useQuery({
+    queryKey: ["wa-conns-all"],
+    queryFn: () => listConnsFn(),
+    enabled: swapOpen,
+  });
+  const tplsQ = useQuery({
+    queryKey: ["wa-tpls-all"],
+    queryFn: () => listTplsFn(),
+    enabled: swapOpen,
+  });
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["wa-camp", id] });
@@ -226,6 +255,20 @@ function Page() {
         invalidate();
       },
       onError: (e: any) => toast.error(e?.message ?? "Erro ao destravar"),
+    }),
+    swap: useMutation({
+      mutationFn: () => swapFn({ data: {
+        id,
+        connection_id: swapConn || undefined,
+        template_id: swapTpl || undefined,
+        retry_failed: swapRetry,
+      } }),
+      onSuccess: () => {
+        toast.success("Rota trocada e campanha retomada");
+        setSwapOpen(false);
+        invalidate();
+      },
+      onError: (e: any) => toast.error(e?.message ?? "Erro ao trocar rota"),
     }),
   };
 
@@ -352,6 +395,20 @@ function Page() {
             {isPaused && (
               <Button size="sm" onClick={() => m.resume.mutate()}>
                 <Play className="mr-2 h-4 w-4" />Retomar
+              </Button>
+            )}
+            {(isPaused || isRunning || status === "error") && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setSwapConn((camp as any)?.connection_id ?? "");
+                  setSwapTpl((camp as any)?.template_id ?? "");
+                  setSwapOpen(true);
+                }}
+              >
+                <Shuffle className="mr-2 h-4 w-4" />
+                Trocar número/template
               </Button>
             )}
             {(isRunning || isPaused) && (
@@ -670,6 +727,73 @@ function Page() {
           )}
         </TabsContent>
       </Tabs>
+
+      <Dialog open={swapOpen} onOpenChange={setSwapOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Trocar número/template e retomar</DialogTitle>
+            <DialogDescription>
+              Selecione um número e/ou template diferentes. Destinatários já enviados não serão reenviados.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Número de envio</Label>
+              <Select value={swapConn} onValueChange={setSwapConn}>
+                <SelectTrigger><SelectValue placeholder="Selecione um número" /></SelectTrigger>
+                <SelectContent>
+                  {(connsQ.data ?? []).flatMap((w: any) =>
+                    (w.connections ?? [])
+                      .filter((c: any) => ["ativo","active","connected"].includes(String(c.status ?? "").toLowerCase()))
+                      .map((c: any) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.display_phone ?? c.name} — {w.name}
+                          {c.id === (camp as any)?.connection_id ? " (atual)" : ""}
+                        </SelectItem>
+                      )),
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Template</Label>
+              <Select value={swapTpl} onValueChange={setSwapTpl}>
+                <SelectTrigger><SelectValue placeholder="Selecione um template" /></SelectTrigger>
+                <SelectContent>
+                  {(tplsQ.data ?? [])
+                    .filter((t: any) => {
+                      const st = String(t.status ?? "").toUpperCase();
+                      return !st || st === "APPROVED" || st === "ACTIVE";
+                    })
+                    .map((t: any) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name} ({t.language})
+                        {t.id === (camp as any)?.template_id ? " (atual)" : ""}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={swapRetry}
+                onCheckedChange={(v) => setSwapRetry(v === true)}
+              />
+              Reenfileirar destinatários que falharam ({p.failed ?? 0})
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSwapOpen(false)}>Cancelar</Button>
+            <Button
+              onClick={() => m.swap.mutate()}
+              disabled={m.swap.isPending || (!swapConn && !swapTpl)}
+            >
+              {m.swap.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+              Trocar e retomar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
