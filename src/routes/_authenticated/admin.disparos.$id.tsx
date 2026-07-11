@@ -296,20 +296,30 @@ function Page() {
   const isPaused = status === "paused";
   const isFinished = ["completed", "partial", "cancelled", "error"].includes(status);
 
-  const exportCsv = () => {
-    if (!recipients?.length) { toast.warning("Sem dados"); return; }
-    const rows = recipients as any[];
-    const header = ["phone","nome","status","tentativas","enviada","entregue","lida","respondida","erro"];
-    const csv = [header.join(","), ...rows.map((r: any) => [
-      r.phone, r.contact?.name ?? "", r.status, r.attempt ?? 0,
-      r.sent_at ?? "", r.delivered_at ?? "", r.read_at ?? "", r.replied_at ?? "",
-      (r.failed_reason ?? "").replace(/,/g, ";"),
-    ].join(","))].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `campanha-${id}.csv`; a.click();
-    URL.revokeObjectURL(url);
+  const exportCsv = async () => {
+    try {
+      toast.info("Preparando CSV com todos os destinatários…");
+      const all = (await getRec({ data: { id } })) as any[];
+      if (!all?.length) { toast.warning("Sem dados"); return; }
+      const esc = (v: any) => {
+        const s = v == null ? "" : String(v);
+        return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const header = ["phone","nome","status","tentativas","enviada","entregue","lida","respondida","erro","error_code","wamid"];
+      const csv = [header.join(","), ...all.map((r: any) => [
+        r.phone, r.contact?.name ?? "", r.status, r.attempt ?? 0,
+        r.sent_at ?? "", r.delivered_at ?? "", r.read_at ?? "", r.replied_at ?? "",
+        r.failed_reason ?? "", r.error_code ?? "", r.meta_message_id ?? "",
+      ].map(esc).join(","))].join("\n");
+      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `campanha-${id}.csv`; a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`CSV com ${all.length.toLocaleString("pt-BR")} destinatários baixado.`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao exportar CSV");
+    }
   };
 
   if (campQ.error) {
