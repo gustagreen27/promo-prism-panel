@@ -190,20 +190,22 @@ function Page() {
 
 
   const swapTplRow = useMemo(
-    () => (tplsQ.data ?? []).find((t: any) => t.id === swapTpl),
+    () => (tplsQ.data?.templates ?? []).find((t: any) => t.id === swapTpl),
     [tplsQ.data, swapTpl],
   );
 
-  // If the currently-selected template does not belong to the new WABA, clear it.
+  // If the currently-selected template does not belong to the new connection, clear it.
   useEffect(() => {
-    if (!swapOpen || !swapTpl || !swapTplRow) return;
-    if (!swapConnWaba || swapTplRow.waba_ref_id !== swapConnWaba) {
+    if (!swapOpen || !swapTpl) return;
+    if (tplsQ.isLoading || !tplsQ.data) return;
+    if (!swapTplRow) {
       setSwapTpl("");
       setSwapBodyVars({});
       setSwapBtnVars({});
       setSwapHeaderMediaUrl("");
     }
-  }, [swapConnWaba, swapTplRow, swapTpl, swapOpen]);
+  }, [swapConn, swapTplRow, swapTpl, swapOpen, tplsQ.isLoading, tplsQ.data]);
+
 
   // Variables required by the selected template.
   const swapBodyVarNums = useMemo(
