@@ -97,6 +97,7 @@ function ListView({ onNew }: { onNew: () => void }) {
   const cancelFn = useServerFn(cancelWaCampaign);
   const scheduleFn = useServerFn(scheduleWaCampaign);
   const unscheduleFn = useServerFn(unscheduleWaCampaign);
+  const deleteFn = useServerFn(deleteWaCampaign);
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<StatusFilter>("all");
