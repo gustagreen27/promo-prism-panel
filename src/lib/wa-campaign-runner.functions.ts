@@ -68,6 +68,33 @@ export const preflightCampaign = createServerFn({ method: "POST" })
       });
     }
 
+    // Botões URL dinâmicos: exige parâmetro salvo para cada botão com {{n}}.
+    if (camp.template_id) {
+      const { data: tpl } = await supabase
+        .from("whatsapp_templates")
+        .select("buttons")
+        .eq("id", camp.template_id)
+        .single();
+      const btns = (Array.isArray(tpl?.buttons) ? tpl.buttons : []) as any[];
+      const btnMap = (camp.button_url_mapping as Record<string, string> | null) ?? {};
+      const missing: string[] = [];
+      btns.forEach((b: any, idx: number) => {
+        if (String(b?.type).toUpperCase() !== "URL") return;
+        const url = typeof b?.url === "string" ? b.url : "";
+        if (!url.includes("{{")) return;
+        const firstVar = url.match(/\{\{(\d+)\}\}/)?.[1] ?? "1";
+        const value = (btnMap[String(idx)] ?? btnMap[firstVar] ?? "").trim();
+        if (!value) missing.push(`{{${firstVar}}} do botão "${b?.text ?? `#${idx}`}"`);
+      });
+      checks.push({
+        key: "button_params",
+        label: "Parâmetros dos botões URL preenchidos",
+        ok: missing.length === 0,
+        message: missing.length ? `Preencha: ${missing.join(", ")}` : undefined,
+      });
+    }
+
+
     // Recipients built?
     const { count: recCount } = await supabase
       .from("campaign_recipients")

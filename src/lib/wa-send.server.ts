@@ -2,6 +2,8 @@
 // Never import this from a route or *.functions.ts module scope.
 // Always: const { sendTemplateMessage } = await import("@/lib/wa-send.server");
 
+export type WaSendButton = { index: number; urlParam: string };
+
 export type WaSendInput = {
   phoneNumberId: string;
   accessToken: string;
@@ -12,9 +14,13 @@ export type WaSendInput = {
   variables?: Record<string, string>; // {{1}}, {{2}} -> by name "1","2" (keys starting with "_" are treated as meta)
   headerType?: string | null;
   headerValue?: string | null; // image/document url or text
+  /** Novo: lista completa de botões URL dinâmicos a enviar. */
+  buttons?: WaSendButton[];
+  /** Legado: um único botão URL. Usado se `buttons` estiver vazio. */
   buttonUrlParam?: string | null;
   buttonIndex?: number;
 };
+
 
 export type WaSendResult =
   | { ok: true; metaMessageId: string; messageStatus: string | null; wamid: string | null; raw: any; httpStatus: number }
@@ -49,15 +55,24 @@ function buildHeaderComponent(headerType?: string | null, value?: string | null)
   return [];
 }
 
-function buildButtonComponents(urlParam?: string | null, index = 0) {
-  if (!urlParam) return [];
-  return [{
+function buildButtonComponents(
+  buttons?: WaSendButton[],
+  legacyUrlParam?: string | null,
+  legacyIndex = 0,
+) {
+  const list: WaSendButton[] = Array.isArray(buttons) && buttons.length
+    ? buttons.filter((b) => b && typeof b.urlParam === "string" && b.urlParam.length > 0)
+    : legacyUrlParam
+      ? [{ index: legacyIndex, urlParam: legacyUrlParam }]
+      : [];
+  return list.map((b) => ({
     type: "button",
     sub_type: "url",
-    index: String(index),
-    parameters: [{ type: "text", text: urlParam }],
-  }];
+    index: String(b.index),
+    parameters: [{ type: "text", text: b.urlParam }],
+  }));
 }
+
 
 export async function sendTemplateMessage(input: WaSendInput): Promise<WaSendResult> {
   const ver = input.graphVersion || "v21.0";
@@ -72,7 +87,7 @@ export async function sendTemplateMessage(input: WaSendInput): Promise<WaSendRes
       components: [
         ...buildHeaderComponent(input.headerType, input.headerValue),
         ...buildBodyComponents(input.variables),
-        ...buildButtonComponents(input.buttonUrlParam, input.buttonIndex ?? 0),
+        ...buildButtonComponents(input.buttons, input.buttonUrlParam, input.buttonIndex ?? 0),
       ],
     },
   };

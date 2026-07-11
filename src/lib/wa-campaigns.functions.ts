@@ -249,12 +249,7 @@ export const scheduleQuickSend = createServerFn({ method: "POST" })
 
     // Monta template_variables no nível da campanha (compartilhado a todos os destinatários).
     const templateVars: Record<string, string> = { ...(data.body_mapping ?? {}) };
-    for (const [k, v] of Object.entries(data.button_url_mapping ?? {})) {
-      // Convenção do worker: primeiro botão via _button_url_param (buttonIndex = k)
-      templateVars._button_url_param = String(v);
-      templateVars._button_index = String(k);
-      break; // pega o primeiro para o padrão do worker
-    }
+    const buttonUrlMapping: Record<string, string> = { ...(data.button_url_mapping ?? {}) };
     if (data.header_media_url) templateVars._header_image_url = data.header_media_url;
     if (data.header_text_param) templateVars._header_text_param = data.header_text_param;
 
@@ -277,6 +272,8 @@ export const scheduleQuickSend = createServerFn({ method: "POST" })
         connection_id: data.connection_id,
         template_id: data.template_id,
         template_variables: templateVars,
+        variables_mapping: data.body_mapping ?? null,
+        button_url_mapping: Object.keys(buttonUrlMapping).length ? buttonUrlMapping : null,
         status: "scheduled",
         scheduled_at: when.toISOString(),
         send_rate_per_min: data.send_rate_per_min ?? 30,
@@ -286,6 +283,7 @@ export const scheduleQuickSend = createServerFn({ method: "POST" })
       .select("id")
       .single();
     if (cErr) throw cErr;
+
 
     const rows = uniqueRecipients.map((r) => {
       const vars: Record<string, string> = {};
