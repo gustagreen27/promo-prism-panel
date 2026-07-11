@@ -26,8 +26,7 @@ export const listWorkspaceLists = createServerFn({ method: "POST" })
       .from("contact_lists")
       .select("id,name,description,created_at")
       .eq("workspace_id", data.workspace_id)
-      .order("created_at", { ascending: false })
-      .limit(200);
+      .order("created_at", { ascending: false });
     const ids = (lists ?? []).map((l: any) => l.id);
     const counts: Record<string, number> = {};
     if (ids.length) {
