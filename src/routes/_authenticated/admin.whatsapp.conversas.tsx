@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Search, MessageCircle, Phone, Video, MoreVertical, Smile, Paperclip, Send, CheckCheck, Check } from "lucide-react";
+import { Search, MessageCircle, Phone, Video, MoreVertical, CheckCheck, Check } from "lucide-react";
 import { listConversations, listMessages } from "@/lib/inbox.functions";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
