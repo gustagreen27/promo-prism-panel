@@ -27,7 +27,7 @@ import {
 import { Stepper, type WizardStep } from "@/components/campaigns/wizard/Stepper";
 import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
 import { ContactsStep, type ContactSelValue } from "@/components/campaigns/wizard/ContactsStep";
-import { metaVarsIn } from "@/lib/wa-variables";
+import { metaVarsIn, renderMapping, buildContext } from "@/lib/wa-variables";
 import { cn } from "@/lib/utils";
 
 const searchSchema = z.object({
