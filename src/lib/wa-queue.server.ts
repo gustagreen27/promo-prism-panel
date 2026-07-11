@@ -7,11 +7,21 @@ import { renderMapping, buildContext } from "@/lib/wa-variables";
 const OPT_OUT_REGEX = /\b(parar|sair|cancelar|cancela|remover|descadastrar|n[ãa]o quero|stop|unsubscribe)\b/i;
 
 // Temporary/transient Meta error codes eligible for retry
+// Temporary/transient Meta error codes eligible for retry
 const RETRYABLE_CODES = new Set(["130429", "131056", "131048", "131047", "500", "502", "503", "504"]);
-const MAX_ATTEMPTS = 3;
+const MAX_ATTEMPTS = 5;
 const LEASE_MS = 3 * 60 * 1000;
 const PROCESSING_STALE_MS = 5 * 60 * 1000;
 const MAX_TICK_RUNTIME_MS = 90 * 1000;
+// Rate limiter defaults (used to bootstrap wa_rate_limits on first call).
+// The real values live in wa_rate_limits per phone_number_id and are shared
+// by every campaign using the same número.
+const DEFAULT_RATE_PER_SECOND = 6;
+const DEFAULT_MAX_CONCURRENCY = 15;
+// Systemic-error thresholds — pause the campaign only when the whole path is broken,
+// individual errors go through retry-with-backoff instead.
+const SYSTEMIC_NETWORK_STREAK = 10;
+const SYSTEMIC_RATE_LIMIT_STREAK = 6;
 
 async function logEvent(campaignId: string, event_type: string, message: string, payload: any = {}) {
   try {
