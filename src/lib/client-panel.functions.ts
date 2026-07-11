@@ -22,11 +22,6 @@ async function assertWorkspaceNotBlocked(supabase: any, workspaceId: string) {
   return data
 }
 
-async function isAdminUser(supabase: any, userId: string) {
-  const { data } = await supabase.rpc('has_role', { _user_id: userId, _role: 'admin' })
-  return !!data
-}
-
 // ---- Listar números liberados ----
 export const listMyNumbers = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
@@ -142,7 +137,8 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any
-    const isAdmin = await isAdminUser(supabase, userId)
+    const { data: adminRole } = await supabase.rpc('has_role', { _user_id: userId, _role: 'admin' })
+    const isAdmin = !!adminRole
     let ws: any = null
 
     if (isAdmin) {
@@ -212,6 +208,55 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
       .select()
       .single()
     if (error) throw error
+
+    if (data.list_id) {
+      const { data: items, error: itemsErr } = await supabase
+        .from('contact_list_items')
+        .select('contact:contacts(id,phone,opt_in,opt_out,name)')
+        .eq('list_id', data.list_id)
+      if (itemsErr) throw itemsErr
+
+      const contacts = ((items ?? []) as any[])
+        .map((i) => i.contact)
+        .filter((c) => c?.phone && c.opt_in !== false && !c.opt_out)
+
+      const phones = contacts.map((c) => c.phone)
+      let blocked = new Set<string>()
+      if (phones.length) {
+        const { data: optOuts } = await supabase.from('opt_outs').select('phone').in('phone', phones)
+        blocked = new Set((optOuts ?? []).map((r: any) => r.phone))
+      }
+
+      const unique = new Map<string, any>()
+      for (const c of contacts) {
+        const phone = String(c.phone ?? '').replace(/\D/g, '')
+        if (!phone || blocked.has(c.phone) || unique.has(phone)) continue
+        unique.set(phone, c)
+      }
+
+      const recipients = Array.from(unique.values()).map((c: any) => ({
+        campaign_id: campaign.id,
+        contact_id: c.id,
+        phone: String(c.phone ?? '').replace(/\D/g, ''),
+        variables: c.name ? { nome: c.name, name: c.name } : {},
+        status: 'pending' as const,
+      }))
+
+      for (let i = 0; i < recipients.length; i += 1000) {
+        const { error: recErr } = await supabase
+          .from('campaign_recipients')
+          .insert(recipients.slice(i, i + 1000))
+        if (recErr) throw recErr
+      }
+
+      const { error: totalErr } = await supabase
+        .from('wa_campaigns')
+        .update({ total_recipients: recipients.length })
+        .eq('id', campaign.id)
+      if (totalErr) throw totalErr
+      campaign.total_recipients = recipients.length
+    }
+
     return { campaign }
   })
 
@@ -229,7 +274,8 @@ export const startClientCampaign = createServerFn({ method: 'POST' })
       .eq('id', data.campaign_id)
       .maybeSingle()
     if (!c) throw new Error('Campanha não encontrada')
-    const isAdmin = await isAdminUser(supabase, userId)
+    const { data: adminRole } = await supabase.rpc('has_role', { _user_id: userId, _role: 'admin' })
+    const isAdmin = !!adminRole
     if (isAdmin) {
       await supabase
         .from('wa_campaigns')
