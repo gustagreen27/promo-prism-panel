@@ -22,6 +22,14 @@ export function HubTabs({ tabs, className }: Props) {
   const isActive = (t: HubTab) => {
     const pathMatches = pathname === t.to || pathname.startsWith(t.to + "/");
     if (!pathMatches) return false;
+    // If another tab has a longer path that also matches, prefer that one.
+    const hasMoreSpecific = tabs.some(
+      (other) =>
+        other !== t &&
+        other.to.length > t.to.length &&
+        (pathname === other.to || pathname.startsWith(other.to + "/")),
+    );
+    if (hasMoreSpecific) return false;
     if (!t.search) return true;
     return Object.entries(t.search).every(
       ([k, v]) => String((search as any)?.[k] ?? "") === v,
