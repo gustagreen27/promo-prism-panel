@@ -331,12 +331,16 @@ export async function processCampaignTick(
     }
 
     // Effective batch = min(param, campaign.batch_size, rate/min, remaining cap, runtime budget).
-    // When the configured delay is high (ex.: 60s), a large batch can exceed the worker time
-    // and leave rows stuck as "processing". Cap the batch so every tick finishes safely.
-    const cfgBatch = Math.max(1, (camp as any).batch_size ?? 25);
+    // Now we process recipients in PARALLEL sub-batches of `parallelism`, pausing
+    // `batch_pause_ms` between sub-batches, so each tick can push many more messages
+    // than before while respecting Meta's throughput (default 80 mps por número).
+    const cfgBatch = Math.max(1, (camp as any).batch_size ?? 200);
     const rateMin = Math.max(1, camp.send_rate_per_min ?? cfgBatch);
-    const jitter = Math.max(0, (camp as any).jitter_ms ?? 0);
-    const maxByRuntime = jitter > 0 ? Math.max(1, Math.floor(MAX_TICK_RUNTIME_MS / jitter)) : Number.POSITIVE_INFINITY;
+    const parallelism = Math.max(1, Math.min(500, (camp as any).parallelism ?? 40));
+    const batchPauseMs = Math.max(0, (camp as any).batch_pause_ms ?? 1500);
+    // Assume ~1.5s média por chamada Meta; garante que N sub-lotes cabem no tick.
+    const perBatchMs = batchPauseMs + 1500;
+    const maxByRuntime = parallelism * Math.max(1, Math.floor(MAX_TICK_RUNTIME_MS / perBatchMs));
     const eff = Math.min(batchSize ?? cfgBatch, cfgBatch, rateMin, cap, maxByRuntime);
 
     const { data: recipients } = await supabaseAdmin
