@@ -470,7 +470,7 @@ export const swapCampaignRouteAndResume = createServerFn({ method: "POST" })
     // Only touches: failed recipients and pending retries (attempt > 0 with
     // next_attempt_at set), with meta_message_id IS NULL. Accepted / sent /
     // delivered / read recipients are never touched.
-    const SWAPPABLE_CODES = ["132015", "132016", "132001", "132000", "132007", "132012", "133010", "190", "131057", "131037", "131045", "131031"];
+    const SWAPPABLE_CODES = ["132015", "132016", "132001", "132000", "132007", "132012", "133010", "190", "131057", "131037", "131045", "131031", "131042"];
     let affectedPending = 0;
     if (data.retry_failed) {
       let q = supabase
