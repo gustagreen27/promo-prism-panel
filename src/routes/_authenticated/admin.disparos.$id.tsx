@@ -119,6 +119,7 @@ function Page() {
   const retryFn = useServerFn(retryFailedRecipients);
   const dupFn = useServerFn(duplicateCampaign);
   const preflight = useServerFn(preflightCampaign);
+  const unstickFn = useServerFn(unstickCampaignAsync);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["wa-camp", id] });
