@@ -399,8 +399,13 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
       }).eq("id", campaign.id);
 
       if (finalMode === "now") {
-        const r = await fnStart({ data: { campaign_id: campaign.id } });
-        toast.success(r.status === "queued" ? "Campanha na fila!" : "Aguardando aprovação.");
+        if (adminMode) {
+          await fnAdminStart({ data: { id: campaign.id } });
+          toast.success("Campanha iniciada.");
+        } else {
+          const r = await fnStart({ data: { campaign_id: campaign.id } });
+          toast.success(r.status === "queued" ? "Campanha na fila!" : "Aguardando aprovação.");
+        }
       } else if (finalMode === "schedule") {
         toast.success("Campanha agendada.");
       } else {
