@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/admin/page-header";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -38,7 +39,30 @@ function Page() {
   const { data: metrics, isFetching, refetch, error: metricsError } = useQuery({
     queryKey: ["wa-report", f],
     queryFn: () => reportFn({ data: { ...f, from: f.from || null, to: f.to || null } }),
+    refetchInterval: 30_000,
   });
+
+  // Realtime: refresh metrics when recipients or campaigns change
+  const qc = useQueryClient();
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const bump = () => {
+      if (timer) return;
+      timer = setTimeout(() => {
+        timer = null;
+        qc.invalidateQueries({ queryKey: ["wa-report"] });
+      }, 3000);
+    };
+    const channel = supabase
+      .channel("wa-report-realtime")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "campaign_recipients" }, bump)
+      .on("postgres_changes", { event: "*", schema: "public", table: "wa_campaigns" }, bump)
+      .subscribe();
+    return () => {
+      if (timer) clearTimeout(timer);
+      supabase.removeChannel(channel);
+    };
+  }, [qc]);
 
   const cards = [
     { label: "Enviadas", value: metrics?.sent ?? 0 },

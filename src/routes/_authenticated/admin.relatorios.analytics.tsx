@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -90,6 +90,32 @@ function AnalyticsPage() {
     },
   });
   const { data: clicks, isLoading, error: clicksError, refetch: refetchClicks } = clicksQuery;
+
+  // Realtime: refresh clicks + campaigns on new inserts
+  const qc = useQueryClient();
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const bump = () => {
+      if (timer) return;
+      timer = setTimeout(() => {
+        timer = null;
+        qc.invalidateQueries({ queryKey: ["analytics-clicks"] });
+      }, 1500);
+    };
+    const filter = campaignId !== "all" ? `campaign_id=eq.${campaignId}` : undefined;
+    const channel = supabase
+      .channel(`analytics-clicks:${campaignId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "campaign_clicks", ...(filter ? { filter } : {}) },
+        bump,
+      )
+      .subscribe();
+    return () => {
+      if (timer) clearTimeout(timer);
+      supabase.removeChannel(channel);
+    };
+  }, [qc, campaignId]);
 
   const stats = useMemo(() => {
     const list = clicks ?? [];
