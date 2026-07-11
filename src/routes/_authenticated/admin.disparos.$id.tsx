@@ -518,7 +518,7 @@ function Page() {
                         <div className="flex items-center justify-between gap-2">
                           <div className="min-w-0">
                             <div className="font-medium truncate">{p.name ?? "Sem nome"}</div>
-                            <div className="text-xs font-mono text-muted-foreground">{p.phone}</div>
+                            <div className="text-xs font-mono text-muted-foreground">{formatPhoneDisplay(p.phone)}</div>
                           </div>
                           <StatusBadge status={p.status} />
                         </div>
