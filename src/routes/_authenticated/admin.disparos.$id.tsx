@@ -257,7 +257,7 @@ function Page() {
         media_url: swapTplRow.header_media_url,
       },
       body,
-      footer: swapTplRow.footer_text,
+      footer: (swapTplRow as any).footer ?? (swapTplRow as any).footer_text ?? null,
       buttons,
       first,
     };
