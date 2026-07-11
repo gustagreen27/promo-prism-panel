@@ -137,7 +137,7 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   // Live progress
   const [progress, setProgress] = useState<{
     status: string; total: number; sent: number; delivered: number; failed: number;
-    pending: number; processing: number;
+    pending: number; processing: number; accepted?: number; read?: number;
   } | null>(null);
 
   // -------- Load reference data --------
