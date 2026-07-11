@@ -231,9 +231,8 @@ export const completeEmbeddedSignup = createServerFn({ method: "POST" })
       quality_rating: phJson?.quality_rating ?? null,
       messaging_limit: phJson?.messaging_limit_tier ?? null,
       access_token: accessToken,
-      // Padrão: usar o token global (WHATSAPP_ACCESS_TOKEN) para evitar ter
-      // que "Testar conexão" / trocar manualmente em cada número novo.
-      use_global_token: true,
+      // Never silently fall back to the global token for ES-provisioned connections.
+      use_global_token: false,
       graph_api_version: GRAPH_VERSION,
       provider: "meta_cloud",
       status: phJson?.code_verification_status === "VERIFIED" ? "ativo" : "aguardando_verificacao",

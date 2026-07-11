@@ -6,14 +6,13 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
       POST: async () => {
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { processCampaignTick } = await import("@/lib/wa-queue.server");
-        const { processMultiRouteTick } = await import("@/lib/wa-multi-route.server");
 
         const nowIso = new Date().toISOString();
 
         // Preflight validation of scheduled campaigns whose time has come
         const { data: due } = await supabaseAdmin
           .from("wa_campaigns")
-          .select("id,workspace_id,connection_id,template_id,total_recipients,list_id,name,use_multi_route")
+          .select("id,workspace_id,connection_id,template_id,total_recipients,list_id,name")
           .eq("status", "scheduled")
           .lte("scheduled_at", nowIso);
 
@@ -145,23 +144,20 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
 
         const { data: running } = await supabaseAdmin
           .from("wa_campaigns")
-          .select("id, rate_per_second, use_multi_route")
+          .select("id, rate_per_second")
           .eq("status", "running");
 
         // MAX_TICK_RUNTIME_MS no worker = 55s (deixa 5s de folga para o cron
         // de 60s). Reservamos até rps * 55s (SEM inflação): 6 mps → 330 rows
         // como teto; a reserva real é progressiva dentro do tick, em blocos
         // de max_concurrency*2. O lease persistente garante 1 tick/campanha.
-        // Campanhas multi-rota vão para processMultiRouteTick (SWRR + attempts).
         const TICK_WINDOW_S = 55;
         const results: any[] = [];
         for (const c of running ?? []) {
           const rps = Math.max(1, Number((c as any).rate_per_second) || 6);
           const reservationBudget = Math.min(2000, rps * TICK_WINDOW_S);
           try {
-            const r = (c as any).use_multi_route
-              ? await processMultiRouteTick(c.id, reservationBudget)
-              : await processCampaignTick(c.id, reservationBudget);
+            const r = await processCampaignTick(c.id, reservationBudget);
             results.push({ id: c.id, ...r });
           } catch (e: any) {
             results.push({ id: c.id, error: e?.message });

@@ -183,15 +183,14 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   useEffect(() => {
     (async () => {
       const [n, b] = await Promise.all([
-        // Em adminMode, não filtrar por workspace — mostra TODOS os números.
-        fnListNumbers({ data: (adminMode ? {} : { workspace_id: workspaceId }) as any }),
+        fnListNumbers({ data: { workspace_id: workspaceId } }),
         fnBalance({ data: { workspace_id: workspaceId } }),
       ]);
       setNumbers(n.numbers);
       setBalance(b);
       if (n.numbers.length === 1) setConnectionId(n.numbers[0].id);
     })().catch((e) => toast.error(e instanceof Error ? e.message : "Erro ao carregar dados"));
-  }, [workspaceId, fnListNumbers, fnBalance, adminMode]);
+  }, [workspaceId, fnListNumbers, fnBalance]);
 
   useEffect(() => {
     if (!connectionId) { setTemplates([]); return; }

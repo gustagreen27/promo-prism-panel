@@ -22,21 +22,12 @@ import {
   getCampaignFinalReport, getCampaignErrors, getRecipientPreviews,
   startCampaignAsync, pauseCampaignAsync, resumeCampaignAsync, cancelCampaignAsync,
   retryFailedRecipients, duplicateCampaign, preflightCampaign, unstickCampaignAsync,
-  swapCampaignRouteAndResume,
 } from "@/lib/wa-campaign-runner.functions";
-import { adminListAllNumbers, adminListAllTemplates } from "@/lib/admin-dispatch.functions";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
-import { renderMapping, fillMetaTemplate, buildContext, metaVarsIn } from "@/lib/wa-variables";
+import { renderMapping, fillMetaTemplate, buildContext } from "@/lib/wa-variables";
 import { formatCallingCode, formatPhoneDisplay, summarizeCallingCodes } from "@/lib/phone-country";
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
-} from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Shuffle } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/disparos/$id")({
   head: () => ({ meta: [{ title: "Campanha WhatsApp" }] }),
@@ -76,7 +67,6 @@ function Page() {
   const campQ = useQuery({
     queryKey: ["wa-camp", id],
     queryFn: () => getCamp({ data: { id } }),
-    retry: false,
   });
   const { data: camp } = campQ;
 
@@ -134,153 +124,6 @@ function Page() {
   const dupFn = useServerFn(duplicateCampaign);
   const preflight = useServerFn(preflightCampaign);
   const unstickFn = useServerFn(unstickCampaignAsync);
-  const swapFn = useServerFn(swapCampaignRouteAndResume);
-  const listConnsFn = useServerFn(adminListAllNumbers);
-  const listTplsFn = useServerFn(adminListAllTemplates);
-
-  const [swapOpen, setSwapOpen] = useState(false);
-  const [swapConn, setSwapConn] = useState<string>("");
-  const [swapTpl, setSwapTpl] = useState<string>("");
-  const [swapRetry, setSwapRetry] = useState(true);
-  const [swapBodyVars, setSwapBodyVars] = useState<Record<string, string>>({});
-  const [swapBtnVars, setSwapBtnVars] = useState<Record<string, string>>({});
-  const [swapHeaderMediaUrl, setSwapHeaderMediaUrl] = useState("");
-  const [swapUploadingMedia, setSwapUploadingMedia] = useState(false);
-
-  const connsQ = useQuery({
-    queryKey: ["wa-conns-all-admin"],
-    queryFn: () => listConnsFn({ data: {} }),
-    enabled: swapOpen,
-  });
-  const tplsQ = useQuery({
-    queryKey: ["wa-tpls-admin", swapConn || null],
-    queryFn: () => listTplsFn({ data: { connection_id: swapConn || null } }),
-    enabled: swapOpen && !!swapConn,
-  });
-
-  // Seed selection + mappings from the current campaign when the dialog opens.
-  useEffect(() => {
-    if (!swapOpen || !camp) return;
-    setSwapConn((camp as any).connection_id ?? "");
-    setSwapTpl((camp as any).template_id ?? "");
-    const vm = ((camp as any).variables_mapping ?? (camp as any).template_variables ?? {}) as Record<string, string>;
-    const bm = ((camp as any).button_url_mapping ?? {}) as Record<string, string>;
-    setSwapBodyVars({ ...vm });
-    setSwapBtnVars({ ...bm });
-    setSwapHeaderMediaUrl(String(vm._header_image_url ?? vm._header_url ?? (camp as any)?.template?.header_media_url ?? "").trim());
-  }, [swapOpen, camp]);
-
-  // All active numbers (admin — ignores workspace grants), same as wizard step 2.
-  const swapConnList = useMemo(
-    () => (connsQ.data?.numbers ?? []) as any[],
-    [connsQ.data],
-  );
-  const swapConnRow = useMemo(
-    () => swapConnList.find((c: any) => c.id === swapConn),
-    [swapConnList, swapConn],
-  );
-
-  // Approved templates for the selected number (server filters by connection_id).
-  const swapTplList = useMemo(() => {
-    if (!swapConn) return [];
-    return (tplsQ.data?.templates ?? []).filter((t: any) => {
-      const st = String(t.status ?? "").toUpperCase();
-      return st === "APPROVED" || st === "ACTIVE";
-    });
-  }, [tplsQ.data, swapConn]);
-
-
-  const swapTplRow = useMemo(
-    () => (tplsQ.data?.templates ?? []).find((t: any) => t.id === swapTpl),
-    [tplsQ.data, swapTpl],
-  );
-
-  // If the currently-selected template does not belong to the new connection, clear it.
-  useEffect(() => {
-    if (!swapOpen || !swapTpl) return;
-    if (tplsQ.isLoading || !tplsQ.data) return;
-    if (!swapTplRow) {
-      setSwapTpl("");
-      setSwapBodyVars({});
-      setSwapBtnVars({});
-      setSwapHeaderMediaUrl("");
-    }
-  }, [swapConn, swapTplRow, swapTpl, swapOpen, tplsQ.isLoading, tplsQ.data]);
-
-
-  // Variables required by the selected template.
-  const swapBodyVarNums = useMemo(
-    () => (swapTplRow ? metaVarsIn(swapTplRow.body ?? "") : []),
-    [swapTplRow],
-  );
-  const swapUrlButton = useMemo(() => {
-    const btns = (Array.isArray(swapTplRow?.buttons) ? swapTplRow?.buttons : []) as any[];
-    return btns.find((b: any) => String(b?.type ?? "").toLowerCase() === "url" && b?.url);
-  }, [swapTplRow]);
-  const swapBtnVarNums = useMemo(
-    () => (swapUrlButton?.url ? metaVarsIn(String(swapUrlButton.url)) : []),
-    [swapUrlButton],
-  );
-  const swapHeaderType = useMemo(
-    () => String(swapTplRow?.header_type ?? "").toLowerCase(),
-    [swapTplRow],
-  );
-  const swapRequiresMedia = ["image", "video", "document"].includes(swapHeaderType);
-
-  useEffect(() => {
-    if (!swapOpen || !swapTplRow) return;
-    if (!swapRequiresMedia) {
-      setSwapHeaderMediaUrl("");
-      return;
-    }
-    const templateMedia = String((swapTplRow as any).header_media_url ?? "").trim();
-    if (templateMedia) setSwapHeaderMediaUrl((current) => current.trim() || templateMedia);
-  }, [swapOpen, swapTplRow, swapRequiresMedia]);
-
-  // Prévia renderizada dentro do diálogo de troca — usa template + mappings escolhidos.
-  const swapPreview = useMemo(() => {
-    if (!swapTplRow) return null;
-    const first: any = (recipients as any[] | undefined)?.[0];
-    const contact = first?.contact ?? (first ? { phone: first.phone } : {});
-    const ctx = buildContext({
-      contact,
-      client: (camp as any)?.client,
-      project: (camp as any)?.project,
-      campaign: camp,
-    });
-    const resolved: Record<number, string> = {};
-    for (const [k, v] of Object.entries(swapBodyVars)) {
-      if (!/^\d+$/.test(k)) continue;
-      resolved[Number(k)] = renderMapping(String(v ?? ""), ctx);
-    }
-    const body = fillMetaTemplate(String(swapTplRow.body ?? ""), resolved);
-    const headerText = swapTplRow.header_type === "text"
-      ? fillMetaTemplate(String(swapTplRow.header_text ?? ""), resolved)
-      : swapTplRow.header_text;
-    const buttons = Array.isArray(swapTplRow.buttons)
-      ? swapTplRow.buttons.map((b: any) => {
-          if (String(b?.type).toUpperCase() === "URL" && typeof b?.url === "string" && b.url.includes("{{")) {
-            const urlResolved: Record<number, string> = {};
-            for (const [k, v] of Object.entries(swapBtnVars)) urlResolved[Number(k)] = renderMapping(String(v ?? ""), ctx);
-            return { ...b, url: fillMetaTemplate(String(b.url), urlResolved) };
-          }
-          return b;
-        })
-      : [];
-    return {
-      header: {
-        type: swapTplRow.header_type,
-        text: headerText,
-        media_url: swapHeaderMediaUrl || swapTplRow.header_media_url,
-      },
-      body,
-      footer: (swapTplRow as any).footer ?? (swapTplRow as any).footer_text ?? null,
-      buttons,
-      first,
-    };
-  }, [swapTplRow, swapBodyVars, swapBtnVars, swapHeaderMediaUrl, camp, recipients]);
-
-
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["wa-camp", id] });
@@ -290,31 +133,6 @@ function Page() {
     qc.invalidateQueries({ queryKey: ["wa-camp-errors", id] });
     qc.invalidateQueries({ queryKey: ["wa-camp-report", id] });
   };
-
-  async function uploadSwapHeaderMedia(file: File) {
-    setSwapUploadingMedia(true);
-    try {
-      const ext = (file.name.split(".").pop() || "bin").toLowerCase();
-      const workspaceId = (camp as any)?.workspace_id ?? "admin";
-      const key = `${workspaceId}/swap-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("campaign-images").upload(key, file, {
-        cacheControl: "3600",
-        upsert: false,
-        contentType: file.type || undefined,
-      });
-      if (upErr) throw upErr;
-      const { data: signed, error: sErr } = await supabase.storage
-        .from("campaign-images")
-        .createSignedUrl(key, 60 * 60 * 24 * 7);
-      if (sErr || !signed?.signedUrl) throw sErr ?? new Error("Falha ao gerar URL da mídia");
-      setSwapHeaderMediaUrl(signed.signedUrl);
-      toast.success("Mídia carregada.");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Erro no upload da mídia");
-    } finally {
-      setSwapUploadingMedia(false);
-    }
-  }
 
   // Realtime: escuta alterações de campanha, destinatários e timeline
   useEffect(() => {
@@ -409,39 +227,6 @@ function Page() {
       },
       onError: (e: any) => toast.error(e?.message ?? "Erro ao destravar"),
     }),
-    swap: useMutation({
-      mutationFn: () => {
-        const variablesMapping = { ...swapBodyVars };
-        const headerUrl = swapHeaderMediaUrl.trim() || String((swapTplRow as any)?.header_media_url ?? "").trim();
-        if (swapRequiresMedia) {
-          if (!headerUrl) throw new Error(`Informe a mídia do cabeçalho (${swapHeaderType.toUpperCase()}).`);
-          variablesMapping._header_image_url = headerUrl;
-          variablesMapping._header_url = headerUrl;
-        }
-        return swapFn({ data: {
-          id,
-          connection_id: swapConn || undefined,
-          template_id: swapTpl || undefined,
-          variables_mapping: variablesMapping,
-          button_url_mapping: swapBtnVars,
-          retry_failed: swapRetry,
-          resume_mode: "campaign",
-        } });
-      },
-      onSuccess: (r: any) => {
-        const processed = Number(r?.immediate_tick?.processed ?? r?.immediate_tick?.dispatched ?? 0);
-        if (r?.immediate_tick?.error) {
-          toast.warning(`Troca salva, mas o processamento imediato falhou: ${r.immediate_tick.error}`);
-        } else if ((r?.pending_recipients ?? 0) === 0) {
-          toast.info("Troca salva, mas não havia falhas elegíveis para reenviar.");
-        } else {
-          toast.success(`Troca salva e retomada · ${r.pending_recipients} pendente(s) · ${processed} processado(s) agora`);
-        }
-        setSwapOpen(false);
-        invalidate();
-      },
-      onError: (e: any) => toast.error(e?.message ?? "Erro ao trocar rota"),
-    }),
   };
 
   const p = (prog?.progress as any) ?? {};
@@ -511,42 +296,31 @@ function Page() {
   const isPaused = status === "paused";
   const isFinished = ["completed", "partial", "cancelled", "error"].includes(status);
 
-  const exportCsv = async () => {
-    let rows: any[] = [];
-    try {
-      rows = (await getRec({ data: { id } })) as any[];
-    } catch (e: any) {
-      toast.error(`Falha ao carregar destinatários: ${e?.message ?? e}`);
-      return;
-    }
-    if (!rows?.length) { toast.warning("Sem dados"); return; }
-    const esc = (v: any) => {
-      const s = v == null ? "" : String(v);
-      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
+  const exportCsv = () => {
+    if (!recipients?.length) { toast.warning("Sem dados"); return; }
+    const rows = recipients as any[];
     const header = ["phone","nome","status","tentativas","enviada","entregue","lida","respondida","erro"];
     const csv = [header.join(","), ...rows.map((r: any) => [
       r.phone, r.contact?.name ?? "", r.status, r.attempt ?? 0,
       r.sent_at ?? "", r.delivered_at ?? "", r.read_at ?? "", r.replied_at ?? "",
-      r.failed_reason ?? "",
-    ].map(esc).join(","))].join("\n");
-    const blob = new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8" });
+      (r.failed_reason ?? "").replace(/,/g, ";"),
+    ].join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url; a.download = `campanha-${id}.csv`; a.click();
     URL.revokeObjectURL(url);
-    toast.success(`${rows.length.toLocaleString("pt-BR")} destinatários exportados`);
   };
 
-  if (campQ.isError || (campQ.isSuccess && !camp)) {
+  if (campQ.error) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Campanha não encontrada" description="Este disparo não existe mais ou foi removido." actions={
+        <PageHeader title="Campanha" actions={
           <Button asChild variant="outline" size="sm">
             <Link to="/admin/disparos"><ArrowLeft className="mr-2 h-4 w-4" />Voltar</Link>
           </Button>
         } />
-        <ErrorCard error={campQ.error ?? new Error("Campanha não encontrada")} onRetry={() => campQ.refetch()} />
+        <ErrorCard error={campQ.error} onRetry={() => campQ.refetch()} />
       </div>
     );
   }
@@ -578,20 +352,6 @@ function Page() {
             {isPaused && (
               <Button size="sm" onClick={() => m.resume.mutate()}>
                 <Play className="mr-2 h-4 w-4" />Retomar
-              </Button>
-            )}
-            {status !== "cancelled" && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setSwapConn((camp as any)?.connection_id ?? "");
-                  setSwapTpl((camp as any)?.template_id ?? "");
-                  setSwapOpen(true);
-                }}
-              >
-                <Shuffle className="mr-2 h-4 w-4" />
-                Trocar número/template
               </Button>
             )}
             {(isRunning || isPaused) && (
@@ -910,161 +670,6 @@ function Page() {
           )}
         </TabsContent>
       </Tabs>
-
-      <Dialog open={swapOpen} onOpenChange={setSwapOpen}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Trocar número/template e retomar</DialogTitle>
-            <DialogDescription>
-              Selecione o número, o template aprovado para esse número e ajuste as variáveis. Destinatários já enviados não serão reenviados.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-2 md:grid-cols-2">
-            <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Número de envio</Label>
-              <Select value={swapConn} onValueChange={setSwapConn}>
-                <SelectTrigger><SelectValue placeholder="Selecione um número" /></SelectTrigger>
-                <SelectContent>
-                  {swapConnList.map((c: any) => {
-                    const st = String(c.status ?? "").toLowerCase();
-                    const active = ["ativo","active","connected"].includes(st);
-                    const phone = c.phone_display ?? c.phone_masked ?? "";
-                    const label = c.display_name ?? c.name ?? "—";
-                    return (
-                      <SelectItem key={c.id} value={c.id}>
-                        {phone ? `${formatPhoneDisplay(phone)} — ` : ""}{label}
-                        {c.id === (camp as any)?.connection_id ? " (atual)" : ""}
-                        {!active ? ` · ${c.status ?? "inativo"}` : ""}
-                      </SelectItem>
-                    );
-                  })}
-
-                </SelectContent>
-              </Select>
-              <p className="text-[11px] text-muted-foreground">
-                Pode manter o número atual e trocar apenas o template.
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Template aprovado</Label>
-              <Select value={swapTpl} onValueChange={setSwapTpl} disabled={!swapConn}>
-                <SelectTrigger>
-                  <SelectValue placeholder={swapConn ? "Selecione um template" : "Escolha o número primeiro"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {swapTplList.map((t: any) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name} ({t.language})
-                      {t.id === (camp as any)?.template_id ? " (atual)" : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {swapConn && swapTplList.length === 0 && (
-                <p className="text-[11px] text-muted-foreground">Nenhum template aprovado para este número.</p>
-              )}
-
-            </div>
-
-            {swapTplRow && (swapBodyVarNums.length > 0 || swapBtnVarNums.length > 0) && (
-              <div className="space-y-3 rounded-md border p-3">
-                <p className="text-xs font-medium">Variáveis do template</p>
-                <p className="text-[11px] text-muted-foreground">
-                  Use tokens como <code>{"{nome}"}</code>, <code>{"{telefone}"}</code> ou texto fixo. Fallback: <code>{"{nome|amigo}"}</code>.
-                </p>
-                {swapBodyVarNums.map((n) => (
-                  <div key={`b-${n}`} className="space-y-1">
-                    <Label className="text-xs">Corpo · {"{{" + n + "}}"}</Label>
-                    <Input
-                      value={swapBodyVars[String(n)] ?? ""}
-                      onChange={(e) => setSwapBodyVars((s) => ({ ...s, [String(n)]: e.target.value }))}
-                      placeholder="{nome}"
-                    />
-                  </div>
-                ))}
-                {swapBtnVarNums.map((n) => (
-                  <div key={`u-${n}`} className="space-y-1">
-                    <Label className="text-xs">URL do botão · {"{{" + n + "}}"}</Label>
-                    <Input
-                      value={swapBtnVars[String(n)] ?? ""}
-                      onChange={(e) => setSwapBtnVars((s) => ({ ...s, [String(n)]: e.target.value }))}
-                      placeholder="slug ou parâmetro"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {swapTplRow && swapRequiresMedia && (
-              <div className="space-y-2 rounded-md border p-3">
-                <p className="text-xs font-medium">Mídia do cabeçalho</p>
-                <div className="space-y-1">
-                  <Label className="text-xs">URL da mídia · {swapHeaderType.toUpperCase()}</Label>
-                  <Input
-                    value={swapHeaderMediaUrl}
-                    onChange={(e) => setSwapHeaderMediaUrl(e.target.value)}
-                    placeholder="https://exemplo.com/imagem.jpg"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Enviar arquivo</Label>
-                  <Input
-                    type="file"
-                    accept={swapHeaderType === "image" ? "image/*" : swapHeaderType === "video" ? "video/*" : undefined}
-                    disabled={swapUploadingMedia}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) uploadSwapHeaderMedia(file);
-                    }}
-                  />
-                  {swapUploadingMedia && <p className="text-[11px] text-muted-foreground">Carregando mídia…</p>}
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  Obrigatório para templates com cabeçalho de imagem, vídeo ou documento.
-                </p>
-              </div>
-            )}
-
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox
-                checked={swapRetry}
-                onCheckedChange={(v) => setSwapRetry(v === true)}
-              />
-              Reenfileirar destinatários que falharam ({p.failed ?? 0})
-            </label>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Pré-visualização</Label>
-              {swapPreview ? (
-                <WhatsAppPreview
-                  header={swapPreview.header as any}
-                  body={swapPreview.body}
-                  footer={swapPreview.footer}
-                  buttons={swapPreview.buttons as any}
-                  senderName={swapPreview.first?.phone ? `Destinatário ${formatPhoneDisplay(swapPreview.first.phone)}` : "Destinatário"}
-                />
-              ) : (
-                <div className="rounded-md border border-dashed p-6 text-center text-xs text-muted-foreground">
-                  Selecione um template para visualizar a mensagem.
-                </div>
-              )}
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSwapOpen(false)}>Cancelar</Button>
-            <Button
-              onClick={() => m.swap.mutate()}
-              disabled={m.swap.isPending || swapUploadingMedia || (!swapConn && !swapTpl) || (swapRequiresMedia && !swapHeaderMediaUrl.trim() && !String((swapTplRow as any)?.header_media_url ?? "").trim())}
-            >
-              {m.swap.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-              Trocar e retomar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
