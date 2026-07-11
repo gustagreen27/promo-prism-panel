@@ -7,14 +7,16 @@ export const Route = createFileRoute("/_authenticated/admin/whatsapp")({
 });
 
 const TABS = [
-  { to: "/admin/whatsapp/configuracoes", label: "Configurações" },
+  { to: "/admin/whatsapp/conexoes", label: "Conexões" },
   { to: "/admin/whatsapp/numeros", label: "Números" },
+  { to: "/admin/whatsapp/wabas", label: "WABAs" },
   { to: "/admin/whatsapp/templates", label: "Templates" },
-  { to: "/admin/whatsapp/webhooks", label: "Webhooks" },
-  { to: "/admin/whatsapp/qualidade", label: "Qualidade & Limites" },
   { to: "/admin/whatsapp/inbox", label: "Inbox" },
+  { to: "/admin/whatsapp/webhooks", label: "Webhooks" },
+  { to: "/admin/whatsapp/liberacoes", label: "Liberações" },
+  { to: "/admin/whatsapp/qualidade", label: "Qualidade" },
   { to: "/admin/whatsapp/logs", label: "Logs" },
-  { to: "/admin/whatsapp/teste-frgc01", label: "Testar frgc_01" },
+  { to: "/admin/whatsapp/configuracoes", label: "Configurações" },
 ];
 
 function Layout() {

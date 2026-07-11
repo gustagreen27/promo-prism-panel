@@ -231,21 +231,14 @@ function Page() {
               </div>
 
               <footer className="border-t bg-card px-3 py-3">
-                <div className="mx-auto flex max-w-2xl items-center gap-2">
-                  <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0">
-                    <Smile className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0">
-                    <Paperclip className="h-4 w-4" />
-                  </Button>
-                  <Input
-                    placeholder="Envio manual em breve…"
-                    disabled
-                    className="h-10 flex-1 rounded-full bg-muted/50"
-                  />
-                  <Button size="icon" disabled className="h-10 w-10 shrink-0 rounded-full">
-                    <Send className="h-4 w-4" />
-                  </Button>
+                <div className="mx-auto max-w-2xl space-y-2">
+                  <div className="rounded-lg border border-dashed bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                    Envio manual de mensagens ainda não está disponível nesta tela.
+                    Use <strong>Disparos</strong> para enviar via template aprovado,
+                    ou responda pelo app oficial do WhatsApp. Este painel é somente leitura
+                    (histórico do webhook Meta) enquanto a janela de 24h de sessão não é
+                    integrada ao Cloud API por aqui.
+                  </div>
                 </div>
               </footer>
             </>
