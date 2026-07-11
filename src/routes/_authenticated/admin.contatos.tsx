@@ -60,20 +60,27 @@ function Page() {
     <>
       <PageHeader
         title="Contatos"
-        description="Base oficial — todos com opt-in para mensagens."
+        description="Base individual de contatos. Para agrupar em listas usadas nos disparos, vá em Listas."
         actions={
           <div className="flex gap-2">
+            <Button asChild variant="secondary">
+              <Link to="/admin/contatos/listas"><ListPlus className="mr-2 h-4 w-4" />Criar lista</Link>
+            </Button>
             <Dialog open={importOpen} onOpenChange={setImportOpen}>
               <DialogTrigger asChild><Button variant="outline"><Upload className="mr-2 h-4 w-4" />Importar CSV</Button></DialogTrigger>
               <ImportDialog clients={clients} projects={projects} onSubmit={(p: any) => importMut.mutate(p)} saving={importMut.isPending} />
             </Dialog>
             <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Novo</Button></DialogTrigger>
+              <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Novo contato</Button></DialogTrigger>
               <ContactDialog clients={clients} projects={projects} onSubmit={(p: any) => save.mutate(p)} saving={save.isPending} />
             </Dialog>
           </div>
         }
       />
+      <HubTabs tabs={CLIENTES_TABS} />
+      <div className="mb-4 rounded-lg border bg-muted/40 p-3 text-sm">
+        💡 O <b>disparo</b> escolhe uma <b>Lista</b>, não contatos soltos. Cadastre aqui, depois vá em <Link to="/admin/contatos/listas" className="font-semibold underline">Listas</Link> para agrupar.
+      </div>
       <div className="rounded-xl border bg-card">
         {isLoading ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
         : rows.length === 0 ? <EmptyState title="Sem contatos" description="Cadastre um contato ou importe uma planilha." />
