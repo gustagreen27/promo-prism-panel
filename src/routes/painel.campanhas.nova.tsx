@@ -27,7 +27,7 @@ import {
 import { Stepper, type WizardStep } from "@/components/campaigns/wizard/Stepper";
 import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
 import { ContactsStep, type ContactSelValue } from "@/components/campaigns/wizard/ContactsStep";
-import { metaVarsIn } from "@/lib/wa-variables";
+import { metaVarsIn, renderMapping, buildContext } from "@/lib/wa-variables";
 import { cn } from "@/lib/utils";
 
 const searchSchema = z.object({
@@ -281,7 +281,12 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
     setHeaderMediaMeta(null);
   }, [templateId]);
 
-  // ---- Preview data (substitui {{n}} pelas variáveis preenchidas) ----
+  // ---- Preview data (substitui {{n}} pelas variáveis e resolve {nome}, {telefone}... com o 1º lead) ----
+  const previewCtx = useMemo(() => {
+    const first = contactSel?.contacts?.[0];
+    return buildContext({ contact: first ? { name: first.name ?? "", phone: first.phone ?? "" } : {} });
+  }, [contactSel]);
+
   const substituteVars = useCallback((text: string, vars: Record<string, string>) => {
     if (!text) return "";
     return text.replace(/\{\{\s*(\d+)\s*\}\}/g, (_m, n) => {
@@ -290,24 +295,29 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
     });
   }, []);
 
+  const resolveTokens = useCallback(
+    (text: string) => (text ? renderMapping(text, previewCtx) : ""),
+    [previewCtx],
+  );
+
   const previewBody = useMemo(
-    () => substituteVars(selectedTemplate?.body ?? "", bodyVars),
-    [selectedTemplate, bodyVars, substituteVars],
+    () => resolveTokens(substituteVars(selectedTemplate?.body ?? "", bodyVars)),
+    [selectedTemplate, bodyVars, substituteVars, resolveTokens],
   );
   const previewHeaderText = useMemo(
-    () => (selectedTemplate?.header_text ? substituteVars(selectedTemplate.header_text, bodyVars) : undefined),
-    [selectedTemplate, bodyVars, substituteVars],
+    () => (selectedTemplate?.header_text ? resolveTokens(substituteVars(selectedTemplate.header_text, bodyVars)) : undefined),
+    [selectedTemplate, bodyVars, substituteVars, resolveTokens],
   );
   const previewButtons = useMemo(() => {
     const btns = (selectedTemplate?.buttons ?? []) as any[];
     return btns.map((b) => {
       const t = (b?.type ?? "").toString().toLowerCase();
       if (t === "url" && typeof b?.url === "string") {
-        return { ...b, url: substituteVars(b.url, btnVars) };
+        return { ...b, url: resolveTokens(substituteVars(b.url, btnVars)) };
       }
       return b;
     });
-  }, [selectedTemplate, btnVars, substituteVars]);
+  }, [selectedTemplate, btnVars, substituteVars, resolveTokens]);
   const previewHeader = useMemo(() => {
     if (!selectedTemplate) return null;
     const type = selectedTemplate.header_type ?? undefined;
