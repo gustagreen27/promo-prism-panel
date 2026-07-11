@@ -1179,8 +1179,8 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                   <Sliders className="h-4 w-4" /> Configurações de Envio
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  <ConfigBadge icon={<Timer className="h-4 w-4" />} title="Intervalo entre contatos" subtitle="Tempo de espera configurado" value={`${rate.interval_s}s`} />
-                  <ConfigBadge icon={<Clock className="h-4 w-4" />} title="Pausa Automática" subtitle={`Pausa a cada ${rate.pause_every} envios`} value={`${rate.pause_duration_s}s`} />
+                  <ConfigBadge icon={<Timer className="h-4 w-4" />} title="Velocidade" subtitle={`~${Math.round(1000 / Math.max(1, dispatch.rate_per_second))} ms · concorrência ${dispatch.max_concurrency}`} value={`${dispatch.rate_per_second} msg/s`} />
+                  <ConfigBadge icon={<Clock className="h-4 w-4" />} title="Pausa programada" subtitle={dispatch.scheduled_pause_enabled ? `A cada ${dispatch.pause_every_messages.toLocaleString("pt-BR")} envios` : "Não aplicada"} value={dispatch.scheduled_pause_enabled ? `${dispatch.pause_duration_seconds}s` : "—"} />
                 </div>
               </div>
 
