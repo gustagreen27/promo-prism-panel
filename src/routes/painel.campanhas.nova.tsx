@@ -275,7 +275,33 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
     setBodyVars({});
     setBtnVars({});
     setHeaderMediaUrl("");
+    setHeaderMediaMeta(null);
   }, [templateId]);
+
+  // Human-readable file size
+  const formatSize = (bytes?: number) => {
+    if (!bytes || bytes <= 0) return "";
+    const units = ["B", "KB", "MB", "GB"];
+    let i = 0; let v = bytes;
+    while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+    return `${v.toFixed(v >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
+  };
+
+  // Missing-field list for Step 2 (used for the inline summary and per-field flags)
+  const step2Missing = useMemo(() => {
+    const items: string[] = [];
+    if (!connectionId) items.push("Selecione o número de WhatsApp de envio");
+    if (!templateId) items.push("Selecione o template aprovado");
+    if (tplRequiresMedia && !headerMediaUrl.trim()) items.push(`Envie a mídia do cabeçalho (${tplHeaderType})`);
+    for (const n of tplBodyVarNums) {
+      if (!(bodyVars[String(n)] ?? "").trim()) items.push(`Preencha a variável {{${n}}} do corpo`);
+    }
+    for (const n of tplUrlVarNums) {
+      if (!(btnVars[String(n)] ?? "").trim()) items.push(`Preencha a variável {{${n}}} da URL do botão`);
+    }
+    if (rate.interval_s <= 0) items.push("Defina um intervalo válido entre envios");
+    return items;
+  }, [connectionId, templateId, tplRequiresMedia, headerMediaUrl, tplHeaderType, tplBodyVarNums, bodyVars, tplUrlVarNums, btnVars, rate.interval_s]);
 
   // -------- Navigation --------
   const canAdvance = useCallback((from: number): boolean => {
