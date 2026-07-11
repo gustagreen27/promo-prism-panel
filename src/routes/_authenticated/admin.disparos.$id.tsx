@@ -145,6 +145,7 @@ function Page() {
   const [swapBodyVars, setSwapBodyVars] = useState<Record<string, string>>({});
   const [swapBtnVars, setSwapBtnVars] = useState<Record<string, string>>({});
   const [swapHeaderMediaUrl, setSwapHeaderMediaUrl] = useState("");
+  const [swapUploadingMedia, setSwapUploadingMedia] = useState(false);
 
   const connsQ = useQuery({
     queryKey: ["wa-conns-all"],
@@ -291,6 +292,31 @@ function Page() {
     qc.invalidateQueries({ queryKey: ["wa-camp-errors", id] });
     qc.invalidateQueries({ queryKey: ["wa-camp-report", id] });
   };
+
+  async function uploadSwapHeaderMedia(file: File) {
+    setSwapUploadingMedia(true);
+    try {
+      const ext = (file.name.split(".").pop() || "bin").toLowerCase();
+      const workspaceId = (camp as any)?.workspace_id ?? "admin";
+      const key = `${workspaceId}/swap-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("campaign-images").upload(key, file, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: file.type || undefined,
+      });
+      if (upErr) throw upErr;
+      const { data: signed, error: sErr } = await supabase.storage
+        .from("campaign-images")
+        .createSignedUrl(key, 60 * 60 * 24 * 7);
+      if (sErr || !signed?.signedUrl) throw sErr ?? new Error("Falha ao gerar URL da mídia");
+      setSwapHeaderMediaUrl(signed.signedUrl);
+      toast.success("Mídia carregada.");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro no upload da mídia");
+    } finally {
+      setSwapUploadingMedia(false);
+    }
+  }
 
   // Realtime: escuta alterações de campanha, destinatários e timeline
   useEffect(() => {
@@ -979,6 +1005,19 @@ function Page() {
                     placeholder="https://exemplo.com/imagem.jpg"
                   />
                 </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Enviar arquivo</Label>
+                  <Input
+                    type="file"
+                    accept={swapHeaderType === "image" ? "image/*" : swapHeaderType === "video" ? "video/*" : undefined}
+                    disabled={swapUploadingMedia}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadSwapHeaderMedia(file);
+                    }}
+                  />
+                  {swapUploadingMedia && <p className="text-[11px] text-muted-foreground">Carregando mídia…</p>}
+                </div>
                 <p className="text-[11px] text-muted-foreground">
                   Obrigatório para templates com cabeçalho de imagem, vídeo ou documento.
                 </p>
@@ -1016,7 +1055,7 @@ function Page() {
             <Button variant="outline" onClick={() => setSwapOpen(false)}>Cancelar</Button>
             <Button
               onClick={() => m.swap.mutate()}
-              disabled={m.swap.isPending || (!swapConn && !swapTpl) || (swapRequiresMedia && !swapHeaderMediaUrl.trim() && !String((swapTplRow as any)?.header_media_url ?? "").trim())}
+              disabled={m.swap.isPending || swapUploadingMedia || (!swapConn && !swapTpl) || (swapRequiresMedia && !swapHeaderMediaUrl.trim() && !String((swapTplRow as any)?.header_media_url ?? "").trim())}
             >
               {m.swap.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
               Trocar e retomar
