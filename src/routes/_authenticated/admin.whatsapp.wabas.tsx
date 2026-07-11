@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, Eye, RefreshCw, ShieldCheck, Cloud, Download } from "lucide-react";
+import { Plus, Trash2, Pencil, Eye, RefreshCw, ShieldCheck, Cloud, Download, Zap } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,8 @@ import { Badge } from "@/components/ui/badge";
 import { listWabas, createWaba, updateWaba, deleteWaba, getWabaChildren } from "@/lib/wa-wabas.functions";
 import { syncWabaNumbers, syncAllWabas } from "@/lib/wa-meta-sync.functions";
 import { debugToken, createWabaViaApi, importWabasFromBusiness } from "@/lib/wa-meta-api.functions";
+import { quickConnectWa } from "@/lib/wa-quick-connect.functions";
+import { listWorkspaceConnections } from "@/lib/wa-connections.functions";
 import { listClients } from "@/lib/clients.functions";
 import { listProjects } from "@/lib/projects.functions";
 import { EmbeddedSignupButton } from "@/components/admin/whatsapp/embedded-signup-button";
@@ -40,6 +42,8 @@ function Page() {
   const importFn = useServerFn(importWabasFromBusiness);
   const clientsFn = useServerFn(listClients);
   const projectsFn = useServerFn(listProjects);
+  const quickFn = useServerFn(quickConnectWa);
+  const workspacesFn = useServerFn(listWorkspaceConnections);
   const qc = useQueryClient();
 
   const wabasQuery = useQuery({ queryKey: ["wa-wabas"], queryFn: () => listFn() });
@@ -56,6 +60,8 @@ function Page() {
   const [diag, setDiag] = useState<any>(null);
   const [apiOpen, setApiOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
+  const workspacesQuery = useQuery({ queryKey: ["wa-workspaces"], queryFn: () => workspacesFn(), enabled: quickOpen });
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["wa-wabas"] });
   const save = useMutation({
@@ -100,6 +106,21 @@ function Page() {
     onSuccess: (r: any) => { toast.success(`${r.created} nova(s), ${r.updated} atualizada(s)`); setImportOpen(false); refresh(); },
     onError: (e: any) => toast.error(e?.message ?? "Erro"),
   });
+  const quickMut = useMutation({
+    mutationFn: (p: { raw: string; workspace_id: string | null }) => quickFn({ data: p }),
+    onSuccess: (r: any) => {
+      const parts = [
+        r.connection_id ? "número vinculado" : "WABA salva",
+        r.sync?.created ? `${r.sync.created} novo(s) da Meta` : null,
+        r.sync?.updated ? `${r.sync.updated} atualizado(s)` : null,
+        r.sync_error ? `sync pendente: ${r.sync_error}` : null,
+      ].filter(Boolean);
+      toast.success(`Conexão concluída — ${parts.join(" · ")}`);
+      setQuickOpen(false);
+      refresh();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro na conexão rápida"),
+  });
 
   return (
     <>
@@ -108,6 +129,9 @@ function Page() {
         description="Contas oficiais do WhatsApp Business (WhatsApp Business Accounts)."
         actions={
           <div className="flex items-center gap-2 flex-wrap">
+            <Button size="sm" onClick={() => setQuickOpen(true)}>
+              <Zap className="mr-2 h-4 w-4" />Conexão rápida
+            </Button>
             <Button variant="outline" size="sm" disabled={diagMut.isPending} onClick={() => diagMut.mutate()}>
               <ShieldCheck className="mr-2 h-4 w-4" />Testar token
             </Button>
@@ -202,6 +226,14 @@ function Page() {
 
       <Dialog open={importOpen} onOpenChange={setImportOpen}>
         <ImportBmDialog clients={clients} projects={projects} saving={importBmMut.isPending} onSubmit={(p: any) => importBmMut.mutate(p)} />
+      </Dialog>
+
+      <Dialog open={quickOpen} onOpenChange={setQuickOpen}>
+        <QuickConnectDialog
+          workspaces={workspacesQuery.data ?? []}
+          saving={quickMut.isPending}
+          onSubmit={(p: { raw: string; workspace_id: string | null }) => quickMut.mutate(p)}
+        />
       </Dialog>
     </>
   );
@@ -327,6 +359,76 @@ function FormDialog({ editing, clients, projects, onSubmit, saving }: any) {
         <div className="sm:col-span-2"><Label>Observações</Label><Textarea rows={3} value={form.observacoes ?? ""} onChange={(e) => set("observacoes", e.target.value)} /></div>
       </div>
       <DialogFooter><Button disabled={saving} onClick={() => onSubmit(form)}>Salvar</Button></DialogFooter>
+    </DialogContent>
+  );
+}
+
+function QuickConnectDialog({
+  workspaces, saving, onSubmit,
+}: {
+  workspaces: any[];
+  saving: boolean;
+  onSubmit: (p: { raw: string; workspace_id: string | null }) => void;
+}) {
+  const [raw, setRaw] = useState("");
+  const [ws, setWs] = useState<string>("__none__");
+  const example = `WABA:
+Jéssica
+Identificação:
+1000997246176920
+Propriedade de: BM Fio 10 Jeans
+
+Número:
+Perfil do telefone
+Identificação:
+1133638443176122
+Jéssica
++55 11 95502-2059`;
+  return (
+    <DialogContent className="max-w-2xl">
+      <DialogHeader>
+        <DialogTitle>Conexão rápida de WhatsApp</DialogTitle>
+      </DialogHeader>
+      <div className="space-y-3 text-sm">
+        <p className="text-muted-foreground">
+          Cole os dados da WABA e do número exatamente como aparecem no Business Manager
+          (nome, "Identificação", "Propriedade de" e o telefone com o +). O sistema cria a WABA,
+          vincula o número e tenta sincronizar com a Meta automaticamente.
+        </p>
+        <div>
+          <Label>Dados colados *</Label>
+          <Textarea
+            rows={12}
+            value={raw}
+            onChange={(e) => setRaw(e.target.value)}
+            placeholder={example}
+            className="font-mono text-xs"
+          />
+        </div>
+        <div>
+          <Label>Workspace do cliente (opcional)</Label>
+          <Select value={ws} onValueChange={setWs}>
+            <SelectTrigger><SelectValue placeholder="Não vincular agora" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Não vincular agora</SelectItem>
+              {workspaces.map((w) => (
+                <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Se escolher um workspace vazio, esse número vira o padrão para disparos.
+          </p>
+        </div>
+      </div>
+      <DialogFooter>
+        <Button
+          disabled={saving || raw.trim().length < 10}
+          onClick={() => onSubmit({ raw, workspace_id: ws === "__none__" ? null : ws })}
+        >
+          {saving ? "Conectando…" : "Conectar"}
+        </Button>
+      </DialogFooter>
     </DialogContent>
   );
 }
