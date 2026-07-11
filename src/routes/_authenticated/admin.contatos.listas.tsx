@@ -34,6 +34,7 @@ function Page() {
   const itemsFn = useServerFn(listItems);
   const contactsFn = useServerFn(listContacts);
   const clientsFn = useServerFn(listClients);
+  const resync = useServerFn(resyncList);
   const qc = useQueryClient();
   const { data: lists = [] } = useQuery({ queryKey: ["lists"], queryFn: () => listFn() });
   const { data: contacts = [] } = useQuery({ queryKey: ["contacts"], queryFn: () => contactsFn() });
@@ -41,24 +42,34 @@ function Page() {
   const [open, setOpen] = useState(false);
   const [addOpen, setAddOpen] = useState<string | null>(null);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
+  const [importResult, setImportResult] = useState<any | null>(null);
   const { data: members = [] } = useQuery({ enabled: !!selectedListId, queryKey: ["list-items", selectedListId], queryFn: () => itemsFn({ data: { list_id: selectedListId! } }) });
 
-  const refresh = () => qc.invalidateQueries({ queryKey: ["lists"] });
+  const refresh = () => { qc.invalidateQueries({ queryKey: ["lists"] }); qc.invalidateQueries({ queryKey: ["list-items"] }); };
   const save = useMutation({ mutationFn: (p: any) => create({ data: p }), onSuccess: () => { toast.success("Lista criada"); setOpen(false); refresh(); } });
   const del = useMutation({ mutationFn: (id: string) => remove({ data: { id } }), onSuccess: () => { toast.success("Removida"); refresh(); setSelectedListId(null); } });
   const addMut = useMutation({
     mutationFn: (p: any) => add({ data: p }),
-    onSuccess: (r: any) => { toast.success(`${r.added} contatos adicionados`); setAddOpen(null); qc.invalidateQueries({ queryKey: ["list-items"] }); },
+    onSuccess: (r: any) => { toast.success(`${r.added} contatos adicionados`); setAddOpen(null); refresh(); },
   });
   const importMut = useMutation({
     mutationFn: (p: any) => importFn({ data: p }),
     onSuccess: (r: any) => {
-      toast.success(`${r.added} contatos vinculados${r.invalid ? ` · ${r.invalid} inválidos` : ""}`);
       setAddOpen(null);
-      qc.invalidateQueries({ queryKey: ["list-items"] });
+      setImportResult(r);
+      refresh();
       qc.invalidateQueries({ queryKey: ["contacts"] });
+      qc.invalidateQueries({ queryKey: ["import-jobs"] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Falha ao importar"),
+  });
+  const resyncMut = useMutation({
+    mutationFn: (id: string) => resync({ data: { list_id: id } }),
+    onSuccess: (r: any) => {
+      toast.success(`Lista sincronizada · ${r.linked_now} contatos${r.removed_orphans ? ` · ${r.removed_orphans} links órfãos removidos` : ""}`);
+      refresh();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao sincronizar"),
   });
 
   return (
