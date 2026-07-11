@@ -928,14 +928,17 @@ function Page() {
                   {swapConnList.map((c: any) => {
                     const st = String(c.status ?? "").toLowerCase();
                     const active = ["ativo","active","connected"].includes(st);
+                    const phone = c.phone_display ?? c.phone_masked ?? "";
+                    const label = c.display_name ?? c.name ?? "—";
                     return (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.display_phone ?? c.name} — {c.workspace_name}
+                        {phone ? `${formatPhoneDisplay(phone)} — ` : ""}{label}
                         {c.id === (camp as any)?.connection_id ? " (atual)" : ""}
                         {!active ? ` · ${c.status ?? "inativo"}` : ""}
                       </SelectItem>
                     );
                   })}
+
                 </SelectContent>
               </Select>
               <p className="text-[11px] text-muted-foreground">
