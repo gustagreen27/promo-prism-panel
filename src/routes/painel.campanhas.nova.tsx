@@ -341,6 +341,7 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
         .createSignedUrl(key, 60 * 60 * 24 * 7);
       if (sErr || !signed?.signedUrl) throw sErr ?? new Error("Falha ao gerar URL");
       setHeaderMediaUrl(signed.signedUrl);
+      setHeaderMediaMeta({ name: file.name, size: file.size, contentType: file.type || undefined });
       toast.success("Mídia carregada.");
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Erro no upload da mídia");
