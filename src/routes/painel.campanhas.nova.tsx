@@ -299,11 +299,43 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   }
   function back() { setStep((s) => Math.max(1, s - 1)); }
 
+  // Upload header media -> long-lived signed URL (bucket is private).
+  async function uploadHeaderMedia(file: File) {
+    setUploadingMedia(true);
+    try {
+      const ext = (file.name.split(".").pop() || "bin").toLowerCase();
+      const key = `${workspaceId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("campaign-images").upload(key, file, {
+        cacheControl: "3600", upsert: false, contentType: file.type || undefined,
+      });
+      if (upErr) throw upErr;
+      // 7 days — Meta downloads the URL at send time.
+      const { data: signed, error: sErr } = await supabase.storage.from("campaign-images")
+        .createSignedUrl(key, 60 * 60 * 24 * 7);
+      if (sErr || !signed?.signedUrl) throw sErr ?? new Error("Falha ao gerar URL");
+      setHeaderMediaUrl(signed.signedUrl);
+      toast.success("Mídia carregada.");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Erro no upload da mídia");
+    } finally {
+      setUploadingMedia(false);
+    }
+  }
+
   // -------- Submit --------
   async function handleSubmit(finalMode: Mode) {
     if (!name.trim() || !connectionId || !templateId || !contactSel?.list_id) {
       toast.error("Faltam informações. Volte às etapas anteriores.");
       return;
+    }
+    if (tplRequiresMedia && !headerMediaUrl.trim()) {
+      toast.error("Envie a mídia do cabeçalho do template."); return;
+    }
+    for (const n of tplBodyVarNums) {
+      if (!(bodyVars[String(n)] ?? "").trim()) { toast.error(`Preencha a variável {{${n}}} do corpo.`); return; }
+    }
+    for (const n of tplUrlVarNums) {
+      if (!(btnVars[String(n)] ?? "").trim()) { toast.error(`Preencha a variável {{${n}}} da URL do botão.`); return; }
     }
     if (finalMode === "schedule" && !scheduledAt) { toast.error("Informe a data/hora do agendamento"); return; }
     if (finalMode === "schedule" && conflicts.length > 0 && !forceConflict) {
@@ -318,6 +350,9 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
           connection_id: connectionId,
           template_id: templateId,
           list_id: contactSel.list_id,
+          variables_mapping: bodyVars,
+          button_url_mapping: btnVars,
+          header_media_url: headerMediaUrl || null,
           scheduled_at: finalMode === "schedule" ? new Date(scheduledAt).toISOString() : null,
         },
       });
