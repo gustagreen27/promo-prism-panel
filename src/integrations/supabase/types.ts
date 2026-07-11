@@ -1658,6 +1658,7 @@ export type Database = {
           client_name: string
           created_at: string
           final_value: number | null
+          generated_at: string | null
           id: string
           project: string | null
           reference: string | null
@@ -1671,6 +1672,7 @@ export type Database = {
           client_name: string
           created_at?: string
           final_value?: number | null
+          generated_at?: string | null
           id?: string
           project?: string | null
           reference?: string | null
@@ -1684,6 +1686,7 @@ export type Database = {
           client_name?: string
           created_at?: string
           final_value?: number | null
+          generated_at?: string | null
           id?: string
           project?: string | null
           reference?: string | null
