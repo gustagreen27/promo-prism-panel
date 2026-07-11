@@ -531,10 +531,14 @@ export const swapCampaignRouteAndResume = createServerFn({ method: "POST" })
     if (mode !== "none") {
       const pauseReason = (camp as any).pause_reason;
       const wasManual = pauseReason && String(pauseReason).toLowerCase().startsWith("manual");
+      const canResumeFinished = (affectedPending > 0 || (pendingAfterSwap ?? 0) > 0) &&
+        ["completed", "partial", "error"].includes(String(camp.status));
       const shouldResumeCampaign =
         mode === "campaign" ||
-        (mode === "auto" && !wasManual && (camp.status === "paused" || camp.status === "error") &&
-          (pauseReason === "no_active_route" || pauseReason == null || (affectedPending > 0 && ["completed", "partial", "error"].includes(String(camp.status)))));
+        (mode === "auto" && !wasManual && (
+          ((camp.status === "paused" || camp.status === "error") && (pauseReason === "no_active_route" || pauseReason == null)) ||
+          canResumeFinished
+        ));
 
       if (shouldResumeCampaign) {
         await supabase
