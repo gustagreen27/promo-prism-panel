@@ -144,6 +144,7 @@ function Page() {
   const [swapRetry, setSwapRetry] = useState(true);
   const [swapBodyVars, setSwapBodyVars] = useState<Record<string, string>>({});
   const [swapBtnVars, setSwapBtnVars] = useState<Record<string, string>>({});
+  const [swapHeaderMediaUrl, setSwapHeaderMediaUrl] = useState("");
 
   const connsQ = useQuery({
     queryKey: ["wa-conns-all"],
@@ -165,6 +166,7 @@ function Page() {
     const bm = ((camp as any).button_url_mapping ?? {}) as Record<string, string>;
     setSwapBodyVars({ ...vm });
     setSwapBtnVars({ ...bm });
+    setSwapHeaderMediaUrl(String(vm._header_image_url ?? vm._header_url ?? (camp as any)?.template?.header_media_url ?? "").trim());
   }, [swapOpen, camp]);
 
   // Flatten connections and resolve current selection's WABA.
@@ -203,6 +205,7 @@ function Page() {
       setSwapTpl("");
       setSwapBodyVars({});
       setSwapBtnVars({});
+      setSwapHeaderMediaUrl("");
     }
   }, [swapConnWaba, swapTplRow, swapTpl, swapOpen]);
 
@@ -219,6 +222,21 @@ function Page() {
     () => (swapUrlButton?.url ? metaVarsIn(String(swapUrlButton.url)) : []),
     [swapUrlButton],
   );
+  const swapHeaderType = useMemo(
+    () => String(swapTplRow?.header_type ?? "").toLowerCase(),
+    [swapTplRow],
+  );
+  const swapRequiresMedia = ["image", "video", "document"].includes(swapHeaderType);
+
+  useEffect(() => {
+    if (!swapOpen || !swapTplRow) return;
+    if (!swapRequiresMedia) {
+      setSwapHeaderMediaUrl("");
+      return;
+    }
+    const templateMedia = String((swapTplRow as any).header_media_url ?? "").trim();
+    if (templateMedia) setSwapHeaderMediaUrl((current) => current.trim() || templateMedia);
+  }, [swapOpen, swapTplRow, swapRequiresMedia]);
 
   // Prévia renderizada dentro do diálogo de troca — usa template + mappings escolhidos.
   const swapPreview = useMemo(() => {
@@ -254,14 +272,14 @@ function Page() {
       header: {
         type: swapTplRow.header_type,
         text: headerText,
-        media_url: swapTplRow.header_media_url,
+        media_url: swapHeaderMediaUrl || swapTplRow.header_media_url,
       },
       body,
       footer: (swapTplRow as any).footer ?? (swapTplRow as any).footer_text ?? null,
       buttons,
       first,
     };
-  }, [swapTplRow, swapBodyVars, swapBtnVars, camp, recipients]);
+  }, [swapTplRow, swapBodyVars, swapBtnVars, swapHeaderMediaUrl, camp, recipients]);
 
 
 
@@ -368,15 +386,24 @@ function Page() {
       onError: (e: any) => toast.error(e?.message ?? "Erro ao destravar"),
     }),
     swap: useMutation({
-      mutationFn: () => swapFn({ data: {
-        id,
-        connection_id: swapConn || undefined,
-        template_id: swapTpl || undefined,
-        variables_mapping: swapBodyVars,
-        button_url_mapping: swapBtnVars,
-        retry_failed: swapRetry,
-        resume_mode: "campaign",
-      } }),
+      mutationFn: () => {
+        const variablesMapping = { ...swapBodyVars };
+        const headerUrl = swapHeaderMediaUrl.trim() || String((swapTplRow as any)?.header_media_url ?? "").trim();
+        if (swapRequiresMedia) {
+          if (!headerUrl) throw new Error(`Informe a mídia do cabeçalho (${swapHeaderType.toUpperCase()}).`);
+          variablesMapping._header_image_url = headerUrl;
+          variablesMapping._header_url = headerUrl;
+        }
+        return swapFn({ data: {
+          id,
+          connection_id: swapConn || undefined,
+          template_id: swapTpl || undefined,
+          variables_mapping: variablesMapping,
+          button_url_mapping: swapBtnVars,
+          retry_failed: swapRetry,
+          resume_mode: "campaign",
+        } });
+      },
       onSuccess: (r: any) => {
         const processed = Number(r?.immediate_tick?.processed ?? r?.immediate_tick?.dispatched ?? 0);
         if (r?.immediate_tick?.error) {
@@ -941,6 +968,23 @@ function Page() {
               </div>
             )}
 
+            {swapTplRow && swapRequiresMedia && (
+              <div className="space-y-2 rounded-md border p-3">
+                <p className="text-xs font-medium">Mídia do cabeçalho</p>
+                <div className="space-y-1">
+                  <Label className="text-xs">URL da mídia · {swapHeaderType.toUpperCase()}</Label>
+                  <Input
+                    value={swapHeaderMediaUrl}
+                    onChange={(e) => setSwapHeaderMediaUrl(e.target.value)}
+                    placeholder="https://exemplo.com/imagem.jpg"
+                  />
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Obrigatório para templates com cabeçalho de imagem, vídeo ou documento.
+                </p>
+              </div>
+            )}
+
             <label className="flex items-center gap-2 text-sm">
               <Checkbox
                 checked={swapRetry}
@@ -972,7 +1016,7 @@ function Page() {
             <Button variant="outline" onClick={() => setSwapOpen(false)}>Cancelar</Button>
             <Button
               onClick={() => m.swap.mutate()}
-              disabled={m.swap.isPending || (!swapConn && !swapTpl)}
+              disabled={m.swap.isPending || (!swapConn && !swapTpl) || (swapRequiresMedia && !swapHeaderMediaUrl.trim() && !String((swapTplRow as any)?.header_media_url ?? "").trim())}
             >
               {m.swap.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
               Trocar e retomar
