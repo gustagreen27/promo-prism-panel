@@ -362,3 +362,73 @@ function FormDialog({ editing, clients, projects, onSubmit, saving }: any) {
     </DialogContent>
   );
 }
+
+function QuickConnectDialog({
+  workspaces, saving, onSubmit,
+}: {
+  workspaces: any[];
+  saving: boolean;
+  onSubmit: (p: { raw: string; workspace_id: string | null }) => void;
+}) {
+  const [raw, setRaw] = useState("");
+  const [ws, setWs] = useState<string>("__none__");
+  const example = `WABA:
+Jéssica
+Identificação:
+1000997246176920
+Propriedade de: BM Fio 10 Jeans
+
+Número:
+Perfil do telefone
+Identificação:
+1133638443176122
+Jéssica
++55 11 95502-2059`;
+  return (
+    <DialogContent className="max-w-2xl">
+      <DialogHeader>
+        <DialogTitle>Conexão rápida de WhatsApp</DialogTitle>
+      </DialogHeader>
+      <div className="space-y-3 text-sm">
+        <p className="text-muted-foreground">
+          Cole os dados da WABA e do número exatamente como aparecem no Business Manager
+          (nome, "Identificação", "Propriedade de" e o telefone com o +). O sistema cria a WABA,
+          vincula o número e tenta sincronizar com a Meta automaticamente.
+        </p>
+        <div>
+          <Label>Dados colados *</Label>
+          <Textarea
+            rows={12}
+            value={raw}
+            onChange={(e) => setRaw(e.target.value)}
+            placeholder={example}
+            className="font-mono text-xs"
+          />
+        </div>
+        <div>
+          <Label>Workspace do cliente (opcional)</Label>
+          <Select value={ws} onValueChange={setWs}>
+            <SelectTrigger><SelectValue placeholder="Não vincular agora" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Não vincular agora</SelectItem>
+              {workspaces.map((w) => (
+                <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Se escolher um workspace vazio, esse número vira o padrão para disparos.
+          </p>
+        </div>
+      </div>
+      <DialogFooter>
+        <Button
+          disabled={saving || raw.trim().length < 10}
+          onClick={() => onSubmit({ raw, workspace_id: ws === "__none__" ? null : ws })}
+        >
+          {saving ? "Conectando…" : "Conectar"}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+}
