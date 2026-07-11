@@ -848,10 +848,10 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                 <Label className="mb-1 block text-xs">Pré-visualização</Label>
                 <WhatsAppPreview
                   senderName={selectedNumber?.display_name}
-                  header={selectedTemplate ? { type: selectedTemplate.header_type ?? undefined, text: selectedTemplate.header_text ?? undefined } : null}
-                  body={selectedTemplate?.body ?? ""}
+                  header={previewHeader}
+                  body={previewBody}
                   footer={selectedTemplate?.footer ?? null}
-                  buttons={selectedTemplate?.buttons ?? []}
+                  buttons={previewButtons}
                 />
               </div>
             </div>
