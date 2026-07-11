@@ -26,8 +26,7 @@ export const listWorkspaceLists = createServerFn({ method: "POST" })
       .from("contact_lists")
       .select("id,name,description,created_at")
       .eq("workspace_id", data.workspace_id)
-      .order("created_at", { ascending: false })
-      .limit(200);
+      .order("created_at", { ascending: false });
     const ids = (lists ?? []).map((l: any) => l.id);
     const counts: Record<string, number> = {};
     if (ids.length) {
@@ -59,7 +58,7 @@ export const previewWorkspaceList = createServerFn({ method: "POST" })
       total: all.length,
       valid: valid.length,
       opt_out: all.length - valid.length,
-      sample: valid.slice(0, 500).map((c: any) => ({ id: c.id, name: c.name, phone: c.phone })),
+      sample: valid.map((c: any) => ({ id: c.id, name: c.name, phone: c.phone })),
     };
   });
 
@@ -69,12 +68,12 @@ export const createWorkspaceListWithPhones = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z.object({
       workspace_id: z.string().uuid(),
-      name: z.string().min(1).max(160),
-      source: z.string().max(80).default("wizard"),
+      name: z.string().min(1),
+      source: z.string().default("wizard"),
       rows: z.array(z.object({
         phone: z.string().min(1),
-        name: z.string().max(160).optional().nullable(),
-      })).min(1).max(200000),
+        name: z.string().optional().nullable(),
+      })),
     }).parse(d)
   )
   .handler(async ({ data, context }) => {

@@ -226,7 +226,7 @@ function ImportPanel({
 
   const previewRows = useMemo(() => {
     if (!mapPhone) return [];
-    return rawRows.slice(0, 500).map((r) => ({
+    return rawRows.map((r) => ({
       phone: (r[mapPhone] ?? "").trim(),
       name: mapName ? (r[mapName] ?? "").trim() : null,
     })).filter((r) => r.phone);

@@ -113,13 +113,13 @@ export const importPhonesToList = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z.object({
       list_id: z.string().uuid(),
-      source: z.string().max(80).default("manual"),
-      filename: z.string().max(200).optional().nullable(),
+      source: z.string().default("manual"),
+      filename: z.string().optional().nullable(),
       rows: z.array(z.object({
         phone: z.string().min(1),
-        name: z.string().max(160).optional().nullable(),
-        email: z.string().max(160).optional().nullable(),
-      })).min(1).max(200000),
+        name: z.string().optional().nullable(),
+        email: z.string().optional().nullable(),
+      })),
     }).parse(d)
   )
   .handler(async ({ data, context }) => {
