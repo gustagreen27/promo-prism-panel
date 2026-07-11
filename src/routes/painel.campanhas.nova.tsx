@@ -115,6 +115,10 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   const [scheduledAt, setScheduledAt] = useState<string>(toLocal(scheduled_for));
   const [timezone, setTimezone] = useState<string>(Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo");
   const [forceConflict, setForceConflict] = useState(false);
+  const [bodyVars, setBodyVars] = useState<Record<string, string>>({});
+  const [btnVars, setBtnVars] = useState<Record<string, string>>({});
+  const [headerMediaUrl, setHeaderMediaUrl] = useState<string>("");
+  const [uploadingMedia, setUploadingMedia] = useState(false);
 
   // Data
   const [numbers, setNumbers] = useState<NumberRow[]>([]);
