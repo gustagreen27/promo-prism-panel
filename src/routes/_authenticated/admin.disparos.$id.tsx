@@ -465,7 +465,7 @@ function Page() {
                 <Play className="mr-2 h-4 w-4" />Retomar
               </Button>
             )}
-            {(isPaused || isRunning || status === "error") && (
+            {status !== "cancelled" && (
               <Button
                 size="sm"
                 variant="outline"
