@@ -363,9 +363,10 @@ export async function processCampaignTick(
     // - Erros individuais viram retry com backoff exponencial + jitter;
     //   só pausamos a campanha em falha sistêmica (rede/rate-limit persistente).
     const phoneNumberId = conn.phone_number_id!;
-    const cfgBatch = Math.max(1, (camp as any).batch_size ?? 1000);
-    // Batch = quanto reservamos do banco por tick; a velocidade real vem do bucket.
-    const eff = Math.min(batchSize ?? cfgBatch, cfgBatch, cap);
+    // Batch = quanto reservamos do banco por tick; a velocidade real vem do token bucket.
+    // Ignoramos o campo legado batch_size (limitava 36 msg/tick e travava o throughput).
+    const eff = Math.max(1, Math.min(batchSize ?? 500, cap));
+
 
     const nowIso = new Date().toISOString();
     const { data: recipients } = await supabaseAdmin
