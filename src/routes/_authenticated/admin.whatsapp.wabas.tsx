@@ -129,6 +129,9 @@ function Page() {
         description="Contas oficiais do WhatsApp Business (WhatsApp Business Accounts)."
         actions={
           <div className="flex items-center gap-2 flex-wrap">
+            <Button size="sm" onClick={() => setQuickOpen(true)}>
+              <Zap className="mr-2 h-4 w-4" />Conexão rápida
+            </Button>
             <Button variant="outline" size="sm" disabled={diagMut.isPending} onClick={() => diagMut.mutate()}>
               <ShieldCheck className="mr-2 h-4 w-4" />Testar token
             </Button>
