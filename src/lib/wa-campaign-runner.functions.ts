@@ -204,19 +204,47 @@ export const resumeCampaignAsync = createServerFn({ method: "POST" })
   });
 
 /**
- * Swap connection (WhatsApp number) and/or template on a legacy single-route campaign
- * and immediately resume it. Also unlocks failed recipients so they retry on the new
- * number/template. Language must match when swapping template (or user must accept).
+ * Swap number/template + variable mappings on a campaign.
+ *
+ * Multi-route: when the campaign is multi-route the patch is applied to the
+ *   selected route (`route_id`) in `wa_campaign_routes`. Mappings are stored
+ *   per-route (variables_mapping / button_url_mapping columns). The legacy
+ *   mirror on `wa_campaigns.template_variables` / `variables_mapping` is
+ *   only written when the campaign is legacy OR has exactly one active route
+ *   (so other active routes aren't clobbered).
+ *
+ * Legacy: patch is applied to `wa_campaigns` directly.
+ *
+ * All validations (connection active, template APPROVED, WABA match, mapping
+ * completeness) run BEFORE any UPDATE — no partial state on failure.
+ *
+ * Recipient safety: only recipients with meta_message_id IS NULL and status
+ * in (pending, retrying) — and, when scoped to a route, locked_route_id =
+ * that route — are eligible. Recipients already accepted/sent/delivered/read
+ * are never touched. Transient retryable errors (131000/130429/timeout)
+ * preserve locked_route_id; only route-swappable errors
+ * (132015/132016/132001, rota/número indisponível) are unlocked.
+ *
+ * Resume mode:
+ *   - "route"    → set only the route to active; leave campaign as-is.
+ *   - "campaign" → resume the campaign (clear pause_reason, status=running).
+ *   - "auto"     → resume the route; also resume the campaign only when it
+ *                  was paused due to "no_active_route" and at least one
+ *                  route is now eligible. Manual pauses are respected.
+ *   - "none"     → no resume.
  */
 export const swapCampaignRouteAndResume = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({
     id: z.string().uuid(),
+    route_id: z.string().uuid().optional().nullable(),
     connection_id: z.string().uuid().optional().nullable(),
     template_id: z.string().uuid().optional().nullable(),
     variables_mapping: z.record(z.string(), z.string()).optional(),
     button_url_mapping: z.record(z.string(), z.string()).optional(),
     retry_failed: z.boolean().optional().default(true),
+    resume_mode: z.enum(["route", "campaign", "auto", "none"]).optional().default("auto"),
+    reason: z.string().optional().nullable(),
   }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
@@ -226,83 +254,297 @@ export const swapCampaignRouteAndResume = createServerFn({ method: "POST" })
       .from("wa_campaigns").select("*").eq("id", data.id).single();
     if (campErr || !camp) throw new Error("Campanha não encontrada");
 
-    const patch: Record<string, any> = {};
+    const isMulti = !!(camp as any).use_multi_route;
 
-    if (data.connection_id && data.connection_id !== camp.connection_id) {
+    // ---- 1) Resolve target row (route in multi, campaign in legacy) ----
+    let route: any = null;
+    if (isMulti) {
+      if (data.route_id) {
+        const { data: r } = await supabase
+          .from("wa_campaign_routes").select("*").eq("id", data.route_id).eq("campaign_id", data.id).maybeSingle();
+        if (!r) throw new Error("Rota não encontrada");
+        route = r;
+      } else {
+        // Fallback: only allow implicit route selection when there is exactly one route.
+        const { data: rows } = await supabase
+          .from("wa_campaign_routes").select("*").eq("campaign_id", data.id);
+        if (!rows || rows.length === 0) throw new Error("Campanha multi-rota sem rotas");
+        if (rows.length > 1) throw new Error("Informe route_id: campanha possui múltiplas rotas");
+        route = rows[0];
+      }
+    }
+
+    const currentConnId = route ? route.connection_id : (camp as any).connection_id;
+    const currentTplId = route ? route.template_id : (camp as any).template_id;
+    const currentWaba = route ? route.waba_ref_id : (camp as any).waba_ref_id;
+
+    // ---- 2) Validate connection (if changed) ----
+    let newConn: any = null;
+    if (data.connection_id && data.connection_id !== currentConnId) {
       const { data: conn } = await supabase
         .from("whatsapp_connections")
         .select("id,status,access_token,phone_number_id,waba_ref_id")
-        .eq("id", data.connection_id).single();
+        .eq("id", data.connection_id).maybeSingle();
       if (!conn) throw new Error("Número não encontrado");
-      const ok = ["ativo", "active", "connected"].includes(String(conn.status ?? "").toLowerCase());
-      if (!ok || !conn.access_token || !conn.phone_number_id) {
+      const active = ["ativo", "active", "connected"].includes(String(conn.status ?? "").toLowerCase());
+      if (!active || !conn.access_token || !conn.phone_number_id) {
         throw new Error("Número selecionado não está ativo ou sem token válido");
       }
-      patch.connection_id = data.connection_id;
-      if (conn.waba_ref_id) patch.waba_ref_id = conn.waba_ref_id;
+      newConn = conn;
     }
 
-    if (data.template_id && data.template_id !== camp.template_id) {
+    const effectiveWaba = newConn?.waba_ref_id ?? currentWaba;
+
+    // ---- 3) Validate template (if changed) ----
+    let newTpl: any = null;
+    if (data.template_id && data.template_id !== currentTplId) {
       const { data: tpl } = await supabase
         .from("whatsapp_templates")
-        .select("id,name,language,status,waba_ref_id")
-        .eq("id", data.template_id).single();
+        .select("id,name,language,status,waba_ref_id,category,body,buttons,header_type,header_text")
+        .eq("id", data.template_id).maybeSingle();
       if (!tpl) throw new Error("Template não encontrado");
       const st = String(tpl.status ?? "").toUpperCase();
       if (st && st !== "APPROVED" && st !== "ACTIVE") {
         throw new Error(`Template não está aprovado (status: ${tpl.status})`);
       }
-      const effectiveWaba = patch.waba_ref_id ?? camp.waba_ref_id;
       if (tpl.waba_ref_id && effectiveWaba && tpl.waba_ref_id !== effectiveWaba) {
         throw new Error("Template não pertence à WABA do número selecionado");
       }
-      patch.template_id = data.template_id;
+      newTpl = tpl;
     }
 
-    if (data.variables_mapping) {
-      patch.variables_mapping = data.variables_mapping;
-      patch.template_variables = data.variables_mapping; // legacy mirror
-    }
-    if (data.button_url_mapping) {
-      patch.button_url_mapping = data.button_url_mapping;
-    }
+    // ---- 4) Validate mapping completeness against the FINAL template ----
+    const finalTplId = newTpl?.id ?? currentTplId;
+    const { data: finalTpl } = finalTplId
+      ? await supabase.from("whatsapp_templates")
+          .select("id,name,language,status,body,buttons,header_type,header_text")
+          .eq("id", finalTplId).maybeSingle()
+      : { data: null };
 
-    if (Object.keys(patch).length > 0) {
-      const { error: upErr } = await supabase.from("wa_campaigns").update(patch as any).eq("id", data.id);
-      if (upErr) throw upErr;
-      await logEvent(
-        context.supabase, data.id, "route_swapped",
-        `Rota/variáveis alteradas: ${Object.keys(patch).join(", ")}`,
-        context.userId, patch,
-      );
-    }
+    const bodyVars = data.variables_mapping ?? {};
+    const btnVars = data.button_url_mapping ?? {};
 
-    if (data.retry_failed) {
-      const { data: reset } = await supabase
-        .from("campaign_recipients")
-        .update({ status: "pending", failed_at: null, failed_reason: null, error_code: null })
-        .eq("campaign_id", data.id)
-        .eq("status", "failed")
-        .select("id");
-      if (reset?.length) {
-        await logEvent(context.supabase, data.id, "retry", `${reset.length} falhas reenfileiradas`, context.userId);
+    if (finalTpl) {
+      // Body {{n}} must have a mapping when the caller sends any mapping OR when
+      // the template requires vars. If the user did not send variables_mapping,
+      // preserve the previous mapping (route or campaign scope).
+      const requiredBody = metaVarsIn(String(finalTpl.body ?? ""));
+      const previousBody: Record<string, string> = data.variables_mapping
+        ? bodyVars
+        : ((route?.variables_mapping ?? (camp as any).variables_mapping ?? (camp as any).template_variables ?? {}) as any);
+      const missingBody = requiredBody.filter((n) => !String(previousBody?.[String(n)] ?? "").trim());
+      if (missingBody.length) {
+        throw new Error(`Preencha as variáveis do corpo: ${missingBody.map((n) => `{{${n}}}`).join(", ")}`);
+      }
+
+      // URL buttons — index-aware mapping.
+      const btns = (Array.isArray(finalTpl.buttons) ? finalTpl.buttons : []) as any[];
+      const previousBtn: Record<string, string> = data.button_url_mapping
+        ? btnVars
+        : ((route?.button_url_mapping ?? (camp as any).button_url_mapping ?? {}) as any);
+      const missingBtn: string[] = [];
+      btns.forEach((b: any, idx: number) => {
+        if (String(b?.type ?? "").toUpperCase() !== "URL") return;
+        const url = String(b?.url ?? "");
+        if (!url.includes("{{")) return;
+        const first = url.match(/\{\{(\w+)\}\}/)?.[1] ?? "1";
+        const v = String(previousBtn?.[String(idx)] ?? previousBtn?.[first] ?? "").trim();
+        if (!v) missingBtn.push(`botão "${b?.text ?? `#${idx}`}"`);
+      });
+      if (missingBtn.length) {
+        throw new Error(`Preencha os parâmetros dos ${missingBtn.join(", ")}`);
+      }
+
+      // Media header (image/video/document) requires a resolvable media_id or URL.
+      const ht = String(finalTpl.header_type ?? "").toUpperCase();
+      if (["IMAGE", "VIDEO", "DOCUMENT"].includes(ht)) {
+        const headerVal = String(previousBody?._header_image_url ?? previousBody?._header_url ?? "").trim();
+        if (!headerVal) {
+          throw new Error(`Template exige mídia no cabeçalho (${ht}); informe _header_image_url no mapping`);
+        }
       }
     }
 
-    // Clear pause reason and resume.
-    await supabase
-      .from("wa_campaigns")
-      .update({
-        status: "running",
-        resumed_at: new Date().toISOString(),
-        pause_reason: null,
-        paused_at: null,
-        finished_at: null,
-      })
-      .eq("id", data.id);
-    await logEvent(context.supabase, data.id, "resumed", "Campanha retomada após troca de rota", context.userId);
+    // ---- 5) Build patches (nothing written yet) ----
+    const routePatch: Record<string, any> = {};
+    const campPatch: Record<string, any> = {};
 
-    return { ok: true, patched: patch };
+    if (newConn) {
+      if (route) {
+        routePatch.connection_id = newConn.id;
+        routePatch.phone_number_id = newConn.phone_number_id;
+        if (newConn.waba_ref_id) routePatch.waba_ref_id = newConn.waba_ref_id;
+      } else {
+        campPatch.connection_id = newConn.id;
+        if (newConn.waba_ref_id) campPatch.waba_ref_id = newConn.waba_ref_id;
+      }
+    }
+    if (newTpl) {
+      if (route) {
+        routePatch.template_id = newTpl.id;
+        routePatch.template_name = newTpl.name;
+        routePatch.template_language = newTpl.language;
+        routePatch.template_category = newTpl.category ?? null;
+      } else {
+        campPatch.template_id = newTpl.id;
+      }
+    }
+    if (data.variables_mapping) {
+      if (route) routePatch.variables_mapping = data.variables_mapping;
+      else {
+        campPatch.variables_mapping = data.variables_mapping;
+        campPatch.template_variables = data.variables_mapping; // legacy mirror
+      }
+    }
+    if (data.button_url_mapping) {
+      if (route) routePatch.button_url_mapping = data.button_url_mapping;
+      else campPatch.button_url_mapping = data.button_url_mapping;
+    }
+
+    // ---- 6) Compute mirror rule for multi-route (only when 1 active route) ----
+    if (isMulti && route && (data.variables_mapping || data.button_url_mapping)) {
+      const { count: activeCount } = await supabase
+        .from("wa_campaign_routes")
+        .select("id", { count: "exact", head: true })
+        .eq("campaign_id", data.id)
+        .eq("status", "active");
+      if ((activeCount ?? 0) <= 1) {
+        if (data.variables_mapping) {
+          campPatch.variables_mapping = data.variables_mapping;
+          campPatch.template_variables = data.variables_mapping;
+        }
+        if (data.button_url_mapping) campPatch.button_url_mapping = data.button_url_mapping;
+      }
+    }
+
+    // ---- 7) Snapshot BEFORE any write, for audit ----
+    const auditBefore = route
+      ? {
+          route_id: route.id,
+          phone_number_id: route.phone_number_id,
+          template_id: route.template_id,
+          template_name: route.template_name,
+          variables_mapping: route.variables_mapping,
+          button_url_mapping: route.button_url_mapping,
+        }
+      : {
+          connection_id: (camp as any).connection_id,
+          template_id: (camp as any).template_id,
+          variables_mapping: (camp as any).variables_mapping,
+          button_url_mapping: (camp as any).button_url_mapping,
+        };
+
+    // ---- 8) Apply patches (each guarded — throw on error, subsequent steps skipped) ----
+    if (route && Object.keys(routePatch).length > 0) {
+      routePatch.status = "active";
+      routePatch.last_error_code = null;
+      routePatch.last_error_message = null;
+      routePatch.disabled_reason = null;
+      const { error } = await supabase.from("wa_campaign_routes").update(routePatch as any).eq("id", route.id);
+      if (error) throw error;
+    }
+    if (Object.keys(campPatch).length > 0) {
+      const { error } = await supabase.from("wa_campaigns").update(campPatch as any).eq("id", data.id);
+      if (error) throw error;
+    }
+
+    // ---- 9) Recipient unlock (only route-swappable ones) ----
+    // Only touches: failed recipients and pending retries (attempt > 0 with
+    // next_attempt_at set), with meta_message_id IS NULL. Accepted / sent /
+    // delivered / read recipients are never touched.
+    const SWAPPABLE_CODES = ["132015", "132016", "132001", "132000", "132007", "132012", "190", "131057", "131037", "131045", "131031"];
+    let affectedPending = 0;
+    if (data.retry_failed) {
+      let q = supabase
+        .from("campaign_recipients")
+        .update({ status: "pending" as const, failed_at: null, next_attempt_at: null, locked_route_id: null })
+        .eq("campaign_id", data.id)
+        .eq("status", "failed")
+        .is("meta_message_id", null);
+      if (route) q = q.eq("locked_route_id", route.id);
+      // Only route-swappable errors OR null error_code (unknown → treat as swappable when user asked).
+      q = q.or(`error_code.in.(${SWAPPABLE_CODES.join(",")}),error_code.is.null`);
+      const { data: reset } = await q.select("id");
+      affectedPending = reset?.length ?? 0;
+    }
+    // Always unlock pending recipients affine to this route so they pick up the new template/number.
+    if (route) {
+      await supabase
+        .from("campaign_recipients")
+        .update({ locked_route_id: null })
+        .eq("campaign_id", data.id)
+        .eq("locked_route_id", route.id)
+        .eq("status", "pending")
+        .is("meta_message_id", null);
+    }
+
+    // ---- 10) Immutable audit event ----
+    const auditAfter = route
+      ? {
+          route_id: route.id,
+          phone_number_id: routePatch.phone_number_id ?? route.phone_number_id,
+          template_id: routePatch.template_id ?? route.template_id,
+          template_name: routePatch.template_name ?? route.template_name,
+          variables_mapping: routePatch.variables_mapping ?? route.variables_mapping,
+          button_url_mapping: routePatch.button_url_mapping ?? route.button_url_mapping,
+        }
+      : {
+          connection_id: campPatch.connection_id ?? (camp as any).connection_id,
+          template_id: campPatch.template_id ?? (camp as any).template_id,
+          variables_mapping: campPatch.variables_mapping ?? (camp as any).variables_mapping,
+          button_url_mapping: campPatch.button_url_mapping ?? (camp as any).button_url_mapping,
+        };
+    await logEvent(
+      supabase, data.id, "route_swapped",
+      route ? `Rota ${route.id} atualizada` : "Rota da campanha atualizada",
+      context.userId,
+      {
+        scope: route ? "route" : "campaign",
+        before: auditBefore,
+        after: auditAfter,
+        changed_by: context.userId,
+        reason: data.reason ?? null,
+        affected_pending_recipients: affectedPending,
+      },
+    );
+
+    // ---- 11) Resume ----
+    const mode = data.resume_mode;
+    let resumed: "route" | "campaign" | "none" = "none";
+    if (mode !== "none") {
+      const pauseReason = (camp as any).pause_reason;
+      const wasManual = pauseReason && String(pauseReason).toLowerCase().startsWith("manual");
+      const shouldResumeCampaign =
+        mode === "campaign" ||
+        (mode === "auto" && !wasManual && (camp.status === "paused" || camp.status === "error") &&
+          (pauseReason === "no_active_route" || pauseReason == null));
+
+      if (shouldResumeCampaign) {
+        await supabase
+          .from("wa_campaigns")
+          .update({
+            status: "running",
+            resumed_at: new Date().toISOString(),
+            pause_reason: null,
+            paused_at: null,
+            finished_at: null,
+            last_error: null,
+          })
+          .eq("id", data.id);
+        await logEvent(supabase, data.id, "resumed", "Campanha retomada após troca de rota", context.userId);
+        resumed = "campaign";
+      } else if (route) {
+        resumed = "route";
+      }
+    }
+
+    return {
+      ok: true,
+      scope: route ? "route" : "campaign",
+      route_id: route?.id ?? null,
+      resumed,
+      affected_pending_recipients: affectedPending,
+    };
   });
 
 export const cancelCampaignAsync = createServerFn({ method: "POST" })
