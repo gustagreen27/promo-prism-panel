@@ -24,7 +24,8 @@ import {
   Tooltip as RTooltip,
   Legend,
 } from "recharts";
-import { ArrowLeft, Printer, BarChart3 } from "lucide-react";
+import { ArrowLeft, Printer, BarChart3, Clock } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/admin/page-header";
 import { RELATORIOS_TABS } from "@/components/admin/hub-tabs";
 import { PeriodFilter } from "@/components/admin/period-filter";
@@ -123,7 +124,8 @@ function AnalyticsPage() {
     return { total, uniqueIps, ctr, series, top };
   }, [clicks, campaigns]);
 
-  const generatedAt = formatBRDateTime(new Date());
+  const [generatedIso, setGeneratedIso] = useState<string>(() => toLocalInputValue(new Date()));
+  const generatedAt = formatBRDateTime(fromLocalInputValue(generatedIso));
   const periodLabel = PERIOD_OPTIONS.find((o) => o.key === period)?.label ?? "";
   const campaignLabel =
     campaignId === "all"
@@ -185,6 +187,20 @@ function AnalyticsPage() {
             <div className="space-y-1">
               <Label className="text-xs">Sócio responsável</Label>
               <ParticipantsFilter value={partFilter} onChange={setPartFilter} />
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label className="text-xs flex items-center gap-1"><Clock className="size-3" /> Data de geração do relatório</Label>
+              <div className="flex gap-1">
+                <Input
+                  type="datetime-local"
+                  value={generatedIso}
+                  onChange={(e) => setGeneratedIso(e.target.value)}
+                  className="h-9 w-[220px]"
+                />
+                <Button variant="outline" size="sm" onClick={() => setGeneratedIso(toLocalInputValue(new Date()))}>
+                  Agora
+                </Button>
+              </div>
             </div>
           </div>
         </Card>
@@ -305,4 +321,14 @@ function Kpi({ label, value }: { label: string; value: string }) {
       <div className="mt-1 text-2xl font-extrabold text-foreground">{value}</div>
     </div>
   );
+}
+
+function toLocalInputValue(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function fromLocalInputValue(v: string): Date {
+  if (!v) return new Date();
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? new Date() : d;
 }
