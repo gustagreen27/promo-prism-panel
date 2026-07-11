@@ -217,14 +217,18 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
     return () => clearTimeout(t);
   }, [mode, connectionId, scheduledAt, workspaceId, fnConflict]);
 
-  // -------- Live progress polling --------
+  // -------- Live progress polling + realtime --------
   const [recipientsLive, setRecipientsLive] = useState<Array<{
-    id: string; name: string | null; phone: string; status: string; failed_reason?: string | null;
+    id: string; name: string | null; phone: string; status: string;
+    failed_reason?: string | null; error_code?: string | null;
   }>>([]);
+  const [recSearch, setRecSearch] = useState("");
+  const [recFilter, setRecFilter] = useState<"all" | "processing" | "accepted" | "sent" | "delivered" | "read" | "failed">("all");
+
   useEffect(() => {
     if (!campaignId || step < 4) return;
     let alive = true;
-    async function tick() {
+    async function loadCamp() {
       const { data } = await supabase
         .from("wa_campaigns")
         .select("status,progress,total_recipients")
@@ -240,14 +244,17 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
         failed: p.failed ?? 0,
         pending: p.pending ?? 0,
         processing: p.processing ?? 0,
-      });
-      // Recipients (nome via contatos, telefone + status individual)
+        accepted: p.accepted ?? 0,
+        read: p.read ?? 0,
+      } as any);
+    }
+    async function loadRecipients() {
       const { data: rs } = await supabase
         .from("campaign_recipients")
-        .select("id, phone, status, failed_reason, contact:contacts(name)")
+        .select("id, phone, status, failed_reason, error_code, contact:contacts(name)")
         .eq("campaign_id", campaignId!)
         .order("created_at", { ascending: true })
-        .limit(500);
+        .limit(1000);
       if (!alive) return;
       setRecipientsLive(
         (rs ?? []).map((r: any) => ({
@@ -256,13 +263,51 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
           phone: r.phone,
           status: r.status,
           failed_reason: r.failed_reason,
+          error_code: r.error_code,
         })),
       );
     }
-    tick();
-    const id = setInterval(tick, 3000);
-    return () => { alive = false; clearInterval(id); };
+    loadCamp();
+    loadRecipients();
+    // Polling fallback
+    const pollId = setInterval(() => { loadCamp(); loadRecipients(); }, 5000);
+    // Realtime — atualiza sem esperar o polling
+    const chan = supabase
+      .channel(`camp-live-${campaignId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "campaign_recipients", filter: `campaign_id=eq.${campaignId}` },
+        () => { loadRecipients(); loadCamp(); },
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "campaign_recipients", filter: `campaign_id=eq.${campaignId}` },
+        () => { loadRecipients(); },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "wa_campaigns", filter: `id=eq.${campaignId}` },
+        () => { loadCamp(); },
+      )
+      .subscribe();
+    return () => { alive = false; clearInterval(pollId); supabase.removeChannel(chan); };
   }, [campaignId, step]);
+
+  const filteredRecipients = useMemo(() => {
+    const q = recSearch.trim().toLowerCase();
+    return recipientsLive.filter((r) => {
+      if (q) {
+        const hay = `${r.name ?? ""} ${r.phone ?? ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      if (recFilter === "all") return true;
+      const s = (r.status || "").toLowerCase();
+      if (recFilter === "failed") return s === "failed";
+      if (recFilter === "processing") return s === "processing" || s === "pending";
+      return s === recFilter;
+    });
+  }, [recipientsLive, recSearch, recFilter]);
+
 
   // -------- Derived --------
   const selectedNumber = useMemo(() => numbers.find((n) => n.id === connectionId), [numbers, connectionId]);
