@@ -198,6 +198,16 @@ function Page() {
       mutationFn: () => dupFn({ data: { id } }),
       onSuccess: (r: any) => { toast.success("Campanha duplicada"); nav({ to: "/admin/disparos/$id", params: { id: r.id } }); },
     }),
+    unstick: useMutation({
+      mutationFn: () => unstickFn({ data: { id } }),
+      onSuccess: (r: any) => {
+        toast.success(
+          `Destravada · ${r.reenqueued} reenfileirados · ${r.pending} pendentes${r.status ? ` · ${r.status}` : ""}`,
+        );
+        invalidate();
+      },
+      onError: (e: any) => toast.error(e?.message ?? "Erro ao destravar"),
+    }),
   };
 
   const p = (prog?.progress as any) ?? {};
