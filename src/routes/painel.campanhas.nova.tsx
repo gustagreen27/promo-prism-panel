@@ -29,6 +29,7 @@ import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
 import { ContactsStep, type ContactSelValue } from "@/components/campaigns/wizard/ContactsStep";
 import { metaVarsIn, renderMapping, buildContext } from "@/lib/wa-variables";
 import { cn } from "@/lib/utils";
+import { formatCallingCode, getCountryCallingCode } from "@/lib/phone-country";
 
 const searchSchema = z.object({
   event_id: z.string().uuid().optional(),
@@ -58,6 +59,7 @@ function Page() {
 
 type NumberRow = {
   id: string; display_name: string; phone_masked: string; status: string;
+  phone_display?: string | null; phone_country_code?: string | null;
   quality_rating?: string | null; messaging_limit_tier?: string | null; daily_cap?: number | null;
 };
 type TemplateRow = {
@@ -313,6 +315,23 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   const selectedNumber = useMemo(() => numbers.find((n) => n.id === connectionId), [numbers, connectionId]);
   const selectedTemplate = useMemo(() => templates.find((t) => t.id === templateId), [templates, templateId]);
   const validContacts = contactSel?.valid ?? 0;
+  const selectedAudienceCode = useMemo(() => {
+    const contacts = contactSel?.contacts ?? [];
+    if (!contacts.length) return null;
+    const counts = new Map<string, number>();
+    for (const c of contacts) {
+      const code = getCountryCallingCode(c.phone);
+      if (code) counts.set(code, (counts.get(code) ?? 0) + 1);
+    }
+    let code: string | null = null;
+    let count = 0;
+    for (const [k, v] of counts) {
+      if (v > count) { code = k; count = v; }
+    }
+    return code;
+  }, [contactSel]);
+  const senderCode = selectedNumber?.phone_country_code ?? getCountryCallingCode(selectedNumber?.phone_display ?? selectedNumber?.phone_masked);
+  const ddiMismatch = !!selectedAudienceCode && !!senderCode && selectedAudienceCode !== senderCode;
   const estimatedDurationMin = useMemo(() => {
     if (!validContacts || !rate.interval_s) return 0;
     return Math.ceil((validContacts * rate.interval_s) / 60);
@@ -469,6 +488,10 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   async function handleSubmit(finalMode: Mode) {
     if (!name.trim() || !connectionId || !templateId || !contactSel?.list_id) {
       toast.error("Faltam informações. Volte às etapas anteriores.");
+      return;
+    }
+    if (ddiMismatch) {
+      toast.error(`DDI incompatível: lista ${formatCallingCode(selectedAudienceCode)} e WhatsApp ${formatCallingCode(senderCode)}.`);
       return;
     }
     if (tplRequiresMedia && !headerMediaUrl.trim()) {
@@ -649,7 +672,7 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                       <option value="">— Selecione um número —</option>
                       {numbers.map((n) => (
                         <option key={n.id} value={n.id}>
-                          {n.phone_masked} — {n.display_name}
+                          {(n.phone_display ?? n.phone_masked)} — {n.display_name}
                         </option>
                       ))}
                     </select>
@@ -664,6 +687,12 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                         {selectedNumber.messaging_limit_tier && (
                           <Badge variant="outline">Tier: {selectedNumber.messaging_limit_tier}</Badge>
                         )}
+                        {senderCode && <Badge variant="outline">DDI {formatCallingCode(senderCode)}</Badge>}
+                      </div>
+                    )}
+                    {ddiMismatch && (
+                      <div className="mt-2 rounded-md border border-red-300 bg-red-50 p-2 text-xs text-red-700 dark:bg-red-950/30 dark:text-red-200">
+                        A lista selecionada é {formatCallingCode(selectedAudienceCode)}, mas este WhatsApp é {formatCallingCode(senderCode)}. Troque o número de envio antes de continuar.
                       </div>
                     )}
                   </div>

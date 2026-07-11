@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { digitsOnly } from "@/lib/phone-country";
 
 const optStr = (max: number) =>
   z.union([z.string().trim().max(max), z.literal(""), z.null()])
@@ -27,11 +28,15 @@ async function assertAdmin(ctx: { supabase: any; userId: string }) {
   if (!data) throw new Error("Forbidden");
 }
 
-// ---- Phone validator: stores E.164 digits without '+'. BR local numbers still default to DDI 55.
+// ---- Phone validator: stores E.164 digits without '+'. Explicit international DDI is preserved.
 export function normalizeBrPhone(raw: string): string | null {
-  const digits = String(raw || "").replace(/\D/g, "");
+  const input = String(raw || "").trim();
+  const digits = digitsOnly(input);
   if (!digits) return null;
   let full = digits;
+  if (input.startsWith("+") && full.length >= 8 && full.length <= 15) {
+    return full;
+  }
   if (full.startsWith("55") && full.length >= 12 && full.length <= 13) {
     return full;
   }

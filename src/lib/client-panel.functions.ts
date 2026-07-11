@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware'
 import { z } from 'zod'
+import { formatCallingCode, getCountryCallingCode, summarizeCallingCodes } from '@/lib/phone-country'
 
 async function assertWorkspaceMember(supabase: any, userId: string, workspaceId: string) {
   const { data, error } = await supabase
@@ -37,7 +38,11 @@ export const listMyNumbers = createServerFn({ method: 'POST' })
       .eq('workspace_id', data.workspace_id)
       .or(data.project_id ? `project_id.eq.${data.project_id},project_id.is.null` : 'project_id.is.null')
     if (error) throw error
-    return { numbers: rows || [] }
+    return { numbers: (rows || []).map((n: any) => ({
+      ...n,
+      phone_display: n.display_phone ?? n.phone_masked ?? null,
+      phone_country_code: getCountryCallingCode(n.phone ?? n.display_phone ?? n.phone_masked),
+    })) }
   })
 
 // ---- Listar templates liberados ----
@@ -173,6 +178,34 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
         .limit(1)
         .maybeSingle()
       if (!tplGrant) throw new Error('Este template não está liberado para o seu workspace')
+    }
+
+    const { data: selectedConnection } = await supabase
+      .from('whatsapp_connections')
+      .select('id,phone,display_phone')
+      .eq('id', data.connection_id)
+      .maybeSingle()
+    const senderCode = getCountryCallingCode(selectedConnection?.phone ?? selectedConnection?.display_phone)
+    if (data.list_id && senderCode) {
+      const PAGE = 1000
+      const recipientPhones: string[] = []
+      for (let from = 0; ; from += PAGE) {
+        const { data: page, error: pageErr } = await supabase
+          .from('contact_list_items')
+          .select('contact:contacts(phone,opt_in,opt_out)')
+          .eq('list_id', data.list_id)
+          .range(from, from + PAGE - 1)
+        if (pageErr) throw pageErr
+        for (const item of page ?? []) {
+          const contact = (item as any).contact
+          if (contact?.phone && contact.opt_in !== false && !contact.opt_out) recipientPhones.push(contact.phone)
+        }
+        if (!page || page.length < PAGE) break
+      }
+      const audience = summarizeCallingCodes(recipientPhones)
+      if (audience.dominantCode && audience.dominantCode !== senderCode && audience.dominantCount / Math.max(1, audience.total) >= 0.9) {
+        throw new Error(`DDI incompatível: a lista é majoritariamente ${formatCallingCode(audience.dominantCode)}, mas o WhatsApp selecionado é ${formatCallingCode(senderCode)}. Selecione o número correto antes de disparar.`)
+      }
     }
 
     // Consolida mapeamentos em template_variables (lido pelo worker de envio).
