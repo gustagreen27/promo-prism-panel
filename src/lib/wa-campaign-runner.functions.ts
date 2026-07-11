@@ -440,24 +440,26 @@ export const swapCampaignRouteAndResume = createServerFn({ method: "POST" })
       routePatch.last_error_code = null;
       routePatch.last_error_message = null;
       routePatch.disabled_reason = null;
-      const { error } = await supabase.from("wa_campaign_routes").update(routePatch).eq("id", route.id);
+      const { error } = await supabase.from("wa_campaign_routes").update(routePatch as any).eq("id", route.id);
       if (error) throw error;
     }
     if (Object.keys(campPatch).length > 0) {
-      const { error } = await supabase.from("wa_campaigns").update(campPatch).eq("id", data.id);
+      const { error } = await supabase.from("wa_campaigns").update(campPatch as any).eq("id", data.id);
       if (error) throw error;
     }
 
     // ---- 9) Recipient unlock (only route-swappable ones) ----
-    // Only touches: pending / retrying, meta_message_id IS NULL, no accepted state.
+    // Only touches: failed recipients and pending retries (attempt > 0 with
+    // next_attempt_at set), with meta_message_id IS NULL. Accepted / sent /
+    // delivered / read recipients are never touched.
     const SWAPPABLE_CODES = ["132015", "132016", "132001", "132000", "132007", "132012", "190", "131057", "131037", "131045", "131031"];
     let affectedPending = 0;
     if (data.retry_failed) {
       let q = supabase
         .from("campaign_recipients")
-        .update({ status: "pending", failed_at: null, next_attempt_at: null, locked_route_id: null })
+        .update({ status: "pending" as const, failed_at: null, next_attempt_at: null, locked_route_id: null })
         .eq("campaign_id", data.id)
-        .in("status", ["failed", "retrying"])
+        .eq("status", "failed")
         .is("meta_message_id", null);
       if (route) q = q.eq("locked_route_id", route.id);
       // Only route-swappable errors OR null error_code (unknown → treat as swappable when user asked).
