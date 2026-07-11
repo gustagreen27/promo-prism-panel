@@ -2,6 +2,8 @@
 // Never import this from a route or *.functions.ts module scope.
 // Always: const { sendTemplateMessage } = await import("@/lib/wa-send.server");
 
+export type WaSendButton = { index: number; urlParam: string };
+
 export type WaSendInput = {
   phoneNumberId: string;
   accessToken: string;
@@ -12,9 +14,13 @@ export type WaSendInput = {
   variables?: Record<string, string>; // {{1}}, {{2}} -> by name "1","2" (keys starting with "_" are treated as meta)
   headerType?: string | null;
   headerValue?: string | null; // image/document url or text
+  /** Novo: lista completa de botões URL dinâmicos a enviar. */
+  buttons?: WaSendButton[];
+  /** Legado: um único botão URL. Usado se `buttons` estiver vazio. */
   buttonUrlParam?: string | null;
   buttonIndex?: number;
 };
+
 
 export type WaSendResult =
   | { ok: true; metaMessageId: string; messageStatus: string | null; wamid: string | null; raw: any; httpStatus: number }
