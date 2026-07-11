@@ -127,16 +127,17 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
           .select("id, rate_per_second")
           .eq("status", "running");
 
-        // Cada tick tem até ~90s de runtime (MAX_TICK_RUNTIME_MS no worker).
-        // Reservamos rate_per_second * 90s * 1.5 (folga) para saturar a janela
-        // até o próximo cron; a velocidade real é limitada pelo token bucket.
-        const TICK_WINDOW_S = 90;
+        // MAX_TICK_RUNTIME_MS no worker = 55s (deixa 5s de folga para o cron
+        // de 60s). Reservamos até rps * 55s (SEM inflação): 6 mps → 330 rows
+        // como teto; a reserva real é progressiva dentro do tick, em blocos
+        // de max_concurrency*2. O lease persistente garante 1 tick/campanha.
+        const TICK_WINDOW_S = 55;
         const results: any[] = [];
         for (const c of running ?? []) {
           const rps = Math.max(1, Number((c as any).rate_per_second) || 6);
-          const batch = Math.min(5000, Math.ceil(rps * TICK_WINDOW_S * 1.5));
+          const reservationBudget = Math.min(2000, rps * TICK_WINDOW_S);
           try {
-            const r = await processCampaignTick(c.id, batch);
+            const r = await processCampaignTick(c.id, reservationBudget);
             results.push({ id: c.id, ...r });
           } catch (e: any) {
             results.push({ id: c.id, error: e?.message });

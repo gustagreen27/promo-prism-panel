@@ -12,7 +12,9 @@ const RETRYABLE_CODES = new Set(["130429", "131056", "131048", "131047", "500", 
 const MAX_ATTEMPTS = 5;
 const LEASE_MS = 3 * 60 * 1000;
 const PROCESSING_STALE_MS = 5 * 60 * 1000;
-const MAX_TICK_RUNTIME_MS = 90 * 1000;
+// Deixe ~5s de folga para o cron de 60s: um tick termina, releaseLease roda,
+// e o próximo cron encontra o lease livre. Evita sobreposição por overrun.
+const MAX_TICK_RUNTIME_MS = 55 * 1000;
 // Rate limiter defaults (used to bootstrap wa_rate_limits on first call).
 // The real values live in wa_rate_limits per phone_number_id and are shared
 // by every campaign using the same número.
@@ -218,7 +220,7 @@ async function resetStaleProcessing(campaignId: string) {
 
 export async function processCampaignTick(
   campaignId: string,
-  batchSize?: number,
+  reservationBudget?: number,
 ): Promise<{ processed: number; done: boolean; skipped?: boolean; reason?: string }> {
   const lease = await acquireLease(campaignId);
   if (!lease) return { processed: 0, done: false, skipped: true };
@@ -353,55 +355,55 @@ export async function processCampaignTick(
     }
 
     // ------------------------------------------------------------------
-    // Rate-limited dispatch (token bucket + concurrency semaphore)
+    // Progressive reservation + rate-limited dispatch
     // ------------------------------------------------------------------
-    // - Rate/concorrência são globais por phone_number_id (wa_rate_limits),
-    //   então múltiplas campanhas no mesmo número compartilham o mesmo teto.
-    // - Cada envio pega 1 token do bucket via RPC atômica; se não houver,
-    //   o scheduler dorme wait_ms e tenta de novo (sem "burst" de Promise.all).
-    // - Concorrência é limitada por um semáforo em memória (dentro do tick).
-    // - Erros individuais viram retry com backoff exponencial + jitter;
-    //   só pausamos a campanha em falha sistêmica (rede/rate-limit persistente).
+    // - Reservamos recipients em blocos pequenos (max_concurrency * 2, teto 50)
+    //   e só pegamos o próximo quando a fila local cai abaixo de max_concurrency.
+    //   Isso evita centenas de rows presas em 'processing' e devolução massiva
+    //   ao final do tick.
+    // - Rate/concorrência são globais por phone_number_id (wa_rate_limits) —
+    //   o token bucket compartilha o teto entre campanhas do mesmo número.
+    // - Apenas 1 tick por campanha roda em paralelo (garantido pelo lease
+    //   persistente worker_lease_id/until em acquireLease()).
+    // - Ignoramos os campos legados batch_size / parallelism / send_rate_per_min /
+    //   batch_pause_ms — a velocidade real vem do token bucket + concorrência.
     const phoneNumberId = conn.phone_number_id!;
-    // Batch = quanto reservamos do banco por tick; a velocidade real vem do token bucket.
-    // Ignoramos o campo legado batch_size (limitava 36 msg/tick e travava o throughput).
-    const eff = Math.max(1, Math.min(batchSize ?? 500, cap));
+    const campRate = Math.max(1, Number((camp as any).rate_per_second ?? DEFAULT_RATE_PER_SECOND));
+    const campConc = Math.max(1, Number((camp as any).max_concurrency ?? DEFAULT_MAX_CONCURRENCY));
+    const chunkSize = Math.max(1, Math.min(campConc * 2, 50));
+    // budget = teto de reservas neste tick (não é rate!). Vem do cron como
+    // rps * TICK_WINDOW_S, limitado por max_per_hour/day (cap).
+    const budget = Math.max(1, Math.min(reservationBudget ?? 1000, cap));
 
-
-    const nowIso = new Date().toISOString();
-    const { data: recipients } = await supabaseAdmin
-      .from("campaign_recipients")
-      .select("*")
-      .eq("campaign_id", campaignId)
-      .eq("status", "pending")
-      .or(`next_attempt_at.is.null,next_attempt_at.lte.${nowIso}`)
-      .order("next_attempt_at", { ascending: true, nullsFirst: true })
-      .limit(eff);
-
-    if (!recipients || recipients.length === 0) {
-      const { count: processing } = await supabaseAdmin
+    // Probe: se não há nada pending elegível agora, decidir entre finalizar
+    // ou aguardar o próximo tick (pendentes futuros com next_attempt_at).
+    {
+      const probeIso = new Date().toISOString();
+      const { data: probe } = await supabaseAdmin
         .from("campaign_recipients")
-        .select("id", { count: "exact", head: true })
+        .select("id")
         .eq("campaign_id", campaignId)
-        .eq("status", "processing");
-      const { count: pendingLater } = await supabaseAdmin
-        .from("campaign_recipients")
-        .select("id", { count: "exact", head: true })
-        .eq("campaign_id", campaignId)
-        .eq("status", "pending");
-      if (!processing && !pendingLater) {
-        await finalizeCampaign(campaignId);
-        return { processed: 0, done: true };
+        .eq("status", "pending")
+        .or(`next_attempt_at.is.null,next_attempt_at.lte.${probeIso}`)
+        .limit(1);
+      if (!probe || probe.length === 0) {
+        const { count: processing } = await supabaseAdmin
+          .from("campaign_recipients")
+          .select("id", { count: "exact", head: true })
+          .eq("campaign_id", campaignId)
+          .eq("status", "processing");
+        const { count: pendingLater } = await supabaseAdmin
+          .from("campaign_recipients")
+          .select("id", { count: "exact", head: true })
+          .eq("campaign_id", campaignId)
+          .eq("status", "pending");
+        if (!processing && !pendingLater) {
+          await finalizeCampaign(campaignId);
+          return { processed: 0, done: true };
+        }
+        return { processed: 0, done: false };
       }
-      // Ainda há pending futuros (aguardando next_attempt_at) — não finaliza.
-      return { processed: 0, done: false };
     }
-
-    // Mark processing upfront (locks these rows against other ticks / campaigns)
-    await supabaseAdmin
-      .from("campaign_recipients")
-      .update({ status: "processing", last_attempt_at: new Date().toISOString() })
-      .in("id", recipients.map((r: any) => r.id));
 
     if ((camp as any).pause_reason) {
       await supabaseAdmin.from("wa_campaigns").update({ pause_reason: null }).eq("id", campaignId);
@@ -736,28 +738,61 @@ export async function processCampaignTick(
       }
     };
 
-    // ---- Scheduler: token bucket global + semáforo de concorrência ----
+    // ---- Scheduler: reserva progressiva + token bucket + semáforo ----
     const inflight = new Set<Promise<void>>();
-    // Por campanha (Passo 02) — usados como fallback ao criar wa_rate_limits e como teto local
-    const campRate = Math.max(1, Number((camp as any).rate_per_second ?? DEFAULT_RATE_PER_SECOND));
-    const campConc = Math.max(1, Number((camp as any).max_concurrency ?? DEFAULT_MAX_CONCURRENCY));
     const baseSentCount = Number((camp as any).sent_count ?? 0);
     let maxConc = campConc;
-    let idx = 0;
+    const localQueue: any[] = [];
+    let reservedTotal = 0;
+    let exhausted = false;
     const tickStart = Date.now();
 
-    while (idx < recipients.length) {
-      if (systemicPause) break;
+    const reserveNextChunk = async (): Promise<number> => {
+      if (exhausted || reservedTotal >= budget) return 0;
+      const want = Math.min(chunkSize, budget - reservedTotal);
+      const ts = new Date().toISOString();
+      const { data: chunk } = await supabaseAdmin
+        .from("campaign_recipients")
+        .select("*")
+        .eq("campaign_id", campaignId)
+        .eq("status", "pending")
+        .or(`next_attempt_at.is.null,next_attempt_at.lte.${ts}`)
+        .order("next_attempt_at", { ascending: true, nullsFirst: true })
+        .limit(want);
+      if (!chunk || chunk.length === 0) {
+        exhausted = true;
+        return 0;
+      }
+      await supabaseAdmin
+        .from("campaign_recipients")
+        .update({ status: "processing", last_attempt_at: ts })
+        .in("id", chunk.map((r: any) => r.id));
+      localQueue.push(...chunk);
+      reservedTotal += chunk.length;
+      return chunk.length;
+    };
+
+    await reserveNextChunk();
+
+    while (!systemicPause) {
       if (Date.now() - tickStart > MAX_TICK_RUNTIME_MS) break;
 
-      // Concurrency semaphore
+      // Top up quando a fila local cai abaixo de max_concurrency
+      if (localQueue.length < campConc && !exhausted && reservedTotal < budget) {
+        await reserveNextChunk();
+      }
+
+      if (localQueue.length === 0) {
+        if (inflight.size === 0) break;
+        await Promise.race(inflight);
+        continue;
+      }
+
       while (inflight.size >= maxConc) {
         await Promise.race(inflight);
       }
 
-      // Global token bucket (per phone_number_id, shared across campaigns).
-      // Passamos a config da campanha como default; se o número já tem row,
-      // o teto global do número prevalece (rate efetivo = min(camp, global)).
+      // Global token bucket (por phone_number_id, compartilhado entre campanhas).
       const { data: tok } = await supabaseAdmin.rpc("wa_try_consume_token" as any, {
         _phone_number_id: phoneNumberId,
         _default_rate: campRate,
@@ -765,17 +800,15 @@ export async function processCampaignTick(
       });
       const row = Array.isArray(tok) ? tok[0] : tok;
       if (row?.max_concurrency && row.max_concurrency > 0) {
-        // efetivo = min(camp, global)
         maxConc = Math.min(campConc, row.max_concurrency);
       }
-
       if (!row?.allowed) {
         const waitMs = Math.max(1, Math.min(row?.wait_ms ?? 100, 500));
         await new Promise((res) => setTimeout(res, waitMs));
         continue;
       }
 
-      const r = recipients[idx++];
+      const r = localQueue.shift();
       let p!: Promise<void>;
       p = sendOne(r)
         .catch((err) => {
@@ -787,20 +820,18 @@ export async function processCampaignTick(
       inflight.add(p);
     }
 
-    // Drain remaining inflight sends before finalizing tick metrics
+    // Drena envios em voo
     if (inflight.size) {
       await Promise.all(inflight);
     }
 
-    // Rows that were marked "processing" but never dispatched go back to pending
-    if (idx < recipients.length) {
-      const laterIds = recipients.slice(idx).map((x: any) => x.id);
-      if (laterIds.length) {
-        await supabaseAdmin
-          .from("campaign_recipients")
-          .update({ status: "pending" })
-          .in("id", laterIds);
-      }
+    // Rollback: recipients reservados mas não despachados voltam para pending
+    if (localQueue.length > 0) {
+      const laterIds = localQueue.map((x: any) => x.id);
+      await supabaseAdmin
+        .from("campaign_recipients")
+        .update({ status: "pending" })
+        .in("id", laterIds);
     }
 
     const sp = systemicPause as { reason: string; message: string } | null;
