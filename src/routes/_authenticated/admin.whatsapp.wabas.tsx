@@ -200,6 +200,28 @@ function Page() {
                   <Button size="icon" variant="ghost" title="Ver vinculados" onClick={() => setViewing(r)}>
                     <Eye className="h-4 w-4" />
                   </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    title="Assinar app na Meta (webhooks)"
+                    disabled={subscribeMut.isPending && subscribeMut.variables === r.id}
+                    onClick={() => subscribeMut.mutate(r.id)}
+                  >
+                    {subscribeMut.isPending && subscribeMut.variables === r.id
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <Webhook className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    title="Verificar apps assinados"
+                    disabled={checkSubsMut.isPending && checkSubsMut.variables === r.id}
+                    onClick={() => checkSubsMut.mutate(r.id)}
+                  >
+                    {checkSubsMut.isPending && checkSubsMut.variables === r.id
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <ShieldCheck className="h-4 w-4" />}
+                  </Button>
                   <Button size="icon" variant="ghost" onClick={() => { setEditing(r); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                   <Button size="icon" variant="ghost" onClick={() => confirm("Remover WABA?") && del.mutate(r.id)}><Trash2 className="h-4 w-4" /></Button>
                 </TableCell>
