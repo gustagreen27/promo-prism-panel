@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   Plus, Search, Play, Pause, XCircle, Eye, RefreshCw, ArrowLeft,
-  Calendar, CheckCircle2, AlertTriangle, Clock, Rocket, MessageSquareText, CalendarClock,
+  Calendar, CheckCircle2, AlertTriangle, Clock, Rocket, MessageSquareText, CalendarClock, Trash2,
 } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { ErrorCard } from "@/components/admin/query-state";
@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
-  listWaCampaigns, startWaCampaign, pauseWaCampaign, cancelWaCampaign, scheduleWaCampaign, unscheduleWaCampaign,
+  listWaCampaigns, startWaCampaign, pauseWaCampaign, cancelWaCampaign, scheduleWaCampaign, unscheduleWaCampaign, deleteWaCampaign,
 } from "@/lib/wa-campaigns.functions";
 import { getCampaignErrorContext } from "@/lib/wa-diagnosis.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -97,6 +97,7 @@ function ListView({ onNew }: { onNew: () => void }) {
   const cancelFn = useServerFn(cancelWaCampaign);
   const scheduleFn = useServerFn(scheduleWaCampaign);
   const unscheduleFn = useServerFn(unscheduleWaCampaign);
+  const deleteFn = useServerFn(deleteWaCampaign);
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<StatusFilter>("all");
@@ -166,6 +167,11 @@ function ListView({ onNew }: { onNew: () => void }) {
     mutationFn: (id: string) => unscheduleFn({ data: { id } }),
     onSuccess: () => { toast.message("Agendamento cancelado — voltou para rascunho"); qc.invalidateQueries({ queryKey: ["wa-campaigns"] }); },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao cancelar agendamento"),
+  });
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => deleteFn({ data: { id } }),
+    onSuccess: () => { toast.success("Campanha excluída"); qc.invalidateQueries({ queryKey: ["wa-campaigns"] }); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao excluir campanha"),
   });
 
   return (
@@ -315,6 +321,21 @@ function ListView({ onNew }: { onNew: () => void }) {
                         <XCircle className="h-4 w-4 text-red-600" />
                       </Button>
                     )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Excluir campanha"
+                      disabled={deleteMut.isPending}
+                      onClick={() => {
+                        const running = ["running", "queued", "paused", "scheduled"].includes(c.status);
+                        const msg = running
+                          ? `Excluir "${c.name}"?\n\nA campanha ainda está ativa. A exclusão também remove destinatários, timeline e histórico. Esta ação é permanente.`
+                          : `Excluir "${c.name}"?\n\nEsta ação também remove destinatários e histórico e é permanente.`;
+                        if (confirm(msg)) deleteMut.mutate(c.id);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-600" />
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
