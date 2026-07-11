@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { listWabas, createWaba, updateWaba, deleteWaba, getWabaChildren } from "@/lib/wa-wabas.functions";
 import { syncWabaNumbers, syncAllWabas } from "@/lib/wa-meta-sync.functions";
 import { debugToken, createWabaViaApi, importWabasFromBusiness } from "@/lib/wa-meta-api.functions";
+import { quickConnectWa } from "@/lib/wa-quick-connect.functions";
 import { listClients } from "@/lib/clients.functions";
 import { listProjects } from "@/lib/projects.functions";
 import { EmbeddedSignupButton } from "@/components/admin/whatsapp/embedded-signup-button";
