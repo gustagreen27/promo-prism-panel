@@ -45,6 +45,8 @@ function Page() {
   const projectsFn = useServerFn(listProjects);
   const quickFn = useServerFn(quickConnectWa);
   const workspacesFn = useServerFn(listWorkspaceConnections);
+  const subscribeFn = useServerFn(subscribeWabaToApp);
+  const listSubsFn = useServerFn(listSubscribedApps);
   const qc = useQueryClient();
 
   const wabasQuery = useQuery({ queryKey: ["wa-wabas"], queryFn: () => listFn() });
