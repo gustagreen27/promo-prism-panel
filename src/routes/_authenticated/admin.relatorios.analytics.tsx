@@ -91,6 +91,32 @@ function AnalyticsPage() {
   });
   const { data: clicks, isLoading, error: clicksError, refetch: refetchClicks } = clicksQuery;
 
+  // Realtime: refresh clicks + campaigns on new inserts
+  const qc = useQueryClient();
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const bump = () => {
+      if (timer) return;
+      timer = setTimeout(() => {
+        timer = null;
+        qc.invalidateQueries({ queryKey: ["analytics-clicks"] });
+      }, 1500);
+    };
+    const filter = campaignId !== "all" ? `campaign_id=eq.${campaignId}` : undefined;
+    const channel = supabase
+      .channel(`analytics-clicks:${campaignId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "campaign_clicks", ...(filter ? { filter } : {}) },
+        bump,
+      )
+      .subscribe();
+    return () => {
+      if (timer) clearTimeout(timer);
+      supabase.removeChannel(channel);
+    };
+  }, [qc, campaignId]);
+
   const stats = useMemo(() => {
     const list = clicks ?? [];
     const total = list.length;
