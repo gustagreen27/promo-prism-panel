@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -48,15 +48,15 @@ export function ContactsStep({
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    let alive = true;
+  const refreshLists = useCallback(() => {
     setLoading(true);
-    fnLists({ data: { workspace_id: workspaceId } })
-      .then((r) => { if (alive) setLists(r.lists); })
+    return fnLists({ data: { workspace_id: workspaceId } })
+      .then((r) => setLists(r.lists))
       .catch((e) => toast.error(e instanceof Error ? e.message : "Erro ao carregar listas"))
-      .finally(() => { if (alive) setLoading(false); });
-    return () => { alive = false; };
+      .finally(() => setLoading(false));
   }, [workspaceId, fnLists]);
+
+  useEffect(() => { refreshLists(); }, [refreshLists]);
 
   const filtered = useMemo(
     () => lists.filter((l) => l.name.toLowerCase().includes(search.toLowerCase())),
@@ -197,7 +197,23 @@ export function ContactsStep({
             <ContactPicker
               workspaceId={workspaceId}
               value={value}
-              onChange={(v) => onChange(v as ContactSelValue)}
+              onChange={async (v) => {
+                // Enrich with a fresh preview so the aside shows contacts + accurate valid count.
+                try {
+                  const p = await fnPreview({ data: { workspace_id: workspaceId, list_id: v.list_id } });
+                  onChange({
+                    list_id: v.list_id,
+                    list_name: v.list_name,
+                    total: p.total,
+                    valid: p.valid,
+                    contacts: (p as any).sample ?? [],
+                  });
+                } catch {
+                  onChange(v as ContactSelValue);
+                }
+                // Refresh saved-lists counts so the left card no longer shows "0 contatos".
+                refreshLists();
+              }}
             />
           </div>
         )}
