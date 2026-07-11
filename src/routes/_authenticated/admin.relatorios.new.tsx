@@ -19,11 +19,17 @@ function emptyCampaign(): Campaign {
   return { description: "", sent: 0, failed: 0, pricePerMsg: 0.25 };
 }
 
+function toLocalInputValue(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 function NewReportPage() {
   const navigate = useNavigate();
   const today = new Date().toISOString().slice(0, 10);
   const [clientName, setClientName] = useState("");
   const [reportDate, setReportDate] = useState(today);
+  const [generatedAt, setGeneratedAt] = useState(() => toLocalInputValue(new Date()));
   const [reference, setReference] = useState("");
   const [project, setProject] = useState("");
   const [finalValue, setFinalValue] = useState<string>("");
@@ -55,6 +61,7 @@ function NewReportPage() {
           reference: reference.trim() || null,
           project: project.trim() || null,
           final_value: parsedFinal && parsedFinal > 0 ? parsedFinal : null,
+          generated_at: generatedAt ? new Date(generatedAt).toISOString() : new Date().toISOString(),
           campaigns: JSON.parse(JSON.stringify(campaigns)),
         } as never)
         .select("id")
@@ -83,6 +90,11 @@ function NewReportPage() {
             <div className="space-y-2">
               <Label htmlFor="date">Data *</Label>
               <Input id="date" type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="genAt">Data de geração *</Label>
+              <Input id="genAt" type="datetime-local" value={generatedAt} onChange={(e) => setGeneratedAt(e.target.value)} required />
+              <p className="text-[11px] text-muted-foreground">Aparece como "Gerado em ..." no cabeçalho.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="ref">Referência</Label>

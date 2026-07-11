@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,7 @@ type ReportRow = {
   final_value: number | null;
   campaigns: Campaign[];
   created_at: string;
+  generated_at: string | null;
 };
 
 export const Route = createFileRoute("/_authenticated/admin/relatorios/$id")({
@@ -38,19 +39,26 @@ export const Route = createFileRoute("/_authenticated/admin/relatorios/$id")({
 function ReportPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const [generatedIso, setGeneratedIso] = useState<string>("");
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["report", id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("reports")
-        .select("id, client_name, report_date, reference, project, final_value, campaigns, created_at")
+        .select("id, client_name, report_date, reference, project, final_value, campaigns, created_at, generated_at")
         .eq("id", id)
         .maybeSingle();
       if (error) throw error;
       return data as unknown as ReportRow | null;
     },
   });
+
+  useEffect(() => {
+    if (!data) return;
+    const base = data.generated_at ?? data.created_at;
+    setGeneratedIso(toLocalInputValue(new Date(base)));
+  }, [data]);
 
   async function handleDelete() {
     if (!confirm("Excluir este relatório?")) return;
@@ -60,11 +68,18 @@ function ReportPage() {
     navigate({ to: "/admin/relatorios" });
   }
 
+  async function handleSaveGenerated() {
+    const iso = fromLocalInputValue(generatedIso).toISOString();
+    const { error } = await supabase.from("reports").update({ generated_at: iso } as never).eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Data de geração atualizada");
+    refetch();
+  }
+
   if (isLoading) return <div className="p-8 text-muted-foreground">Carregando…</div>;
   if (error || !data) return <div className="p-8">Relatório não encontrado. <Button variant="link" onClick={() => refetch()}>Tentar novamente</Button></div>;
 
   const totals = applyFinalValue(computeTotals(data.campaigns ?? []), data.final_value);
-  const [generatedIso, setGeneratedIso] = useState<string>(() => toLocalInputValue(new Date()));
   const generatedAt = formatBRDateTime(fromLocalInputValue(generatedIso));
 
   return (
@@ -85,6 +100,9 @@ function ReportPage() {
               />
               <Button variant="outline" size="sm" onClick={() => setGeneratedIso(toLocalInputValue(new Date()))}>
                 Agora
+              </Button>
+              <Button size="sm" onClick={handleSaveGenerated}>
+                Salvar
               </Button>
             </div>
           </div>
