@@ -30,11 +30,18 @@ export const listWorkspaceLists = createServerFn({ method: "POST" })
     const ids = (lists ?? []).map((l: any) => l.id);
     const counts: Record<string, number> = {};
     if (ids.length) {
-      const { data: rows } = await supabase
-        .from("contact_list_items")
-        .select("list_id")
-        .in("list_id", ids);
-      for (const r of rows ?? []) counts[r.list_id] = (counts[r.list_id] ?? 0) + 1;
+      // Uma query `count exact head` por lista — evita o teto de 1000 linhas
+      // do PostgREST que fazia listas grandes "engolirem" a contagem das pequenas.
+      const results = await Promise.all(
+        ids.map((id: string) =>
+          supabase
+            .from("contact_list_items")
+            .select("list_id", { count: "exact", head: true })
+            .eq("list_id", id)
+            .then((r: any) => ({ id, count: r?.count ?? 0 })),
+        ),
+      );
+      for (const r of results) counts[r.id] = r.count;
     }
     return { lists: (lists ?? []).map((l: any) => ({ ...l, count: counts[l.id] ?? 0 })) };
   });
