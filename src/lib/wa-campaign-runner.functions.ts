@@ -214,6 +214,8 @@ export const swapCampaignRouteAndResume = createServerFn({ method: "POST" })
     id: z.string().uuid(),
     connection_id: z.string().uuid().optional().nullable(),
     template_id: z.string().uuid().optional().nullable(),
+    variables_mapping: z.record(z.string(), z.string()).optional(),
+    button_url_mapping: z.record(z.string(), z.string()).optional(),
     retry_failed: z.boolean().optional().default(true),
   }).parse(d))
   .handler(async ({ data, context }) => {
@@ -237,6 +239,7 @@ export const swapCampaignRouteAndResume = createServerFn({ method: "POST" })
         throw new Error("Número selecionado não está ativo ou sem token válido");
       }
       patch.connection_id = data.connection_id;
+      if (conn.waba_ref_id) patch.waba_ref_id = conn.waba_ref_id;
     }
 
     if (data.template_id && data.template_id !== camp.template_id) {
@@ -249,17 +252,27 @@ export const swapCampaignRouteAndResume = createServerFn({ method: "POST" })
       if (st && st !== "APPROVED" && st !== "ACTIVE") {
         throw new Error(`Template não está aprovado (status: ${tpl.status})`);
       }
+      const effectiveWaba = patch.waba_ref_id ?? camp.waba_ref_id;
+      if (tpl.waba_ref_id && effectiveWaba && tpl.waba_ref_id !== effectiveWaba) {
+        throw new Error("Template não pertence à WABA do número selecionado");
+      }
       patch.template_id = data.template_id;
     }
 
-    if (Object.keys(patch).length === 0) {
-      // Nothing swapped, behave like plain resume.
-    } else {
+    if (data.variables_mapping) {
+      patch.variables_mapping = data.variables_mapping;
+      patch.template_variables = data.variables_mapping; // legacy mirror
+    }
+    if (data.button_url_mapping) {
+      patch.button_url_mapping = data.button_url_mapping;
+    }
+
+    if (Object.keys(patch).length > 0) {
       const { error: upErr } = await supabase.from("wa_campaigns").update(patch as any).eq("id", data.id);
       if (upErr) throw upErr;
       await logEvent(
         context.supabase, data.id, "route_swapped",
-        `Rota alterada: ${patch.connection_id ? "número " : ""}${patch.connection_id && patch.template_id ? "e " : ""}${patch.template_id ? "template" : ""}`.trim(),
+        `Rota/variáveis alteradas: ${Object.keys(patch).join(", ")}`,
         context.userId, patch,
       );
     }
