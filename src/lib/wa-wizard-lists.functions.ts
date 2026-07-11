@@ -55,11 +55,20 @@ export const previewWorkspaceList = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertWsMember(context as any, data.workspace_id);
     const { supabase } = context as any;
-    const { data: items } = await supabase
-      .from("contact_list_items")
-      .select("contact:contacts(id,name,phone,opt_in,opt_out)")
-      .eq("list_id", data.list_id);
-    const all = (items ?? []).map((r: any) => r.contact).filter(Boolean);
+    // Pagina em blocos para superar o teto default de 1000 linhas do PostgREST.
+    const PAGE = 1000;
+    const all: any[] = [];
+    for (let from = 0; ; from += PAGE) {
+      const { data: items, error } = await supabase
+        .from("contact_list_items")
+        .select("contact:contacts(id,name,phone,opt_in,opt_out)")
+        .eq("list_id", data.list_id)
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      const rows = (items ?? []).map((r: any) => r.contact).filter(Boolean);
+      all.push(...rows);
+      if (!items || items.length < PAGE) break;
+    }
     const valid = all.filter((c: any) => c.opt_in && !c.opt_out && c.phone);
     return {
       total: all.length,
