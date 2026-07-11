@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { getCountryCallingCode } from "@/lib/phone-country";
 
 async function assertAdmin(supabase: any, userId: string) {
   const { data, error } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
@@ -26,6 +27,8 @@ export const adminListAllNumbers = createServerFn({ method: "POST" })
       id: c.id,
       display_name: c.display_name ?? c.nome_interno ?? c.name ?? "—",
       phone_masked: String(c.display_phone ?? c.phone ?? "").replace(/(\d{2,4})$/, "****"),
+      phone_display: c.display_phone ?? c.phone ?? null,
+      phone_country_code: getCountryCallingCode(c.phone ?? c.display_phone),
       status: c.status,
       quality_rating: c.quality_rating ?? null,
       messaging_limit_tier: null,
