@@ -213,7 +213,13 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
         approval_mode,
         approval_status,
         created_by: userId,
-      })
+        // Rate limiter (novo worker) — usa fallback conservador se ausente
+        target_per_hour: data.target_per_hour ?? null,
+        rate_per_second: data.rate_per_second ?? 6,
+        max_concurrency: data.max_concurrency ?? 15,
+        scheduled_pause_enabled: data.scheduled_pause_enabled ?? false,
+        pause_every_messages: data.scheduled_pause_enabled ? (data.pause_every_messages ?? null) : null,
+        pause_duration_seconds: data.scheduled_pause_enabled ? (data.pause_duration_seconds ?? null) : null,
       .select()
       .single()
     if (error) throw error
