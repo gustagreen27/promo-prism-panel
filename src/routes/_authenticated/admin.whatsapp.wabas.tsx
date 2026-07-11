@@ -227,6 +227,14 @@ function Page() {
       <Dialog open={importOpen} onOpenChange={setImportOpen}>
         <ImportBmDialog clients={clients} projects={projects} saving={importBmMut.isPending} onSubmit={(p: any) => importBmMut.mutate(p)} />
       </Dialog>
+
+      <Dialog open={quickOpen} onOpenChange={setQuickOpen}>
+        <QuickConnectDialog
+          workspaces={workspacesQuery.data ?? []}
+          saving={quickMut.isPending}
+          onSubmit={(p: { raw: string; workspace_id: string | null }) => quickMut.mutate(p)}
+        />
+      </Dialog>
     </>
   );
 }
