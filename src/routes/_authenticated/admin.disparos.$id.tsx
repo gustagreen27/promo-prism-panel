@@ -397,6 +397,20 @@ function Page() {
                 <Play className="mr-2 h-4 w-4" />Retomar
               </Button>
             )}
+            {(isPaused || isRunning || status === "error") && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setSwapConn((camp as any)?.connection_id ?? "");
+                  setSwapTpl((camp as any)?.template_id ?? "");
+                  setSwapOpen(true);
+                }}
+              >
+                <Shuffle className="mr-2 h-4 w-4" />
+                Trocar número/template
+              </Button>
+            )}
             {(isRunning || isPaused) && (
               <Button size="sm" variant="outline" onClick={() => m.cancel.mutate()}>
                 <XCircle className="mr-2 h-4 w-4" />Cancelar
