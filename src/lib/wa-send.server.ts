@@ -87,7 +87,7 @@ export async function sendTemplateMessage(input: WaSendInput): Promise<WaSendRes
       components: [
         ...buildHeaderComponent(input.headerType, input.headerValue),
         ...buildBodyComponents(input.variables),
-        ...buildButtonComponents(input.buttonUrlParam, input.buttonIndex ?? 0),
+        ...buildButtonComponents(input.buttons, input.buttonUrlParam, input.buttonIndex ?? 0),
       ],
     },
   };
