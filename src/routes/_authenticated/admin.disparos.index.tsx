@@ -258,8 +258,33 @@ function ListView({ onNew }: { onNew: () => void }) {
                             <Eye className="h-4 w-4" />
                           </Button>
                           {["draft", "scheduled"].includes(c.status) && (
-                            <Button variant="ghost" size="icon" title="Iniciar" onClick={() => startMut.mutate(c.id)}>
+                            <Button variant="ghost" size="icon" title="Enviar agora" onClick={() => startMut.mutate(c.id)}>
                               <Play className="h-4 w-4 text-emerald-600" />
+                            </Button>
+                          )}
+                          {["draft", "scheduled"].includes(c.status) && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title={c.status === "scheduled" ? "Reagendar" : "Agendar"}
+                              onClick={() => {
+                                setReschedule({ id: c.id, name: c.name, scheduled_at: c.scheduled_at });
+                                setRescheduleAt(c.scheduled_at
+                                  ? new Date(c.scheduled_at).toISOString().slice(0, 16)
+                                  : new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16));
+                              }}
+                            >
+                              <CalendarClock className="h-4 w-4 text-blue-600" />
+                            </Button>
+                          )}
+                          {c.status === "scheduled" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Cancelar agendamento (voltar para rascunho)"
+                              onClick={() => { if (confirm("Cancelar o agendamento? A campanha voltará para rascunho.")) unscheduleMut.mutate(c.id); }}
+                            >
+                              <Clock className="h-4 w-4 text-amber-600" />
                             </Button>
                           )}
                           {["running", "queued"].includes(c.status) && (
@@ -268,7 +293,7 @@ function ListView({ onNew }: { onNew: () => void }) {
                             </Button>
                           )}
                           {["running", "queued", "paused", "scheduled"].includes(c.status) && (
-                            <Button variant="ghost" size="icon" title="Cancelar" onClick={() => { if (confirm("Cancelar este disparo?")) cancelMut.mutate(c.id); }}>
+                            <Button variant="ghost" size="icon" title="Cancelar disparo" onClick={() => { if (confirm("Cancelar este disparo?")) cancelMut.mutate(c.id); }}>
                               <XCircle className="h-4 w-4 text-red-600" />
                             </Button>
                           )}
@@ -282,6 +307,47 @@ function ListView({ onNew }: { onNew: () => void }) {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!reschedule} onOpenChange={(o) => { if (!o) setReschedule(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {reschedule?.scheduled_at ? "Reagendar disparo" : "Agendar disparo"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <div className="text-muted-foreground">
+              Campanha: <span className="font-medium text-foreground">{reschedule?.name}</span>
+            </div>
+            <div>
+              <Label htmlFor="reschedule-at">Data e hora do envio</Label>
+              <Input
+                id="reschedule-at"
+                type="datetime-local"
+                value={rescheduleAt}
+                onChange={(e) => setRescheduleAt(e.target.value)}
+                min={new Date().toISOString().slice(0, 16)}
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Fuso horário do seu navegador. A campanha aparece em "Agendadas" até o horário chegar.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReschedule(null)}>Cancelar</Button>
+            <Button
+              disabled={scheduleMut.isPending || !rescheduleAt}
+              onClick={() => {
+                if (!reschedule || !rescheduleAt) return;
+                const iso = new Date(rescheduleAt).toISOString();
+                scheduleMut.mutate({ id: reschedule.id, scheduled_at: iso });
+              }}
+            >
+              {scheduleMut.isPending ? "Salvando…" : reschedule?.scheduled_at ? "Reagendar" : "Agendar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
