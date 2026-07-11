@@ -1031,8 +1031,14 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                       <ReviewRow label="Agendamento"
                         value={`${new Date(scheduledAt).toLocaleString("pt-BR")} (${timezone})`} />
                     )}
-                    <ReviewRow label="Intervalo" value={`${rate.interval_s}s entre envios`} />
-                    <ReviewRow label="Pausa automática" value={`${rate.pause_duration_s}s a cada ${rate.pause_every} envios`} />
+                    <ReviewRow label="Velocidade" value={`${dispatch.rate_per_second} msg/s · ~${Math.round(1000 / Math.max(1, dispatch.rate_per_second))} ms`} />
+                    <ReviewRow label="Meta operacional" value={`${dispatch.target_per_hour.toLocaleString("pt-BR")} msgs/h`} />
+                    <ReviewRow label="Concorrência máx." value={`${dispatch.max_concurrency} requisições`} />
+                    <ReviewRow label="Pausa programada" value={
+                      dispatch.scheduled_pause_enabled
+                        ? `${dispatch.pause_duration_seconds}s a cada ${dispatch.pause_every_messages.toLocaleString("pt-BR")} envios`
+                        : "desativada"
+                    } />
                     <ReviewRow label="Duração estimada" value={estimatedDurationMin > 60 ? `${Math.floor(estimatedDurationMin / 60)}h ${estimatedDurationMin % 60}min` : `${estimatedDurationMin} min`} />
                     <ReviewRow label="Custo estimado" value={`R$ ${(estimatedCostCents / 100).toFixed(2)}`} />
                     {!adminMode && (
