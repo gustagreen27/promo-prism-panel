@@ -114,7 +114,7 @@ export const quickConnectWa = createServerFn({ method: "POST" })
       throw new Error("Não foi possível identificar o número (phone_number_id ou telefone).");
     }
 
-    const supabase = context.supabase;
+    const supabase = context.supabase as any;
 
     // 1) Upsert WABA by waba_id
     const { data: existingWaba } = await supabase
