@@ -400,6 +400,18 @@ export async function processCampaignTick(
         renderedVars[k] = renderMapping(String(v ?? ""), ctx);
       }
 
+      // Pad any missing numeric template variables so we send exactly the count Meta expects.
+      // Prevents error #132000 ("Number of parameters does not match the expected number of params").
+      const tplVars: string[] = Array.isArray((tpl as any).variables)
+        ? ((tpl as any).variables as any[]).map((x) => String(x)).filter((x) => /^\d+$/.test(x))
+        : [];
+      for (const key of tplVars) {
+        const cur = renderedVars[key];
+        if (cur == null || cur === "") {
+          renderedVars[key] = " "; // Meta rejects empty strings; single space is accepted
+        }
+      }
+
       const headerImageOverride = renderedVars._header_image_url || null;
       const rawButtonUrlParam = renderedVars._button_url_param || null;
       const buttonUrlParam = rawButtonUrlParam ? renderMapping(rawButtonUrlParam, ctx) : null;
