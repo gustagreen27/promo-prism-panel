@@ -29,7 +29,7 @@ import { listTemplates } from "@/lib/whatsapp-templates.functions";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
-import { renderMapping, fillMetaTemplate, buildContext } from "@/lib/wa-variables";
+import { renderMapping, fillMetaTemplate, buildContext, metaVarsIn } from "@/lib/wa-variables";
 import { formatCallingCode, formatPhoneDisplay, summarizeCallingCodes } from "@/lib/phone-country";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
@@ -142,6 +142,8 @@ function Page() {
   const [swapConn, setSwapConn] = useState<string>("");
   const [swapTpl, setSwapTpl] = useState<string>("");
   const [swapRetry, setSwapRetry] = useState(true);
+  const [swapBodyVars, setSwapBodyVars] = useState<Record<string, string>>({});
+  const [swapBtnVars, setSwapBtnVars] = useState<Record<string, string>>({});
 
   const connsQ = useQuery({
     queryKey: ["wa-conns-all"],
@@ -153,6 +155,70 @@ function Page() {
     queryFn: () => listTplsFn(),
     enabled: swapOpen,
   });
+
+  // Seed selection + mappings from the current campaign when the dialog opens.
+  useEffect(() => {
+    if (!swapOpen || !camp) return;
+    setSwapConn((camp as any).connection_id ?? "");
+    setSwapTpl((camp as any).template_id ?? "");
+    const vm = ((camp as any).variables_mapping ?? (camp as any).template_variables ?? {}) as Record<string, string>;
+    const bm = ((camp as any).button_url_mapping ?? {}) as Record<string, string>;
+    setSwapBodyVars({ ...vm });
+    setSwapBtnVars({ ...bm });
+  }, [swapOpen, camp]);
+
+  // Flatten connections and resolve current selection's WABA.
+  const swapConnList = useMemo(() => {
+    return (connsQ.data ?? []).flatMap((w: any) =>
+      (w.connections ?? []).map((c: any) => ({ ...c, workspace_name: w.name })),
+    );
+  }, [connsQ.data]);
+  const swapConnRow = useMemo(
+    () => swapConnList.find((c: any) => c.id === swapConn),
+    [swapConnList, swapConn],
+  );
+  const swapConnWaba = swapConnRow?.waba_ref_id ?? null;
+
+  // Only templates approved on the number's WABA.
+  const swapTplList = useMemo(() => {
+    return (tplsQ.data ?? []).filter((t: any) => {
+      const st = String(t.status ?? "").toUpperCase();
+      const approved = !st || st === "APPROVED" || st === "ACTIVE";
+      if (!approved) return false;
+      if (!swapConnWaba) return true;
+      return !t.waba_ref_id || t.waba_ref_id === swapConnWaba;
+    });
+  }, [tplsQ.data, swapConnWaba]);
+
+  const swapTplRow = useMemo(
+    () => (tplsQ.data ?? []).find((t: any) => t.id === swapTpl),
+    [tplsQ.data, swapTpl],
+  );
+
+  // If the currently-selected template does not belong to the new WABA, clear it.
+  useEffect(() => {
+    if (!swapOpen || !swapTpl || !swapTplRow) return;
+    if (swapConnWaba && swapTplRow.waba_ref_id && swapTplRow.waba_ref_id !== swapConnWaba) {
+      setSwapTpl("");
+      setSwapBodyVars({});
+      setSwapBtnVars({});
+    }
+  }, [swapConnWaba, swapTplRow, swapTpl, swapOpen]);
+
+  // Variables required by the selected template.
+  const swapBodyVarNums = useMemo(
+    () => (swapTplRow ? metaVarsIn(swapTplRow.body ?? "") : []),
+    [swapTplRow],
+  );
+  const swapUrlButton = useMemo(() => {
+    const btns = (Array.isArray(swapTplRow?.buttons) ? swapTplRow?.buttons : []) as any[];
+    return btns.find((b: any) => String(b?.type ?? "").toLowerCase() === "url" && b?.url);
+  }, [swapTplRow]);
+  const swapBtnVarNums = useMemo(
+    () => (swapUrlButton?.url ? metaVarsIn(String(swapUrlButton.url)) : []),
+    [swapUrlButton],
+  );
+
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["wa-camp", id] });
@@ -261,6 +327,8 @@ function Page() {
         id,
         connection_id: swapConn || undefined,
         template_id: swapTpl || undefined,
+        variables_mapping: swapBodyVars,
+        button_url_mapping: swapBtnVars,
         retry_failed: swapRetry,
       } }),
       onSuccess: () => {
@@ -729,11 +797,11 @@ function Page() {
       </Tabs>
 
       <Dialog open={swapOpen} onOpenChange={setSwapOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Trocar número/template e retomar</DialogTitle>
             <DialogDescription>
-              Selecione um número e/ou template diferentes. Destinatários já enviados não serão reenviados.
+              Selecione o número, o template aprovado para esse número e ajuste as variáveis. Destinatários já enviados não serão reenviados.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -742,38 +810,66 @@ function Page() {
               <Select value={swapConn} onValueChange={setSwapConn}>
                 <SelectTrigger><SelectValue placeholder="Selecione um número" /></SelectTrigger>
                 <SelectContent>
-                  {(connsQ.data ?? []).flatMap((w: any) =>
-                    (w.connections ?? [])
-                      .filter((c: any) => ["ativo","active","connected"].includes(String(c.status ?? "").toLowerCase()))
-                      .map((c: any) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.display_phone ?? c.name} — {w.name}
-                          {c.id === (camp as any)?.connection_id ? " (atual)" : ""}
-                        </SelectItem>
-                      )),
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Template</Label>
-              <Select value={swapTpl} onValueChange={setSwapTpl}>
-                <SelectTrigger><SelectValue placeholder="Selecione um template" /></SelectTrigger>
-                <SelectContent>
-                  {(tplsQ.data ?? [])
-                    .filter((t: any) => {
-                      const st = String(t.status ?? "").toUpperCase();
-                      return !st || st === "APPROVED" || st === "ACTIVE";
-                    })
-                    .map((t: any) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.name} ({t.language})
-                        {t.id === (camp as any)?.template_id ? " (atual)" : ""}
+                  {swapConnList
+                    .filter((c: any) => ["ativo","active","connected"].includes(String(c.status ?? "").toLowerCase()))
+                    .map((c: any) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.display_phone ?? c.name} — {c.workspace_name}
+                        {c.id === (camp as any)?.connection_id ? " (atual)" : ""}
                       </SelectItem>
                     ))}
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1.5">
+              <Label>Template aprovado</Label>
+              <Select value={swapTpl} onValueChange={setSwapTpl} disabled={!swapConn}>
+                <SelectTrigger>
+                  <SelectValue placeholder={swapConn ? "Selecione um template" : "Escolha o número primeiro"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {swapTplList.map((t: any) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name} ({t.language})
+                      {t.id === (camp as any)?.template_id ? " (atual)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {swapConn && swapTplList.length === 0 && (
+                <p className="text-[11px] text-muted-foreground">Nenhum template aprovado para esta WABA.</p>
+              )}
+            </div>
+
+            {swapTplRow && (swapBodyVarNums.length > 0 || swapBtnVarNums.length > 0) && (
+              <div className="space-y-3 rounded-md border p-3">
+                <p className="text-xs font-medium">Variáveis do template</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Use tokens como <code>{"{nome}"}</code>, <code>{"{telefone}"}</code> ou texto fixo. Fallback: <code>{"{nome|amigo}"}</code>.
+                </p>
+                {swapBodyVarNums.map((n) => (
+                  <div key={`b-${n}`} className="space-y-1">
+                    <Label className="text-xs">Corpo · {"{{" + n + "}}"}</Label>
+                    <Input
+                      value={swapBodyVars[String(n)] ?? ""}
+                      onChange={(e) => setSwapBodyVars((s) => ({ ...s, [String(n)]: e.target.value }))}
+                      placeholder="{nome}"
+                    />
+                  </div>
+                ))}
+                {swapBtnVarNums.map((n) => (
+                  <div key={`u-${n}`} className="space-y-1">
+                    <Label className="text-xs">URL do botão · {"{{" + n + "}}"}</Label>
+                    <Input
+                      value={swapBtnVars[String(n)] ?? ""}
+                      onChange={(e) => setSwapBtnVars((s) => ({ ...s, [String(n)]: e.target.value }))}
+                      placeholder="slug ou parâmetro"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
             <label className="flex items-center gap-2 text-sm">
               <Checkbox
                 checked={swapRetry}
