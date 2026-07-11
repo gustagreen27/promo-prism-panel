@@ -317,7 +317,7 @@ export const swapCampaignRouteAndResume = createServerFn({ method: "POST" })
     const finalTplId = newTpl?.id ?? currentTplId;
     const { data: finalTpl } = finalTplId
       ? await supabase.from("whatsapp_templates")
-          .select("id,name,language,status,body,buttons,header_type,header_text")
+          .select("id,name,language,status,body,buttons,header_type,header_text,header_media_url")
           .eq("id", finalTplId).maybeSingle()
       : { data: null };
 
@@ -358,9 +358,21 @@ export const swapCampaignRouteAndResume = createServerFn({ method: "POST" })
       // Media header (image/video/document) requires a resolvable media_id or URL.
       const ht = String(finalTpl.header_type ?? "").toUpperCase();
       if (["IMAGE", "VIDEO", "DOCUMENT"].includes(ht)) {
-        const headerVal = String(previousBody?._header_image_url ?? previousBody?._header_url ?? "").trim();
+        const prevMap: any = (route?.variables_mapping ?? (camp as any).variables_mapping ?? (camp as any).template_variables ?? {}) as any;
+        const headerVal = String(
+          previousBody?._header_image_url
+          ?? previousBody?._header_url
+          ?? prevMap?._header_image_url
+          ?? prevMap?._header_url
+          ?? (finalTpl as any).header_media_url
+          ?? ""
+        ).trim();
         if (!headerVal) {
           throw new Error(`Template exige mídia no cabeçalho (${ht}); informe _header_image_url no mapping`);
+        }
+        // Ensure downstream sending has the header URL in the mapping.
+        if (data.variables_mapping && !data.variables_mapping._header_image_url) {
+          data.variables_mapping = { ...data.variables_mapping, _header_image_url: headerVal };
         }
       }
     }
