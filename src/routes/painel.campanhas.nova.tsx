@@ -548,6 +548,14 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
     }
     setSubmitting(true);
     try {
+      const dispatchPayload = {
+        target_per_hour: dispatch.target_per_hour,
+        rate_per_second: dispatch.rate_per_second,
+        max_concurrency: dispatch.max_concurrency,
+        scheduled_pause_enabled: dispatch.scheduled_pause_enabled,
+        pause_every_messages: dispatch.scheduled_pause_enabled ? dispatch.pause_every_messages : null,
+        pause_duration_seconds: dispatch.scheduled_pause_enabled ? dispatch.pause_duration_seconds : null,
+      };
       const { campaign } = await fnCreate({
         data: {
           workspace_id: workspaceId,
@@ -559,19 +567,17 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
           button_url_mapping: btnVars,
           header_media_url: headerMediaUrl || null,
           scheduled_at: finalMode === "schedule" ? new Date(scheduledAt).toISOString() : null,
+          ...dispatchPayload,
         },
       });
       if (event_id) {
         try { await fnLink({ data: { event_id, campaign_id: campaign.id } }); } catch { /* non-fatal */ }
       }
-      const sendRatePerMin = Math.max(1, Math.round(60 / Math.max(1, rate.interval_s)));
-      // Save rate/timezone config, but keep status as "draft" until start/schedule is confirmed.
+      // Timezone + reforço da config do rate limiter (garante persistência mesmo no adminMode).
       await supabase.from("wa_campaigns").update({
         timezone,
-        send_rate_per_min: sendRatePerMin,
-        batch_size: rate.pause_every,
-        jitter_ms: rate.pause_duration_s * 1000,
-      }).eq("id", campaign.id);
+        ...dispatchPayload,
+      } as any).eq("id", campaign.id);
 
       if (finalMode === "now") {
         if (adminMode) {
