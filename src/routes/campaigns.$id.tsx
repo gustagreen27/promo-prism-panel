@@ -246,12 +246,136 @@ function PublicCampaignReport() {
           <Breakdown title="Navegadores" rows={stats.browsers} />
         </div>
 
+        {dispatches.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Histórico de disparos</CardTitle>
+              <CardDescription>
+                Números para os quais as mensagens foram enviadas (parcialmente ocultados por privacidade).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {dispatches.map((d) => {
+                const recs = data.recipientsByDispatch?.[d.id] ?? [];
+                return (
+                  <div key={d.id} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-medium">{d.name || "Disparo sem nome"}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {recs.length.toLocaleString("pt-BR")} destinatário(s)
+                      </div>
+                    </div>
+                    {recs.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Sem destinatários registrados ainda.</p>
+                    ) : (
+                      <div className="max-h-72 overflow-auto rounded-md border">
+                        <table className="w-full text-sm">
+                          <thead className="sticky top-0 bg-muted/50 text-xs text-muted-foreground">
+                            <tr>
+                              <th className="px-3 py-2 text-left font-medium">Número</th>
+                              <th className="px-3 py-2 text-left font-medium">Status</th>
+                              <th className="px-3 py-2 text-left font-medium">Enviado em</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {recs.slice(0, 500).map((r, i) => (
+                              <tr key={i} className="border-t">
+                                <td className="px-3 py-1.5 font-mono text-xs">{r.phone}</td>
+                                <td className="px-3 py-1.5 text-xs">{recipientStatusLabel(r.status)}</td>
+                                <td className="px-3 py-1.5 text-xs text-muted-foreground">
+                                  {r.sent_at ? new Date(r.sent_at).toLocaleString("pt-BR") : "—"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        {recs.length > 500 && (
+                          <div className="border-t bg-muted/30 px-3 py-1.5 text-center text-xs text-muted-foreground">
+                            Mostrando os 500 mais recentes de {recs.length.toLocaleString("pt-BR")}.
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Histórico de acessos</CardTitle>
+            <CardDescription>
+              Últimos acessos registrados na página pública.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {data.clicks.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum acesso registrado ainda.</p>
+            ) : (
+              <div className="max-h-96 overflow-auto rounded-md border">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-muted/50 text-xs text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-medium">Data/Hora</th>
+                      <th className="px-3 py-2 text-left font-medium">Local</th>
+                      <th className="px-3 py-2 text-left font-medium">Dispositivo</th>
+                      <th className="px-3 py-2 text-left font-medium">Navegador</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.clicks.slice(0, 500).map((c) => (
+                      <tr key={c.id as string} className="border-t">
+                        <td className="px-3 py-1.5 text-xs">
+                          {new Date(c.clicked_at as string).toLocaleString("pt-BR")}
+                        </td>
+                        <td className="px-3 py-1.5 text-xs">
+                          {[c.city, c.region, c.country].filter(Boolean).join(", ") || "—"}
+                        </td>
+                        <td className="px-3 py-1.5 text-xs">
+                          {[c.device_type, c.os].filter(Boolean).join(" · ") || "—"}
+                        </td>
+                        <td className="px-3 py-1.5 text-xs text-muted-foreground">
+                          {(c.browser as string) || "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {data.clicks.length > 500 && (
+                  <div className="border-t bg-muted/30 px-3 py-1.5 text-center text-xs text-muted-foreground">
+                    Mostrando os 500 mais recentes de {data.clicks.length.toLocaleString("pt-BR")}.
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         <footer className="pt-6 text-center text-xs text-muted-foreground">
           Relatório somente para visualização.
         </footer>
       </main>
     </div>
   );
+}
+
+function recipientStatusLabel(status: string | null): string {
+  switch (status) {
+    case "pending": return "Pendente";
+    case "processing": return "Processando";
+    case "accepted": return "Aceito";
+    case "sent": return "Enviado";
+    case "delivered": return "Entregue";
+    case "read": return "Lido";
+    case "replied": return "Respondido";
+    case "failed": return "Falhou";
+    case "opt_out": return "Opt-out";
+    case "cancelled": return "Cancelado";
+    case "skipped": return "Ignorado";
+    default: return status ?? "—";
+  }
 }
 
 type Dispatch = {
