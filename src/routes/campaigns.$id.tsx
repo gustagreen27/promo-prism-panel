@@ -278,7 +278,7 @@ function PublicCampaignReport() {
                             </tr>
                           </thead>
                           <tbody>
-                            {recs.slice(0, 500).map((r, i) => (
+                            {recs.map((r, i) => (
                               <tr key={i} className="border-t">
                                 <td className="px-3 py-1.5 font-mono text-xs">{r.phone}</td>
                                 <td className="px-3 py-1.5 text-xs">{recipientStatusLabel(r.status)}</td>
@@ -289,11 +289,6 @@ function PublicCampaignReport() {
                             ))}
                           </tbody>
                         </table>
-                        {recs.length > 500 && (
-                          <div className="border-t bg-muted/30 px-3 py-1.5 text-center text-xs text-muted-foreground">
-                            Mostrando os 500 mais recentes de {recs.length.toLocaleString("pt-BR")}.
-                          </div>
-                        )}
                       </div>
                     )}
                   </div>
