@@ -118,7 +118,9 @@ function CampaignRow({
   const publicUrl =
     typeof window !== "undefined" ? `${window.location.origin}/${c.slug}` : `/${c.slug}`;
 
+  return (
     <Card className="overflow-hidden border-border/70 shadow-sm">
+
       <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-4 border-b bg-muted/30">
         <div className="space-y-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
