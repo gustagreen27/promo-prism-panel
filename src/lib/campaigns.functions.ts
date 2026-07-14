@@ -932,6 +932,42 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
       normalizeDispatch(r as unknown as WaDispatchRow),
     );
 
-    return { campaign: c, clicks: clicks ?? [], dispatches: normalizedDispatches };
+    // Recipients per dispatch (masked phones for public safety)
+    const dispatchIds = normalizedDispatches.map((d) => d.id as string);
+    type PublicRecipient = { phone: string; status: string | null; sent_at: string | null; delivered_at: string | null };
+    const recipientsByDispatch: Record<string, PublicRecipient[]> = {};
+    if (dispatchIds.length > 0) {
+      const { data: recs, error: rErr } = await supabaseAdmin
+        .from("campaign_recipients")
+        .select("campaign_id, phone, status, sent_at, delivered_at")
+        .in("campaign_id", dispatchIds)
+        .order("sent_at", { ascending: false, nullsFirst: false })
+        .limit(5000);
+      if (rErr) throw rErr;
+      const maskPhone = (raw: string | null | undefined): string => {
+        const digits = String(raw ?? "").replace(/\D/g, "");
+        if (digits.length < 6) return raw ?? "—";
+        const head = digits.slice(0, digits.length - 6);
+        const tail = digits.slice(-2);
+        return `+${head} ****${tail}`;
+      };
+      for (const r of recs ?? []) {
+        const cid = r.campaign_id as string;
+        (recipientsByDispatch[cid] ??= []).push({
+          phone: maskPhone(r.phone as string),
+          status: (r.status as string | null) ?? null,
+          sent_at: (r.sent_at as string | null) ?? null,
+          delivered_at: (r.delivered_at as string | null) ?? null,
+        });
+      }
+    }
+
+    return {
+      campaign: c,
+      clicks: clicks ?? [],
+      dispatches: normalizedDispatches,
+      recipientsByDispatch,
+    };
   });
+
 
