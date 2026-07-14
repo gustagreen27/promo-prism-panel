@@ -883,6 +883,25 @@ function RecipientAudit({
     });
   }, [recipients, search, filter]);
 
+  // Detecta webhooks travados: houve envio há > 15 min mas quase nenhum callback delivered/read chegou.
+  const stale = useMemo(() => {
+    const all = recipients ?? [];
+    if (!all.length) return null;
+    const parse = (v: any) => (v ? new Date(v).getTime() : 0);
+    let lastSent = 0, lastCallback = 0, sentCount = 0, cbCount = 0;
+    for (const r of all) {
+      const s = parse(r.sent_at);
+      if (s) { sentCount++; if (s > lastSent) lastSent = s; }
+      const d = Math.max(parse(r.delivered_at), parse(r.read_at), parse(r.replied_at));
+      if (d) { cbCount++; if (d > lastCallback) lastCallback = d; }
+    }
+    if (!lastSent) return null;
+    const ageMin = (Date.now() - Math.max(lastSent, lastCallback)) / 60000;
+    if (ageMin < 15) return null;
+    if (cbCount / Math.max(sentCount, 1) > 0.1) return null;
+    return { ageMin: Math.round(ageMin), sentCount, cbCount };
+  }, [recipients]);
+
   if (isLoading && !recipients?.length) {
     return <Card><CardContent className="pt-6 text-center text-sm text-muted-foreground">Carregando auditoria…</CardContent></Card>;
   }
@@ -893,6 +912,29 @@ function RecipientAudit({
 
   return (
     <div className="space-y-3">
+      {stale && (
+        <Card className="border-amber-300 bg-amber-50/60 dark:bg-amber-950/20">
+          <CardContent className="pt-4 pb-4 flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="text-sm space-y-1 flex-1">
+              <div className="font-semibold text-amber-900 dark:text-amber-200">
+                Webhooks da Meta parados há ~{stale.ageMin} min
+              </div>
+              <div className="text-amber-900/80 dark:text-amber-200/80">
+                {stale.sentCount.toLocaleString("pt-BR")} mensagens enviadas, mas apenas{" "}
+                {stale.cbCount.toLocaleString("pt-BR")} eventos de entrega/leitura recebidos.
+                A assinatura do campo <code>messages</code> pode estar inativa, o App Secret pode estar divergente,
+                ou os números não retornam recibos.
+              </div>
+              <div className="pt-1 flex flex-wrap gap-2">
+                <Link to="/admin/whatsapp/conexoes"><Button size="sm" variant="outline">Reassinar webhooks</Button></Link>
+                <Link to="/admin/whatsapp/diagnostico"><Button size="sm" variant="ghost">Diagnóstico</Button></Link>
+                <Link to="/admin/whatsapp/webhooks"><Button size="sm" variant="ghost">Ver logs</Button></Link>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
           <span>
