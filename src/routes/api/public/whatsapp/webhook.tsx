@@ -308,7 +308,7 @@ async function handleChange(supabaseAdmin: any, change: any) {
 
     const { data: rec } = await supabaseAdmin
       .from("campaign_recipients")
-      .select("id, status, sent_at, delivered_at, read_at, failed_at")
+      .select("id, campaign_id, workspace_id, status, sent_at, delivered_at, read_at, failed_at")
       .eq("meta_message_id", id)
       .maybeSingle();
 
@@ -332,6 +332,37 @@ async function handleChange(supabaseAdmin: any, change: any) {
 
     if (rec && Object.keys(patch).length) {
       await supabaseAdmin.from("campaign_recipients").update(patch).eq("id", rec.id);
+    }
+
+    await supabaseAdmin.from("whatsapp_webhook_logs").insert({
+      connection_id: connectionId,
+      event_type: "message_status",
+      processed: !!rec,
+      error: rec ? null : "recipient_not_found",
+      payload: {
+        campaign_id: rec?.campaign_id ?? null,
+        recipient_id: rec?.id ?? null,
+        meta_message_id: id,
+        phone_number_id: phoneNumberId,
+        status,
+        timestamp: tsIso,
+        applied_patch: Object.keys(patch),
+      },
+    });
+
+    if (rec?.campaign_id) {
+      await supabaseAdmin.from("campaign_timeline").insert({
+        campaign_id: rec.campaign_id,
+        workspace_id: rec.workspace_id,
+        event_type: "webhook_message_status",
+        message: `Webhook ${status} processado`,
+        payload: {
+          recipient_id: rec.id,
+          meta_message_id: id,
+          status,
+          applied_patch: Object.keys(patch),
+        },
+      });
     }
 
     // Espelha no message_logs (auditoria por mensagem).
