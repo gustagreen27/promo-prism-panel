@@ -92,9 +92,19 @@ function Page() {
     queryFn: () => getRec({ data: { id, limit: 500 } }),
     refetchInterval: (q) => {
       const s = (progQ.data as any)?.status;
-      return s === "running" ? 20000 : false;
+      if (s === "running") return 15000;
+      // Poll enquanto houver destinatários não-terminais aguardando webhooks (delivered/read)
+      const rows = (q.state.data as any[] | undefined) ?? [];
+      const TERMINAL = new Set(["read", "replied", "failed", "opt_out", "cancelled", "skipped"]);
+      const hasPending = rows.some((r) => !TERMINAL.has(String(r?.status ?? "")));
+      if (hasPending && (s === "completed" || s === "paused" || s === "scheduled")) {
+        // backoff mais suave para campanhas já finalizadas
+        return 20000;
+      }
+      return false;
     },
-    staleTime: 15000,
+    refetchOnWindowFocus: true,
+    staleTime: 10000,
   });
   const { data: recipients } = recipientsQ;
 
@@ -660,7 +670,14 @@ function Page() {
         </TabsContent>
 
         <TabsContent value="audit" className="space-y-3">
-          <RecipientAudit recipients={recipients as any[] | undefined} isLoading={recipientsQ.isLoading} />
+          <RecipientAudit
+            recipients={recipients as any[] | undefined}
+            isLoading={recipientsQ.isLoading}
+            isFetching={recipientsQ.isFetching}
+            isPolling={!!recipientsQ.isFetching || (recipientsQ as any).state?.fetchStatus === "fetching"}
+            lastUpdatedAt={recipientsQ.dataUpdatedAt}
+            onRefresh={() => recipientsQ.refetch()}
+          />
         </TabsContent>
 
         <TabsContent value="financial" className="space-y-3">
@@ -831,7 +848,21 @@ const AUDIT_TONE: Record<string, string> = {
   neutral: "text-muted-foreground bg-muted border-border",
 };
 
-function RecipientAudit({ recipients, isLoading }: { recipients: any[] | undefined; isLoading: boolean }) {
+function RecipientAudit({
+  recipients,
+  isLoading,
+  isFetching,
+  isPolling,
+  lastUpdatedAt,
+  onRefresh,
+}: {
+  recipients: any[] | undefined;
+  isLoading: boolean;
+  isFetching?: boolean;
+  isPolling?: boolean;
+  lastUpdatedAt?: number;
+  onRefresh?: () => void;
+}) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string>("all");
 
@@ -856,12 +887,34 @@ function RecipientAudit({ recipients, isLoading }: { recipients: any[] | undefin
     return <Card><CardContent className="pt-6 text-center text-sm text-muted-foreground">Carregando auditoria…</CardContent></Card>;
   }
 
+  const lastUpdatedLabel = lastUpdatedAt
+    ? new Date(lastUpdatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    : null;
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-sm text-muted-foreground">
-          Linha do tempo dos webhooks recebidos da Meta por destinatário
-          {recipients?.length ? ` · ${list.length.toLocaleString("pt-BR")} de ${recipients.length.toLocaleString("pt-BR")}` : ""}
+        <div className="text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
+          <span>
+            Linha do tempo dos webhooks recebidos da Meta por destinatário
+            {recipients?.length ? ` · ${list.length.toLocaleString("pt-BR")} de ${recipients.length.toLocaleString("pt-BR")}` : ""}
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2 py-0.5 text-xs">
+            {isFetching ? (
+              <>
+                <Loader2 className="h-3 w-3 animate-spin" /> Atualizando…
+              </>
+            ) : isPolling ? (
+              <>
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" /> Auto-atualização ativa
+              </>
+            ) : (
+              <>
+                <span className="h-2 w-2 rounded-full bg-muted-foreground/50" /> Auto-atualização em pausa
+              </>
+            )}
+            {lastUpdatedLabel && <span className="text-muted-foreground/80">· {lastUpdatedLabel}</span>}
+          </span>
         </div>
         <div className="flex flex-wrap gap-2">
           {[
@@ -875,6 +928,10 @@ function RecipientAudit({ recipients, isLoading }: { recipients: any[] | undefin
               {f.l}
             </Button>
           ))}
+          <Button size="sm" variant="outline" onClick={() => onRefresh?.()} disabled={isFetching}>
+            {isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+            Atualizar
+          </Button>
           <Input
             className="max-w-xs"
             placeholder="Buscar telefone, nome, wamid, erro..."
