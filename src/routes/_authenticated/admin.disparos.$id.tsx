@@ -773,3 +773,178 @@ function FinalReport({ report, onPrint, onExport }: { report: any; onPrint: () =
     </div>
   );
 }
+
+type AuditEvent = {
+  key: string;
+  label: string;
+  at: string | null;
+  tone: "info" | "success" | "primary" | "danger" | "warning" | "neutral";
+  icon: any;
+  detail?: string;
+};
+
+function buildRecipientEvents(r: any): AuditEvent[] {
+  const evs: AuditEvent[] = [
+    { key: "queued", label: "Enfileirada", at: r.created_at ?? null, tone: "neutral", icon: Clock },
+  ];
+  if (r.sent_at || ["sent", "delivered", "read", "replied"].includes(r.status)) {
+    evs.push({
+      key: "accepted",
+      label: "Aceita pela Meta",
+      at: r.sent_at ?? null,
+      tone: "info",
+      icon: Send,
+      detail: r.meta_message_id ? `wamid: ${r.meta_message_id}` : undefined,
+    });
+  }
+  if (r.delivered_at || ["delivered", "read", "replied"].includes(r.status)) {
+    evs.push({ key: "delivered", label: "Entregue no dispositivo", at: r.delivered_at ?? null, tone: "success", icon: CheckCircle2 });
+  }
+  if (r.read_at || ["read", "replied"].includes(r.status)) {
+    evs.push({ key: "read", label: "Lida pelo destinatário", at: r.read_at ?? null, tone: "success", icon: Eye });
+  }
+  if (r.replied_at || r.responded_at || r.status === "replied") {
+    evs.push({ key: "replied", label: "Respondeu", at: r.replied_at ?? r.responded_at ?? null, tone: "primary", icon: MessageSquare });
+  }
+  if (r.failed_at || r.status === "failed") {
+    evs.push({
+      key: "failed",
+      label: "Falha reportada pela Meta",
+      at: r.failed_at ?? r.last_attempt_at ?? null,
+      tone: "danger",
+      icon: AlertTriangle,
+      detail: [r.error_code, r.failed_reason].filter(Boolean).join(" — ") || undefined,
+    });
+  }
+  if (r.status === "opt_out") {
+    evs.push({ key: "opt_out", label: "Opt-out registrado", at: r.updated_at ?? null, tone: "warning", icon: Ban });
+  }
+  return evs;
+}
+
+const AUDIT_TONE: Record<string, string> = {
+  success: "text-emerald-600 bg-emerald-50 border-emerald-200",
+  danger: "text-red-600 bg-red-50 border-red-200",
+  warning: "text-amber-600 bg-amber-50 border-amber-200",
+  info: "text-sky-600 bg-sky-50 border-sky-200",
+  primary: "text-blue-600 bg-blue-50 border-blue-200",
+  neutral: "text-muted-foreground bg-muted border-border",
+};
+
+function RecipientAudit({ recipients, isLoading }: { recipients: any[] | undefined; isLoading: boolean }) {
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<string>("all");
+
+  const list = useMemo(() => {
+    const all = recipients ?? [];
+    const q = search.trim().toLowerCase();
+    return all.filter((r: any) => {
+      if (filter === "failed" && r.status !== "failed") return false;
+      if (filter === "delivered" && !["delivered", "read", "replied"].includes(r.status)) return false;
+      if (filter === "read" && !["read", "replied"].includes(r.status)) return false;
+      if (filter === "pending" && !["pending", "processing", "accepted", "sent"].includes(r.status)) return false;
+      if (!q) return true;
+      return (r.phone ?? "").toLowerCase().includes(q) ||
+        (r.contact?.name ?? "").toLowerCase().includes(q) ||
+        (r.meta_message_id ?? "").toLowerCase().includes(q) ||
+        (r.failed_reason ?? "").toLowerCase().includes(q) ||
+        (r.error_code ?? "").toLowerCase().includes(q);
+    });
+  }, [recipients, search, filter]);
+
+  if (isLoading && !recipients?.length) {
+    return <Card><CardContent className="pt-6 text-center text-sm text-muted-foreground">Carregando auditoria…</CardContent></Card>;
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-sm text-muted-foreground">
+          Linha do tempo dos webhooks recebidos da Meta por destinatário
+          {recipients?.length ? ` · ${list.length.toLocaleString("pt-BR")} de ${recipients.length.toLocaleString("pt-BR")}` : ""}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { k: "all", l: "Todos" },
+            { k: "pending", l: "Pendentes" },
+            { k: "delivered", l: "Entregues" },
+            { k: "read", l: "Lidas" },
+            { k: "failed", l: "Falhas" },
+          ].map((f) => (
+            <Button key={f.k} size="sm" variant={filter === f.k ? "default" : "outline"} onClick={() => setFilter(f.k)}>
+              {f.l}
+            </Button>
+          ))}
+          <Input
+            className="max-w-xs"
+            placeholder="Buscar telefone, nome, wamid, erro..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {!list.length && (
+        <Card><CardContent className="pt-6 text-center text-sm text-muted-foreground">
+          Nenhum destinatário encontrado com esses filtros.
+        </CardContent></Card>
+      )}
+
+      <div className="grid gap-3">
+        {list.slice(0, 100).map((r: any) => {
+          const events = buildRecipientEvents(r);
+          return (
+            <Card key={r.id}>
+              <CardContent className="pt-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-medium">{r.contact?.name ?? "Sem nome"}</div>
+                    <div className="text-xs font-mono text-muted-foreground">{formatPhoneDisplay(r.phone)}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={r.status} />
+                    {r.attempt > 0 && <Badge variant="outline" className="text-[10px]">tent. {r.attempt}</Badge>}
+                    {r.meta_message_id && (
+                      <Badge variant="outline" className="text-[10px] font-mono max-w-[220px] truncate" title={r.meta_message_id}>
+                        {r.meta_message_id}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                <ol className="relative border-l border-border pl-4 space-y-2">
+                  {events.map((ev) => {
+                    const Icon = ev.icon;
+                    return (
+                      <li key={ev.key} className="relative">
+                        <span className={`absolute -left-[22px] top-0.5 flex h-4 w-4 items-center justify-center rounded-full border ${AUDIT_TONE[ev.tone]}`}>
+                          <Icon className="h-2.5 w-2.5" />
+                        </span>
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <div className="text-sm font-medium">{ev.label}</div>
+                          <div className="text-xs text-muted-foreground tabular-nums">{ev.at ? fmtDate(ev.at) : "aguardando webhook…"}</div>
+                        </div>
+                        {ev.detail && (
+                          <div className={`mt-1 text-xs font-mono break-all ${ev.tone === "danger" ? "text-red-600" : "text-muted-foreground"}`}>
+                            {ev.detail}
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ol>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {list.length > 100 && (
+        <div className="text-xs text-muted-foreground text-center">
+          Mostrando 100 de {list.length.toLocaleString("pt-BR")}. Refine a busca para ver mais.
+        </div>
+      )}
+    </div>
+  );
+}
+
