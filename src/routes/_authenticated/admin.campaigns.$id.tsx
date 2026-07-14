@@ -22,7 +22,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ArrowLeft, Pencil } from "lucide-react";
+import { ArrowLeft, Pencil, Printer } from "lucide-react";
 import { IntentScoreBadge, StatusBadge } from "@/components/campaign-badges";
 import { CampaignAnalytics } from "@/components/CampaignAnalytics";
 import { ErrorCard } from "@/components/admin/query-state";
