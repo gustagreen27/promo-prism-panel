@@ -91,7 +91,7 @@ function Page() {
   );
 }
 
-function WorkspaceCard({ w, onSaveBiz, onSaveDefault, saving }: any) {
+function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId, saving }: any) {
   const [bizId, setBizId] = useState<string>(w.meta_business_id ?? "");
   const [bizName, setBizName] = useState<string>(w.meta_business_name ?? "");
   const [defConn, setDefConn] = useState<string>(w.default_connection_id ?? "");
