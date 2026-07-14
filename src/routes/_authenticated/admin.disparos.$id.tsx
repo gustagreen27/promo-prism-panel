@@ -92,9 +92,19 @@ function Page() {
     queryFn: () => getRec({ data: { id, limit: 500 } }),
     refetchInterval: (q) => {
       const s = (progQ.data as any)?.status;
-      return s === "running" ? 20000 : false;
+      if (s === "running") return 15000;
+      // Poll enquanto houver destinatários não-terminais aguardando webhooks (delivered/read)
+      const rows = (q.state.data as any[] | undefined) ?? [];
+      const TERMINAL = new Set(["read", "replied", "failed", "opt_out", "cancelled", "skipped"]);
+      const hasPending = rows.some((r) => !TERMINAL.has(String(r?.status ?? "")));
+      if (hasPending && (s === "completed" || s === "paused" || s === "scheduled")) {
+        // backoff mais suave para campanhas já finalizadas
+        return 20000;
+      }
+      return false;
     },
-    staleTime: 15000,
+    refetchOnWindowFocus: true,
+    staleTime: 10000,
   });
   const { data: recipients } = recipientsQ;
 
