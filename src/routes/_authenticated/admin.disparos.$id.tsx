@@ -441,6 +441,7 @@ function Page() {
           <TabsTrigger value="previews">Prévias</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="errors">Erros</TabsTrigger>
+          <TabsTrigger value="audit">Auditoria</TabsTrigger>
           <TabsTrigger value="financial">Financeiro</TabsTrigger>
           <TabsTrigger value="report">Relatório final</TabsTrigger>
         </TabsList>
