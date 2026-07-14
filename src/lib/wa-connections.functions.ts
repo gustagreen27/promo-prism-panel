@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { metaFetch, META_GRAPH_VERSION } from "@/lib/meta/meta-client.server";
 
 async function assertAdmin(ctx: { supabase: any; userId: string }) {
   const { data } = await ctx.supabase.rpc("has_role", { _user_id: ctx.userId, _role: "admin" });
@@ -19,7 +20,7 @@ export const listWorkspaceConnections = createServerFn({ method: "GET" })
 
     const { data: conns } = await context.supabase
       .from("whatsapp_connections")
-      .select("id,name,display_phone,workspace_id,waba_ref_id,status,quality_rating");
+      .select("id,name,display_phone,workspace_id,waba_ref_id,waba_id,status,quality_rating");
     const { data: wabas } = await context.supabase
       .from("whatsapp_wabas")
       .select("id,nome_interno,waba_id,workspace_id");
@@ -75,4 +76,45 @@ export const bindConnectionToWorkspace = createServerFn({ method: "POST" })
       .update({ workspace_id: data.workspace_id }).eq("id", data.connection_id);
     if (error) throw error;
     return { ok: true };
+  });
+
+/** Assina o app da Meta na WABA desta conexão para começar a receber webhooks (statuses, replies). */
+export const subscribeConnectionToApp = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ connection_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { data: conn, error } = await context.supabase
+      .from("whatsapp_connections")
+      .select("id,name,waba_id,access_token,use_global_token")
+      .eq("id", data.connection_id)
+      .maybeSingle();
+    if (error) throw error;
+    if (!conn) throw new Error("Conexão não encontrada.");
+    if (!conn.waba_id) throw new Error("Esta conexão não tem waba_id.");
+
+    const token = (!conn.use_global_token && conn.access_token)
+      ? conn.access_token
+      : process.env.WHATSAPP_ACCESS_TOKEN;
+    if (!token) throw new Error("Sem token disponível para assinar (nem dedicado, nem WHATSAPP_ACCESS_TOKEN).");
+    const source = (!conn.use_global_token && conn.access_token) ? "connection" : "env";
+
+    const subscribed = await metaFetch(`/${META_GRAPH_VERSION}/${conn.waba_id}/subscribed_apps`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const listing = await metaFetch(`/${META_GRAPH_VERSION}/${conn.waba_id}/subscribed_apps`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    return {
+      ok: true,
+      waba_id: conn.waba_id,
+      token_source: source,
+      subscribed,
+      apps: (listing?.data ?? []) as Array<{
+        whatsapp_business_api_data?: { id?: string; name?: string; link?: string };
+      }>,
+    };
   });

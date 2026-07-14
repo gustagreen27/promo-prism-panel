@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Save } from "lucide-react";
+import { Save, Webhook } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
 import { ErrorCard } from "@/components/admin/query-state";
@@ -16,6 +16,7 @@ import {
   listWorkspaceConnections,
   setWorkspaceBusinessId,
   setWorkspaceDefaultConnection,
+  subscribeConnectionToApp,
 } from "@/lib/wa-connections.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp/conexoes")({
@@ -27,6 +28,7 @@ function Page() {
   const listFn = useServerFn(listWorkspaceConnections);
   const setBiz = useServerFn(setWorkspaceBusinessId);
   const setDefault = useServerFn(setWorkspaceDefaultConnection);
+  const subscribeFn = useServerFn(subscribeConnectionToApp);
   const qc = useQueryClient();
 
   const { data: rows, isLoading, error, refetch } = useQuery({
@@ -47,6 +49,15 @@ function Page() {
       setDefault({ data: p }),
     onSuccess: () => { toast.success("Número padrão atualizado"); refresh(); },
     onError: (e: any) => toast.error(e?.message ?? "Erro"),
+  });
+  const subMut = useMutation({
+    mutationFn: (connection_id: string) => subscribeFn({ data: { connection_id } }),
+    onSuccess: (r: any) => {
+      const app = r?.apps?.[0]?.whatsapp_business_api_data?.name;
+      toast.success(app ? `App assinado: ${app}` : "App assinado com sucesso");
+      refresh();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao assinar app"),
   });
 
   return (
@@ -69,6 +80,8 @@ function Page() {
               w={w}
               onSaveBiz={(p: { meta_business_id: string | null; meta_business_name: string | null }) => bizMut.mutate({ workspace_id: w.id, ...p })}
               onSaveDefault={(cid: string | null) => defMut.mutate({ workspace_id: w.id, connection_id: cid })}
+              onSubscribe={(cid: string) => subMut.mutate(cid)}
+              subscribingId={subMut.isPending ? (subMut.variables as string | undefined) : undefined}
               saving={bizMut.isPending || defMut.isPending}
             />
           ))}
@@ -78,7 +91,7 @@ function Page() {
   );
 }
 
-function WorkspaceCard({ w, onSaveBiz, onSaveDefault, saving }: any) {
+function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId, saving }: any) {
   const [bizId, setBizId] = useState<string>(w.meta_business_id ?? "");
   const [bizName, setBizName] = useState<string>(w.meta_business_name ?? "");
   const [defConn, setDefConn] = useState<string>(w.default_connection_id ?? "");
@@ -140,6 +153,36 @@ function WorkspaceCard({ w, onSaveBiz, onSaveDefault, saving }: any) {
           </Button>
         </div>
       </div>
+
+      {w.connections.length > 0 && (
+        <div className="mt-4 border-t pt-3">
+          <div className="text-xs font-medium text-muted-foreground mb-2">Webhooks (assinar app na WABA)</div>
+          <div className="space-y-1.5">
+            {w.connections.map((c: any) => (
+              <div key={c.id} className="flex items-center justify-between gap-2 text-sm">
+                <div className="min-w-0">
+                  <span className="font-medium">{c.name}</span>
+                  <span className="text-muted-foreground"> · {c.display_phone ?? "—"}</span>
+                  {c.waba_id ? (
+                    <span className="text-xs text-muted-foreground"> · WABA {c.waba_id}</span>
+                  ) : (
+                    <span className="text-xs text-destructive"> · sem waba_id</span>
+                  )}
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!c.waba_id || subscribingId === c.id}
+                  onClick={() => onSubscribe(c.id)}
+                >
+                  <Webhook className="mr-2 h-3.5 w-3.5" />
+                  {subscribingId === c.id ? "Assinando…" : "Assinar app"}
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
