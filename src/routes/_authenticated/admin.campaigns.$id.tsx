@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo } from "react";
-import { getCampaignAnalytics } from "@/lib/campaigns.functions";
+import { getCampaignAnalytics, listWaCampaignsForLinking, setWaCampaignLink } from "@/lib/campaigns.functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -277,7 +277,99 @@ function CampaignDetail() {
           </Table>
         </CardContent>
       </Card>
+
+      <LinkedDispatches campaignId={id} />
     </div>
+  );
+}
+
+function LinkedDispatches({ campaignId }: { campaignId: string }) {
+  const qc = useQueryClient();
+  const listFn = useServerFn(listWaCampaignsForLinking);
+  const linkFn = useServerFn(setWaCampaignLink);
+  const { data, isLoading } = useQuery({
+    queryKey: ["wa-campaigns-for-linking", campaignId],
+    queryFn: () => listFn({ data: { campaignId } }),
+  });
+  const mutation = useMutation({
+    mutationFn: (vars: { waCampaignId: string; link: boolean }) =>
+      linkFn({ data: { waCampaignId: vars.waCampaignId, campaignId: vars.link ? campaignId : null } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["wa-campaigns-for-linking", campaignId] });
+      toast.success("Vínculo atualizado");
+    },
+    onError: (e) => toast.error("Falha ao atualizar vínculo", { description: (e as Error).message }),
+  });
+
+  const linked = (data ?? []).filter((r) => r.is_linked);
+  const available = (data ?? []).filter((r) => !r.is_linked && !r.linked_campaign_id);
+
+  return (
+    <Card className="no-print">
+      <CardHeader>
+        <CardTitle>Disparos WhatsApp vinculados</CardTitle>
+        <CardDescription>
+          Vincule campanhas de disparo para que os contadores (enviados, entregues, lidas, respostas, falhas) apareçam no relatório público em tempo real.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Carregando disparos...</p>
+        ) : (
+          <>
+            <div className="space-y-2">
+              <div className="text-xs font-medium uppercase text-muted-foreground">Vinculados</div>
+              {linked.length === 0 && (
+                <p className="text-sm text-muted-foreground">Nenhum disparo vinculado.</p>
+              )}
+              {linked.map((r) => (
+                <div key={r.id} className="flex items-center justify-between rounded border p-2">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium">{r.name || "Sem nome"}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {r.status} · {r.sent_count ?? 0}/{r.total_recipients ?? 0} enviados
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={mutation.isPending}
+                    onClick={() => mutation.mutate({ waCampaignId: r.id, link: false })}
+                  >
+                    Desvincular
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-xs font-medium uppercase text-muted-foreground">Disponíveis</div>
+              {available.length === 0 && (
+                <p className="text-sm text-muted-foreground">Nenhum disparo disponível para vincular.</p>
+              )}
+              <div className="max-h-64 space-y-2 overflow-y-auto">
+                {available.map((r) => (
+                  <div key={r.id} className="flex items-center justify-between rounded border p-2">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm">{r.name || "Sem nome"}</div>
+                      <div className="text-xs text-muted-foreground">{r.status}</div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={mutation.isPending}
+                      onClick={() => mutation.mutate({ waCampaignId: r.id, link: true })}
+                    >
+                      Vincular
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

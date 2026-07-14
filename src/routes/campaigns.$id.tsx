@@ -20,7 +20,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Printer } from "lucide-react";
+import { Printer, Activity, Send, CheckCheck, Eye, MessageSquare, XCircle, Users } from "lucide-react";
 
 export const Route = createFileRoute("/campaigns/$id")({
   head: () => ({
@@ -57,10 +57,12 @@ export const Route = createFileRoute("/campaigns/$id")({
 function PublicCampaignReport() {
   const { id } = Route.useParams();
   const fn = useServerFn(getPublicCampaignReport);
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, dataUpdatedAt } = useQuery({
     queryKey: ["public-campaign-report", id],
     queryFn: () => fn({ data: { id } }),
     retry: false,
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
   });
 
   const stats = useMemo(() => {
@@ -120,12 +122,23 @@ function PublicCampaignReport() {
     );
   }
 
+  const dispatches = data.dispatches ?? [];
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card no-print">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div className="text-sm font-medium text-muted-foreground">
-            Relatório da campanha
+          <div className="flex items-center gap-3">
+            <div className="text-sm font-medium text-muted-foreground">
+              Relatório da campanha
+            </div>
+            <span className="inline-flex items-center gap-1.5 rounded-full border bg-background px-2 py-0.5 text-xs">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+              </span>
+              Ao vivo
+            </span>
           </div>
           <Button variant="outline" size="sm" onClick={() => window.print()}>
             <Printer className="mr-1 h-4 w-4" /> Imprimir PDF
@@ -143,10 +156,29 @@ function PublicCampaignReport() {
               {data.campaign.category}
             </p>
           )}
+          {dataUpdatedAt ? (
+            <p className="text-xs text-muted-foreground">
+              Atualizado às {new Date(dataUpdatedAt).toLocaleTimeString("pt-BR")}
+            </p>
+          ) : null}
           <p className="hidden print:block text-xs text-muted-foreground">
             Relatório gerado em {new Date().toLocaleString("pt-BR")}
           </p>
         </div>
+
+        {dispatches.length > 0 && (
+          <section className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Activity className="h-4 w-4 text-primary" />
+              <h2 className="text-lg font-semibold">Disparos WhatsApp em tempo real</h2>
+            </div>
+            <div className="space-y-4">
+              {dispatches.map((d) => (
+                <DispatchCard key={d.id} d={d} />
+              ))}
+            </div>
+          </section>
+        )}
 
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <StatCard label="Cliques totais" value={stats.total} />
@@ -218,6 +250,92 @@ function PublicCampaignReport() {
           Relatório somente para visualização.
         </footer>
       </main>
+    </div>
+  );
+}
+
+type Dispatch = {
+  id: string;
+  name: string | null;
+  status: string | null;
+  scheduled_at: string | null;
+  total_recipients: number | null;
+  sent_count: number | null;
+  delivered_count: number | null;
+  read_count: number | null;
+  replied_count: number | null;
+  failed_count: number | null;
+  progress: unknown;
+};
+
+function DispatchCard({ d }: { d: Dispatch }) {
+  const total = d.total_recipients ?? 0;
+  const sent = d.sent_count ?? 0;
+  const delivered = d.delivered_count ?? 0;
+  const read = d.read_count ?? 0;
+  const replied = d.replied_count ?? 0;
+  const failed = d.failed_count ?? 0;
+  const percent = total > 0 ? Math.min(100, Math.round((sent / total) * 100)) : 0;
+
+  const statusLabel = (() => {
+    switch (d.status) {
+      case "running": return "Em execução";
+      case "scheduled": return "Agendada";
+      case "completed": return "Concluída";
+      case "paused": return "Pausada";
+      case "failed": return "Falhou";
+      case "cancelled": return "Cancelada";
+      case "draft": return "Rascunho";
+      default: return d.status ?? "—";
+    }
+  })();
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle className="text-base">{d.name || "Disparo sem nome"}</CardTitle>
+          <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
+            {statusLabel}
+          </span>
+        </div>
+        {d.scheduled_at && (
+          <CardDescription>
+            Agendado para {new Date(d.scheduled_at).toLocaleString("pt-BR")}
+          </CardDescription>
+        )}
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
+          <MiniStat icon={<Users className="h-3.5 w-3.5" />} label="Contatos" value={total} />
+          <MiniStat icon={<Send className="h-3.5 w-3.5" />} label="Enviados" value={sent} />
+          <MiniStat icon={<CheckCheck className="h-3.5 w-3.5" />} label="Entregues" value={delivered} />
+          <MiniStat icon={<Eye className="h-3.5 w-3.5" />} label="Lidas" value={read} />
+          <MiniStat icon={<MessageSquare className="h-3.5 w-3.5" />} label="Respostas" value={replied} />
+          <MiniStat icon={<XCircle className="h-3.5 w-3.5" />} label="Falhas" value={failed} />
+        </div>
+        <div className="space-y-1">
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>Progresso de envio</span>
+            <span>{percent}%</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded bg-muted">
+            <div className="h-full bg-primary transition-all" style={{ width: `${percent}%` }} />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function MiniStat({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
+  return (
+    <div className="rounded-lg border bg-card/50 p-2">
+      <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+        {icon}
+        {label}
+      </div>
+      <div className="mt-0.5 text-lg font-semibold">{value.toLocaleString("pt-BR")}</div>
     </div>
   );
 }
