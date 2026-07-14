@@ -22,7 +22,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ArrowLeft, Pencil, Printer } from "lucide-react";
+import { ArrowLeft, Pencil, Printer, Share2 } from "lucide-react";
+import { toast } from "sonner";
 import { IntentScoreBadge, StatusBadge } from "@/components/campaign-badges";
 import { CampaignAnalytics } from "@/components/CampaignAnalytics";
 import { ErrorCard } from "@/components/admin/query-state";
@@ -127,6 +128,21 @@ function CampaignDetail() {
           </p>
         </div>
         <div className="flex items-center gap-2 no-print">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              const url = `${window.location.origin}/campaigns/${data.campaign.id}`;
+              try {
+                await navigator.clipboard.writeText(url);
+                toast.success("Link público copiado", { description: url });
+              } catch {
+                toast.error("Não foi possível copiar", { description: url });
+              }
+            }}
+          >
+            <Share2 className="mr-1 h-4 w-4" /> Link público
+          </Button>
           <Button variant="outline" size="sm" onClick={() => window.print()}>
             <Printer className="mr-1 h-4 w-4" /> Imprimir PDF
           </Button>
@@ -136,6 +152,7 @@ function CampaignDetail() {
             </Link>
           </Button>
         </div>
+
       </div>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">

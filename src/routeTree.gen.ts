@@ -29,6 +29,7 @@ import { Route as PainelContatosRouteImport } from './routes/painel.contatos'
 import { Route as PainelConfiguracoesRouteImport } from './routes/painel.configuracoes'
 import { Route as PainelCampanhasRouteImport } from './routes/painel.campanhas'
 import { Route as PainelAgendaRouteImport } from './routes/painel.agenda'
+import { Route as CampaignsIdRouteImport } from './routes/campaigns.$id'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as PainelCampanhasNovaRouteImport } from './routes/painel.campanhas.nova'
 import { Route as PainelCampanhasHistoricoRouteImport } from './routes/painel.campanhas.historico'
@@ -183,6 +184,11 @@ const PainelAgendaRoute = PainelAgendaRouteImport.update({
   id: '/agenda',
   path: '/agenda',
   getParentRoute: () => PainelRoute,
+} as any)
+const CampaignsIdRoute = CampaignsIdRouteImport.update({
+  id: '/campaigns/$id',
+  path: '/campaigns/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/admin/',
@@ -521,6 +527,7 @@ export interface FileRoutesByFullPath {
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/campaigns/$id': typeof CampaignsIdRoute
   '/painel/agenda': typeof PainelAgendaRoute
   '/painel/campanhas': typeof PainelCampanhasRouteWithChildren
   '/painel/configuracoes': typeof PainelConfiguracoesRoute
@@ -596,6 +603,7 @@ export interface FileRoutesByTo {
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/campaigns/$id': typeof CampaignsIdRoute
   '/painel/agenda': typeof PainelAgendaRoute
   '/painel/campanhas': typeof PainelCampanhasRouteWithChildren
   '/painel/configuracoes': typeof PainelConfiguracoesRoute
@@ -673,6 +681,7 @@ export interface FileRoutesById {
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/campaigns/$id': typeof CampaignsIdRoute
   '/painel/agenda': typeof PainelAgendaRoute
   '/painel/campanhas': typeof PainelCampanhasRouteWithChildren
   '/painel/configuracoes': typeof PainelConfiguracoesRoute
@@ -751,6 +760,7 @@ export interface FileRouteTypes {
     | '/politica-de-privacidade'
     | '/recuperar-senha'
     | '/reset-password'
+    | '/campaigns/$id'
     | '/painel/agenda'
     | '/painel/campanhas'
     | '/painel/configuracoes'
@@ -826,6 +836,7 @@ export interface FileRouteTypes {
     | '/politica-de-privacidade'
     | '/recuperar-senha'
     | '/reset-password'
+    | '/campaigns/$id'
     | '/painel/agenda'
     | '/painel/campanhas'
     | '/painel/configuracoes'
@@ -902,6 +913,7 @@ export interface FileRouteTypes {
     | '/politica-de-privacidade'
     | '/recuperar-senha'
     | '/reset-password'
+    | '/campaigns/$id'
     | '/painel/agenda'
     | '/painel/campanhas'
     | '/painel/configuracoes'
@@ -980,6 +992,7 @@ export interface RootRouteChildren {
   PoliticaDePrivacidadeRoute: typeof PoliticaDePrivacidadeRoute
   RecuperarSenhaRoute: typeof RecuperarSenhaRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  CampaignsIdRoute: typeof CampaignsIdRoute
   ApiPublicCiSplatRoute: typeof ApiPublicCiSplatRoute
   ApiPublicGoogleOauthCallbackRoute: typeof ApiPublicGoogleOauthCallbackRoute
   ApiPublicHooksNotifyUpcomingCampaignsRoute: typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
@@ -1131,6 +1144,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/painel/agenda'
       preLoaderRoute: typeof PainelAgendaRouteImport
       parentRoute: typeof PainelRoute
+    }
+    '/campaigns/$id': {
+      id: '/campaigns/$id'
+      path: '/campaigns/$id'
+      fullPath: '/campaigns/$id'
+      preLoaderRoute: typeof CampaignsIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin/': {
       id: '/_authenticated/admin/'
@@ -1728,6 +1748,7 @@ const rootRouteChildren: RootRouteChildren = {
   PoliticaDePrivacidadeRoute: PoliticaDePrivacidadeRoute,
   RecuperarSenhaRoute: RecuperarSenhaRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  CampaignsIdRoute: CampaignsIdRoute,
   ApiPublicCiSplatRoute: ApiPublicCiSplatRoute,
   ApiPublicGoogleOauthCallbackRoute: ApiPublicGoogleOauthCallbackRoute,
   ApiPublicHooksNotifyUpcomingCampaignsRoute:
