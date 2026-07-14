@@ -218,6 +218,8 @@ function CampaignDetail() {
         <Breakdown title="Navegadores" rows={stats.browsers} />
       </div>
 
+      <LinkedDispatches campaignId={id} />
+
       <Card>
         <CardHeader>
           <CardTitle>Histórico de acessos</CardTitle>
