@@ -22,7 +22,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ArrowLeft, Pencil } from "lucide-react";
+import { ArrowLeft, Pencil, Printer } from "lucide-react";
 import { IntentScoreBadge, StatusBadge } from "@/components/campaign-badges";
 import { CampaignAnalytics } from "@/components/CampaignAnalytics";
 import { ErrorCard } from "@/components/admin/query-state";
@@ -96,11 +96,11 @@ function CampaignDetail() {
       : `/${data.campaign.slug}`;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 print-root">
       <CampaignAnalytics campaignId={id} hours={24} />
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1 min-w-0">
-          <Button variant="ghost" size="sm" asChild className="-ml-2">
+          <Button variant="ghost" size="sm" asChild className="-ml-2 no-print">
             <Link to="/admin">
               <ArrowLeft className="mr-1 h-4 w-4" /> Voltar
             </Link>
@@ -122,12 +122,20 @@ function CampaignDetail() {
               {data.campaign.destination_url}
             </a>
           </p>
+          <p className="hidden print:block text-xs text-muted-foreground">
+            Relatório gerado em {new Date().toLocaleString("pt-BR")}
+          </p>
         </div>
-        <Button variant="outline" size="sm" asChild>
-          <Link to="/admin/campaigns/$id/edit" params={{ id: data.campaign.id }}>
-            <Pencil className="mr-1 h-4 w-4" /> Editar
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2 no-print">
+          <Button variant="outline" size="sm" onClick={() => window.print()}>
+            <Printer className="mr-1 h-4 w-4" /> Imprimir PDF
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/admin/campaigns/$id/edit" params={{ id: data.campaign.id }}>
+              <Pencil className="mr-1 h-4 w-4" /> Editar
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
