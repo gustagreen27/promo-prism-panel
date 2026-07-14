@@ -603,23 +603,30 @@ type WaDispatchRow = {
 };
 
 function normalizeDispatch<T extends WaDispatchRow>(r: T): T {
-
   const total = Number(r.total_recipients ?? 0);
-  const delivered = Number(r.delivered_count ?? 0);
+  const rawSent = Number(r.sent_count ?? 0);
+  const rawDelivered = Number(r.delivered_count ?? 0);
   const failed = Number(r.failed_count ?? 0);
-  // Enviados == Entregues
-  const sent = delivered;
-  const percent = total > 0 ? Math.min(100, Math.round(((delivered + failed) / total) * 100)) : 0;
+  // Regra: Enviados = Entregues. Quando webhooks de entrega não retornam
+  // (delivered=0 em campanha concluída), usa o maior valor conhecido para
+  // que ambos reflitam o real disparado.
+  const unified = Math.max(rawSent, rawDelivered);
+  const sent = unified;
+  const delivered = unified;
+  const processed = Math.min(total, unified + failed);
+  const percent = total > 0 ? Math.min(100, Math.round((processed / total) * 100)) : 0;
   const progress = {
     ...(r.progress ?? {}),
     total,
     sent,
     delivered,
     failed,
+    processed,
     percent,
   };
-  return { ...r, sent_count: sent, progress } as T;
+  return { ...r, sent_count: sent, delivered_count: delivered, progress } as T;
 }
+
 
 export const listWaCampaignsForLinking = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
