@@ -2124,6 +2124,7 @@ export type Database = {
           jitter_ms: number
           last_error: string | null
           last_sent_at: string | null
+          linked_campaign_id: string | null
           linked_revenue_id: string | null
           list_id: string | null
           max_concurrency: number | null
@@ -2206,6 +2207,7 @@ export type Database = {
           jitter_ms?: number
           last_error?: string | null
           last_sent_at?: string | null
+          linked_campaign_id?: string | null
           linked_revenue_id?: string | null
           list_id?: string | null
           max_concurrency?: number | null
@@ -2288,6 +2290,7 @@ export type Database = {
           jitter_ms?: number
           last_error?: string | null
           last_sent_at?: string | null
+          linked_campaign_id?: string | null
           linked_revenue_id?: string | null
           list_id?: string | null
           max_concurrency?: number | null
@@ -2359,6 +2362,13 @@ export type Database = {
             columns: ["connection_id"]
             isOneToOne: false
             referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_campaigns_linked_campaign_id_fkey"
+            columns: ["linked_campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
           {
