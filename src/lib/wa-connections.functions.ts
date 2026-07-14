@@ -19,7 +19,7 @@ export const listWorkspaceConnections = createServerFn({ method: "GET" })
 
     const { data: conns } = await context.supabase
       .from("whatsapp_connections")
-      .select("id,name,display_phone,workspace_id,waba_ref_id,status,quality_rating");
+      .select("id,name,display_phone,workspace_id,waba_ref_id,waba_id,status,quality_rating");
     const { data: wabas } = await context.supabase
       .from("whatsapp_wabas")
       .select("id,nome_interno,waba_id,workspace_id");
