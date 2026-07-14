@@ -7,7 +7,8 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MousePointerClick, Users, Globe2, Smartphone, Activity } from "lucide-react";
+import { MousePointerClick, Users, Globe2, Smartphone, Activity, Printer } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { getCampaignRealtimeAnalytics } from "@/lib/analytics.functions";
 
@@ -83,16 +84,27 @@ export function CampaignAnalytics({ campaignId, hours = 24 }: { campaignId: stri
 
   const t = data.totals;
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 print-root">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-medium">
           <Activity className="h-4 w-4 text-primary animate-pulse" />
           Métricas em tempo real
           <Badge variant="outline" className="text-[10px]">últimas {hours}h</Badge>
         </div>
-        <Badge variant="secondary" className="text-[10px]">
-          Coleta: {t.collection_rate}%
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="text-[10px]">
+            Coleta: {t.collection_rate}%
+          </Badge>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => window.print()}
+            className="no-print h-7 gap-1.5 text-xs"
+          >
+            <Printer className="h-3.5 w-3.5" />
+            Imprimir
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
