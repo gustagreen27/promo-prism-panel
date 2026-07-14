@@ -98,7 +98,6 @@ function CampaignDetail() {
 
   return (
     <div className="space-y-6 print-root">
-      <CampaignAnalytics campaignId={id} hours={24} />
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1 min-w-0">
           <Button variant="ghost" size="sm" asChild className="-ml-2 no-print">
@@ -152,8 +151,10 @@ function CampaignDetail() {
             </Link>
           </Button>
         </div>
-
       </div>
+
+      <CampaignAnalytics campaignId={id} hours={24} />
+
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatCard label="Cliques totais" value={stats.total} />
