@@ -99,11 +99,11 @@ export const subscribeConnectionToApp = createServerFn({ method: "POST" })
     if (!token) throw new Error("Sem token disponível para assinar (nem dedicado, nem WHATSAPP_ACCESS_TOKEN).");
     const source = (!conn.use_global_token && conn.access_token) ? "connection" : "env";
 
-    const subscribed = await metaFetch(`/${META_GRAPH_VERSION}/${conn.waba_id}/subscribed_apps`, {
+    const subscribed = await metaFetch(`/${conn.waba_id}/subscribed_apps`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
     });
-    const listing = await metaFetch(`/${META_GRAPH_VERSION}/${conn.waba_id}/subscribed_apps`, {
+    const listing = await metaFetch(`/${conn.waba_id}/subscribed_apps`, {
       method: "GET",
       headers: { Authorization: `Bearer ${token}` },
     });
