@@ -584,6 +584,43 @@ export const analyzeCampaignIntent = createServerFn({ method: "POST" })
 
 // ---------- WhatsApp dispatch links (admin) ----------
 
+// Business rule: "Enviados" reflects delivered count (not raw sent),
+// and progress percent is computed from delivered/total. Applied
+// server-side so every consumer (admin + public report) sees the same
+// numbers regardless of what the UI renders.
+type WaDispatchRow = {
+  id: string;
+  name: string | null;
+  status: string;
+  scheduled_at: string | null;
+  total_recipients: number | null;
+  sent_count: number | null;
+  delivered_count: number | null;
+  read_count: number | null;
+  replied_count: number | null;
+  failed_count: number | null;
+  progress: Record<string, number> | null;
+};
+
+function normalizeDispatch<T extends WaDispatchRow>(r: T): T {
+
+  const total = Number(r.total_recipients ?? 0);
+  const delivered = Number(r.delivered_count ?? 0);
+  const failed = Number(r.failed_count ?? 0);
+  // Enviados == Entregues
+  const sent = delivered;
+  const percent = total > 0 ? Math.min(100, Math.round(((delivered + failed) / total) * 100)) : 0;
+  const progress = {
+    ...(r.progress ?? {}),
+    total,
+    sent,
+    delivered,
+    failed,
+    percent,
+  };
+  return { ...r, sent_count: sent, progress } as T;
+}
+
 export const listWaCampaignsForLinking = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => z.object({ campaignId: z.string().uuid() }).parse(data))
@@ -597,9 +634,11 @@ export const listWaCampaignsForLinking = createServerFn({ method: "GET" })
       .limit(200);
     if (error) throw error;
     return (rows ?? []).map((r) => ({
-      ...r,
+      ...normalizeDispatch(r as unknown as WaDispatchRow),
+      linked_campaign_id: r.linked_campaign_id as string | null,
       is_linked: r.linked_campaign_id === data.campaignId,
     }));
+
   });
 
 export const setWaCampaignLink = createServerFn({ method: "POST" })
@@ -653,5 +692,10 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
       .order("created_at", { ascending: false });
     if (dErr) throw dErr;
 
-    return { campaign: c, clicks: clicks ?? [], dispatches: dispatches ?? [] };
+    const normalizedDispatches = (dispatches ?? []).map((r) =>
+      normalizeDispatch(r as unknown as WaDispatchRow),
+    );
+
+    return { campaign: c, clicks: clicks ?? [], dispatches: normalizedDispatches };
   });
+
