@@ -280,8 +280,6 @@ function CampaignDetail() {
           </Table>
         </CardContent>
       </Card>
-
-      <LinkedDispatches campaignId={id} />
     </div>
   );
 }
