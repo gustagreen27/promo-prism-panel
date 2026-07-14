@@ -599,11 +599,11 @@ type WaDispatchRow = {
   read_count: number | null;
   replied_count: number | null;
   failed_count: number | null;
-  progress: Record<string, unknown> | null;
-  [key: string]: unknown;
+  progress: Record<string, number> | null;
 };
 
 function normalizeDispatch<T extends WaDispatchRow>(r: T): T {
+
   const total = Number(r.total_recipients ?? 0);
   const delivered = Number(r.delivered_count ?? 0);
   const failed = Number(r.failed_count ?? 0);
