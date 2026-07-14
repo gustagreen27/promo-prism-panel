@@ -635,8 +635,10 @@ export const listWaCampaignsForLinking = createServerFn({ method: "GET" })
     if (error) throw error;
     return (rows ?? []).map((r) => ({
       ...normalizeDispatch(r as unknown as WaDispatchRow),
+      linked_campaign_id: r.linked_campaign_id as string | null,
       is_linked: r.linked_campaign_id === data.campaignId,
     }));
+
   });
 
 export const setWaCampaignLink = createServerFn({ method: "POST" })
