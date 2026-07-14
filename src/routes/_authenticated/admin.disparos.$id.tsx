@@ -848,7 +848,21 @@ const AUDIT_TONE: Record<string, string> = {
   neutral: "text-muted-foreground bg-muted border-border",
 };
 
-function RecipientAudit({ recipients, isLoading }: { recipients: any[] | undefined; isLoading: boolean }) {
+function RecipientAudit({
+  recipients,
+  isLoading,
+  isFetching,
+  isPolling,
+  lastUpdatedAt,
+  onRefresh,
+}: {
+  recipients: any[] | undefined;
+  isLoading: boolean;
+  isFetching?: boolean;
+  isPolling?: boolean;
+  lastUpdatedAt?: number;
+  onRefresh?: () => void;
+}) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string>("all");
 
