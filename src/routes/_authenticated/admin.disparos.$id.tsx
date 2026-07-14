@@ -887,12 +887,34 @@ function RecipientAudit({
     return <Card><CardContent className="pt-6 text-center text-sm text-muted-foreground">Carregando auditoria…</CardContent></Card>;
   }
 
+  const lastUpdatedLabel = lastUpdatedAt
+    ? new Date(lastUpdatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    : null;
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-sm text-muted-foreground">
-          Linha do tempo dos webhooks recebidos da Meta por destinatário
-          {recipients?.length ? ` · ${list.length.toLocaleString("pt-BR")} de ${recipients.length.toLocaleString("pt-BR")}` : ""}
+        <div className="text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
+          <span>
+            Linha do tempo dos webhooks recebidos da Meta por destinatário
+            {recipients?.length ? ` · ${list.length.toLocaleString("pt-BR")} de ${recipients.length.toLocaleString("pt-BR")}` : ""}
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2 py-0.5 text-xs">
+            {isFetching ? (
+              <>
+                <Loader2 className="h-3 w-3 animate-spin" /> Atualizando…
+              </>
+            ) : isPolling ? (
+              <>
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" /> Auto-atualização ativa
+              </>
+            ) : (
+              <>
+                <span className="h-2 w-2 rounded-full bg-muted-foreground/50" /> Auto-atualização em pausa
+              </>
+            )}
+            {lastUpdatedLabel && <span className="text-muted-foreground/80">· {lastUpdatedLabel}</span>}
+          </span>
         </div>
         <div className="flex flex-wrap gap-2">
           {[
@@ -906,6 +928,10 @@ function RecipientAudit({
               {f.l}
             </Button>
           ))}
+          <Button size="sm" variant="outline" onClick={() => onRefresh?.()} disabled={isFetching}>
+            {isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+            Atualizar
+          </Button>
           <Input
             className="max-w-xs"
             placeholder="Buscar telefone, nome, wamid, erro..."
