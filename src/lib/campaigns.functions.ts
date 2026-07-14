@@ -361,7 +361,8 @@ export const recalculateLinkedDispatchMetrics = createServerFn({ method: "POST" 
     const updated = [] as WaDispatchRow[];
     for (const dispatch of dispatches ?? []) {
       const id = dispatch.id as string;
-      await supabaseAdmin.rpc("wa_recalc_campaign_progress" as never, { _campaign_id: id } as never);
+      const { error: recalcError } = await supabaseAdmin.rpc("wa_recalc_campaign_progress" as never, { _campaign_id: id } as never);
+      if (recalcError) throw recalcError;
 
       const [
         total,
