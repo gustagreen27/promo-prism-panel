@@ -153,6 +153,36 @@ function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId
           </Button>
         </div>
       </div>
+
+      {w.connections.length > 0 && (
+        <div className="mt-4 border-t pt-3">
+          <div className="text-xs font-medium text-muted-foreground mb-2">Webhooks (assinar app na WABA)</div>
+          <div className="space-y-1.5">
+            {w.connections.map((c: any) => (
+              <div key={c.id} className="flex items-center justify-between gap-2 text-sm">
+                <div className="min-w-0">
+                  <span className="font-medium">{c.name}</span>
+                  <span className="text-muted-foreground"> · {c.display_phone ?? "—"}</span>
+                  {c.waba_id ? (
+                    <span className="text-xs text-muted-foreground"> · WABA {c.waba_id}</span>
+                  ) : (
+                    <span className="text-xs text-destructive"> · sem waba_id</span>
+                  )}
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!c.waba_id || subscribingId === c.id}
+                  onClick={() => onSubscribe(c.id)}
+                >
+                  <Webhook className="mr-2 h-3.5 w-3.5" />
+                  {subscribingId === c.id ? "Assinando…" : "Assinar app"}
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
