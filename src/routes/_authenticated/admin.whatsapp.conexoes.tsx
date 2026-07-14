@@ -16,6 +16,7 @@ import {
   listWorkspaceConnections,
   setWorkspaceBusinessId,
   setWorkspaceDefaultConnection,
+  subscribeConnectionToApp,
 } from "@/lib/wa-connections.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp/conexoes")({
