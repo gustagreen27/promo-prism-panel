@@ -581,3 +581,31 @@ export const analyzeCampaignIntent = createServerFn({ method: "POST" })
 
     return report;
   });
+
+// ---------- Public (unauthenticated) report ----------
+// Returns only safe, non-sensitive campaign metrics for a shareable link.
+export const getPublicCampaignReport = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) => z.object({ id: z.string().uuid() }).parse(data))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: c, error: cErr } = await supabaseAdmin
+      .from("campaigns")
+      .select(
+        "id, name, slug, category, status, intent_score, created_at, updated_at",
+      )
+      .eq("id", data.id)
+      .maybeSingle();
+    if (cErr) throw cErr;
+    if (!c) throw new Error("NOT_FOUND");
+
+    const { data: clicks, error: clErr } = await supabaseAdmin
+      .from("campaign_clicks")
+      .select("id, country, region, city, device_type, os, browser, clicked_at, referer")
+      .eq("campaign_id", data.id)
+      .order("clicked_at", { ascending: false })
+      .limit(5000);
+    if (clErr) throw clErr;
+
+    return { campaign: c, clicks: clicks ?? [] };
+  });
