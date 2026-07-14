@@ -334,6 +334,235 @@ export const getCampaignAnalytics = createServerFn({ method: "GET" })
     return { campaign, clicks: clicks ?? [] };
   });
 
+export const recalculateLinkedDispatchMetrics = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ campaignId: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await assertAdmin(context);
+
+    const { data: dispatches, error } = await supabaseAdmin
+      .from("wa_campaigns")
+      .select("id, name, workspace_id, total_recipients, sent_count, delivered_count, failed_count, read_count, replied_count, progress")
+      .eq("linked_campaign_id", data.campaignId);
+    if (error) throw error;
+
+    const countRows = async (campaignId: string, build?: (q: any) => any) => {
+      let q = supabaseAdmin
+        .from("campaign_recipients")
+        .select("id", { count: "exact", head: true })
+        .eq("campaign_id", campaignId);
+      if (build) q = build(q);
+      const { count, error: countError } = await q;
+      if (countError) throw countError;
+      return count ?? 0;
+    };
+
+    const updated = [] as WaDispatchRow[];
+    for (const dispatch of dispatches ?? []) {
+      const id = dispatch.id as string;
+      const { error: recalcError } = await supabaseAdmin.rpc("wa_recalc_campaign_progress" as never, { _campaign_id: id } as never);
+      if (recalcError) throw recalcError;
+
+      const [
+        total,
+        pending,
+        processing,
+        accepted,
+        sentStatus,
+        deliveredStatus,
+        readStatus,
+        repliedStatus,
+        failedStatus,
+        optOut,
+        cancelled,
+        skipped,
+        sentAt,
+        metaIds,
+        deliveredAt,
+        readAt,
+        failedAt,
+      ] = await Promise.all([
+        countRows(id),
+        countRows(id, (q) => q.eq("status", "pending")),
+        countRows(id, (q) => q.eq("status", "processing")),
+        countRows(id, (q) => q.eq("status", "accepted")),
+        countRows(id, (q) => q.in("status", ["accepted", "sent", "delivered", "read", "replied"])),
+        countRows(id, (q) => q.in("status", ["delivered", "read", "replied"])),
+        countRows(id, (q) => q.in("status", ["read", "replied"])),
+        countRows(id, (q) => q.eq("status", "replied")),
+        countRows(id, (q) => q.eq("status", "failed")),
+        countRows(id, (q) => q.eq("status", "opt_out")),
+        countRows(id, (q) => q.eq("status", "cancelled")),
+        countRows(id, (q) => q.eq("status", "skipped")),
+        countRows(id, (q) => q.not("sent_at", "is", null)),
+        countRows(id, (q) => q.not("meta_message_id", "is", null)),
+        countRows(id, (q) => q.not("delivered_at", "is", null)),
+        countRows(id, (q) => q.not("read_at", "is", null)),
+        countRows(id, (q) => q.not("failed_at", "is", null)),
+      ]);
+
+      const rawSent = Math.max(sentStatus, sentAt, metaIds, Number(dispatch.sent_count ?? 0));
+      const rawDelivered = Math.max(deliveredStatus, deliveredAt, readAt, Number(dispatch.delivered_count ?? 0));
+      const sentAndDelivered = Math.max(rawSent, rawDelivered);
+      const failed = Math.max(failedStatus, failedAt, Number(dispatch.failed_count ?? 0));
+      const read = Math.max(readStatus, readAt, Number(dispatch.read_count ?? 0));
+      const replied = Math.max(repliedStatus, Number(dispatch.replied_count ?? 0));
+      const processed = Math.min(total, sentAndDelivered + failed + optOut + cancelled + skipped);
+      const percent = total > 0 ? Math.min(100, Math.round((processed / total) * 100)) : 0;
+      const progress = {
+        ...((dispatch.progress as Record<string, number> | null) ?? {}),
+        total,
+        pending,
+        processing,
+        accepted,
+        sent: sentAndDelivered,
+        delivered: sentAndDelivered,
+        read,
+        replied,
+        failed,
+        opt_out: optOut,
+        cancelled,
+        skipped,
+        processed,
+        percent,
+      };
+
+      const patch = {
+        total_recipients: total,
+        sent_count: sentAndDelivered,
+        delivered_count: sentAndDelivered,
+        read_count: read,
+        replied_count: replied,
+        failed_count: failed,
+        progress,
+        updated_at: new Date().toISOString(),
+      };
+      const { data: saved, error: updateError } = await supabaseAdmin
+        .from("wa_campaigns")
+        .update(patch as never)
+        .eq("id", id)
+        .select("id, name, status, scheduled_at, total_recipients, sent_count, delivered_count, read_count, replied_count, failed_count, progress")
+        .single();
+      if (updateError) throw updateError;
+
+      await supabaseAdmin.from("campaign_timeline").insert({
+        campaign_id: id,
+        workspace_id: dispatch.workspace_id,
+        actor_id: context.userId,
+        event_type: "metrics_recalculated",
+        message: "Métricas recalculadas manualmente",
+        payload: {
+          linked_campaign_id: data.campaignId,
+          sent_count: sentAndDelivered,
+          delivered_count: sentAndDelivered,
+          failed_count: failed,
+          total_recipients: total,
+          progress_percent: percent,
+        },
+      } as never);
+
+      updated.push(normalizeDispatch(saved as unknown as WaDispatchRow));
+    }
+
+    return { ok: true, updated };
+  });
+
+export const getCampaignDispatchAudit = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ campaignId: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await assertAdmin(context);
+
+    const { data: dispatches, error } = await supabaseAdmin
+      .from("wa_campaigns")
+      .select("id, name, status, scheduled_at, total_recipients, sent_count, delivered_count, read_count, replied_count, failed_count, progress, created_at, updated_at")
+      .eq("linked_campaign_id", data.campaignId)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+
+    const ids = (dispatches ?? []).map((d) => d.id as string);
+    if (ids.length === 0) {
+      return { dispatches: [], recipientSummaries: [], messageLogs: [], attempts: [], webhookLogs: [], timeline: [] };
+    }
+
+    const countRows = async (campaignId: string, build?: (q: any) => any) => {
+      let q = supabaseAdmin
+        .from("campaign_recipients")
+        .select("id", { count: "exact", head: true })
+        .eq("campaign_id", campaignId);
+      if (build) q = build(q);
+      const { count, error: countError } = await q;
+      if (countError) throw countError;
+      return count ?? 0;
+    };
+
+    const recipientSummaries = await Promise.all(
+      ids.map(async (id) => ({
+        campaign_id: id,
+        total: await countRows(id),
+        pending: await countRows(id, (q) => q.eq("status", "pending")),
+        accepted: await countRows(id, (q) => q.eq("status", "accepted")),
+        sent: await countRows(id, (q) => q.in("status", ["sent", "delivered", "read", "replied"])),
+        delivered: await countRows(id, (q) => q.in("status", ["delivered", "read", "replied"])),
+        read: await countRows(id, (q) => q.in("status", ["read", "replied"])),
+        replied: await countRows(id, (q) => q.eq("status", "replied")),
+        failed: await countRows(id, (q) => q.eq("status", "failed")),
+        with_meta_message_id: await countRows(id, (q) => q.not("meta_message_id", "is", null)),
+        with_sent_at: await countRows(id, (q) => q.not("sent_at", "is", null)),
+        with_delivered_at: await countRows(id, (q) => q.not("delivered_at", "is", null)),
+        with_failed_at: await countRows(id, (q) => q.not("failed_at", "is", null)),
+      })),
+    );
+
+    const { data: messageLogs, error: logsError } = await supabaseAdmin
+      .from("message_logs")
+      .select("id, campaign_id, recipient_id, meta_message_id, message_status, http_status, failed_reason, error_code, created_at, updated_at")
+      .in("campaign_id", ids)
+      .order("updated_at", { ascending: false })
+      .limit(100);
+    if (logsError) throw logsError;
+
+    const { data: attempts, error: attemptsError } = await supabaseAdmin
+      .from("wa_campaign_attempts")
+      .select("id, campaign_id, recipient_id, meta_message_id, message_status, http_status, error_code, error_details, attempted_at")
+      .in("campaign_id", ids)
+      .order("attempted_at", { ascending: false })
+      .limit(100);
+    if (attemptsError) throw attemptsError;
+
+    const webhookLogs = [] as any[];
+    for (const id of ids) {
+      const { data: rows, error: webhookError } = await supabaseAdmin
+        .from("whatsapp_webhook_logs")
+        .select("id, event_type, payload, processed, error, created_at")
+        .contains("payload", { campaign_id: id })
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (webhookError) throw webhookError;
+      webhookLogs.push(...(rows ?? []));
+    }
+    webhookLogs.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+
+    const { data: timeline, error: timelineError } = await supabaseAdmin
+      .from("campaign_timeline")
+      .select("id, campaign_id, event_type, message, payload, created_at")
+      .in("campaign_id", ids)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (timelineError) throw timelineError;
+
+    return {
+      dispatches: (dispatches ?? []).map((d) => normalizeDispatch(d as unknown as WaDispatchRow)),
+      recipientSummaries,
+      messageLogs: messageLogs ?? [],
+      attempts: attempts ?? [],
+      webhookLogs: webhookLogs.slice(0, 100),
+      timeline: timeline ?? [],
+    };
+  });
+
 // ---------- Intent analysis ----------
 
 const SENSITIVE_TERMS = [
