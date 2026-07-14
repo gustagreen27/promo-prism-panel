@@ -659,6 +659,10 @@ function Page() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="audit" className="space-y-3">
+          <RecipientAudit recipients={recipients as any[] | undefined} isLoading={recipientsQ.isLoading} />
+        </TabsContent>
+
         <TabsContent value="financial" className="space-y-3">
           <Card><CardContent className="pt-6 grid gap-3 md:grid-cols-3 text-sm">
             <KV k="Custo estimado" v={`R$ ${Number(camp?.estimated_cost ?? 0).toFixed(2)}`} />
