@@ -437,11 +437,12 @@ function ListView({ onNew }: { onNew: () => void }) {
 function getDeliveryMetrics(c: any) {
   const progress = ((c?.progress ?? {}) as Record<string, unknown>);
   const num = (...values: unknown[]) => {
+    let max = 0;
     for (const value of values) {
       const n = Number(value ?? 0);
-      if (Number.isFinite(n) && n > 0) return n;
+      if (Number.isFinite(n) && n > max) max = n;
     }
-    return 0;
+    return max;
   };
   const total = num(progress.total, c.total_recipients, c.total);
   const sent = num(progress.sent, c.sent_count, c.sent, (Number(progress.accepted ?? 0) || 0) + (Number(progress.sent_count ?? 0) || 0));
