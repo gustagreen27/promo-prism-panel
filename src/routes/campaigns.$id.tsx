@@ -61,8 +61,11 @@ function PublicCampaignReport() {
     queryKey: ["public-campaign-report", id],
     queryFn: () => fn({ data: { id } }),
     retry: false,
-    refetchInterval: 15000,
+    refetchInterval: 5000,
+    refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
+    refetchOnMount: "always",
+    refetchOnReconnect: true,
   });
 
   const stats = useMemo(() => {
