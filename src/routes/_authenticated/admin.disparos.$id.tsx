@@ -670,7 +670,14 @@ function Page() {
         </TabsContent>
 
         <TabsContent value="audit" className="space-y-3">
-          <RecipientAudit recipients={recipients as any[] | undefined} isLoading={recipientsQ.isLoading} />
+          <RecipientAudit
+            recipients={recipients as any[] | undefined}
+            isLoading={recipientsQ.isLoading}
+            isFetching={recipientsQ.isFetching}
+            isPolling={!!recipientsQ.isFetching || (recipientsQ as any).state?.fetchStatus === "fetching"}
+            lastUpdatedAt={recipientsQ.dataUpdatedAt}
+            onRefresh={() => recipientsQ.refetch()}
+          />
         </TabsContent>
 
         <TabsContent value="financial" className="space-y-3">
