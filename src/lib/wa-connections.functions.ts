@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { metaFetch, META_GRAPH_VERSION } from "@/lib/meta/meta-client.server";
+import { metaFetch } from "@/lib/meta/meta-client.server";
 
 async function assertAdmin(ctx: { supabase: any; userId: string }) {
   const { data } = await ctx.supabase.rpc("has_role", { _user_id: ctx.userId, _role: "admin" });
@@ -99,11 +99,11 @@ export const subscribeConnectionToApp = createServerFn({ method: "POST" })
     if (!token) throw new Error("Sem token disponível para assinar (nem dedicado, nem WHATSAPP_ACCESS_TOKEN).");
     const source = (!conn.use_global_token && conn.access_token) ? "connection" : "env";
 
-    const subscribed = await metaFetch(`/${META_GRAPH_VERSION}/${conn.waba_id}/subscribed_apps`, {
+    const subscribed = await metaFetch(`/${conn.waba_id}/subscribed_apps`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
     });
-    const listing = await metaFetch(`/${META_GRAPH_VERSION}/${conn.waba_id}/subscribed_apps`, {
+    const listing = await metaFetch(`/${conn.waba_id}/subscribed_apps`, {
       method: "GET",
       headers: { Authorization: `Bearer ${token}` },
     });
