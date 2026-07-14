@@ -7,7 +7,8 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MousePointerClick, Users, Globe2, Smartphone, Activity } from "lucide-react";
+import { MousePointerClick, Users, Globe2, Smartphone, Activity, Printer } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { getCampaignRealtimeAnalytics } from "@/lib/analytics.functions";
 
