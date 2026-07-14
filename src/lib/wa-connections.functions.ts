@@ -77,3 +77,44 @@ export const bindConnectionToWorkspace = createServerFn({ method: "POST" })
     if (error) throw error;
     return { ok: true };
   });
+
+/** Assina o app da Meta na WABA desta conexão para começar a receber webhooks (statuses, replies). */
+export const subscribeConnectionToApp = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ connection_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { data: conn, error } = await context.supabase
+      .from("whatsapp_connections")
+      .select("id,name,waba_id,access_token,use_global_token")
+      .eq("id", data.connection_id)
+      .maybeSingle();
+    if (error) throw error;
+    if (!conn) throw new Error("Conexão não encontrada.");
+    if (!conn.waba_id) throw new Error("Esta conexão não tem waba_id.");
+
+    const token = (!conn.use_global_token && conn.access_token)
+      ? conn.access_token
+      : process.env.WHATSAPP_ACCESS_TOKEN;
+    if (!token) throw new Error("Sem token disponível para assinar (nem dedicado, nem WHATSAPP_ACCESS_TOKEN).");
+    const source = (!conn.use_global_token && conn.access_token) ? "connection" : "env";
+
+    const subscribed = await metaFetch(`/${META_GRAPH_VERSION}/${conn.waba_id}/subscribed_apps`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const listing = await metaFetch(`/${META_GRAPH_VERSION}/${conn.waba_id}/subscribed_apps`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    return {
+      ok: true,
+      waba_id: conn.waba_id,
+      token_source: source,
+      subscribed,
+      apps: (listing?.data ?? []) as Array<{
+        whatsapp_business_api_data?: { id?: string; name?: string; link?: string };
+      }>,
+    };
+  });
