@@ -28,6 +28,7 @@ function Page() {
   const listFn = useServerFn(listWorkspaceConnections);
   const setBiz = useServerFn(setWorkspaceBusinessId);
   const setDefault = useServerFn(setWorkspaceDefaultConnection);
+  const subscribeFn = useServerFn(subscribeConnectionToApp);
   const qc = useQueryClient();
 
   const { data: rows, isLoading, error, refetch } = useQuery({
