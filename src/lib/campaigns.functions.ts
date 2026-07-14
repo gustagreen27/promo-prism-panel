@@ -582,6 +582,45 @@ export const analyzeCampaignIntent = createServerFn({ method: "POST" })
     return report;
   });
 
+// ---------- WhatsApp dispatch links (admin) ----------
+
+export const listWaCampaignsForLinking = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ campaignId: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await assertAdmin(context);
+    const { data: rows, error } = await supabaseAdmin
+      .from("wa_campaigns")
+      .select("id, name, status, scheduled_at, created_at, linked_campaign_id, total_recipients, sent_count, delivered_count, read_count, replied_count, failed_count, progress")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error) throw error;
+    return (rows ?? []).map((r) => ({
+      ...r,
+      is_linked: r.linked_campaign_id === data.campaignId,
+    }));
+  });
+
+export const setWaCampaignLink = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({
+      waCampaignId: z.string().uuid(),
+      campaignId: z.string().uuid().nullable(),
+    }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await assertAdmin(context);
+    const { error } = await supabaseAdmin
+      .from("wa_campaigns")
+      .update({ linked_campaign_id: data.campaignId } as never)
+      .eq("id", data.waCampaignId);
+    if (error) throw error;
+    return { ok: true };
+  });
+
 // ---------- Public (unauthenticated) report ----------
 // Returns only safe, non-sensitive campaign metrics for a shareable link.
 export const getPublicCampaignReport = createServerFn({ method: "GET" })
@@ -607,5 +646,12 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
       .limit(5000);
     if (clErr) throw clErr;
 
-    return { campaign: c, clicks: clicks ?? [] };
+    const { data: dispatches, error: dErr } = await supabaseAdmin
+      .from("wa_campaigns")
+      .select("id, name, status, scheduled_at, total_recipients, sent_count, delivered_count, read_count, replied_count, failed_count, progress")
+      .eq("linked_campaign_id", data.id)
+      .order("created_at", { ascending: false });
+    if (dErr) throw dErr;
+
+    return { campaign: c, clicks: clicks ?? [], dispatches: dispatches ?? [] };
   });
