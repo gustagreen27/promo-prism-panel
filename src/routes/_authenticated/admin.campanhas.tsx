@@ -118,26 +118,6 @@ function CampaignRow({
   const publicUrl =
     typeof window !== "undefined" ? `${window.location.origin}/${c.slug}` : `/${c.slug}`;
 
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-4">
-        <div className="space-y-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <CardTitle className="text-lg">{c.name}</CardTitle>
-            <StatusBadge status={c.status} />
-            <IntentScoreBadge score={c.intent_score} />
-            <ParticipantsBadges value={(c as any).participants} empty="" />
-            {c.category && (
-              <span className="text-xs text-muted-foreground">{c.category}</span>
-            )}
-          </div>
-          <CardDescription className="break-all">
-            <a href={`/${c.slug}`} target="_blank" rel="noreferrer" className="hover:underline">
-              {publicUrl}
-            </a>
-          </CardDescription>
-        </div>
-  return (
     <Card className="overflow-hidden border-border/70 shadow-sm">
       <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-4 border-b bg-muted/30">
         <div className="space-y-1 min-w-0">
