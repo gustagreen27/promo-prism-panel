@@ -32,7 +32,14 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ErrorCard } from "@/components/admin/query-state";
-import { Copy, ExternalLink, Trash2, BarChart3, Pencil, Play, Pause } from "lucide-react";
+import { Copy, ExternalLink, Trash2, BarChart3, Pencil, Play, Pause, Info, MoreVertical } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { IntentScoreBadge, StatusBadge } from "@/components/campaign-badges";
 import {
   ParticipantsBadges,
