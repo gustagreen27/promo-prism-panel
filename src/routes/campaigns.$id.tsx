@@ -270,10 +270,8 @@ type Dispatch = {
 
 function DispatchCard({ d }: { d: Dispatch }) {
   const total = d.total_recipients ?? 0;
-  const sent = d.sent_count ?? 0;
   const delivered = d.delivered_count ?? 0;
-  const read = d.read_count ?? 0;
-  const replied = d.replied_count ?? 0;
+  const sent = delivered; // "Enviados" reflete a quantidade de entregues
   const failed = d.failed_count ?? 0;
   const percent = total > 0 ? Math.min(100, Math.round((sent / total) * 100)) : 0;
 
@@ -306,12 +304,10 @@ function DispatchCard({ d }: { d: Dispatch }) {
         )}
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <MiniStat icon={<Users className="h-3.5 w-3.5" />} label="Contatos" value={total} />
           <MiniStat icon={<Send className="h-3.5 w-3.5" />} label="Enviados" value={sent} />
           <MiniStat icon={<CheckCheck className="h-3.5 w-3.5" />} label="Entregues" value={delivered} />
-          <MiniStat icon={<Eye className="h-3.5 w-3.5" />} label="Lidas" value={read} />
-          <MiniStat icon={<MessageSquare className="h-3.5 w-3.5" />} label="Respostas" value={replied} />
           <MiniStat icon={<XCircle className="h-3.5 w-3.5" />} label="Falhas" value={failed} />
         </div>
         <div className="space-y-1">
