@@ -80,6 +80,8 @@ function Page() {
               w={w}
               onSaveBiz={(p: { meta_business_id: string | null; meta_business_name: string | null }) => bizMut.mutate({ workspace_id: w.id, ...p })}
               onSaveDefault={(cid: string | null) => defMut.mutate({ workspace_id: w.id, connection_id: cid })}
+              onSubscribe={(cid: string) => subMut.mutate(cid)}
+              subscribingId={subMut.isPending ? (subMut.variables as string | undefined) : undefined}
               saving={bizMut.isPending || defMut.isPending}
             />
           ))}
