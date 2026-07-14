@@ -22,7 +22,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ArrowLeft, Pencil, Printer } from "lucide-react";
+import { ArrowLeft, Pencil, Printer, Share2 } from "lucide-react";
+import { toast } from "sonner";
 import { IntentScoreBadge, StatusBadge } from "@/components/campaign-badges";
 import { CampaignAnalytics } from "@/components/CampaignAnalytics";
 import { ErrorCard } from "@/components/admin/query-state";
