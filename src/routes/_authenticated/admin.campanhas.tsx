@@ -32,7 +32,14 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ErrorCard } from "@/components/admin/query-state";
-import { Copy, ExternalLink, Trash2, BarChart3, Pencil, Play, Pause } from "lucide-react";
+import { Copy, ExternalLink, Trash2, BarChart3, Pencil, Play, Pause, Info, MoreVertical } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { IntentScoreBadge, StatusBadge } from "@/components/campaign-badges";
 import {
   ParticipantsBadges,
@@ -112,8 +119,9 @@ function CampaignRow({
     typeof window !== "undefined" ? `${window.location.origin}/${c.slug}` : `/${c.slug}`;
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-4">
+    <Card className="overflow-hidden border-border/70 shadow-sm">
+
+      <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-4 border-b bg-muted/30">
         <div className="space-y-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <CardTitle className="text-lg">{c.name}</CardTitle>
@@ -130,10 +138,37 @@ function CampaignRow({
             </a>
           </CardDescription>
         </div>
-        <div className="flex shrink-0 flex-wrap gap-2">
+      </CardHeader>
+
+      <CardContent className="space-y-4 p-6">
+        <h3 className="text-[15px] font-semibold text-foreground/90 pb-3 border-b">
+          Resumo das estimativas
+        </h3>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <MetaStat label="Cliques totais" value={c.total_clicks} />
+          <MetaStat label="Cliques únicos" value={c.unique_clicks} />
+          <MetaStat label="Status" value={isActive ? "Ativa" : c.status === "paused" ? "Pausada" : "Rascunho"} />
+          <MetaStat label="Destino" value={c.destination_url} truncate />
+        </div>
+      </CardContent>
+
+      <div className="border-t bg-muted/20 px-4 py-2 flex items-center justify-between gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          asChild
+          className="text-primary hover:text-primary hover:bg-primary/10 font-semibold tracking-wide text-xs uppercase"
+        >
+          <Link to="/admin/campaigns/$id/edit" params={{ id: c.id }}>
+            <Pencil className="mr-1 h-4 w-4" /> Editar campanha
+          </Link>
+        </Button>
+
+        <div className="flex items-center gap-2">
           <Button
-            variant={isActive ? "outline" : "default"}
+            variant="outline"
             size="sm"
+            className="border-primary/40 text-primary hover:bg-primary/10 hover:text-primary font-semibold tracking-wide text-xs uppercase"
             onClick={async () => {
               try {
                 await update({ data: { id: c.id, status: isActive ? "paused" : "active" } });
@@ -146,61 +181,67 @@ function CampaignRow({
           >
             {isActive ? (<><Pause className="mr-1 h-4 w-4" /> Pausar</>) : (<><Play className="mr-1 h-4 w-4" /> Publicar</>)}
           </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/admin/campaigns/$id/edit" params={{ id: c.id }}>
-              <Pencil className="mr-1 h-4 w-4" /> Editar
-            </Link>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
+
+          <Button
+            size="sm"
+            asChild
+            className="font-semibold tracking-wide text-xs uppercase"
+          >
             <Link to="/admin/campaigns/$id" params={{ id: c.id }}>
-              <BarChart3 className="mr-1 h-4 w-4" /> Métricas
+              <BarChart3 className="mr-1 h-4 w-4" /> Visualizar estatísticas
             </Link>
           </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => {
-              void navigator.clipboard.writeText(publicUrl);
-              toast.success("URL copiada");
-            }}
-            title="Copiar URL"
-          >
-            <Copy className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon" asChild title="Abrir destino">
-            <a href={c.destination_url} target="_blank" rel="noreferrer">
-              <ExternalLink className="h-4 w-4" />
-            </a>
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            title="Excluir"
-            onClick={async () => {
-              if (!confirm(`Excluir "${c.name}"? Os cliques também serão removidos.`)) return;
-              await del({ data: { id: c.id } });
-              toast.success("Campanha excluída");
-              onChange();
-            }}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-9 w-9">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => {
+                  void navigator.clipboard.writeText(publicUrl);
+                  toast.success("URL copiada");
+                }}
+              >
+                <Copy className="mr-2 h-4 w-4" /> Copiar URL
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a href={c.destination_url} target="_blank" rel="noreferrer">
+                  <ExternalLink className="mr-2 h-4 w-4" /> Abrir destino
+                </a>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={async () => {
+                  if (!confirm(`Excluir "${c.name}"? Os cliques também serão removidos.`)) return;
+                  await del({ data: { id: c.id } });
+                  toast.success("Campanha excluída");
+                  onChange();
+                }}
+              >
+                <Trash2 className="mr-2 h-4 w-4" /> Excluir
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-      </CardHeader>
-      <CardContent className="grid grid-cols-3 gap-4 text-sm">
-        <Stat label="Cliques totais" value={c.total_clicks} />
-        <Stat label="Cliques únicos (IP)" value={c.unique_clicks} />
-        <Stat label="Destino" value={c.destination_url} truncate />
-      </CardContent>
+      </div>
     </Card>
   );
 }
 
-function Stat({ label, value, truncate }: { label: string; value: string | number; truncate?: boolean }) {
+function MetaStat({ label, value, truncate }: { label: string; value: string | number; truncate?: boolean }) {
   return (
-    <div className="rounded-md border bg-muted/30 px-3 py-2">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className={`font-medium ${truncate ? "truncate" : ""}`}>{value}</div>
+    <div className="rounded-md border bg-background px-4 py-3">
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <span>{label}</span>
+        <Info className="h-3 w-3 opacity-60" />
+      </div>
+      <div className={`mt-1 text-2xl font-semibold text-foreground ${truncate ? "truncate text-sm font-normal" : ""}`}>
+        {value}
+      </div>
     </div>
   );
 }
