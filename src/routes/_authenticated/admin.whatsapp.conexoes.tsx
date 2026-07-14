@@ -50,6 +50,15 @@ function Page() {
     onSuccess: () => { toast.success("Número padrão atualizado"); refresh(); },
     onError: (e: any) => toast.error(e?.message ?? "Erro"),
   });
+  const subMut = useMutation({
+    mutationFn: (connection_id: string) => subscribeFn({ data: { connection_id } }),
+    onSuccess: (r: any) => {
+      const app = r?.apps?.[0]?.whatsapp_business_api_data?.name;
+      toast.success(app ? `App assinado: ${app}` : "App assinado com sucesso");
+      refresh();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao assinar app"),
+  });
 
   return (
     <>
