@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import {
   Plus, Search, Play, Pause, XCircle, Eye, RefreshCw, ArrowLeft,
   Calendar, CheckCircle2, AlertTriangle, Clock, Rocket, MessageSquareText, CalendarClock, Trash2,
+  Send, CheckCheck,
 } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { ErrorCard } from "@/components/admin/query-state";
@@ -143,8 +144,10 @@ function ListView({ onNew }: { onNew: () => void }) {
     return c;
   }, [campaigns]);
 
+  const campaignMetrics = useMemo(() => campaigns.map((campaign) => ({ campaign, metrics: getDeliveryMetrics(campaign) })), [campaigns]);
+
   const filtered = useMemo(() => {
-    return campaigns.filter((c) => {
+    return campaignMetrics.filter(({ campaign: c }) => {
       if (filter === "active" && !["running", "queued", "paused"].includes(c.status)) return false;
       if (filter === "scheduled" && c.status !== "scheduled") return false;
       if (filter === "done" && !["done", "completed"].includes(c.status)) return false;
@@ -156,7 +159,18 @@ function ListView({ onNew }: { onNew: () => void }) {
       }
       return true;
     });
-  }, [campaigns, filter, search]);
+  }, [campaignMetrics, filter, search]);
+
+  const deliveryTotals = useMemo(() => {
+    return filtered.reduce((acc, item) => {
+      acc.total += item.metrics.total;
+      acc.sent += item.metrics.sent;
+      acc.delivered += item.metrics.delivered;
+      acc.read += item.metrics.read;
+      acc.failed += item.metrics.failed;
+      return acc;
+    }, { total: 0, sent: 0, delivered: 0, read: 0, failed: 0 });
+  }, [filtered]);
 
   const startMut = useMutation({
     mutationFn: (id: string) => startFn({ data: { id } }),
@@ -229,6 +243,13 @@ function ListView({ onNew }: { onNew: () => void }) {
         />
       </div>
 
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <DeliverySummaryCard icon={<Send className="h-4 w-4" />} label="Enviados" value={deliveryTotals.sent} total={deliveryTotals.total} />
+        <DeliverySummaryCard icon={<CheckCheck className="h-4 w-4" />} label="Recebidos" value={deliveryTotals.delivered} total={deliveryTotals.sent} />
+        <DeliverySummaryCard icon={<Eye className="h-4 w-4" />} label="Lidas" value={deliveryTotals.read} total={deliveryTotals.delivered} />
+        <DeliverySummaryCard icon={<AlertTriangle className="h-4 w-4" />} label="Falhas" value={deliveryTotals.failed} total={deliveryTotals.total} tone="danger" />
+      </div>
+
       {campaignsQ.isLoading ? (
         <Card><CardContent className="p-10 text-center text-sm text-muted-foreground">Carregando disparos…</CardContent></Card>
       ) : listError ? (
@@ -237,13 +258,9 @@ function ListView({ onNew }: { onNew: () => void }) {
         <Card><CardContent className="p-0"><EmptyState hasAny={campaigns.length > 0} onNew={onNew} /></CardContent></Card>
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((c: any) => {
+          {filtered.map(({ campaign: c, metrics }) => {
             const meta = STATUS_META[c.status] ?? { label: c.status ?? "—", className: "bg-muted" };
-            const progress = (c.progress ?? {}) as any;
-            const total = progress.total ?? c.total_recipients ?? c.total ?? 0;
-            const sent = progress.sent ?? c.sent_count ?? c.sent ?? 0;
-            const failed = progress.failed ?? c.failed_count ?? c.failed ?? 0;
-            const processed = progress.processed ?? (sent + failed + (progress.opt_out ?? 0) + (progress.cancelled ?? 0) + (progress.skipped ?? 0));
+            const { total, sent, delivered, read, failed, processed } = metrics;
             const pct = total > 0 ? Math.round((processed / total) * 100) : 0;
             const whenLabel = c.scheduled_at
               ? `Agendado para ${new Date(c.scheduled_at).toLocaleString("pt-BR")}`
@@ -291,6 +308,13 @@ function ListView({ onNew }: { onNew: () => void }) {
                         <AlertTriangle className="h-3 w-3" />{failed} falhas
                       </div>
                     )}
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-2 rounded-lg border bg-muted/30 p-2 text-center">
+                    <CampaignMetric label="Enviados" value={sent} />
+                    <CampaignMetric label="Recebidos" value={delivered} />
+                    <CampaignMetric label="Lidas" value={read} />
+                    <CampaignMetric label="Falhas" value={failed} danger={failed > 0} />
                   </div>
 
                   {(c.last_error || c.pause_reason || c.status === "error" || c.status === "failed") && (
@@ -406,6 +430,50 @@ function ListView({ onNew }: { onNew: () => void }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function getDeliveryMetrics(c: any) {
+  const progress = ((c?.progress ?? {}) as Record<string, unknown>);
+  const num = (...values: unknown[]) => {
+    let max = 0;
+    for (const value of values) {
+      const n = Number(value ?? 0);
+      if (Number.isFinite(n) && n > max) max = n;
+    }
+    return max;
+  };
+  const total = num(progress.total, c.total_recipients, c.total);
+  const sent = num(progress.sent, c.sent_count, c.sent, (Number(progress.accepted ?? 0) || 0) + (Number(progress.sent_count ?? 0) || 0));
+  const delivered = num(progress.delivered, c.delivered_count, c.delivered);
+  const read = num(progress.read, c.read_count, c.read);
+  const failed = num(progress.failed, c.failed_count, c.failed);
+  const optOut = num(progress.opt_out, c.opt_out_count);
+  const cancelled = num(progress.cancelled, c.cancelled_count);
+  const skipped = num(progress.skipped, c.skipped_count);
+  const processed = num(progress.processed, sent + failed + optOut + cancelled + skipped);
+  return { total, sent, delivered, read, failed, processed };
+}
+
+function DeliverySummaryCard({ icon, label, value, total, tone }: { icon: React.ReactNode; label: string; value: number; total: number; tone?: "danger" }) {
+  const pct = total > 0 ? Math.round((value / total) * 100) : 0;
+  return (
+    <div className="rounded-xl border bg-card p-4">
+      <div className={`flex items-center gap-2 text-xs ${tone === "danger" ? "text-destructive" : "text-muted-foreground"}`}>{icon}{label}</div>
+      <div className="mt-1 flex items-end justify-between gap-2">
+        <div className="text-2xl font-bold tabular-nums">{value.toLocaleString("pt-BR")}</div>
+        <div className="text-xs text-muted-foreground">{pct}%</div>
+      </div>
+    </div>
+  );
+}
+
+function CampaignMetric({ label, value, danger }: { label: string; value: number; danger?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <div className={`text-sm font-semibold tabular-nums ${danger ? "text-destructive" : "text-foreground"}`}>{value.toLocaleString("pt-BR")}</div>
+      <div className="truncate text-[10px] text-muted-foreground">{label}</div>
     </div>
   );
 }
