@@ -2,8 +2,15 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo } from "react";
-import { getCampaignAnalytics, listWaCampaignsForLinking, setWaCampaignLink } from "@/lib/campaigns.functions";
+import {
+  getCampaignAnalytics,
+  getCampaignDispatchAudit,
+  listWaCampaignsForLinking,
+  recalculateLinkedDispatchMetrics,
+  setWaCampaignLink,
+} from "@/lib/campaigns.functions";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -22,7 +29,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ArrowLeft, Pencil, Printer, Share2 } from "lucide-react";
+import { ArrowLeft, Pencil, Printer, RefreshCw, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { IntentScoreBadge, StatusBadge } from "@/components/campaign-badges";
 import { CampaignAnalytics } from "@/components/CampaignAnalytics";
@@ -220,6 +227,8 @@ function CampaignDetail() {
 
       <LinkedDispatches campaignId={id} />
 
+      <DispatchAudit campaignId={id} />
+
       <Card>
         <CardHeader>
           <CardTitle>Histórico de acessos</CardTitle>
@@ -288,6 +297,7 @@ function LinkedDispatches({ campaignId }: { campaignId: string }) {
   const qc = useQueryClient();
   const listFn = useServerFn(listWaCampaignsForLinking);
   const linkFn = useServerFn(setWaCampaignLink);
+  const recalcFn = useServerFn(recalculateLinkedDispatchMetrics);
   const { data, isLoading } = useQuery({
     queryKey: ["wa-campaigns-for-linking", campaignId],
     queryFn: () => listFn({ data: { campaignId } }),
@@ -301,6 +311,17 @@ function LinkedDispatches({ campaignId }: { campaignId: string }) {
     },
     onError: (e) => toast.error("Falha ao atualizar vínculo", { description: (e as Error).message }),
   });
+  const recalcMutation = useMutation({
+    mutationFn: () => recalcFn({ data: { campaignId } }),
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ["wa-campaigns-for-linking", campaignId] });
+      qc.invalidateQueries({ queryKey: ["campaign-dispatch-audit", campaignId] });
+      qc.invalidateQueries({ queryKey: ["campaign-analytics", campaignId] });
+      const updated = result.updated?.length ?? 0;
+      toast.success("Métricas recalculadas", { description: `${updated} disparo(s) atualizado(s).` });
+    },
+    onError: (e) => toast.error("Falha ao recalcular métricas", { description: (e as Error).message }),
+  });
 
   const linked = (data ?? []).filter((r) => r.is_linked);
   const available = (data ?? []).filter((r) => !r.is_linked && !r.linked_campaign_id);
@@ -308,10 +329,23 @@ function LinkedDispatches({ campaignId }: { campaignId: string }) {
   return (
     <Card className="no-print">
       <CardHeader>
-        <CardTitle>Disparos WhatsApp vinculados</CardTitle>
-        <CardDescription>
-          Vincule campanhas de disparo para que os contadores (enviados, entregues, lidas, respostas, falhas) apareçam no relatório público em tempo real.
-        </CardDescription>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <CardTitle>Disparos WhatsApp vinculados</CardTitle>
+            <CardDescription>
+              Vincule campanhas de disparo para que os contadores (contatos, enviados, entregues e falhas) apareçam no relatório público em tempo real.
+            </CardDescription>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={recalcMutation.isPending || linked.length === 0}
+            onClick={() => recalcMutation.mutate()}
+          >
+            <RefreshCw className={`mr-1 h-4 w-4 ${recalcMutation.isPending ? "animate-spin" : ""}`} />
+            Recalcular métricas
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {isLoading ? (
@@ -372,6 +406,188 @@ function LinkedDispatches({ campaignId }: { campaignId: string }) {
       </CardContent>
     </Card>
   );
+}
+
+function DispatchAudit({ campaignId }: { campaignId: string }) {
+  const auditFn = useServerFn(getCampaignDispatchAudit);
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["campaign-dispatch-audit", campaignId],
+    queryFn: () => auditFn({ data: { campaignId } }),
+  });
+
+  return (
+    <Card className="no-print">
+      <CardHeader>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <CardTitle>Auditoria de entrega WhatsApp</CardTitle>
+            <CardDescription>
+              Eventos processados, tentativas de envio e logs gravados para os disparos vinculados.
+            </CardDescription>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
+            <RefreshCw className={`mr-1 h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+            Atualizar auditoria
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        {error ? (
+          <ErrorCard error={error} onRetry={() => refetch()} />
+        ) : isLoading || !data ? (
+          <p className="text-sm text-muted-foreground">Carregando auditoria...</p>
+        ) : data.dispatches.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhum disparo vinculado para auditar.</p>
+        ) : (
+          <>
+            <div className="grid gap-3 md:grid-cols-2">
+              {data.dispatches.map((dispatch) => {
+                const summary = data.recipientSummaries.find((s) => s.campaign_id === dispatch.id);
+                return (
+                  <div key={dispatch.id} className="rounded border p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium">{dispatch.name || "Sem nome"}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {dispatch.status} · {dispatch.progress?.percent ?? 0}% progresso
+                        </div>
+                      </div>
+                      <Badge variant="secondary">{summary?.with_meta_message_id ?? 0} IDs Meta</Badge>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+                      <AuditNumber label="Contatos" value={summary?.total ?? dispatch.total_recipients ?? 0} />
+                      <AuditNumber label="Enviados" value={dispatch.sent_count ?? 0} />
+                      <AuditNumber label="Entregues" value={dispatch.delivered_count ?? 0} />
+                      <AuditNumber label="Falhas" value={dispatch.failed_count ?? 0} />
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground sm:grid-cols-4">
+                      <div>sent_at: {summary?.with_sent_at ?? 0}</div>
+                      <div>delivered_at: {summary?.with_delivered_at ?? 0}</div>
+                      <div>failed_at: {summary?.with_failed_at ?? 0}</div>
+                      <div>accepted: {summary?.accepted ?? 0}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <AuditTable
+              title="Últimos eventos do webhook localizados"
+              empty="Nenhum log do webhook com campaign_id foi localizado para estes disparos."
+              rows={data.webhookLogs.map((row) => ({
+                id: row.id,
+                when: row.created_at,
+                type: row.event_type ?? "—",
+                status: row.error ? "erro" : row.processed ? "processado" : "registrado",
+                detail: row.error ?? compactJson(row.payload),
+              }))}
+            />
+
+            <AuditTable
+              title="Últimos logs de mensagens"
+              empty="Nenhum log de mensagem encontrado."
+              rows={data.messageLogs.map((row) => ({
+                id: row.id,
+                when: row.updated_at ?? row.created_at,
+                type: row.message_status ?? "—",
+                status: row.http_status ? `HTTP ${row.http_status}` : "—",
+                detail: row.error_code || row.failed_reason || row.meta_message_id || "—",
+              }))}
+            />
+
+            <AuditTable
+              title="Últimas tentativas de disparo"
+              empty="Nenhuma tentativa encontrada."
+              rows={data.attempts.map((row) => ({
+                id: row.id,
+                when: row.attempted_at,
+                type: row.message_status ?? "—",
+                status: row.http_status ? `HTTP ${row.http_status}` : "—",
+                detail: row.error_code || row.meta_message_id || compactJson(row.error_details),
+              }))}
+            />
+
+            <AuditTable
+              title="Linha do tempo de processamento"
+              empty="Nenhum evento de processamento registrado."
+              rows={data.timeline.map((row) => ({
+                id: row.id,
+                when: row.created_at,
+                type: row.event_type ?? "—",
+                status: row.message ?? "—",
+                detail: compactJson(row.payload),
+              }))}
+            />
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AuditNumber({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div className="rounded bg-muted p-2">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="font-semibold">{value}</div>
+    </div>
+  );
+}
+
+function AuditTable({
+  title,
+  empty,
+  rows,
+}: {
+  title: string;
+  empty: string;
+  rows: { id: string; when: string | null; type: string; status: string; detail: string }[];
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="text-xs font-medium uppercase text-muted-foreground">{title}</div>
+      <div className="overflow-x-auto rounded border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Quando</TableHead>
+              <TableHead>Tipo</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Detalhe</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.slice(0, 20).map((row) => (
+              <TableRow key={row.id}>
+                <TableCell className="whitespace-nowrap">
+                  {row.when ? new Date(row.when).toLocaleString("pt-BR") : "—"}
+                </TableCell>
+                <TableCell>{row.type}</TableCell>
+                <TableCell>{row.status}</TableCell>
+                <TableCell className="max-w-[520px] truncate font-mono text-xs">{row.detail}</TableCell>
+              </TableRow>
+            ))}
+            {rows.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  {empty}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
+
+function compactJson(value: unknown) {
+  if (!value) return "—";
+  try {
+    return JSON.stringify(value).slice(0, 500);
+  } catch {
+    return "—";
+  }
 }
 
 function StatCard({ label, value }: { label: string; value: number | string }) {
