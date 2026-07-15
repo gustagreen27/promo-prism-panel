@@ -182,7 +182,12 @@ export const upsertMetricOverride = createServerFn({ method: "POST" })
     if (data.id) {
       const { error } = await supabaseAdmin
         .from("public_metrics_override")
-        .update({ label: data.label, count: data.count, position: data.position } as never)
+        .update({
+          label: data.label,
+          count: data.count,
+          position: data.position,
+          percent: data.percent ?? null,
+        } as never)
         .eq("id", data.id);
       if (error) throw error;
       return { ok: true, id: data.id };
@@ -195,6 +200,7 @@ export const upsertMetricOverride = createServerFn({ method: "POST" })
         label: data.label,
         count: data.count,
         position: data.position,
+        percent: data.percent ?? null,
       } as never)
       .select("id")
       .single();
