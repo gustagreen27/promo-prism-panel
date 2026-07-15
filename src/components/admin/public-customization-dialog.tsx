@@ -176,19 +176,22 @@ function HeaderActions({
   campaignId,
   slug,
   enabled,
+  attention = false,
   onChange,
 }: {
   campaignId: string;
   slug?: string;
   enabled: boolean;
+  attention?: boolean;
   onChange: () => void;
 }) {
   const upsertFn = useServerFn(upsertCampaignPublicSettings);
   const clearFn = useServerFn(clearAllPublicOverrides);
   const toggle = useMutation({
     mutationFn: (v: boolean) => upsertFn({ data: { campaignId, enabled: v } }),
-    onSuccess: () => {
-      toast.success("Personalização atualizada");
+    onSuccess: (_d, v) => {
+      if (v) toast.success("Personalização pública ativada e distribuição aplicada com sucesso.");
+      else toast.success("Personalização atualizada");
       onChange();
     },
     onError: (e) => toast.error((e as Error).message),
@@ -203,13 +206,20 @@ function HeaderActions({
   });
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-md border bg-muted/30 p-3">
+    <div
+      className={
+        "flex flex-wrap items-center gap-3 rounded-md border bg-muted/30 p-3 " +
+        (attention ? "border-amber-500 ring-2 ring-amber-500/40" : "")
+      }
+    >
       <div className="flex items-center gap-2">
         <Switch checked={enabled} onCheckedChange={(v) => toggle.mutate(v)} />
-        <span className="text-sm font-medium">
+        <span className="text-sm font-medium flex items-center gap-1">
+          {attention && <AlertTriangle className="h-4 w-4 text-amber-500" />}
           {enabled ? "Personalização ativa" : "Personalização desativada"}
         </span>
       </div>
+
       <div className="ml-auto flex items-center gap-2">
         {slug && (
           <Button variant="outline" size="sm" asChild>
