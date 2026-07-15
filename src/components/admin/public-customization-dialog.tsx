@@ -52,6 +52,11 @@ import {
   upsertPublicDispatch,
   upsertPublicSimulation,
 } from "@/lib/public-overrides.functions";
+import {
+  computeGeneratedClicks,
+  seedFromString,
+  type ClicksGeneratorConfig,
+} from "@/lib/public-clicks-generator";
 
 type Kind = "country" | "city" | "device" | "browser";
 const KIND_LABEL: Record<Kind, string> = {
@@ -305,6 +310,15 @@ function GeneralTab({
         </CardContent>
       </Card>
 
+      <ClicksGeneratorCard
+        campaignId={campaignId}
+        settings={data.settings}
+        waDispatches={data.waDispatches ?? []}
+        publicDispatches={data.dispatches ?? []}
+        publicSimulations={data.simulations ?? []}
+        onChange={onChange}
+      />
+
       {(["country", "city", "device", "browser"] as Kind[]).map((kind) => (
         <MetricListEditor
           key={kind}
@@ -379,8 +393,13 @@ function MetricListEditor({
     onError: (e) => toast.error((e as Error).message),
   });
   const upd = useMutation({
-    mutationFn: (v: { id: string; label: string; count: number; position: number }) =>
-      upsertFn({ data: { ...v, campaignId, kind } }),
+    mutationFn: (v: {
+      id: string;
+      label: string;
+      count: number;
+      position: number;
+      percent?: number | null;
+    }) => upsertFn({ data: { ...v, campaignId, kind } }),
     onSuccess: onChange,
     onError: (e) => toast.error((e as Error).message),
   });
@@ -411,10 +430,10 @@ function MetricListEditor({
           <p className="text-xs text-muted-foreground">Nenhum item personalizado.</p>
         )}
         {items.map((it, idx) => (
-          <div key={it.id} className="flex items-center gap-2">
+          <div key={it.id} className="flex flex-wrap items-center gap-2">
             <Input
               defaultValue={it.label}
-              className="flex-1"
+              className="min-w-[10rem] flex-1"
               onBlur={(e) =>
                 e.target.value !== it.label &&
                 upd.mutate({
@@ -422,13 +441,15 @@ function MetricListEditor({
                   label: e.target.value,
                   count: it.count,
                   position: it.position,
+                  percent: it.percent ?? null,
                 })
               }
             />
             <Input
               type="number"
               defaultValue={it.count}
-              className="w-28"
+              className="w-24"
+              placeholder="qtd"
               onBlur={(e) =>
                 Number(e.target.value) !== it.count &&
                 upd.mutate({
@@ -436,9 +457,31 @@ function MetricListEditor({
                   label: it.label,
                   count: Number(e.target.value),
                   position: it.position,
+                  percent: it.percent ?? null,
                 })
               }
             />
+            <div className="flex items-center gap-1">
+              <Input
+                type="number"
+                defaultValue={it.percent ?? ""}
+                className="w-20"
+                placeholder="% "
+                onBlur={(e) => {
+                  const v = e.target.value === "" ? null : Number(e.target.value);
+                  if (v !== (it.percent ?? null)) {
+                    upd.mutate({
+                      id: it.id,
+                      label: it.label,
+                      count: it.count,
+                      position: it.position,
+                      percent: v,
+                    });
+                  }
+                }}
+              />
+              <span className="text-xs text-muted-foreground">%</span>
+            </div>
             <Button variant="ghost" size="icon" onClick={() => move(idx, -1)}>
               <ArrowUp className="h-4 w-4" />
             </Button>
@@ -883,5 +926,254 @@ function AutoSimForm({
         </div>
       </div>
     </div>
+  );
+}
+
+// ============================================================================
+// GERADOR DE CLIQUES A PARTIR DOS ENTREGUES
+// ============================================================================
+
+function ClicksGeneratorCard({
+  campaignId,
+  settings,
+  waDispatches,
+  publicDispatches,
+  publicSimulations,
+  onChange,
+}: {
+  campaignId: string;
+  settings: any;
+  waDispatches: any[];
+  publicDispatches: any[];
+  publicSimulations: any[];
+  onChange: () => void;
+}) {
+  const upsertFn = useServerFn(upsertCampaignPublicSettings);
+  const cfg = (settings?.clicks_generator ?? {}) as ClicksGeneratorConfig;
+
+  const [enabled, setEnabled] = useState<boolean>(cfg.enabled ?? false);
+  const [initial, setInitial] = useState<string>(String(cfg.initial ?? 0));
+  const [rate, setRate] = useState<string>(String(cfg.rate ?? 10));
+  const [minPct, setMinPct] = useState<string>(
+    cfg.min_pct != null ? String(cfg.min_pct) : "",
+  );
+  const [maxPct, setMaxPct] = useState<string>(
+    cfg.max_pct != null ? String(cfg.max_pct) : "",
+  );
+  const [maxClicks, setMaxClicks] = useState<string>(
+    cfg.max_clicks != null ? String(cfg.max_clicks) : "",
+  );
+  const [refresh, setRefresh] = useState<string>(
+    String(cfg.refresh_interval_sec ?? 10),
+  );
+  const [growth, setGrowth] = useState<"linear" | "random">(
+    cfg.growth ?? "random",
+  );
+  const [useSource, setUseSource] = useState<"real" | "public">(
+    cfg.use_source ?? "public",
+  );
+  const [replaceOrAdd, setReplaceOrAdd] = useState<"replace" | "add">(
+    cfg.replace_or_add ?? "replace",
+  );
+
+  // Total público de entregues (soma dos disparos com override ativo, senão reais).
+  const publicDelivered = useMemo(() => {
+    let total = 0;
+    for (const wa of waDispatches) {
+      const ov = publicDispatches.find((d) => d.wa_campaign_id === wa.id);
+      if (ov?.enabled && ov?.mode === "fixed") {
+        total += Number(ov?.fixed?.delivered ?? wa.delivered_count ?? 0);
+        continue;
+      }
+      if (ov?.enabled && ov?.mode === "auto") {
+        const sim = publicSimulations.find((s) => s.wa_campaign_id === wa.id);
+        total += Number(sim?.delivered_end ?? wa.delivered_count ?? 0);
+        continue;
+      }
+      total += Number(wa.delivered_count ?? 0);
+    }
+    return total;
+  }, [waDispatches, publicDispatches, publicSimulations]);
+
+  const realDelivered = useMemo(
+    () => waDispatches.reduce((s, w) => s + Number(w.delivered_count ?? 0), 0),
+    [waDispatches],
+  );
+
+  const previewCfg: ClicksGeneratorConfig = {
+    enabled,
+    initial: Number(initial || 0),
+    rate: Number(rate || 0),
+    min_pct: minPct === "" ? null : Number(minPct),
+    max_pct: maxPct === "" ? null : Number(maxPct),
+    max_clicks: maxClicks === "" ? null : Number(maxClicks),
+    refresh_interval_sec: Number(refresh || 10),
+    growth,
+    use_source: useSource,
+    replace_or_add: replaceOrAdd,
+  };
+  const seed = useMemo(() => seedFromString(campaignId), [campaignId]);
+  const sourceDelivered =
+    useSource === "real" ? realDelivered : publicDelivered;
+  const previewNow = computeGeneratedClicks(sourceDelivered, previewCfg, seed);
+  const projected =
+    previewCfg.max_clicks != null
+      ? Math.min(
+          previewCfg.max_clicks,
+          computeGeneratedClicks(sourceDelivered * 2, previewCfg, seed),
+        )
+      : computeGeneratedClicks(sourceDelivered * 2, previewCfg, seed);
+
+  const save = useMutation({
+    mutationFn: () =>
+      upsertFn({
+        data: {
+          campaignId,
+          clicks_generator: {
+            enabled,
+            initial: Number(initial || 0),
+            rate: Number(rate || 0),
+            min_pct: minPct === "" ? null : Number(minPct),
+            max_pct: maxPct === "" ? null : Number(maxPct),
+            max_clicks: maxClicks === "" ? null : Number(maxClicks),
+            refresh_interval_sec: Number(refresh || 10),
+            growth,
+            use_source: useSource,
+            replace_or_add: replaceOrAdd,
+          },
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Gerador de cliques salvo");
+      onChange();
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          Gerar cliques com base nos entregues
+          {enabled && <Badge variant="secondary">Ativo</Badge>}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Switch checked={enabled} onCheckedChange={setEnabled} />
+          <span className="text-sm">
+            {enabled ? "Cliques públicos derivados dos entregues" : "Desativado"}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <NumField label="Cliques iniciais" value={initial} onChange={setInitial} />
+          <NumField label="Taxa média (%)" value={rate} onChange={setRate} />
+          <NumField
+            label="% mínimo"
+            value={minPct}
+            onChange={setMinPct}
+            placeholder="opcional"
+          />
+          <NumField
+            label="% máximo"
+            value={maxPct}
+            onChange={setMaxPct}
+            placeholder="opcional"
+          />
+          <NumField
+            label="Máx. de cliques"
+            value={maxClicks}
+            onChange={setMaxClicks}
+            placeholder="sem limite"
+          />
+          <NumField
+            label="Intervalo (s)"
+            value={refresh}
+            onChange={setRefresh}
+          />
+          <div className="space-y-1">
+            <Label className="text-xs">Crescimento</Label>
+            <Select value={growth} onValueChange={(v) => setGrowth(v as any)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="random">Aleatório dentro da faixa</SelectItem>
+                <SelectItem value="linear">Linear (taxa média)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Fonte dos entregues</Label>
+            <Select value={useSource} onValueChange={(v) => setUseSource(v as any)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="public">Entregues públicos (real ou personalizado)</SelectItem>
+                <SelectItem value="real">Somente entregues reais</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Cliques reais</Label>
+            <Select
+              value={replaceOrAdd}
+              onValueChange={(v) => setReplaceOrAdd(v as any)}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="replace">Substituir</SelectItem>
+                <SelectItem value="add">Somar aos reais</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="rounded-md border bg-muted/30 p-3 text-xs">
+          <div className="mb-2 font-medium text-sm">Prévia</div>
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+            <div>
+              <div className="text-muted-foreground">Entregues públicos</div>
+              <div className="font-mono">{publicDelivered.toLocaleString("pt-BR")}</div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Entregues reais</div>
+              <div className="font-mono">{realDelivered.toLocaleString("pt-BR")}</div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Taxa</div>
+              <div className="font-mono">
+                {minPct !== "" && maxPct !== ""
+                  ? `${minPct}% – ${maxPct}%`
+                  : `${rate}%`}
+              </div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Cliques agora</div>
+              <div className="font-mono">{previewNow.toLocaleString("pt-BR")}</div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Projeção (2× entregues)</div>
+              <div className="font-mono">{projected.toLocaleString("pt-BR")}</div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Limite máximo</div>
+              <div className="font-mono">
+                {maxClicks === "" ? "—" : Number(maxClicks).toLocaleString("pt-BR")}
+              </div>
+            </div>
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Nunca diminui. Nunca ultrapassa entregues + iniciais. Pausa quando os
+            entregues param ou a simulação pública está pausada.
+            Distribuição por categoria usa os % definidos em cada lista abaixo.
+          </p>
+        </div>
+
+        <div>
+          <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
+            <Save className="mr-1 h-4 w-4" /> Salvar gerador
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

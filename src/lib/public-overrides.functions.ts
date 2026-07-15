@@ -95,6 +95,20 @@ const settingsPatchSchema = z.object({
   hourly_series: z
     .array(z.object({ hour: z.string(), count: z.number().int().min(0) }))
     .optional(),
+  clicks_generator: z
+    .object({
+      enabled: z.boolean().default(false),
+      initial: z.number().int().min(0).default(0),
+      rate: z.number().min(0).max(100).default(10),
+      min_pct: z.number().min(0).max(100).nullable().optional(),
+      max_pct: z.number().min(0).max(100).nullable().optional(),
+      max_clicks: z.number().int().min(0).nullable().optional(),
+      refresh_interval_sec: z.number().int().min(1).max(3600).default(10),
+      growth: z.enum(["linear", "random"]).default("random"),
+      use_source: z.enum(["real", "public"]).default("public"),
+      replace_or_add: z.enum(["replace", "add"]).default("replace"),
+    })
+    .optional(),
 });
 
 export const upsertCampaignPublicSettings = createServerFn({ method: "POST" })
@@ -158,6 +172,7 @@ export const upsertMetricOverride = createServerFn({ method: "POST" })
         label: z.string().trim().min(1).max(120),
         count: z.number().int().min(0).max(1_000_000_000),
         position: z.number().int().min(0).max(1000).default(0),
+        percent: z.number().min(0).max(100).nullable().optional(),
       })
       .parse(d),
   )
@@ -167,7 +182,12 @@ export const upsertMetricOverride = createServerFn({ method: "POST" })
     if (data.id) {
       const { error } = await supabaseAdmin
         .from("public_metrics_override")
-        .update({ label: data.label, count: data.count, position: data.position } as never)
+        .update({
+          label: data.label,
+          count: data.count,
+          position: data.position,
+          percent: data.percent ?? null,
+        } as never)
         .eq("id", data.id);
       if (error) throw error;
       return { ok: true, id: data.id };
@@ -180,6 +200,7 @@ export const upsertMetricOverride = createServerFn({ method: "POST" })
         label: data.label,
         count: data.count,
         position: data.position,
+        percent: data.percent ?? null,
       } as never)
       .select("id")
       .single();
