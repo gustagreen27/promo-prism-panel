@@ -3,6 +3,44 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendTemplateMessage } from "@/lib/wa-send.server";
 import { renderMapping, buildContext } from "@/lib/wa-variables";
 
+// ---------------------------------------------------------------------------
+// Dependency-injection surface (Fase 2, harness end-to-end)
+// - `transport` substitui apenas a chamada HTTP à Meta (sendTemplateMessage).
+// - `clock`     substitui now/sleep para futuros testes de tempo virtual.
+// - `instrumentation` captura latências e granted dos 3 RPCs quentes do hot loop
+//   (wa_try_consume_tokens, wa_acquire_slots, wa_release_slots) para o harness.
+// Defaults preservam 100% do comportamento de produção; nenhum call-site atual
+// precisa ser alterado.
+// ---------------------------------------------------------------------------
+export type WaTransport = {
+  sendTemplateMessage: typeof sendTemplateMessage;
+};
+export type WaClock = {
+  now: () => number;
+  sleep: (ms: number) => Promise<void>;
+};
+export type WaRpcSample = {
+  rpc: "wa_try_consume_tokens" | "wa_acquire_slots" | "wa_release_slots";
+  ms: number;
+  requested?: number;
+  granted?: number;
+};
+export type WaInstrumentation = {
+  onRpc?: (sample: WaRpcSample) => void;
+};
+export type WaTickOptions = {
+  transport?: WaTransport;
+  clock?: WaClock;
+  instrumentation?: WaInstrumentation;
+};
+
+const REAL_CLOCK: WaClock = {
+  now: () => Date.now(),
+  sleep: (ms: number) => new Promise((res) => setTimeout(res, ms)),
+};
+const REAL_TRANSPORT: WaTransport = { sendTemplateMessage };
+
+
 
 const OPT_OUT_REGEX = /\b(parar|sair|cancelar|cancela|remover|descadastrar|n[ãa]o quero|stop|unsubscribe)\b/i;
 
@@ -226,7 +264,12 @@ async function resetStaleProcessing(campaignId: string) {
 export async function processCampaignTick(
   campaignId: string,
   reservationBudget?: number,
+  opts?: WaTickOptions,
 ): Promise<{ processed: number; done: boolean; skipped?: boolean; reason?: string }> {
+  const clock = opts?.clock ?? REAL_CLOCK;
+  const transport = opts?.transport ?? REAL_TRANSPORT;
+  const onRpc = opts?.instrumentation?.onRpc;
+
   const lease = await acquireLease(campaignId);
   if (!lease) return { processed: 0, done: false, skipped: true };
 
@@ -601,7 +644,7 @@ export async function processCampaignTick(
         return;
       }
 
-      const result = await sendTemplateMessage({
+      const result = await transport.sendTemplateMessage({
         phoneNumberId: conn.phone_number_id!,
         accessToken: conn.access_token!,
         graphVersion: conn.graph_api_version || "v21.0",
@@ -814,10 +857,12 @@ export async function processCampaignTick(
       slotReleasePending = 0;
       lastSlotFlushAt = now;
       try {
+        const t0 = clock.now();
         await supabaseAdmin.rpc("wa_release_slots" as any, {
           _phone_number_id: phoneNumberId,
           _count: count,
         });
+        onRpc?.({ rpc: "wa_release_slots", ms: clock.now() - t0, requested: count, granted: count });
       } catch (err) {
         // se falhar, devolve ao acumulador para tentar de novo depois
         slotReleasePending += count;
@@ -925,7 +970,7 @@ export async function processCampaignTick(
       if (now < nextCampaignPermitAt) {
         rateLimitedBySecond.campaign++;
         const waitMs = Math.max(1, Math.min(nextCampaignPermitAt - now, 50));
-        await new Promise((res) => setTimeout(res, waitMs));
+        await clock.sleep(waitMs);
         continue;
       }
 
@@ -936,6 +981,7 @@ export async function processCampaignTick(
           localQueue.length,
           Math.max(1, Math.ceil(phoneBucketRate / 10)), // ~100ms de rate por RPC = burst cap
         );
+        const tk0 = clock.now();
         const { data: tok } = await supabaseAdmin.rpc("wa_try_consume_tokens" as any, {
           _phone_number_id: phoneNumberId,
           _requested: wantTokens,
@@ -946,6 +992,7 @@ export async function processCampaignTick(
           _burst_cap_ms: 100,
         });
         const row = Array.isArray(tok) ? tok[0] : tok;
+        onRpc?.({ rpc: "wa_try_consume_tokens", ms: clock.now() - tk0, requested: wantTokens, granted: Number(row?.granted ?? 0) });
         if (row?.max_concurrency && row.max_concurrency > 0) {
           maxConc = Math.min(campConc, row.max_concurrency);
         }
@@ -955,18 +1002,19 @@ export async function processCampaignTick(
           rateLimitedBySecond.global++;
           const waitMs = Math.max(1, Math.min(row?.wait_ms ?? 50, 100));
           lastTokenWaitUntil = now + waitMs;
-          await new Promise((res) => setTimeout(res, waitMs));
+          await clock.sleep(waitMs);
           continue;
         }
       } else if (localGlobalTokens < 1) {
         rateLimitedBySecond.global++;
         const waitMs = Math.max(1, lastTokenWaitUntil - now);
-        await new Promise((res) => setTimeout(res, Math.min(waitMs, 50)));
+        await clock.sleep(Math.min(waitMs, 50));
         continue;
       }
 
       // ------ Gate C: vaga de concorrência GLOBAL do número (atômico no PG) ------
       if (localGlobalSlots < 1) {
+        const sl0 = clock.now();
         const { data: slotRow } = await supabaseAdmin.rpc("wa_acquire_slots" as any, {
           _phone_number_id: phoneNumberId,
           _requested: 1,
@@ -974,13 +1022,15 @@ export async function processCampaignTick(
         });
         const s = Array.isArray(slotRow) ? slotRow[0] : slotRow;
         const grantedSlots = Math.max(0, Number(s?.granted ?? 0));
+        onRpc?.({ rpc: "wa_acquire_slots", ms: clock.now() - sl0, requested: 1, granted: grantedSlots });
         localGlobalSlots += grantedSlots;
         if (grantedSlots === 0) {
           rateLimitedBySecond.global_slot++;
-          await new Promise((res) => setTimeout(res, 20));
+          await clock.sleep(20);
           continue;
         }
       }
+
 
       // Despacha: consome 1 token global + 1 slot global + agenda próximo spacing da campanha
       localGlobalTokens -= 1;
