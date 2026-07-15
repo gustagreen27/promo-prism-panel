@@ -174,3 +174,61 @@ export function etaToMax(
     deliveredRatePerSec > 0 ? Math.ceil(remaining / deliveredRatePerSec) : Infinity;
   return { deliveredNeeded, secondsToReach: seconds };
 }
+
+// Distribuição hierárquica: aloca o total por país (usando os % de countries),
+// e em cada país distribui a fatia entre as cidades daquele país (usando % dela).
+// Cidades sem country associado recebem uma fatia residual proporcional aos seus %.
+export function distributeHierarchical(
+  countries: GeneratorCountry[],
+  cities: GeneratorCity[],
+  total: number,
+): { countries: { label: string; count: number }[]; cities: { label: string; count: number }[] } {
+  if (total <= 0 || countries.length === 0) {
+    return {
+      countries: countries.map((c) => ({ label: c.label, count: 0 })),
+      cities: cities.map((c) => ({ label: c.label, count: 0 })),
+    };
+  }
+  const countryDist = distributeByPercent(
+    countries.map((c) => ({ label: c.label, count: 0, percent: c.percent })),
+    total,
+  );
+  const cityCounts = new Map<string, number>();
+  cities.forEach((c) => cityCounts.set(c.label, 0));
+
+  for (let i = 0; i < countries.length; i++) {
+    const country = countries[i];
+    const share = countryDist[i]?.count ?? 0;
+    if (share <= 0) continue;
+    const kids = cities.filter(
+      (c) => (c.country ?? "").trim().toLowerCase() === country.label.trim().toLowerCase(),
+    );
+    if (kids.length === 0) continue;
+    const parts = distributeByPercent(
+      kids.map((c) => ({ label: c.label, count: 0, percent: c.percent })),
+      share,
+    );
+    parts.forEach((p) => {
+      cityCounts.set(p.label, (cityCounts.get(p.label) ?? 0) + p.count);
+    });
+  }
+
+  // Cidades sem country associado — distribuir sobras (total - já alocado).
+  const orphans = cities.filter((c) => !c.country || !c.country.trim());
+  const allocated = Array.from(cityCounts.values()).reduce((a, b) => a + b, 0);
+  const remainder = Math.max(0, total - allocated);
+  if (orphans.length > 0 && remainder > 0) {
+    const parts = distributeByPercent(
+      orphans.map((c) => ({ label: c.label, count: 0, percent: c.percent })),
+      remainder,
+    );
+    parts.forEach((p) => {
+      cityCounts.set(p.label, (cityCounts.get(p.label) ?? 0) + p.count);
+    });
+  }
+
+  return {
+    countries: countryDist,
+    cities: cities.map((c) => ({ label: c.label, count: cityCounts.get(c.label) ?? 0 })),
+  };
+}
