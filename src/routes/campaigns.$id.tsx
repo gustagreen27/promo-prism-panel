@@ -114,6 +114,15 @@ function PublicCampaignReport() {
 
 
 
+  // Novas tabelas de personalização por-disparo e métricas gerais
+  const publicSettings = (data as any)?.publicSettings ?? null;
+  const publicMetrics = ((data as any)?.publicMetrics ?? []) as any[];
+  const publicDispatches = ((data as any)?.publicDispatches ?? []) as any[];
+  const publicSimulations = ((data as any)?.publicSimulations ?? []) as any[];
+  const customEnabled = publicSettings?.enabled === true;
+  const metricsMode = (publicSettings?.metrics_mode ?? "real") as "real" | "replace" | "merge";
+  const customTotals = (publicSettings?.custom_totals ?? {}) as Record<string, number | null>;
+
   const stats = useMemo(() => {
     if (!data) return null;
     const clicks = data.clicks;
@@ -143,16 +152,52 @@ function PublicCampaignReport() {
         .slice(0, 8)
         .map(([label, count]) => ({ label, count }));
     };
+
+    const merge = (real: { label: string; count: number }[], kind: string) => {
+      const customList = publicMetrics
+        .filter((m) => m.kind === kind)
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+        .map((m) => ({ label: m.label, count: m.count }));
+      if (!customEnabled || metricsMode === "real" || customList.length === 0) return real;
+      if (metricsMode === "replace") return customList;
+      // merge: soma por label
+      const map = new Map<string, number>();
+      for (const r of real) map.set(r.label, (map.get(r.label) ?? 0) + r.count);
+      for (const c of customList) map.set(c.label, (map.get(c.label) ?? 0) + c.count);
+      return Array.from(map.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 20)
+        .map(([label, count]) => ({ label, count }));
+    };
+
+    const realCountries = top("country");
+    const realCities = top("city");
+    const realDevices = top("device_type");
+    const realBrowsers = top("browser");
+
+    const countries = merge(realCountries, "country");
+    const cities = merge(realCities, "city");
+    const devices = merge(realDevices, "device");
+    const browsers = merge(realBrowsers, "browser");
+
+    const realTotalClicks = clicks.length;
+    const total =
+      customEnabled && customTotals.clicks != null
+        ? customTotals.clicks
+        : overrides.total_clicks != null
+          ? overrides.total_clicks
+          : realTotalClicks;
+
     return {
-      total: overrides.total_clicks != null ? overrides.total_clicks : clicks.length,
-      countries: overrides.countries && overrides.countries.length > 0 ? overrides.countries : top("country"),
-      cities: overrides.cities && overrides.cities.length > 0 ? overrides.cities : top("city"),
-      devices: overrides.devices && overrides.devices.length > 0 ? overrides.devices : top("device_type"),
-      browsers: top("browser"),
+      total,
+      countries,
+      cities,
+      devices,
+      browsers,
       series,
       hourly,
     };
-  }, [data, overrides]);
+  }, [data, overrides, publicMetrics, customEnabled, metricsMode, customTotals]);
 
 
   if (error) {
