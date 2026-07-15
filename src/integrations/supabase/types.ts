@@ -3877,6 +3877,10 @@ export type Database = {
         Args: { _client_id: string; _project_id: string }
         Returns: number
       }
+      wa_build_recipients: {
+        Args: { _campaign_id: string; _list_id: string }
+        Returns: number
+      }
       wa_campaign_active_routes: {
         Args: { _campaign_id: string }
         Returns: number
