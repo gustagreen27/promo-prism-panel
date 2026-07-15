@@ -409,12 +409,19 @@ type Dispatch = {
   progress: unknown;
 };
 
-function DispatchCard({ d }: { d: Dispatch }) {
+function DispatchCard({
+  d,
+  overrides,
+}: {
+  d: Dispatch;
+  overrides?: { sent?: number; delivered?: number; failed?: number };
+}) {
   const total = d.total_recipients ?? 0;
-  const delivered = d.delivered_count ?? 0;
-  const sent = delivered; // "Enviados" reflete a quantidade de entregues
-  const failed = d.failed_count ?? 0;
-  const percent = total > 0 ? Math.min(100, Math.round((sent / total) * 100)) : 0;
+  const realDelivered = d.delivered_count ?? 0;
+  const delivered = overrides?.delivered ?? realDelivered;
+  const sent = overrides?.sent ?? delivered; // "Enviados" reflete a quantidade de entregues
+  const failed = overrides?.failed ?? (d.failed_count ?? 0);
+  const percent = total > 0 ? Math.min(100, Math.round((sent / Math.max(total, sent)) * 100)) : (sent > 0 ? 100 : 0);
 
   const statusLabel = (() => {
     switch (d.status) {
