@@ -96,10 +96,22 @@ export const listCampaigns = createServerFn({ method: "GET" })
       for (const k of Object.keys(seen)) counts[k].unique = seen[k].size;
     }
 
+    // Enriquecer com flag de personalização pública (novas tabelas)
+    const { data: pubEnabled } = ids.length
+      ? await supabaseAdmin
+          .from("campaign_public_settings")
+          .select("campaign_id, enabled")
+          .in("campaign_id", ids)
+      : { data: [] as { campaign_id: string; enabled: boolean }[] };
+    const pubSet = new Set(
+      (pubEnabled ?? []).filter((r: any) => r.enabled).map((r: any) => r.campaign_id as string),
+    );
+
     return (campaigns ?? []).map((c) => ({
       ...c,
       total_clicks: counts[c.id]?.total ?? 0,
       unique_clicks: counts[c.id]?.unique ?? 0,
+      public_customization_enabled: pubSet.has(c.id as string),
     }));
   });
 
