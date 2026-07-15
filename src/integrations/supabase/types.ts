@@ -4195,6 +4195,23 @@ export type Database = {
           wait_ms: number
         }[]
       }
+      wa_try_consume_tokens: {
+        Args: {
+          _default_conc?: number
+          _default_rate?: number
+          _override_conc?: number
+          _override_rate?: number
+          _phone_number_id: string
+          _requested: number
+        }
+        Returns: {
+          granted: number
+          max_concurrency: number
+          rate_per_second: number
+          tokens_after: number
+          wait_ms: number
+        }[]
+      }
       wallet_available: { Args: { _ws: string }; Returns: number }
       wallet_consume_reservation: {
         Args: { _recipient_id?: string; _reservation_id: string }
