@@ -421,6 +421,7 @@ function PublicCampaignReport() {
     clicksGenerator,
     publicDeliveredTotal,
     realDeliveredTotal,
+    tick,
   ]);
 
 
