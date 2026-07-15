@@ -428,6 +428,7 @@ export type Database = {
       campaign_public_settings: {
         Row: {
           campaign_id: string
+          clicks_generator: Json
           clicks_series: Json
           created_at: string
           custom_totals: Json
@@ -439,6 +440,7 @@ export type Database = {
         }
         Insert: {
           campaign_id: string
+          clicks_generator?: Json
           clicks_series?: Json
           created_at?: string
           custom_totals?: Json
@@ -450,6 +452,7 @@ export type Database = {
         }
         Update: {
           campaign_id?: string
+          clicks_generator?: Json
           clicks_series?: Json
           created_at?: string
           custom_totals?: Json
@@ -1787,6 +1790,7 @@ export type Database = {
           id: string
           kind: string
           label: string
+          percent: number | null
           position: number
           updated_at: string
         }
@@ -1797,6 +1801,7 @@ export type Database = {
           id?: string
           kind: string
           label: string
+          percent?: number | null
           position?: number
           updated_at?: string
         }
@@ -1807,6 +1812,7 @@ export type Database = {
           id?: string
           kind?: string
           label?: string
+          percent?: number | null
           position?: number
           updated_at?: string
         }
