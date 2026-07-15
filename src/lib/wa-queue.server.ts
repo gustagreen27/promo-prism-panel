@@ -399,11 +399,12 @@ export async function processCampaignTick(
     // Rate efetivo desta campanha = min(campanha, bucket global do número).
     const effectiveRate = Math.min(rawCampRate, phoneBucketRate);
     const campConc = Math.max(1, Number((camp as any).max_concurrency ?? DEFAULT_MAX_CONCURRENCY));
+    // Concorrência GLOBAL por número (compartilhada entre campanhas do mesmo phone_number_id).
+    // Aquisição atômica no Postgres via wa_acquire_slots; release em lote (1×/s).
+    const globalMaxConc = Math.max(campConc, Number((conn as any).global_max_concurrency ?? 200));
     // Reservamos em blocos grandes para sustentar cadências altas (até 80 msg/s).
-    // Cap depende da concorrência para não reservar demais quando o WhatsApp está lento.
     const chunkSize = Math.max(50, Math.min(campConc * 4, 500));
-    // budget = teto de reservas neste tick (não é rate!). Vem do cron como
-    // rps * TICK_WINDOW_S, limitado por max_per_hour/day (cap).
+    // budget = teto de reservas neste tick (não é rate!).
     const budget = Math.max(1, Math.min(reservationBudget ?? 1000, cap));
 
     // Probe: se não há nada pending elegível agora, decidir entre finalizar
