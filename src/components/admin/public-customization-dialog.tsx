@@ -1112,6 +1112,7 @@ function ClicksGeneratorCard({
             max_pct: maxPct === "" ? null : Number(maxPct),
             max_clicks: maxClicks === "" ? null : Number(maxClicks),
             refresh_interval_sec: Number(refresh || 10),
+            clicks_per_minute: clicksPerMinute === "" ? null : Number(clicksPerMinute),
             growth,
             use_source: useSource,
             replace_or_add: replaceOrAdd,
