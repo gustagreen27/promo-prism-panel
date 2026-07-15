@@ -139,6 +139,49 @@ function PublicCampaignReport() {
   const metricsMode = (publicSettings?.metrics_mode ?? "real") as "real" | "replace" | "merge";
   const customTotals = (publicSettings?.custom_totals ?? {}) as Record<string, number | null>;
 
+  // Total público de entregues (aplicando overrides por-disparo, se ativos)
+  const publicDeliveredTotal = useMemo(() => {
+    if (!data) return 0;
+    let total = 0;
+    for (const d of data.dispatches ?? []) {
+      const ov = publicDispatches.find((x) => x.wa_campaign_id === d.id);
+      const sim = publicSimulations.find((x) => x.wa_campaign_id === d.id);
+      if (customEnabled && ov?.enabled) {
+        const snap = computeDispatchSnapshot(
+          ov as DispatchOverrideRow,
+          (sim ?? null) as DispatchSimRow | null,
+          {
+            name: d.name ?? null,
+            status: d.status ?? null,
+            total: d.total_recipients ?? 0,
+            sent: d.sent_count ?? 0,
+            delivered: d.delivered_count ?? 0,
+            failed: d.failed_count ?? 0,
+          },
+          new Date(),
+        );
+        total += snap.delivered ?? d.delivered_count ?? 0;
+      } else {
+        total += d.delivered_count ?? 0;
+      }
+    }
+    return total;
+  }, [data, publicDispatches, publicSimulations, customEnabled]);
+
+  const realDeliveredTotal = useMemo(
+    () =>
+      (data?.dispatches ?? []).reduce(
+        (s, d) => s + (d.delivered_count ?? 0),
+        0,
+      ),
+    [data],
+  );
+
+  const clicksGenerator = (publicSettings?.clicks_generator ?? null) as
+    | ClicksGeneratorConfig
+    | null;
+  const generatorActive = !!(customEnabled && clicksGenerator?.enabled);
+
   const stats = useMemo(() => {
     if (!data) return null;
     const clicks = data.clicks;
@@ -150,10 +193,10 @@ function PublicCampaignReport() {
       byDay[key] = (byDay[key] ?? 0) + 1;
       byHour[d.getHours()] += 1;
     }
-    const series = Object.entries(byDay)
+    let series = Object.entries(byDay)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, count]) => ({ date, count }));
-    const hourly = byHour.map((count, hour) => ({
+    let hourly = byHour.map((count, hour) => ({
       hour: `${String(hour).padStart(2, "0")}h`,
       count,
     }));
@@ -173,17 +216,23 @@ function PublicCampaignReport() {
       const customList = publicMetrics
         .filter((m) => m.kind === kind)
         .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-        .map((m) => ({ label: m.label, count: m.count }));
-      if (!customEnabled || metricsMode === "real" || customList.length === 0) return real;
+        .map((m) => ({
+          label: m.label,
+          count: m.count,
+          percent: m.percent ?? null,
+        }));
+      if (!customEnabled || metricsMode === "real" || customList.length === 0)
+        return real.map((r) => ({ ...r, percent: null as number | null }));
       if (metricsMode === "replace") return customList;
       // merge: soma por label
       const map = new Map<string, number>();
       for (const r of real) map.set(r.label, (map.get(r.label) ?? 0) + r.count);
-      for (const c of customList) map.set(c.label, (map.get(c.label) ?? 0) + c.count);
+      for (const c of customList)
+        map.set(c.label, (map.get(c.label) ?? 0) + c.count);
       return Array.from(map.entries())
         .sort((a, b) => b[1] - a[1])
         .slice(0, 20)
-        .map(([label, count]) => ({ label, count }));
+        .map(([label, count]) => ({ label, count, percent: null }));
     };
 
     const realCountries = top("country");
@@ -191,18 +240,53 @@ function PublicCampaignReport() {
     const realDevices = top("device_type");
     const realBrowsers = top("browser");
 
-    const countries = merge(realCountries, "country");
-    const cities = merge(realCities, "city");
-    const devices = merge(realDevices, "device");
-    const browsers = merge(realBrowsers, "browser");
+    let countries = merge(realCountries, "country");
+    let cities = merge(realCities, "city");
+    let devices = merge(realDevices, "device");
+    let browsers = merge(realBrowsers, "browser");
 
     const realTotalClicks = clicks.length;
-    const total =
-      customEnabled && customTotals.clicks != null
-        ? customTotals.clicks
-        : overrides.total_clicks != null
-          ? overrides.total_clicks
-          : realTotalClicks;
+    let total: number;
+    if (generatorActive && clicksGenerator) {
+      const seed = seedFromString(String(data.campaign.id ?? ""));
+      const source =
+        clicksGenerator.use_source === "real"
+          ? realDeliveredTotal
+          : publicDeliveredTotal;
+      const generated = computeGeneratedClicks(source, clicksGenerator, seed);
+      total =
+        clicksGenerator.replace_or_add === "add"
+          ? generated + realTotalClicks
+          : generated;
+    } else if (customEnabled && customTotals.clicks != null) {
+      total = customTotals.clicks;
+    } else if (overrides.total_clicks != null) {
+      total = overrides.total_clicks;
+    } else {
+      total = realTotalClicks;
+    }
+
+    // Distribui o total público entre as categorias por %/peso
+    if (generatorActive) {
+      countries = distributeByPercent(countries, total).map((r) => ({
+        ...r,
+        percent: null,
+      }));
+      cities = distributeByPercent(cities, total).map((r) => ({
+        ...r,
+        percent: null,
+      }));
+      devices = distributeByPercent(devices, total).map((r) => ({
+        ...r,
+        percent: null,
+      }));
+      browsers = distributeByPercent(browsers, total).map((r) => ({
+        ...r,
+        percent: null,
+      }));
+      series = scaleSeries(series, total);
+      hourly = scaleSeries(hourly, total);
+    }
 
     return {
       total,
@@ -213,7 +297,18 @@ function PublicCampaignReport() {
       series,
       hourly,
     };
-  }, [data, overrides, publicMetrics, customEnabled, metricsMode, customTotals]);
+  }, [
+    data,
+    overrides,
+    publicMetrics,
+    customEnabled,
+    metricsMode,
+    customTotals,
+    generatorActive,
+    clicksGenerator,
+    publicDeliveredTotal,
+    realDeliveredTotal,
+  ]);
 
 
   if (error) {
