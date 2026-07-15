@@ -112,13 +112,22 @@ function PublicCampaignReport() {
   }, [simulation]);
   void tick;
 
-
-
   // Novas tabelas de personalização por-disparo e métricas gerais
   const publicSettings = (data as any)?.publicSettings ?? null;
   const publicMetrics = ((data as any)?.publicMetrics ?? []) as any[];
   const publicDispatches = ((data as any)?.publicDispatches ?? []) as any[];
   const publicSimulations = ((data as any)?.publicSimulations ?? []) as any[];
+
+  // Tick para simulações auto por-disparo ativas
+  useEffect(() => {
+    const active = publicSimulations.find((s) => s?.runtime?.active === true && !s?.runtime?.paused_at);
+    if (!active) return;
+    const intervalMs = Math.max(1000, (active.refresh_interval_sec ?? 5) * 1000);
+    const t = setInterval(() => setTick((n) => n + 1), intervalMs);
+    setRefetchMs(Math.max(intervalMs, 5000));
+    return () => clearInterval(t);
+  }, [publicSimulations]);
+
   const customEnabled = publicSettings?.enabled === true;
   const metricsMode = (publicSettings?.metrics_mode ?? "real") as "real" | "replace" | "merge";
   const customTotals = (publicSettings?.custom_totals ?? {}) as Record<string, number | null>;
