@@ -134,10 +134,122 @@ function pickMeta(c: Record<string, unknown>) {
   };
 }
 
+/** Shared click writer used by both `resolveCampaign` (SSR loader) and the
+ *  client fallback `trackClick`. Roda com service role e faz o enrich de
+ *  UA/IP a partir dos headers da request atual. */
+async function recordClick(
+  supabaseAdmin: any,
+  campaign: any,
+  finalUrl: string,
+): Promise<string | null> {
+  const ip = pickIp();
+  const ua = getRequestHeader("user-agent") ?? null;
+  const referer = getRequestHeader("referer") ?? null;
+  const lang = getRequestHeader("accept-language") ?? null;
+
+  let geo: Record<string, unknown> | null = null;
+  if (ip) geo = await lookupIp(ip);
+
+  let parsed: ReturnType<UAParser["getResult"]> | null = null;
+  if (ua) {
+    try { parsed = new UAParser(ua).getResult(); } catch { parsed = null; }
+  }
+
+  const isBot = ua ? BOT_RE.test(ua) : false;
+
+  let isReturning = false;
+  let isDuplicate = false;
+  if (ip) {
+    const sinceReturning = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const sinceDuplicate = new Date(Date.now() - 60 * 1000).toISOString();
+    const { data: prior } = await supabaseAdmin
+      .from("campaign_clicks")
+      .select("id, clicked_at")
+      .eq("campaign_id", campaign.id)
+      .eq("ip", ip)
+      .gte("clicked_at", sinceReturning)
+      .order("clicked_at", { ascending: false })
+      .limit(1);
+    if (prior && prior.length > 0) {
+      isReturning = true;
+      if ((prior[0]?.clicked_at ?? "") >= sinceDuplicate) isDuplicate = true;
+    }
+  }
+
+  const { data: inserted } = await supabaseAdmin
+    .from("campaign_clicks")
+    .insert({
+      campaign_id: campaign.id,
+      workspace_id: campaign.workspace_id ?? null,
+      ip,
+      country: (geo?.country as string) ?? null,
+      country_code: (geo?.countryCode as string) ?? null,
+      region: (geo?.regionName as string) ?? null,
+      city: (geo?.city as string) ?? null,
+      zip: (geo?.zip as string) ?? null,
+      lat: (geo?.lat as number) ?? null,
+      lon: (geo?.lon as number) ?? null,
+      timezone: (geo?.timezone as string) ?? null,
+      isp: (geo?.isp as string) ?? null,
+      org: (geo?.org as string) ?? null,
+      as_name: (geo?.as as string) ?? null,
+      device: parsed?.device?.model ?? parsed?.device?.vendor ?? null,
+      device_type: parsed?.device?.type ?? "desktop",
+      browser: parsed?.browser?.name ?? null,
+      browser_version: parsed?.browser?.version ?? null,
+      os: parsed?.os?.name ?? null,
+      os_version: parsed?.os?.version ?? null,
+      referer,
+      user_agent: ua,
+      language: lang,
+      final_url: finalUrl,
+    } as never)
+    .select("id")
+    .maybeSingle();
+
+  const clickId = (inserted as { id?: string } | null)?.id ?? null;
+
+  const autoEvents: { event_type: EventType; metadata: Record<string, unknown> }[] = [
+    { event_type: "page_view", metadata: { referer, language: lang } },
+  ];
+  const hasUtm = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"].some(
+    (k) => (campaign as Record<string, unknown>)[k],
+  );
+  if (hasUtm) {
+    autoEvents.push({
+      event_type: "utm_detected",
+      metadata: {
+        source: campaign.utm_source,
+        medium: campaign.utm_medium,
+        campaign: campaign.utm_campaign,
+      },
+    });
+  }
+  if (isBot) autoEvents.push({ event_type: "bot_detected", metadata: { ua } });
+  if (isReturning) autoEvents.push({ event_type: "returning_visitor", metadata: {} });
+  if (isDuplicate) autoEvents.push({ event_type: "duplicate_click", metadata: {} });
+
+  try {
+    await supabaseAdmin.from("campaign_events").insert(
+      autoEvents.map((e) => ({
+        campaign_id: campaign.id,
+        click_id: clickId,
+        event_type: e.event_type,
+        metadata: e.metadata,
+      })) as never,
+    );
+  } catch {
+    /* ignore */
+  }
+
+  return clickId;
+}
+
 /**
  * Fast resolver for the public `/$slug` route. Decide o modo de abertura
- * (smart/iframe/redirect/wrapper) e devolve cache de iframe_compatible.
- * NÃO chama IP-API nem grava clique — isso fica em `trackClick`.
+ * (smart/iframe/redirect/wrapper), devolve cache de iframe_compatible e
+ * grava o clique/eventos imediatamente — garantindo métricas mesmo quando
+ * o navegador é redirecionado antes do fetch fire-and-forget completar.
  */
 export const resolveCampaign = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => inputSchema.parse(data))
@@ -164,17 +276,14 @@ export const resolveCampaign = createServerFn({ method: "POST" })
     const finalUrl = applyUtms(campaign.destination_url, campaign);
     const mode = ((campaign as Record<string, unknown>).open_mode as string) || "smart";
 
-    // Para iframe/wrapper já sabemos o caminho. Para smart, usa o cache e,
-    // se ausente, faz HEAD agora e persiste.
     let iframeAllowed = true;
     if (mode === "redirect") {
       iframeAllowed = false;
     } else if (mode === "iframe") {
       iframeAllowed = true;
     } else if (mode === "wrapper") {
-      iframeAllowed = false; // wrapper não usa iframe
+      iframeAllowed = false;
     } else {
-      // smart
       const cached = (campaign as Record<string, unknown>).iframe_compatible;
       if (typeof cached === "boolean") {
         iframeAllowed = cached;
@@ -192,6 +301,15 @@ export const resolveCampaign = createServerFn({ method: "POST" })
           /* ignore */
         }
       }
+    }
+
+    // Grava clique/eventos server-side (mais robusto que o fire-and-forget
+    // do cliente, que era abortado nos modos redirect/wrapper). Nunca falha
+    // a resolução: se o insert der erro, seguimos com o redirect normal.
+    try {
+      await recordClick(supabaseAdmin, campaign, finalUrl);
+    } catch {
+      /* ignore — métricas não devem quebrar o link */
     }
 
     return {
