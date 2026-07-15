@@ -532,26 +532,31 @@ function DispatchCard({
   d,
   overrides,
   snapshot,
+  perSnapshot,
 }: {
   d: Dispatch;
   overrides?: { sent?: number; delivered?: number; failed?: number };
   snapshot?: SimSnapshot | null;
+  perSnapshot?: Snapshot | null;
 }) {
-  // Snapshot da simulação tem prioridade máxima quando o modo é custom/real_plus.
-  const total = snapshot?.total ?? d.total_recipients ?? 0;
+  // Prioridade: perSnapshot (novas tabelas por-disparo) > snapshot (simulação antiga) > overrides > real.
+  const displayName = perSnapshot?.name ?? d.name;
+  const total = perSnapshot?.total ?? snapshot?.total ?? d.total_recipients ?? 0;
   const realDelivered = d.delivered_count ?? 0;
-  const delivered = snapshot?.delivered ?? overrides?.delivered ?? realDelivered;
-  const sent = snapshot?.sent ?? overrides?.sent ?? delivered;
-  const failed = snapshot?.failed ?? overrides?.failed ?? (d.failed_count ?? 0);
-  const percent = snapshot
-    ? snapshot.percent
-    : total > 0
-      ? Math.min(100, Math.round((sent / Math.max(total, sent)) * 100))
-      : sent > 0
-        ? 100
-        : 0;
+  const delivered = perSnapshot?.delivered ?? snapshot?.delivered ?? overrides?.delivered ?? realDelivered;
+  const sent = perSnapshot?.sent ?? snapshot?.sent ?? overrides?.sent ?? delivered;
+  const failed = perSnapshot?.failed ?? snapshot?.failed ?? overrides?.failed ?? (d.failed_count ?? 0);
+  const percent = perSnapshot
+    ? perSnapshot.percent
+    : snapshot
+      ? snapshot.percent
+      : total > 0
+        ? Math.min(100, Math.round((sent / Math.max(total, sent)) * 100))
+        : sent > 0
+          ? 100
+          : 0;
 
-  const statusLabel = snapshot?.status_label ?? (() => {
+  const statusLabel = perSnapshot?.status ?? snapshot?.status_label ?? (() => {
     switch (d.status) {
       case "running": return "Em execução";
       case "scheduled": return "Agendada";
@@ -564,8 +569,9 @@ function DispatchCard({
     }
   })();
 
-  const etaText = snapshot?.eta_at
-    ? new Date(snapshot.eta_at).toLocaleString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+  const etaSource = perSnapshot?.eta_at ?? snapshot?.eta_at ?? null;
+  const etaText = etaSource
+    ? new Date(etaSource).toLocaleString("pt-BR", { hour: "2-digit", minute: "2-digit" })
     : null;
 
   return (
