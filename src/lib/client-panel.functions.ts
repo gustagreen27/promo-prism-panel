@@ -226,66 +226,14 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
     if (error) throw error
 
     if (data.list_id) {
-      const PAGE = 1000
-      const allItems: any[] = []
-      for (let from = 0; ; from += PAGE) {
-        const { data: items, error: itemsErr } = await supabase
-          .from('contact_list_items')
-          .select('contact:contacts(id,phone,opt_in,opt_out,name)')
-          .eq('list_id', data.list_id)
-          .range(from, from + PAGE - 1)
-        if (itemsErr) throw itemsErr
-        allItems.push(...(items ?? []))
-        if (!items || items.length < PAGE) break
-      }
-
-      const contacts = allItems
-        .map((i) => i.contact)
-        .filter((c) => c?.phone && c.opt_in !== false && !c.opt_out)
-
-      const phones = contacts.map((c) => c.phone)
-      let blocked = new Set<string>()
-      if (phones.length) {
-        const blockedPhones: string[] = []
-        for (let i = 0; i < phones.length; i += PAGE) {
-          const { data: optOuts, error: optOutsErr } = await supabase
-            .from('opt_outs')
-            .select('phone')
-            .in('phone', phones.slice(i, i + PAGE))
-          if (optOutsErr) throw optOutsErr
-          blockedPhones.push(...((optOuts ?? []).map((r: any) => r.phone)))
-        }
-        blocked = new Set(blockedPhones)
-      }
-
-      const unique = new Map<string, any>()
-      for (const c of contacts) {
-        const phone = String(c.phone ?? '').replace(/\D/g, '')
-        if (!phone || blocked.has(c.phone) || unique.has(phone)) continue
-        unique.set(phone, c)
-      }
-
-      const recipients = Array.from(unique.values()).map((c: any) => ({
-        campaign_id: campaign.id,
-        contact_id: c.id,
-        phone: String(c.phone ?? '').replace(/\D/g, ''),
-        variables: c.name ? { nome: c.name, name: c.name } : {},
-        status: 'pending' as const,
-      }))
-
-      for (let i = 0; i < recipients.length; i += 1000) {
-        const { error: recErr } = await supabase
-          .from('campaign_recipients')
-          .insert(recipients.slice(i, i + 1000))
-        if (recErr) throw recErr
-      }
-
-      const { error: totalErr } = await supabase
-        .from('wa_campaigns')
-        .update({ total_recipients: recipients.length })
-        .eq('id', campaign.id)
-      if (totalErr) throw totalErr
-      campaign.total_recipients = recipients.length
+      // Enfileira via RPC server-side (INSERT..SELECT em uma única query),
+      // suporta listas de 100k+ sem estourar o tempo do server function.
+      const { data: total, error: buildErr } = await supabase.rpc('wa_build_recipients' as any, {
+        _campaign_id: campaign.id,
+        _list_id: data.list_id,
+      })
+      if (buildErr) throw buildErr
+      campaign.total_recipients = Number(total ?? 0)
     }
 
     return { campaign }
