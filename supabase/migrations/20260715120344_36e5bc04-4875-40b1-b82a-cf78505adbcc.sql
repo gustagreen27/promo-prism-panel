@@ -1,0 +1,1 @@
+UPDATE public.whatsapp_connections SET meta_sync_status='connected', status='ativo', use_global_token=true, updated_at=now() WHERE phone_number_id='1170044246200789';

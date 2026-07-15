@@ -102,7 +102,7 @@ export const preflightCampaign = createServerFn({ method: "POST" })
 
     // Meta API: verify phone number is registered on WhatsApp Cloud API
     if (conn?.phone_number_id) {
-      const effToken = conn.access_token || (conn.use_global_token ? process.env.WHATSAPP_ACCESS_TOKEN : undefined);
+      const effToken = conn.use_global_token ? process.env.WHATSAPP_ACCESS_TOKEN : conn.access_token;
       if (!effToken) {
         checks.push({ key: "phone_registered", label: "Número registrado na WhatsApp Cloud API", ok: false, message: "Sem token de acesso disponível para validar" });
       } else {
@@ -222,7 +222,7 @@ export const startCampaignAsync = createServerFn({ method: "POST" })
     if (!connRow?.phone_number_id) {
       throw new Error("Conexão sem Phone Number ID.");
     }
-    const effToken = connRow.access_token || (connRow.use_global_token ? process.env.WHATSAPP_ACCESS_TOKEN : undefined);
+    const effToken = connRow.use_global_token ? process.env.WHATSAPP_ACCESS_TOKEN : connRow.access_token;
     if (!effToken) {
       throw new Error("Conexão sem token de acesso (nem global nem por conexão).");
     }

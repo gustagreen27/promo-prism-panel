@@ -48,21 +48,24 @@ export async function loadConnectionSecure(
     if (!isMember) throw new Error("Forbidden");
   }
 
-  // Token — sem fallback silencioso
-  let token: string | undefined = conn.access_token ?? undefined;
-  if (!token) {
-    if (!conn.use_global_token) {
-      throw new Error(
-        "Esta conexão não possui um token de acesso configurado. Atualize o token ou marque 'Usar token global' nas configurações da conexão.",
-      );
-    }
+  // Token — se use_global_token=true, preferir o global (ignorar token da conexão, que pode estar expirado)
+  let token: string | undefined;
+  if (conn.use_global_token) {
     token = process.env.WHATSAPP_ACCESS_TOKEN;
     if (!token) {
       throw new Error(
         "Token global (WHATSAPP_ACCESS_TOKEN) não configurado no ambiente.",
       );
     }
+  } else {
+    token = conn.access_token ?? undefined;
+    if (!token) {
+      throw new Error(
+        "Esta conexão não possui um token de acesso configurado. Atualize o token ou marque 'Usar token global' nas configurações da conexão.",
+      );
+    }
   }
+
 
   return { ...(conn as any), access_token: token } as LoadedConnection;
 }
