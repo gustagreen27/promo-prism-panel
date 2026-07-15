@@ -2847,6 +2847,7 @@ export type Database = {
       whatsapp_connections: {
         Row: {
           access_token: string | null
+          adaptive_rate_enabled: boolean
           api_key: string | null
           business_id: string | null
           client_id: string | null
@@ -2864,11 +2865,13 @@ export type Database = {
           display_name_status: string | null
           display_phone: string | null
           embedded_signup_completed_at: string | null
+          global_rate_per_second: number
           graph_api_version: string | null
           id: string
           last_meta_sync_at: string | null
           last_seen_at: string | null
           last_synced_at: string | null
+          maximum_rate_per_second: number
           messaging_limit: string | null
           meta_sync_status: string
           name: string
@@ -2896,6 +2899,7 @@ export type Database = {
         }
         Insert: {
           access_token?: string | null
+          adaptive_rate_enabled?: boolean
           api_key?: string | null
           business_id?: string | null
           client_id?: string | null
@@ -2913,11 +2917,13 @@ export type Database = {
           display_name_status?: string | null
           display_phone?: string | null
           embedded_signup_completed_at?: string | null
+          global_rate_per_second?: number
           graph_api_version?: string | null
           id?: string
           last_meta_sync_at?: string | null
           last_seen_at?: string | null
           last_synced_at?: string | null
+          maximum_rate_per_second?: number
           messaging_limit?: string | null
           meta_sync_status?: string
           name: string
@@ -2945,6 +2951,7 @@ export type Database = {
         }
         Update: {
           access_token?: string | null
+          adaptive_rate_enabled?: boolean
           api_key?: string | null
           business_id?: string | null
           client_id?: string | null
@@ -2962,11 +2969,13 @@ export type Database = {
           display_name_status?: string | null
           display_phone?: string | null
           embedded_signup_completed_at?: string | null
+          global_rate_per_second?: number
           graph_api_version?: string | null
           id?: string
           last_meta_sync_at?: string | null
           last_seen_at?: string | null
           last_synced_at?: string | null
+          maximum_rate_per_second?: number
           messaging_limit?: string | null
           meta_sync_status?: string
           name?: string
