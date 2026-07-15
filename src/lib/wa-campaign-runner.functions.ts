@@ -208,7 +208,24 @@ export const startCampaignAsync = createServerFn({ method: "POST" })
       .eq("campaign_id", data.id);
     if (!recCount) throw new Error("Gere a fila de destinatários antes de iniciar.");
 
+    // Verify phone number is registered on Meta before dispatching (avoids #133010 mid-run).
+    const { data: connRow } = await supabase
+      .from("whatsapp_connections")
+      .select("access_token,phone_number_id,display_phone_number")
+      .eq("id", camp.connection_id)
+      .single();
+    if (!connRow?.phone_number_id || !connRow?.access_token) {
+      throw new Error("Conexão sem Phone Number ID ou token de acesso.");
+    }
+    const reg = await checkPhoneNumberRegistration(connRow.phone_number_id, connRow.access_token);
+    if (!reg.ok) {
+      await supabase.from("wa_campaigns").update({ last_error: reg.reason ?? "Número não registrado" }).eq("id", data.id);
+      await logEvent(supabase, data.id, "preflight_failed", `Validação Meta falhou: ${reg.reason}`, context.userId, { phone_number_id: connRow.phone_number_id, reason: reg.reason, code: reg.code });
+      throw new Error(reg.reason ?? "Número não registrado na WhatsApp Cloud API");
+    }
+
     // Admin async dispatch bypasses stock check.
+
 
 
     await supabase
