@@ -215,6 +215,10 @@ function CampaignRow({
                 </a>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setOverridesOpen(true)}>
+                <Sparkles className="mr-2 h-4 w-4" /> Personalizar página pública
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
                 onClick={async () => {
@@ -230,6 +234,12 @@ function CampaignRow({
           </DropdownMenu>
         </div>
       </div>
+      <PublicOverridesDialog
+        campaignId={c.id}
+        campaignName={c.name}
+        open={overridesOpen}
+        onOpenChange={setOverridesOpen}
+      />
     </Card>
   );
 }
