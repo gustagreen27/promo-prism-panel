@@ -135,6 +135,17 @@ function PublicCampaignReport() {
     return () => clearInterval(t);
   }, [publicSimulations]);
 
+  // Tick para gerador de cliques ativo
+  useEffect(() => {
+    const gen = publicSettings?.clicks_generator;
+    if (!gen?.enabled || publicSettings?.enabled !== true) return;
+    const intervalMs = Math.max(1000, (gen.refresh_interval_sec ?? 10) * 1000);
+    const t = setInterval(() => setTick((n) => n + 1), intervalMs);
+    setRefetchMs((prev) => Math.min(prev, intervalMs));
+    return () => clearInterval(t);
+  }, [publicSettings]);
+
+
   const customEnabled = publicSettings?.enabled === true;
   const metricsMode = (publicSettings?.metrics_mode ?? "real") as "real" | "replace" | "merge";
   const customTotals = (publicSettings?.custom_totals ?? {}) as Record<string, number | null>;
