@@ -32,7 +32,8 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ErrorCard } from "@/components/admin/query-state";
-import { Copy, ExternalLink, Trash2, BarChart3, Pencil, Play, Pause, Info, MoreVertical } from "lucide-react";
+import { Copy, ExternalLink, Trash2, BarChart3, Pencil, Play, Pause, Info, MoreVertical, Sparkles } from "lucide-react";
+import { PublicOverridesDialog } from "@/components/admin/public-overrides-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
