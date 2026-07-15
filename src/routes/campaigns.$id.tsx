@@ -311,15 +311,16 @@ function PublicCampaignReport() {
     }[];
     const genHierarchical = Boolean(clicksGenerator?.hierarchical);
 
-    if (generatorActive) {
+    const hasGenLists =
+      customEnabled && (genCountries.length > 0 || genCities.length > 0);
+
+    if (hasGenLists) {
       if (genCities.length > 0) {
         cities = genCities.map((c) => ({
           label: c.label,
           count: 0,
           percent: c.percent,
         }));
-      } else if (!hasCustom("city") && cities.length <= 1) {
-        cities = DEFAULT_CITIES;
       }
       if (genCountries.length > 0) {
         countries = genCountries.map((c) => ({
@@ -327,9 +328,17 @@ function PublicCampaignReport() {
           count: 0,
           percent: c.percent,
         }));
-      } else if (!hasCustom("country") && countries.length <= 1) {
-        countries = DEFAULT_COUNTRIES;
       }
+    }
+    if (generatorActive) {
+      if (genCities.length === 0 && !hasCustom("city") && cities.length <= 1)
+        cities = DEFAULT_CITIES;
+      if (
+        genCountries.length === 0 &&
+        !hasCustom("country") &&
+        countries.length <= 1
+      )
+        countries = DEFAULT_COUNTRIES;
       if (!hasCustom("device") && devices.length <= 1) devices = DEFAULT_DEVICES;
       if (!hasCustom("browser") && browsers.length <= 1) browsers = DEFAULT_BROWSERS;
     }
@@ -355,8 +364,11 @@ function PublicCampaignReport() {
       total = realTotalClicks;
     }
 
-    // Distribui o total público entre as categorias por %/peso
-    if (generatorActive) {
+    // Distribui o total público entre as categorias por %/peso.
+    // Aplica-se sempre que houver listas manuais (mesmo com gerador desligado),
+    // e sempre quando o gerador está ativo.
+    const shouldDistribute = generatorActive || hasGenLists;
+    if (shouldDistribute) {
       if (genHierarchical && genCountries.length > 0 && genCities.length > 0) {
         const h = distributeHierarchical(genCountries, genCities, total);
         countries = h.countries.map((r) => ({ ...r, percent: null }));
@@ -371,6 +383,8 @@ function PublicCampaignReport() {
           percent: null,
         }));
       }
+    }
+    if (generatorActive) {
       devices = distributeByPercent(devices, total).map((r) => ({
         ...r,
         percent: null,
