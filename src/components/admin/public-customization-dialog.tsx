@@ -975,6 +975,26 @@ function ClicksGeneratorCard({
   const [replaceOrAdd, setReplaceOrAdd] = useState<"replace" | "add">(
     cfg.replace_or_add ?? "replace",
   );
+  const [hierarchical, setHierarchical] = useState<boolean>(
+    cfg.hierarchical ?? false,
+  );
+  const [cityList, setCityList] = useState<
+    { label: string; percent: string; country: string }[]
+  >(
+    (cfg.cities ?? []).map((c) => ({
+      label: c.label,
+      percent: String(c.percent ?? 0),
+      country: c.country ?? "",
+    })),
+  );
+  const [countryList, setCountryList] = useState<
+    { label: string; percent: string }[]
+  >(
+    (cfg.countries ?? []).map((c) => ({
+      label: c.label,
+      percent: String(c.percent ?? 0),
+    })),
+  );
 
   // Total público de entregues (soma dos disparos com override ativo, senão reais).
   const publicDelivered = useMemo(() => {
@@ -1000,6 +1020,20 @@ function ClicksGeneratorCard({
     [waDispatches],
   );
 
+  const parsedCities = cityList
+    .filter((c) => c.label.trim())
+    .map((c) => ({
+      label: c.label.trim(),
+      percent: Number(c.percent || 0),
+      country: c.country.trim() || null,
+    }));
+  const parsedCountries = countryList
+    .filter((c) => c.label.trim())
+    .map((c) => ({
+      label: c.label.trim(),
+      percent: Number(c.percent || 0),
+    }));
+
   const previewCfg: ClicksGeneratorConfig = {
     enabled,
     initial: Number(initial || 0),
@@ -1011,6 +1045,9 @@ function ClicksGeneratorCard({
     growth,
     use_source: useSource,
     replace_or_add: replaceOrAdd,
+    hierarchical,
+    cities: parsedCities,
+    countries: parsedCountries,
   };
   const seed = useMemo(() => seedFromString(campaignId), [campaignId]);
   const sourceDelivered =
@@ -1023,6 +1060,9 @@ function ClicksGeneratorCard({
           computeGeneratedClicks(sourceDelivered * 2, previewCfg, seed),
         )
       : computeGeneratedClicks(sourceDelivered * 2, previewCfg, seed);
+
+  const citySum = parsedCities.reduce((a, b) => a + (b.percent || 0), 0);
+  const countrySum = parsedCountries.reduce((a, b) => a + (b.percent || 0), 0);
 
   const save = useMutation({
     mutationFn: () =>
@@ -1040,6 +1080,9 @@ function ClicksGeneratorCard({
             growth,
             use_source: useSource,
             replace_or_add: replaceOrAdd,
+            hierarchical,
+            cities: parsedCities,
+            countries: parsedCountries,
           },
         },
       }),
@@ -1166,6 +1209,151 @@ function ClicksGeneratorCard({
             entregues param ou a simulação pública está pausada.
             Distribuição por categoria usa os % definidos em cada lista abaixo.
           </p>
+        </div>
+
+        <div className="rounded-md border p-3 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <div className="text-sm font-medium">Distribuição hierárquica</div>
+              <div className="text-[11px] text-muted-foreground">
+                Aloca o total primeiro por país e depois divide entre as
+                cidades daquele país. Evita concentração em uma única cidade.
+              </div>
+            </div>
+            <Switch checked={hierarchical} onCheckedChange={setHierarchical} />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">
+                Países ({countryList.length}) — soma {countrySum.toFixed(1)}%
+              </Label>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() =>
+                  setCountryList((l) => [...l, { label: "", percent: "0" }])
+                }
+              >
+                <Plus className="h-3 w-3 mr-1" /> País
+              </Button>
+            </div>
+            {countryList.map((c, i) => (
+              <div key={i} className="flex gap-2 items-center">
+                <Input
+                  className="h-8"
+                  placeholder="País"
+                  value={c.label}
+                  onChange={(e) =>
+                    setCountryList((l) =>
+                      l.map((it, j) =>
+                        j === i ? { ...it, label: e.target.value } : it,
+                      ),
+                    )
+                  }
+                />
+                <Input
+                  className="h-8 w-24"
+                  type="number"
+                  placeholder="%"
+                  value={c.percent}
+                  onChange={(e) =>
+                    setCountryList((l) =>
+                      l.map((it, j) =>
+                        j === i ? { ...it, percent: e.target.value } : it,
+                      ),
+                    )
+                  }
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  onClick={() =>
+                    setCountryList((l) => l.filter((_, j) => j !== i))
+                  }
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">
+                Cidades ({cityList.length}) — soma {citySum.toFixed(1)}%
+              </Label>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() =>
+                  setCityList((l) => [
+                    ...l,
+                    { label: "", percent: "0", country: "" },
+                  ])
+                }
+              >
+                <Plus className="h-3 w-3 mr-1" /> Cidade
+              </Button>
+            </div>
+            {cityList.map((c, i) => (
+              <div key={i} className="flex gap-2 items-center">
+                <Input
+                  className="h-8"
+                  placeholder="Cidade"
+                  value={c.label}
+                  onChange={(e) =>
+                    setCityList((l) =>
+                      l.map((it, j) =>
+                        j === i ? { ...it, label: e.target.value } : it,
+                      ),
+                    )
+                  }
+                />
+                <Input
+                  className="h-8 w-32"
+                  placeholder="País (opcional)"
+                  value={c.country}
+                  onChange={(e) =>
+                    setCityList((l) =>
+                      l.map((it, j) =>
+                        j === i ? { ...it, country: e.target.value } : it,
+                      ),
+                    )
+                  }
+                />
+                <Input
+                  className="h-8 w-24"
+                  type="number"
+                  placeholder="%"
+                  value={c.percent}
+                  onChange={(e) =>
+                    setCityList((l) =>
+                      l.map((it, j) =>
+                        j === i ? { ...it, percent: e.target.value } : it,
+                      ),
+                    )
+                  }
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => setCityList((l) => l.filter((_, j) => j !== i))}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+            ))}
+            <p className="text-[11px] text-muted-foreground">
+              Quando a distribuição hierárquica está ativa, o campo "País" da
+              cidade define a qual país ela pertence (case-insensitive).
+              Cidades sem país recebem sobras proporcionais.
+            </p>
+          </div>
         </div>
 
         <div>

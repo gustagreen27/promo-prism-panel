@@ -107,6 +107,26 @@ const settingsPatchSchema = z.object({
       growth: z.enum(["linear", "random"]).default("random"),
       use_source: z.enum(["real", "public"]).default("public"),
       replace_or_add: z.enum(["replace", "add"]).default("replace"),
+      cities: z
+        .array(
+          z.object({
+            label: z.string().trim().min(1).max(120),
+            percent: z.number().min(0).max(100),
+            country: z.string().trim().max(120).nullable().optional(),
+          }),
+        )
+        .max(200)
+        .optional(),
+      countries: z
+        .array(
+          z.object({
+            label: z.string().trim().min(1).max(120),
+            percent: z.number().min(0).max(100),
+          }),
+        )
+        .max(50)
+        .optional(),
+      hierarchical: z.boolean().optional(),
     })
     .optional(),
 });

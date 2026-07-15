@@ -18,6 +18,7 @@ import {
 import {
   computeGeneratedClicks,
   distributeByPercent,
+  distributeHierarchical,
   scaleSeries,
   seedFromString,
   type ClicksGeneratorConfig,
@@ -297,9 +298,38 @@ function PublicCampaignReport() {
     ];
     const hasCustom = (kind: string) =>
       publicMetrics.some((m) => m.kind === kind);
+    // Listas manuais definidas dentro do próprio gerador têm prioridade
+    // sobre defaults e overrides "kind=city/country".
+    const genCities = (clicksGenerator?.cities ?? []) as {
+      label: string;
+      percent: number;
+      country?: string | null;
+    }[];
+    const genCountries = (clicksGenerator?.countries ?? []) as {
+      label: string;
+      percent: number;
+    }[];
+    const genHierarchical = Boolean(clicksGenerator?.hierarchical);
+
     if (generatorActive) {
-      if (!hasCustom("city") && cities.length <= 1) cities = DEFAULT_CITIES;
-      if (!hasCustom("country") && countries.length <= 1) countries = DEFAULT_COUNTRIES;
+      if (genCities.length > 0) {
+        cities = genCities.map((c) => ({
+          label: c.label,
+          count: 0,
+          percent: c.percent,
+        }));
+      } else if (!hasCustom("city") && cities.length <= 1) {
+        cities = DEFAULT_CITIES;
+      }
+      if (genCountries.length > 0) {
+        countries = genCountries.map((c) => ({
+          label: c.label,
+          count: 0,
+          percent: c.percent,
+        }));
+      } else if (!hasCustom("country") && countries.length <= 1) {
+        countries = DEFAULT_COUNTRIES;
+      }
       if (!hasCustom("device") && devices.length <= 1) devices = DEFAULT_DEVICES;
       if (!hasCustom("browser") && browsers.length <= 1) browsers = DEFAULT_BROWSERS;
     }
@@ -327,14 +357,20 @@ function PublicCampaignReport() {
 
     // Distribui o total público entre as categorias por %/peso
     if (generatorActive) {
-      countries = distributeByPercent(countries, total).map((r) => ({
-        ...r,
-        percent: null,
-      }));
-      cities = distributeByPercent(cities, total).map((r) => ({
-        ...r,
-        percent: null,
-      }));
+      if (genHierarchical && genCountries.length > 0 && genCities.length > 0) {
+        const h = distributeHierarchical(genCountries, genCities, total);
+        countries = h.countries.map((r) => ({ ...r, percent: null }));
+        cities = h.cities.map((r) => ({ ...r, percent: null }));
+      } else {
+        countries = distributeByPercent(countries, total).map((r) => ({
+          ...r,
+          percent: null,
+        }));
+        cities = distributeByPercent(cities, total).map((r) => ({
+          ...r,
+          percent: null,
+        }));
+      }
       devices = distributeByPercent(devices, total).map((r) => ({
         ...r,
         percent: null,
