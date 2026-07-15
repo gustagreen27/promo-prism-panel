@@ -305,6 +305,15 @@ function GeneralTab({
         </CardContent>
       </Card>
 
+      <ClicksGeneratorCard
+        campaignId={campaignId}
+        settings={data.settings}
+        waDispatches={data.waDispatches ?? []}
+        publicDispatches={data.dispatches ?? []}
+        publicSimulations={data.simulations ?? []}
+        onChange={onChange}
+      />
+
       {(["country", "city", "device", "browser"] as Kind[]).map((kind) => (
         <MetricListEditor
           key={kind}
