@@ -380,6 +380,7 @@ export type Database = {
           mode: string
           public_name: string | null
           public_status: string | null
+          status_map: Json
           updated_at: string
           updated_by: string | null
           wa_campaign_id: string
@@ -392,6 +393,7 @@ export type Database = {
           mode?: string
           public_name?: string | null
           public_status?: string | null
+          status_map?: Json
           updated_at?: string
           updated_by?: string | null
           wa_campaign_id: string
@@ -404,6 +406,7 @@ export type Database = {
           mode?: string
           public_name?: string | null
           public_status?: string | null
+          status_map?: Json
           updated_at?: string
           updated_by?: string | null
           wa_campaign_id?: string
@@ -435,6 +438,7 @@ export type Database = {
           enabled: boolean
           hourly_series: Json
           metrics_mode: string
+          status_map: Json
           updated_at: string
           updated_by: string | null
         }
@@ -447,6 +451,7 @@ export type Database = {
           enabled?: boolean
           hourly_series?: Json
           metrics_mode?: string
+          status_map?: Json
           updated_at?: string
           updated_by?: string | null
         }
@@ -459,6 +464,7 @@ export type Database = {
           enabled?: boolean
           hourly_series?: Json
           metrics_mode?: string
+          status_map?: Json
           updated_at?: string
           updated_by?: string | null
         }

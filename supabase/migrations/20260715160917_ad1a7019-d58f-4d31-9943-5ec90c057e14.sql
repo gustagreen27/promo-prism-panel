@@ -1,0 +1,2 @@
+ALTER TABLE public.campaign_public_settings ADD COLUMN IF NOT EXISTS status_map jsonb NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE public.campaign_public_dispatches ADD COLUMN IF NOT EXISTS status_map jsonb NOT NULL DEFAULT '{}'::jsonb;
