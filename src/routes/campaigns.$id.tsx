@@ -61,7 +61,7 @@ function PublicCampaignReport() {
     queryKey: ["public-campaign-report", id],
     queryFn: () => fn({ data: { id } }),
     retry: false,
-    refetchInterval: 5000,
+    refetchInterval: 15000,
     refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
     refetchOnMount: "always",
@@ -254,7 +254,7 @@ function PublicCampaignReport() {
             <CardHeader>
               <CardTitle>Histórico de disparos</CardTitle>
               <CardDescription>
-                Números para os quais as mensagens foram enviadas (parcialmente ocultados por privacidade).
+                Amostra dos 100 destinatários mais recentes por disparo (parcialmente ocultados por privacidade).
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
