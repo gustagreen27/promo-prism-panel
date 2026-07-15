@@ -388,8 +388,13 @@ function MetricListEditor({
     onError: (e) => toast.error((e as Error).message),
   });
   const upd = useMutation({
-    mutationFn: (v: { id: string; label: string; count: number; position: number }) =>
-      upsertFn({ data: { ...v, campaignId, kind } }),
+    mutationFn: (v: {
+      id: string;
+      label: string;
+      count: number;
+      position: number;
+      percent?: number | null;
+    }) => upsertFn({ data: { ...v, campaignId, kind } }),
     onSuccess: onChange,
     onError: (e) => toast.error((e as Error).message),
   });
