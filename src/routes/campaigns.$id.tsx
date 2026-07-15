@@ -351,7 +351,11 @@ function PublicCampaignReport() {
         clicksGenerator.use_source === "real"
           ? realDeliveredTotal
           : publicDeliveredTotal;
-      const generated = computeGeneratedClicks(source, clicksGenerator, seed);
+      const startRef = (data.campaign as any).created_at
+        ? new Date((data.campaign as any).created_at as string).getTime()
+        : Date.now();
+      const elapsedMs = Math.max(0, Date.now() - startRef);
+      const generated = computeGeneratedClicks(source, clicksGenerator, seed, elapsedMs);
       total =
         clicksGenerator.replace_or_add === "add"
           ? generated + realTotalClicks
