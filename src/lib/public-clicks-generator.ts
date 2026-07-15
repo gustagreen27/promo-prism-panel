@@ -44,6 +44,7 @@ export function computeGeneratedClicks(
   delivered: number,
   cfg: ClicksGeneratorConfig,
   campaignSeed: number,
+  elapsedMs: number = 0,
 ): number {
   const rate = Math.max(0, cfg.rate ?? 0);
   const minPct = cfg.min_pct != null ? Math.max(0, cfg.min_pct) : rate;
@@ -51,11 +52,15 @@ export function computeGeneratedClicks(
   const initial = Math.max(0, cfg.initial ?? 0);
   const growth = cfg.growth ?? "random";
   const bucketSize = 100;
+  const perMinute = Math.max(0, cfg.clicks_per_minute ?? 0);
+  const timeBonus = perMinute > 0
+    ? Math.floor((Math.max(0, elapsedMs) / 60000) * perMinute)
+    : 0;
 
   const d = Math.max(0, Math.floor(delivered));
   if (d === 0) {
-    const base = initial;
-    return capAndDeliverBound(base, d, cfg);
+    const base = initial + timeBonus;
+    return capAndDeliverBound(base, d, cfg, timeBonus);
   }
 
   const buckets = Math.floor(d / bucketSize);
@@ -74,18 +79,22 @@ export function computeGeneratedClicks(
         : minPct + (maxPct - minPct) * rnd();
     clicks += (remainder * r) / 100;
   }
-  return capAndDeliverBound(Math.round(clicks), d, cfg);
+  clicks += timeBonus;
+  return capAndDeliverBound(Math.round(clicks), d, cfg, timeBonus);
 }
 
 function capAndDeliverBound(
   raw: number,
   delivered: number,
   cfg: ClicksGeneratorConfig,
+  timeBonus: number = 0,
 ): number {
   let v = Math.max(0, raw);
   if (cfg.max_clicks != null) v = Math.min(v, Math.max(0, cfg.max_clicks));
-  // Nunca ultrapassar entregues (o total configurado, se maior, prevalece só via max_clicks).
-  v = Math.min(v, delivered + Math.max(0, cfg.initial ?? 0));
+  // Nunca ultrapassar entregues + iniciais (mais o bônus por tempo,
+  // que é independente dos entregues).
+  const deliveredCap = delivered + Math.max(0, cfg.initial ?? 0) + Math.max(0, timeBonus);
+  v = Math.min(v, deliveredCap);
   return v;
 }
 
