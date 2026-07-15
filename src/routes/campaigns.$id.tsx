@@ -732,6 +732,20 @@ function recipientStatusLabel(status: string | null): string {
   }
 }
 
+// Aplica mapeamento de status somente na apresentação pública.
+// Prioridade: dispatch → campanha → status real.
+function applyStatusMap(
+  original: string | null,
+  perDispatch?: Record<string, string | null>,
+  perCampaign?: Record<string, string | null>,
+): string | null {
+  if (!original) return original;
+  const dv = perDispatch?.[original];
+  if (dv !== undefined) return dv ?? original;
+  const cv = perCampaign?.[original];
+  if (cv !== undefined) return cv ?? original;
+  return original;
+
 type Dispatch = {
   id: string;
   name: string | null;
