@@ -9,6 +9,12 @@ import {
   type SimSnapshot,
   type SimulationConfig,
 } from "@/lib/public-simulation";
+import {
+  computeDispatchSnapshot,
+  type DispatchOverrideRow,
+  type DispatchSimRow,
+  type Snapshot,
+} from "@/lib/dispatch-simulation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
