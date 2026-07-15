@@ -15,6 +15,13 @@ import {
   type DispatchSimRow,
   type Snapshot,
 } from "@/lib/dispatch-simulation";
+import {
+  computeGeneratedClicks,
+  distributeByPercent,
+  scaleSeries,
+  seedFromString,
+  type ClicksGeneratorConfig,
+} from "@/lib/public-clicks-generator";
 import { Button } from "@/components/ui/button";
 import {
   Card,
