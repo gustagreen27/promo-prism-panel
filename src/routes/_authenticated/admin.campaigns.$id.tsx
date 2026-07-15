@@ -160,8 +160,18 @@ function CampaignDetail() {
               <Pencil className="mr-1 h-4 w-4" /> Editar
             </Link>
           </Button>
+          <Button variant="default" size="sm" onClick={() => setOverridesOpen(true)}>
+            <Sparkles className="mr-1 h-4 w-4" /> Personalizar página pública
+          </Button>
         </div>
       </div>
+
+      <PublicOverridesDialog
+        campaignId={data.campaign.id}
+        campaignName={data.campaign.name ?? "Campanha"}
+        open={overridesOpen}
+        onOpenChange={setOverridesOpen}
+      />
 
       <CampaignAnalytics campaignId={id} hours={24} />
 
