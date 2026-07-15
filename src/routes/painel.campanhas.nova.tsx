@@ -62,6 +62,7 @@ function Page() {
 type NumberRow = {
   id: string; display_name: string; phone_masked: string; status: string;
   phone_display?: string | null; phone_country_code?: string | null;
+  phone_number_id?: string | null; waba_id?: string | null;
   quality_rating?: string | null; messaging_limit_tier?: string | null; daily_cap?: number | null;
 };
 type TemplateRow = {
@@ -719,7 +720,7 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                       <option value="">— Selecione um número —</option>
                       {numbers.map((n) => (
                         <option key={n.id} value={n.id}>
-                          {(n.phone_display ?? n.phone_masked)} — {n.display_name}
+                          {(n.phone_display ?? n.phone_masked)} — {n.display_name}{n.phone_number_id ? ` · ID ${n.phone_number_id}` : ""}
                         </option>
                       ))}
                     </select>
