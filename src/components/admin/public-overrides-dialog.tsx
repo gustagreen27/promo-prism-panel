@@ -143,7 +143,7 @@ export function PublicOverridesDialog({
     }
   };
 
-  const handleControl = async (action: Parameters<typeof control>[0]["data"]["action"]) => {
+  const handleControl = async (action: "start" | "pause" | "resume" | "restart" | "sync_real" | "disable") => {
     setSaving(true);
     try {
       const res = await control({ data: { id: campaignId, action } });
