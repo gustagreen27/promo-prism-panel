@@ -68,6 +68,15 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
           return new Response("forbidden", { status: 403 });
         }
 
+        // 0) token via variável de ambiente (WHATSAPP_VERIFY_TOKEN)
+        const envToken = process.env.WHATSAPP_VERIFY_TOKEN;
+        if (envToken && envToken === token) {
+          return new Response(challenge ?? "", {
+            status: 200,
+            headers: { "content-type": "text/plain; charset=utf-8" },
+          });
+        }
+
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
         // 1) token global (settings.whatsapp_webhook.verify_token)
