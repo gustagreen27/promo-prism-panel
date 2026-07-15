@@ -129,6 +129,7 @@ const settingsPatchSchema = z.object({
       hierarchical: z.boolean().optional(),
     })
     .optional(),
+  status_map: z.record(z.string(), z.string().nullable()).optional(),
 });
 
 export const upsertCampaignPublicSettings = createServerFn({ method: "POST" })
@@ -284,6 +285,7 @@ const dispatchPatchSchema = z.object({
       updated_at: z.string().nullable().optional(),
     })
     .optional(),
+  status_map: z.record(z.string(), z.string().nullable()).optional(),
 });
 
 export const upsertPublicDispatch = createServerFn({ method: "POST" })
