@@ -124,8 +124,9 @@ function ListView({ onNew }: { onNew: () => void }) {
     };
     const channel = supabase
       .channel("admin-disparos-realtime")
+      // Frente 4: NÃO ouvir campaign_recipients — durante um disparo de 1M isso dispara 1M eventos.
+      // wa_campaigns já é atualizado por trigger com os totais (sent/delivered/failed/progress).
       .on("postgres_changes", { event: "*", schema: "public", table: "wa_campaigns" }, schedule)
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "campaign_recipients" }, schedule)
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [qc]);
