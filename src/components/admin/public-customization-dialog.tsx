@@ -27,6 +27,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+  AlertTriangle,
   ArrowDown,
   ArrowUp,
   Copy,
@@ -131,8 +132,14 @@ export function PublicCustomizationDialog({
               campaignId={campaignId}
               slug={campaignSlug}
               enabled={data.settings?.enabled ?? false}
+              attention={
+                !(data.settings?.enabled ?? false) &&
+                (((data.settings as any)?.clicks_generator?.countries?.length ?? 0) > 0 ||
+                  ((data.settings as any)?.clicks_generator?.cities?.length ?? 0) > 0)
+              }
               onChange={invalidate}
             />
+
             <Tabs defaultValue="general" className="flex-1 min-h-0 flex flex-col">
               <TabsList>
                 <TabsTrigger value="general">Métricas gerais</TabsTrigger>
@@ -169,19 +176,22 @@ function HeaderActions({
   campaignId,
   slug,
   enabled,
+  attention = false,
   onChange,
 }: {
   campaignId: string;
   slug?: string;
   enabled: boolean;
+  attention?: boolean;
   onChange: () => void;
 }) {
   const upsertFn = useServerFn(upsertCampaignPublicSettings);
   const clearFn = useServerFn(clearAllPublicOverrides);
   const toggle = useMutation({
     mutationFn: (v: boolean) => upsertFn({ data: { campaignId, enabled: v } }),
-    onSuccess: () => {
-      toast.success("Personalização atualizada");
+    onSuccess: (_d, v) => {
+      if (v) toast.success("Personalização pública ativada e distribuição aplicada com sucesso.");
+      else toast.success("Personalização atualizada");
       onChange();
     },
     onError: (e) => toast.error((e as Error).message),
@@ -196,13 +206,20 @@ function HeaderActions({
   });
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-md border bg-muted/30 p-3">
+    <div
+      className={
+        "flex flex-wrap items-center gap-3 rounded-md border bg-muted/30 p-3 " +
+        (attention ? "border-amber-500 ring-2 ring-amber-500/40" : "")
+      }
+    >
       <div className="flex items-center gap-2">
         <Switch checked={enabled} onCheckedChange={(v) => toggle.mutate(v)} />
-        <span className="text-sm font-medium">
+        <span className="text-sm font-medium flex items-center gap-1">
+          {attention && <AlertTriangle className="h-4 w-4 text-amber-500" />}
           {enabled ? "Personalização ativa" : "Personalização desativada"}
         </span>
       </div>
+
       <div className="ml-auto flex items-center gap-2">
         {slug && (
           <Button variant="outline" size="sm" asChild>
@@ -313,11 +330,13 @@ function GeneralTab({
       <ClicksGeneratorCard
         campaignId={campaignId}
         settings={data.settings}
+        masterEnabled={data.settings?.enabled ?? false}
         waDispatches={data.waDispatches ?? []}
         publicDispatches={data.dispatches ?? []}
         publicSimulations={data.simulations ?? []}
         onChange={onChange}
       />
+
 
       <StatusMapCard
         campaignId={campaignId}
@@ -944,6 +963,7 @@ function AutoSimForm({
 function ClicksGeneratorCard({
   campaignId,
   settings,
+  masterEnabled,
   waDispatches,
   publicDispatches,
   publicSimulations,
@@ -951,12 +971,14 @@ function ClicksGeneratorCard({
 }: {
   campaignId: string;
   settings: any;
+  masterEnabled: boolean;
   waDispatches: any[];
   publicDispatches: any[];
   publicSimulations: any[];
   onChange: () => void;
 }) {
   const upsertFn = useServerFn(upsertCampaignPublicSettings);
+
   const cfg = (settings?.clicks_generator ?? {}) as ClicksGeneratorConfig;
 
   const [enabled, setEnabled] = useState<boolean>(cfg.enabled ?? false);
@@ -1101,21 +1123,60 @@ function ClicksGeneratorCard({
     onError: (e) => toast.error((e as Error).message),
   });
 
+  const needsActivation =
+    !masterEnabled && (parsedCountries.length > 0 || parsedCities.length > 0);
+
+  const activateFn = useServerFn(upsertCampaignPublicSettings);
+  const activate = useMutation({
+    mutationFn: () => activateFn({ data: { campaignId, enabled: true } }),
+    onSuccess: () => {
+      toast.success("Personalização pública ativada e distribuição aplicada com sucesso.");
+      onChange();
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
   return (
-    <Card>
+    <Card className={needsActivation ? "border-amber-500 ring-2 ring-amber-500/40" : ""}>
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2">
+          {needsActivation && <AlertTriangle className="h-4 w-4 text-amber-500" />}
           Gerar cliques com base nos entregues
           {enabled && <Badge variant="secondary">Ativo</Badge>}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
+        {needsActivation && (
+          <div className="rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="font-medium">Personalização desativada</div>
+                <p className="text-xs text-muted-foreground">
+                  As distribuições personalizadas de países e cidades estão preenchidas,
+                  mas ainda não serão exibidas na página pública. Ative
+                  “Ativar personalização” e salve as alterações para aplicar esses dados.
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => activate.mutate()}
+                  disabled={activate.isPending}
+                >
+                  Ativar personalização
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center gap-2">
           <Switch checked={enabled} onCheckedChange={setEnabled} />
           <span className="text-sm">
             {enabled ? "Cliques públicos derivados dos entregues" : "Desativado"}
           </span>
         </div>
+
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <NumField label="Cliques iniciais" value={initial} onChange={setInitial} />
@@ -1267,6 +1328,14 @@ function ClicksGeneratorCard({
                   { label: "Assunção", percent: "1", country: "Paraguai" },
                 ]);
                 setHierarchical(true);
+                if (!masterEnabled) {
+                  toast.warning(
+                    "Preset aplicado. Ative “Personalização” e salve para exibir na página pública.",
+                  );
+                } else {
+                  toast.success("Preset Brasil aplicado. Salve para publicar.");
+                }
+
               }}
             >
               <Sparkles className="h-3 w-3 mr-1" /> Aplicar preset Brasil
