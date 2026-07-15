@@ -25,6 +25,7 @@ import {
   Phone, MessageSquareText, Save, Clock, Signal, Wifi, WifiOff, Loader2,
   Send, Pause, Play, Ban, XOctagon, Timer, Users2, Activity, PhoneCall, Sliders,
   BarChart3, Image as ImageIcon, Video as VideoIcon, FileText, Upload, X, Link2,
+  Info, Zap,
 } from "lucide-react";
 import { Stepper, type WizardStep } from "@/components/campaigns/wizard/Stepper";
 import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
@@ -92,7 +93,13 @@ const STEPS: WizardStep[] = [
 // em wa_campaigns: rate_per_second, max_concurrency, target_per_hour,
 // scheduled_pause_enabled, pause_every_messages, pause_duration_seconds.
 // ─────────────────────────────────────────────────────────────────
-type DispatchPreset = "conservative" | "target_20k" | "custom";
+type DispatchPreset =
+  | "economico"
+  | "intermediario"
+  | "alto_volume"
+  | "muito_alto"
+  | "maximo"
+  | "custom";
 type DispatchConfig = {
   preset: DispatchPreset;
   target_per_hour: number;      // meta operacional (mensagens/h)
@@ -103,13 +110,27 @@ type DispatchConfig = {
   pause_duration_seconds: number; // usado apenas se scheduled_pause_enabled
 };
 
-const DISPATCH_PRESETS: Record<Exclude<DispatchPreset, "custom">, Omit<DispatchConfig, "preset" | "scheduled_pause_enabled" | "pause_every_messages" | "pause_duration_seconds">> = {
-  conservative: { target_per_hour: 20_000, rate_per_second: 6, max_concurrency: 15 },
-  target_20k:   { target_per_hour: 20_000, rate_per_second: 7, max_concurrency: 15 },
+type PresetSpec = {
+  label: string;
+  target_per_hour: number;
+  rate_per_second: number;
+  max_concurrency: number;
 };
 
-function defaultDispatch(preset: DispatchPreset = "target_20k"): DispatchConfig {
-  const p = preset === "custom" ? DISPATCH_PRESETS.target_20k : DISPATCH_PRESETS[preset];
+const DISPATCH_PRESETS: Record<Exclude<DispatchPreset, "custom">, PresetSpec> = {
+  economico:      { label: "Econômico — 20 mil/h — 7 msg/s",     target_per_hour: 20_000,  rate_per_second: 7,  max_concurrency: 15  },
+  intermediario:  { label: "Intermediário — 50 mil/h — 15 msg/s", target_per_hour: 50_000,  rate_per_second: 15, max_concurrency: 40  },
+  alto_volume:    { label: "Alto volume — 100 mil/h — 30 msg/s",  target_per_hour: 100_000, rate_per_second: 30, max_concurrency: 80  },
+  muito_alto:     { label: "Muito alto — 200 mil/h — 60 msg/s",   target_per_hour: 200_000, rate_per_second: 60, max_concurrency: 120 },
+  maximo:         { label: "Máximo — 288 mil/h — 80 msg/s",       target_per_hour: 288_000, rate_per_second: 80, max_concurrency: 160 },
+};
+
+const MAX_RATE_PER_SECOND = 80;
+const MAX_CONCURRENCY_UI = 300;
+const MAX_TARGET_PER_HOUR = 288_000;
+
+function defaultDispatch(preset: DispatchPreset = "economico"): DispatchConfig {
+  const p = preset === "custom" ? DISPATCH_PRESETS.economico : DISPATCH_PRESETS[preset];
   return {
     preset,
     target_per_hour: p.target_per_hour,
@@ -153,7 +174,7 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   const [connectionId, setConnectionId] = useState<string>("");
   const [templateId, setTemplateId] = useState<string>("");
   const [contactSel, setContactSel] = useState<ContactSelValue | null>(null);
-  const [dispatch, setDispatch] = useState<DispatchConfig>(defaultDispatch("target_20k"));
+  const [dispatch, setDispatch] = useState<DispatchConfig>(defaultDispatch("economico"));
   const [mode, setMode] = useState<Mode>(scheduled_for ? "schedule" : "now");
   const [scheduledAt, setScheduledAt] = useState<string>(toLocal(scheduled_for));
   const [timezone, setTimezone] = useState<string>(Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo");
@@ -1482,6 +1503,7 @@ function DispatchConfigCard({
 }) {
   const patch = (p: Partial<DispatchConfig>) =>
     onChange((prev) => ({ ...prev, ...p }));
+
   const setPreset = (preset: DispatchPreset) => {
     if (preset === "custom") {
       onChange((prev) => ({ ...prev, preset }));
@@ -1494,29 +1516,34 @@ function DispatchConfigCard({
       target_per_hour: p.target_per_hour,
       rate_per_second: p.rate_per_second,
       max_concurrency: p.max_concurrency,
-      // Presets vêm com pausa programada desativada por padrão
       scheduled_pause_enabled: false,
     }));
   };
 
   const isCustom = value.preset === "custom";
-  const intervalMs = Math.round(1000 / Math.max(1, value.rate_per_second));
-  const nominalPerHour = value.rate_per_second * 3600;
+  const rate = Math.max(1, value.rate_per_second);
+  const intervalMsRaw = 1000 / rate;
+  const intervalMsLabel = Number.isInteger(intervalMsRaw)
+    ? `${intervalMsRaw} ms`
+    : `${intervalMsRaw.toFixed(1).replace(".", ",")} ms`;
+  const nominalPerHour = rate * 3600;
+  const targetExceedsNominal = value.target_per_hour > nominalPerHour;
+  const concurrencyLow = value.max_concurrency < value.rate_per_second;
+  const isMaxPreset = value.preset === "maximo" || value.rate_per_second >= MAX_RATE_PER_SECOND;
 
   const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
   const updRate = (v: number) => {
-    const rate = clamp(Math.round(v), 1, 80);
-    // Ao editar rate, mantém a meta operacional coerente
-    patch({ preset: "custom", rate_per_second: rate });
+    const r = clamp(Math.round(v), 1, MAX_RATE_PER_SECOND);
+    patch({ preset: "custom", rate_per_second: r });
   };
   const updTarget = (v: number) => {
-    const t = clamp(Math.round(v), 100, 200_000);
-    // Deriva rate necessário a partir da meta; usuário sempre pode ajustar rate depois
-    const derived = Math.max(1, Math.ceil(t / 3600));
-    patch({ preset: "custom", target_per_hour: t, rate_per_second: clamp(derived, 1, 80) });
+    const t = clamp(Math.round(v), 100, MAX_TARGET_PER_HOUR);
+    // recommendedRate = ceil(hourlyTarget / 3600), limitado ao máximo permitido
+    const recommendedRate = clamp(Math.ceil(t / 3600), 1, MAX_RATE_PER_SECOND);
+    patch({ preset: "custom", target_per_hour: t, rate_per_second: recommendedRate });
   };
   const updConc = (v: number) => {
-    const c = clamp(Math.round(v), 1, 100);
+    const c = clamp(Math.round(v), 1, MAX_CONCURRENCY_UI);
     patch({ preset: "custom", max_concurrency: c });
   };
   const updPauseEvery = (v: number) => patch({ pause_every_messages: clamp(Math.round(v), 1, 1_000_000) });
@@ -1529,8 +1556,8 @@ function DispatchConfigCard({
           <Sliders className="h-4 w-4" /> Configurações de Disparo
         </div>
         <div className="text-xs text-muted-foreground">
-          Escolha a velocidade e o comportamento da campanha. O intervalo é calculado
-          automaticamente pelo rate limiter global do número.
+          Escolha a velocidade e o comportamento da campanha. A velocidade é controlada
+          pelo rate limiter global do número, compartilhado entre todos os workers e campanhas.
         </div>
       </div>
 
@@ -1541,46 +1568,79 @@ function DispatchConfigCard({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="conservative">Conservador — 6 msg/s</SelectItem>
-            <SelectItem value="target_20k">Meta de 20 mil/h — 7 msg/s</SelectItem>
+            <SelectItem value="economico">{DISPATCH_PRESETS.economico.label}</SelectItem>
+            <SelectItem value="intermediario">{DISPATCH_PRESETS.intermediario.label}</SelectItem>
+            <SelectItem value="alto_volume">{DISPATCH_PRESETS.alto_volume.label}</SelectItem>
+            <SelectItem value="muito_alto">{DISPATCH_PRESETS.muito_alto.label}</SelectItem>
+            <SelectItem value="maximo">{DISPATCH_PRESETS.maximo.label}</SelectItem>
             <SelectItem value="custom">Personalizado</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
+      {isMaxPreset && (
+        <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-[11px] text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+          <Zap className="mt-0.5 h-3.5 w-3.5 flex-none" />
+          <span>
+            <b>Modo de capacidade máxima.</b> Exige infraestrutura, concorrência e throughput
+            disponíveis no número.
+          </span>
+        </div>
+      )}
+
       <div className="grid gap-3 sm:grid-cols-2">
         <NumberField
           label="Meta de envios por hora"
-          hint="Meta operacional da campanha"
+          hint="Meta operacional da campanha. A capacidade real dependerá da velocidade configurada, do limite global do número e da resposta da API."
           value={value.target_per_hour}
-          min={100} max={200_000} step={500}
+          min={100} max={MAX_TARGET_PER_HOUR} step={1000}
           onChange={updTarget}
         />
         <NumberField
           label="Mensagens por segundo"
-          hint="rate_per_second (rate limiter global do número)"
+          hint="Velocidade máxima total compartilhada por todas as campanhas e workers deste número."
           value={value.rate_per_second}
-          min={1} max={80} step={1}
+          min={1} max={MAX_RATE_PER_SECOND} step={1}
           onChange={updRate}
         />
       </div>
 
+      {targetExceedsNominal && (
+        <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-[11px] text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-none" />
+          <span>A velocidade configurada não é suficiente para atingir a meta de envios por hora.</span>
+        </div>
+      )}
+
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-md border bg-muted/40 p-3">
-          <div className="text-xs text-muted-foreground">Intervalo calculado</div>
-          <div className="text-lg font-semibold">{intervalMs} ms</div>
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            Intervalo calculado
+            <span title="O intervalo é a média usada pelo scheduler para distribuir os envios de forma contínua.">
+              <Info className="h-3 w-3 opacity-60" />
+            </span>
+          </div>
+          <div className="text-lg font-semibold">{intervalMsLabel}</div>
           <div className="text-[11px] text-muted-foreground">
-            Calculado automaticamente: 1000 / {value.rate_per_second} msg/s.
-            Aplicado pelo scheduler — não como <code>sleep</code> após o envio.
+            Calculado automaticamente: 1000 dividido pelas mensagens por segundo.
+            Aplicado pelo scheduler global, e não como <code>sleep</code> após cada envio.
           </div>
         </div>
-        <NumberField
-          label="Concorrência máxima"
-          hint="Requisições HTTP em andamento simultâneas"
-          value={value.max_concurrency}
-          min={1} max={100} step={1}
-          onChange={updConc}
-        />
+        <div>
+          <NumberField
+            label="Concorrência máxima"
+            hint="Quantidade máxima de requisições HTTP simultâneas. Não multiplica a velocidade configurada."
+            value={value.max_concurrency}
+            min={1} max={MAX_CONCURRENCY_UI} step={1}
+            onChange={updConc}
+          />
+          {concurrencyLow && (
+            <div className="mt-2 flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-[11px] text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-none" />
+              <span>Uma concorrência muito baixa pode impedir que a campanha alcance a velocidade configurada.</span>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="rounded-md border p-3">
@@ -1588,8 +1648,7 @@ function DispatchConfigCard({
           <div>
             <div className="text-sm font-medium">Pausa programada</div>
             <div className="text-[11px] text-muted-foreground">
-              Pausa curta contabilizada no total da campanha (não por worker).
-              Desativada por padrão.
+              Pausa curta contabilizada no total da campanha (não por worker). Desativada por padrão.
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -1605,7 +1664,7 @@ function DispatchConfigCard({
         {value.scheduled_pause_enabled && (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <NumberField
-              label="Pausar após (envios)"
+              label="Pausar a cada (envios)"
               hint="Ex.: 5.000"
               value={value.pause_every_messages}
               min={1} max={1_000_000} step={100}
@@ -1628,15 +1687,17 @@ function DispatchConfigCard({
           <li>Meta operacional: <b>{value.target_per_hour.toLocaleString("pt-BR")}</b> mensagens/h {isCustom ? "(personalizado)" : ""}</li>
           <li>Capacidade nominal: <b>{nominalPerHour.toLocaleString("pt-BR")}</b> tentativas/h</li>
           <li>Velocidade: <b>{value.rate_per_second} msg/s</b></li>
-          <li>Intervalo médio: <b>{intervalMs} ms</b> (somente leitura)</li>
+          <li>Intervalo médio: <b>{intervalMsLabel}</b></li>
           <li>Concorrência: <b>{value.max_concurrency}</b></li>
           <li>Pausa programada: <b>{value.scheduled_pause_enabled
             ? `${value.pause_duration_seconds}s a cada ${value.pause_every_messages.toLocaleString("pt-BR")} envios`
             : "desativada"}</b></li>
+          <li>Rate limiter: <b>global por número</b></li>
+          <li>Distribuição: <b>contínua e sem rajadas</b></li>
         </ul>
         <div className="mt-2 text-[11px] text-muted-foreground">
-          O rate efetivo é <b>min(campanha, limite global do número)</b>. Se o número
-          tiver throughput menor, o worker respeita esse teto.
+          O rate efetivo é <b>min(campanha, limite global do número)</b>. Múltiplas campanhas
+          no mesmo número compartilham o mesmo teto.
         </div>
       </div>
     </div>
