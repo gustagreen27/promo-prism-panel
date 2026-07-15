@@ -857,10 +857,12 @@ export async function processCampaignTick(
       slotReleasePending = 0;
       lastSlotFlushAt = now;
       try {
+        const t0 = clock.now();
         await supabaseAdmin.rpc("wa_release_slots" as any, {
           _phone_number_id: phoneNumberId,
           _count: count,
         });
+        onRpc?.({ rpc: "wa_release_slots", ms: clock.now() - t0, requested: count, granted: count });
       } catch (err) {
         // se falhar, devolve ao acumulador para tentar de novo depois
         slotReleasePending += count;
