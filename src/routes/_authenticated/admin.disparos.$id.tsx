@@ -73,38 +73,41 @@ function Page() {
   const progQ = useQuery({
     queryKey: ["wa-camp-progress", id],
     queryFn: () => getProg({ data: { id } }),
+    // Frente 4: reduzir polling (3s → 8s) durante disparos; progress é linha única, barato mas soma com 1M UPDATEs no runner.
     refetchInterval: (q) => {
       const s = (q.state.data as any)?.status;
-      return s === "running" || s === "scheduled" ? 3000 : false;
+      return s === "running" || s === "scheduled" ? 8000 : false;
     },
+    refetchIntervalInBackground: false,
   });
   const { data: prog } = progQ;
 
   const timelineQ = useQuery({
     queryKey: ["wa-camp-timeline", id],
     queryFn: () => getTL({ data: { id, limit: 200 } }),
-    refetchInterval: 10000,
+    refetchInterval: 30000,
+    refetchIntervalInBackground: false,
   });
   const { data: timeline } = timelineQ;
 
   const recipientsQ = useQuery({
     queryKey: ["wa-camp-recipients", id],
     queryFn: () => getRec({ data: { id, limit: 500 } }),
+    // Frente 4: destinatários são a query mais cara — refetch mais espaçado, só com aba visível.
     refetchInterval: (q) => {
       const s = (progQ.data as any)?.status;
-      if (s === "running") return 15000;
-      // Poll enquanto houver destinatários não-terminais aguardando webhooks (delivered/read)
+      if (s === "running") return 20000;
       const rows = (q.state.data as any[] | undefined) ?? [];
       const TERMINAL = new Set(["read", "replied", "failed", "opt_out", "cancelled", "skipped"]);
       const hasPending = rows.some((r) => !TERMINAL.has(String(r?.status ?? "")));
       if (hasPending && (s === "completed" || s === "paused" || s === "scheduled")) {
-        // backoff mais suave para campanhas já finalizadas
-        return 20000;
+        return 45000;
       }
       return false;
     },
-    refetchOnWindowFocus: true,
-    staleTime: 10000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
+    staleTime: 15000,
   });
   const { data: recipients } = recipientsQ;
 
@@ -309,7 +312,7 @@ function Page() {
   const exportCsv = async () => {
     try {
       toast.info("Preparando CSV com todos os destinatários…");
-      const all = (await getRec({ data: { id } })) as any[];
+      const all = (await getRec({ data: { id, limit: 200000 } })) as any[];
       if (!all?.length) { toast.warning("Sem dados"); return; }
       const esc = (v: any) => {
         const s = v == null ? "" : String(v);

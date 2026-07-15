@@ -489,26 +489,32 @@ export const getCampaignRecipients = createServerFn({ method: "GET" })
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid(), status: z.string().optional(), limit: z.number().optional() }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    // Cap defensivo: sem limite explícito, no máximo 2000 (evita varrer 1M em campanhas grandes).
+    const HARD_CAP = 2000;
+    const requestedLimit = data.limit && data.limit > 0
+      ? Math.min(Math.floor(data.limit), 200000)
+      : HARD_CAP;
     const PAGE = 1000;
-    const requestedLimit = data.limit && data.limit > 0 ? Math.floor(data.limit) : null;
     const rows: any[] = [];
 
-    for (let from = 0; ; from += PAGE) {
-      const to = requestedLimit ? Math.min(from + PAGE - 1, requestedLimit - 1) : from + PAGE - 1;
+    for (let from = 0; from < requestedLimit; from += PAGE) {
+      const to = Math.min(from + PAGE - 1, requestedLimit - 1);
       let q = context.supabase
         .from("campaign_recipients")
-        .select("id,phone,status,attempt,sent_at,delivered_at,read_at,replied_at,failed_at,failed_reason,error_code,meta_message_id,contact:contacts(name)")
+        // Usa coluna denormalizada contact_name — evita LEFT JOIN LATERAL contacts (Frente 1).
+        .select("id,phone,status,attempt,sent_at,delivered_at,read_at,replied_at,failed_at,failed_reason,error_code,meta_message_id,contact_name")
         .eq("campaign_id", data.id)
         .order("created_at", { ascending: true })
         .range(from, to);
       if (data.status) q = q.eq("status", data.status as any);
       const { data: page, error } = await q;
       if (error) throw error;
-      rows.push(...(page ?? []));
-      if (!page || page.length < PAGE || (requestedLimit && rows.length >= requestedLimit)) break;
+      // Compat: telas ainda leem r.contact?.name.
+      for (const r of page ?? []) rows.push({ ...r, contact: { name: (r as any).contact_name ?? null } });
+      if (!page || page.length < PAGE) break;
     }
 
-    return requestedLimit ? rows.slice(0, requestedLimit) : rows;
+    return rows;
   });
 
 export const getCampaignFinalReport = createServerFn({ method: "GET" })

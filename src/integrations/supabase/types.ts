@@ -378,6 +378,7 @@ export type Database = {
           charged_at: string | null
           charged_cents: number
           contact_id: string | null
+          contact_name: string | null
           created_at: string
           delivered_at: string | null
           error_code: string | null
@@ -405,6 +406,7 @@ export type Database = {
           charged_at?: string | null
           charged_cents?: number
           contact_id?: string | null
+          contact_name?: string | null
           created_at?: string
           delivered_at?: string | null
           error_code?: string | null
@@ -432,6 +434,7 @@ export type Database = {
           charged_at?: string | null
           charged_cents?: number
           contact_id?: string | null
+          contact_name?: string | null
           created_at?: string
           delivered_at?: string | null
           error_code?: string | null

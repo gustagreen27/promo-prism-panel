@@ -291,15 +291,15 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
     async function loadRecipients() {
       const { data: rs } = await supabase
         .from("campaign_recipients")
-        .select("id, phone, status, failed_reason, error_code, contact:contacts(name)")
+        .select("id, phone, status, failed_reason, error_code, contact_name")
         .eq("campaign_id", campaignId!)
         .order("created_at", { ascending: true })
-        .limit(1000);
+        .limit(500);
       if (!alive) return;
       setRecipientsLive(
         (rs ?? []).map((r: any) => ({
           id: r.id,
-          name: r.contact?.name ?? null,
+          name: r.contact_name ?? null,
           phone: r.phone,
           status: r.status,
           failed_reason: r.failed_reason,
@@ -309,25 +309,17 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
     }
     loadCamp();
     loadRecipients();
-    // Polling fallback
-    const pollId = setInterval(() => { loadCamp(); loadRecipients(); }, 5000);
-    // Realtime — atualiza sem esperar o polling
+    // Polling fallback (mais espaçado; realtime cobre atualizações rápidas)
+    const pollId = setInterval(() => { loadCamp(); loadRecipients(); }, 20000);
+    // Realtime — atualiza sem esperar o polling.
+    // Frente 4: NÃO ouvir campaign_recipients direto (1M UPDATEs em campanhas grandes).
+    // wa_campaigns é atualizado por trigger e reflete sent/delivered/read/failed/progress.
     const chan = supabase
       .channel(`camp-live-${campaignId}`)
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "campaign_recipients", filter: `campaign_id=eq.${campaignId}` },
-        () => { loadRecipients(); loadCamp(); },
-      )
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "campaign_recipients", filter: `campaign_id=eq.${campaignId}` },
-        () => { loadRecipients(); },
-      )
-      .on(
-        "postgres_changes",
         { event: "UPDATE", schema: "public", table: "wa_campaigns", filter: `id=eq.${campaignId}` },
-        () => { loadCamp(); },
+        () => { loadCamp(); loadRecipients(); },
       )
       .subscribe();
     return () => { alive = false; clearInterval(pollId); supabase.removeChannel(chan); };
