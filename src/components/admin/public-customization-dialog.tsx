@@ -319,6 +319,14 @@ function GeneralTab({
         onChange={onChange}
       />
 
+      <StatusMapCard
+        campaignId={campaignId}
+        settings={data.settings}
+        onChange={onChange}
+      />
+
+
+
       {(["country", "city", "device", "browser"] as Kind[]).map((kind) => (
         <MetricListEditor
           key={kind}
