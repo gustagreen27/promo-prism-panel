@@ -644,7 +644,7 @@ export async function processCampaignTick(
         return;
       }
 
-      const result = await sendTemplateMessage({
+      const result = await transport.sendTemplateMessage({
         phoneNumberId: conn.phone_number_id!,
         accessToken: conn.access_token!,
         graphVersion: conn.graph_api_version || "v21.0",
