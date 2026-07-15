@@ -330,11 +330,13 @@ function GeneralTab({
       <ClicksGeneratorCard
         campaignId={campaignId}
         settings={data.settings}
+        masterEnabled={data.settings?.enabled ?? false}
         waDispatches={data.waDispatches ?? []}
         publicDispatches={data.dispatches ?? []}
         publicSimulations={data.simulations ?? []}
         onChange={onChange}
       />
+
 
       <StatusMapCard
         campaignId={campaignId}
