@@ -1,110 +1,157 @@
+# Simulação de progresso na página pública
 
-# Auditoria do /admin — o que está causando lentidão
+Adiciona uma camada de apresentação para a página pública `/campaigns/:id` que permite simular o andamento de um disparo — sem tocar em nada operacional. Toda a configuração vive dentro do diálogo "Personalizar página pública" já existente em `/admin/campanhas`.
 
-Cruzei os `pg_stat_statements` do banco com o código do painel. Os problemas se dividem em **4 categorias**, listadas por impacto real (tempo total consumido no banco):
+## Princípio de isolamento
 
-## 1) Consultas de destinatários com JOIN em `contacts` estão dominando o banco
+A simulação é **puramente visual**. Ela nunca é lida pelo worker, pela fila, por `/admin/disparos`, pelos webhooks da Meta, nem por qualquer rotina de envio. Os campos ficam num único JSON `public_overrides.simulation` na tabela `campaigns` e são aplicados **apenas** dentro do handler `getPublicCampaignReport` e na renderização do relatório público (+ PDF impresso).
 
-Top ofensores (dados reais):
+## O que o admin poderá configurar
 
-| # calls | avg | total | Consulta |
-|---|---|---|---|
-| 4.595 | 903 ms | **~69 min** | Lista recipients + `contact.name` (LEFT JOIN LATERAL contacts) paginada por `created_at ASC` |
-| 2.688 | 677 ms | **~30 min** | Idem, versão com `failed_reason` |
-| 1.496 | 475 ms | ~12 min | Idem, versão com `contact.email/metadata` |
-| 2.659 | 1.516 ms | **~67 min** | `count(*)` de recipients filtrados por status (usado no HEAD/count PostgREST) |
-| 1.463 | 1.647 ms | **~40 min** | `contact_list_items` + LEFT JOIN LATERAL contacts (tela de lista) |
-| 2.357 | 197 ms | ~7 min | `count(*)` de `contact_list_items` por lista |
+Dentro do diálogo, uma nova seção "Personalizar progresso em tempo real" com:
 
-Causas:
-- **Enriquecimento com `contacts.name`** é feito via embed do PostgREST (`.select("*, contact:contacts(name)")`). Isso vira LEFT JOIN LATERAL um contato por linha — barato em 100 linhas, catastrófico em qualquer página que peça `count=exact`.
-- **`count=exact`** faz uma segunda varredura completa do predicado. É o motivo principal dos timeouts de 7s+.
-- **Ordenação por `created_at ASC`** usa índice existente, mas o problema não é o índice — é o volume de linhas trazidas + JOIN.
+**Modo de exibição** (uma escolha):
+- Real — usa os números reais do disparo (padrão)
+- Personalizado — usa apenas os valores simulados
+- Real com ajuste — usa dados reais + acréscimo simulado somado
 
-## 2) Worker de disparo bate em UPDATE 1-a-1 sob concorrência
-- `UPDATE campaign_recipients SET status/sent_at WHERE id=$1` — **27.587 chamadas**, 458s totais.
-- `UPDATE ... WHERE id=ANY($1)` — 1.210 calls, 234s. Existe batch mas é minoria.
-- Enquanto 1M linhas passam por UPDATE individual, qualquer SELECT no /admin sobre a mesma tabela compete por buffer/CPU → timeouts.
+**Parâmetros de tempo**
+- Início público (data + hora)
+- Duração estimada (minutos ou horas)
+- Conclusão prevista (calculada, editável)
+- Intervalo de atualização da página pública (segundos)
 
-## 3) Painel /admin carrega tudo, sem paginação server-side
-- `/admin/campanhas`: `useQuery(["campaigns"], () => list())` traz **todas** as campanhas e filtra no cliente (`filtered = data.filter(...)`).
-- `/admin/disparos`: mesmo padrão — lista completa; filtros client-side.
-- Detalhe da campanha: já reduzimos para 100 amostras, mas ainda faz `count=exact` implícito em várias telas.
-- Ausência de `staleTime` → cada navegação re-executa consultas pesadas.
+**Velocidades**
+- Enviados por segundo/minuto/hora
+- Entregues por segundo/minuto/hora (ou % sobre enviados)
+- Falhas por segundo/minuto/hora (ou % sobre enviados)
+- Cliques por intervalo configurável
 
-## 4) Polling agressivo durante disparos
-- Página pública já em 15s, mas `/admin/campaigns/:id`, `/admin/disparos/:id` e listas usam `refetchInterval` curto (3–5s).
-- Enquanto o worker martela 1M UPDATEs, cada refetch no painel pega o mesmo LOCK/CPU.
-- `onAuthStateChange` + `invalidateQueries` também revalida tudo em SIGNED_IN/TOKEN_REFRESHED.
+**Volume e progresso**
+- Total público de contatos
+- Percentual inicial e percentual máximo
+- Momento em que a campanha deve aparecer como concluída
 
-## Índices — status atual
-Já existem os índices certos para a maioria dos casos (`campaign_recipients (campaign_id, created_at)`, `(campaign_id, status)`, `(campaign_id, sent_at DESC NULLS LAST) INCLUDE(...)`). **O gargalo não é falta de índice** — é o padrão de consulta + volume + JOIN + `count=exact`.
+**Curva de crescimento** (uma escolha):
+- Linear
+- Aleatório dentro de faixa (min/max por intervalo)
+- Baseado em etapas (lista de marcos: `t → sent`)
+- Real com multiplicador visual
+- Somente ao recarregar a página
+- Automático em tempo real
 
----
+**Pausas programadas** (lista):
+- Após X envios públicos
+- Duração da pausa
+- Status exibido durante a pausa
+- Se recalcula ou não a conclusão prevista
 
-# Plano priorizado (7 frentes)
+**Status públicos personalizados** — rótulos livres para cada estado (agendada, preparando, em execução, processando, pausada, retomando, finalizando, concluída, cancelada) e qual estado forçar exibir agora (ou "auto" pelo tempo).
 
-Vou executar do maior impacto → menor. Cada frente é entregável independente; posso pausar entre elas para você validar.
+**Controles da simulação** (botões no diálogo)
+- Prévia (renderiza os números para T=agora sem salvar)
+- Iniciar simulação pública (define `sim_started_at = now()` e ativa)
+- Pausar somente a simulação (não toca no disparo real)
+- Retomar simulação
+- Reiniciar progressão (zera `sim_started_at`)
+- Sincronizar com dados reais (copia números reais para os overrides atuais)
+- Desativar todas as personalizações (limpa `public_overrides`)
 
-## Frente 1 — Desnormalizar `contacts.name` em `campaign_recipients` (elimina 80% do custo)
-- Adicionar coluna `contact_name text` em `campaign_recipients` (já preenchido no build via `jsonb_build_object('nome', name)`).
-- Backfill: `UPDATE ... SET contact_name = c.name FROM contacts c WHERE c.id = contact_id`.
-- Atualizar `wa_build_recipients` para gravar `contact_name` direto.
-- Refatorar todas as `.select("*, contact:contacts(name)")` para ler `contact_name` da própria linha → **elimina o LEFT JOIN LATERAL em todas as consultas top**.
+**Metadados**
+- Última alteração (`updated_at`, `updated_by`)
+- Badge "Dados públicos personalizados" visível no card da campanha em `/admin/campanhas`
 
-## Frente 2 — Trocar `count=exact` por contagens denormalizadas
-- Já temos `wa_campaigns.progress` (jsonb com totais por status) mantido pelo trigger `trg_wa_recipient_touch` / `wa_recalc_campaign_progress`.
-- Todas as telas admin que hoje pedem `.select(..., { count: 'exact' })` para exibir "X/Y" passam a ler de `wa_campaigns.progress` / `total_recipients` / `sent_count` etc.
-- `count=exact` só nas telas onde o filtro é dinâmico (busca por telefone/status arbitrário), e mesmo assim com `count=estimated` (PostgREST head_estimate) como default.
+## Como a página pública calcula em tempo real
 
-## Frente 3 — Paginação e filtros server-side no painel
-- `/admin/campanhas` e `/admin/disparos`: paginar via URL search params (`page`, `pageSize`, `status`, `q`, `client`, `project`).
-- Server function `listCampaigns` recebe `{ page, pageSize, filters }` → `.range(from, to)` sem count exact.
-- Substituir o `.filter()` client-side por filtros passados ao servidor.
-- Tabela virtualizada (react-virtual) se o `pageSize` puder passar de 100.
+Sem servidor extra: o handler retorna a configuração e um `server_now` (ISO). O componente React tem um timer que, no intervalo configurado (`refetch_interval_sec`, default 5s), recomputa localmente:
 
-## Frente 4 — Reduzir polling + realtime seletivo
-- Todos os `refetchInterval` de tela admin: 5s → 20s (10s quando aba visível).
-- Trocar polling do detalhe da campanha por Realtime **apenas** no row de `wa_campaigns` (uma linha, barato) e por evento de `campaign_recipients` filtrado por `campaign_id` **desativado por padrão**, ligado só quando a página está visível e a campanha `running`.
-- No `__root.tsx`, filtrar `onAuthStateChange` já foi feito na doc — auditar se está do jeito certo.
+```text
+elapsed_ms = clock_now - sim_started_at - pausas_ativas
+progress   = curva(elapsed_ms, duration, total, initial%, max%)
+sent       = progress * total
+delivered  = sent * delivery_rate
+failed     = sent * failure_rate
+status     = auto_status_by_time(elapsed_ms) OR override_status
+clicks     = interpolação(clicks_per_interval)
+```
 
-## Frente 5 — Worker: batch de UPDATEs e menos round-trips
-- Trocar todos os UPDATE 1-a-1 do runner (`status`, `sent_at`, `delivered_at`, `read_at`, `failed_*`) por:
-  - RPC `wa_apply_recipient_events(events jsonb)` que aplica N updates em uma transação, dispara `wa_recalc_campaign_progress` **uma vez** no fim.
-- Debounce do trigger `trg_wa_recipient_touch`: hoje ele recalcula progresso a cada linha; passar para "marcar dirty + recalcular no fim do batch" via `pg_notify` / worker.
-- Alternativa mais simples se você preferir manter o trigger: fazer o worker enviar sempre em lotes de 100–500 via a RPC.
+As pausas programadas são aplicadas subtraindo-se as janelas já ativadas do `elapsed_ms`. Assim a página parece "viva" mesmo sem novo fetch. Um refetch periódico ao servidor (no `refetch_interval`) garante que mudanças de config apareçam.
 
-## Frente 6 — Índices e VACUUM
-- Novos: `campaign_recipients (workspace_id, status)` para o dashboard cross-campanha; parcial `(campaign_id) WHERE status IN ('failed','pending')` só se necessário depois de medir.
-- Rodar `VACUUM ANALYZE campaign_recipients, contact_list_items` (a tabela sofre muitos UPDATE — bloat provável).
-- Considerar `autovacuum_vacuum_scale_factor = 0.05` em `campaign_recipients` (tabela muito quente).
+No modo "real com ajuste" os números reais vindos de `wa_campaigns` são somados aos valores simulados; nunca escritos de volta.
 
-## Frente 7 — Compute (último recurso, após 1–6)
-- Se depois das 6 frentes ainda houver saturação sob 1M + várias campanhas simultâneas, propor upgrade do Lovable Cloud (mais CPU/RAM/IO). Não é a primeira alavanca.
+## UI
 
----
+- **Diálogo** `PublicOverridesDialog` ganha abas: `Números fixos` (já existe) | `Progresso em tempo real` (novo) | `Prévia`. A aba "Prévia" mostra um mini-relatório com os números projetados nos próximos 30/60/240 min.
+- **Card em `/admin/campanhas`**: quando `public_overrides` não estiver vazio, mostra badge âmbar `Dados públicos personalizados` ao lado do status.
+- **Página pública** `/campaigns/:id`: quando o modo `personalizado` ou `real com ajuste` estiver ativo, o `DispatchCard` usa o cálculo simulado para `sent/delivered/failed/percent`, o header exibe o status público personalizado e o rodapé mostra "Previsão de conclusão: HH:MM".
 
-# Ordem sugerida de entrega
+## Detalhes técnicos
 
-1. **Frente 1** (desnormalizar `contact_name`) — migration + backfill + refactor das server functions. Corta ~2h de banco/dia.
-2. **Frente 2** (`progress` no lugar de `count=exact`) — só código de leitura, sem migration. Corta os timeouts de 7s no /admin.
-3. **Frente 4** (polling + realtime) — só frontend, alívio imediato durante disparos.
-4. **Frente 3** (paginação server-side) — refactor maior; libera as listas gerais.
-5. **Frente 5** (batch de UPDATEs no worker) — melhora concorrência entre worker e painel.
-6. **Frente 6** (índices/vacuum) — ajuste fino.
-7. **Frente 7** (compute) — só se necessário.
+**Migração**
+- Não cria coluna nova. A coluna `campaigns.public_overrides jsonb` (já existente) recebe uma sub-chave `simulation` com o schema abaixo. Isolamento total do restante.
+- Índice/policy: nada muda; leitura pública continua via `supabaseAdmin` no server fn público.
 
-**Estimativa realista:** frentes 1+2+4 em uma leva já derrubam >70% da lentidão percebida no /admin. Frente 3 e 5 são o restante.
+**Schema `public_overrides.simulation`** (Zod validado no server fn `updateCampaignPublicOverrides`)
 
----
+```ts
+{
+  mode: "real" | "custom" | "real_plus",
+  refetch_interval_sec: number,       // 3..120
+  start_at: string | null,            // ISO
+  duration_minutes: number | null,
+  ends_at: string | null,             // opcional, sobrepõe duration
+  total_contacts: number | null,
+  initial_percent: number,            // 0..100
+  max_percent: number,                // 0..100
+  send_rate: { value: number; unit: "s" | "m" | "h" } | null,
+  delivered: { mode: "rate" | "percent"; value: number; unit?: "s"|"m"|"h" } | null,
+  failed:    { mode: "rate" | "percent"; value: number; unit?: "s"|"m"|"h" } | null,
+  clicks:    { per_interval: number; interval_sec: number } | null,
+  growth: {
+    kind: "linear" | "random" | "stepped" | "real_multiplier" | "on_reload" | "realtime",
+    random_min?: number, random_max?: number,
+    steps?: { t_sec: number; sent: number }[],
+    multiplier?: number,
+  },
+  pauses: { after_sent: number; duration_sec: number; status_label?: string; recalc_eta: boolean }[],
+  status: {
+    override?: string | null,         // força um status; null = auto
+    labels: Partial<Record<
+      "scheduled"|"preparing"|"running"|"processing"|"paused"|"resuming"|"finishing"|"completed"|"cancelled",
+      string
+    >>,
+  },
+  complete_at: string | null,         // marca a campanha como concluída publicamente neste momento
+  runtime: {                          // controles da simulação
+    active: boolean,
+    sim_started_at: string | null,    // ISO
+    sim_paused_at: string | null,     // ISO — pausa manual
+    accumulated_pause_ms: number,     // pausas fechadas
+  },
+  updated_at: string,
+  updated_by: string | null,
+}
+```
 
-## Detalhes técnicos (para referência)
+**Server functions** (`src/lib/campaigns.functions.ts`)
+- `updateCampaignPublicOverrides` — estender o `publicOverridesSchema` com `simulation` (opcional).
+- Nova `controlCampaignSimulation({ id, action })` onde `action ∈ start | pause | resume | restart | sync_real | disable`. Faz apenas UPDATE em `public_overrides.simulation.runtime` (e em `sync_real`, copia números reais para os campos fixos). Nada mais.
+- `getPublicCampaignReport` retorna `overrides` inteiro (já retorna) + `server_now: new Date().toISOString()` para o cliente calcular deriva.
 
-- Migration Frente 1: `ALTER TABLE campaign_recipients ADD COLUMN contact_name text; UPDATE ... SET contact_name = c.name FROM contacts c WHERE c.id = campaign_recipients.contact_id;` (em lotes por `id` para não bloquear). Reescrever `wa_build_recipients` para popular a coluna.
-- Arquivos que devem trocar `contact:contacts(name)` por `contact_name`: `src/lib/campaigns.functions.ts`, `src/lib/wa-campaigns.functions.ts`, `src/lib/wa-reports.functions.ts`, `src/lib/admin-dispatch.functions.ts`, `src/routes/_authenticated/admin.disparos.$id.tsx`, `src/routes/_authenticated/admin.campaigns.$id.tsx`.
-- Frente 3: `validateSearch` (zod) nas rotas + `loaderDeps` + `.range()`.
-- Frente 5: nova RPC `wa_apply_recipient_events` em `supabase/migrations`; alterar `src/lib/wa-campaign-runner.functions.ts` e `src/routes/api/public/whatsapp/queue-tick.tsx`.
+**Cliente**
+- Novo hook `useSimulatedProgress(overrides, realDispatch, serverNow)` — retorna `{ sent, delivered, failed, percent, statusLabel, etaAt }`. Reagenda um `setInterval` no `refetch_interval_sec`. Trata pausas manuais + programadas.
+- `PublicOverridesDialog` ganha `Tabs` (números fixos / simulação / prévia) e os botões de controle da simulação.
+- `admin.campanhas.tsx` — badge "Dados públicos personalizados" quando `Object.keys(public_overrides).length > 0`.
+- `campaigns.$id.tsx` — quando `mode !== "real"`, usa o hook em vez dos números reais no `DispatchCard`; exibe status label e ETA.
 
----
+## Arquivos afetados
 
-**Confirma o plano assim ou quer ajustar prioridade / recortar alguma frente antes de eu começar pela Frente 1?**
+- `src/lib/campaigns.functions.ts` — estender schema + nova `controlCampaignSimulation` + `server_now` no retorno público.
+- `src/components/admin/public-overrides-dialog.tsx` — abas, formulário de simulação, botões de controle, prévia.
+- `src/routes/campaigns.$id.tsx` — hook `useSimulatedProgress`, aplicação no `DispatchCard`, status label público.
+- `src/routes/_authenticated/admin.campanhas.tsx` — badge de personalização.
+- `src/lib/public-simulation.ts` (novo) — cálculo puro (linear/random/stepped/multiplier/etc), aplicação de pausas e derivação de status/ETA. Compartilhado entre server (prévia) e cliente.
+
+## Fora do escopo (garantia de isolamento)
+
+Não altera: `wa_campaign_runner`, `wa_campaigns`, `campaign_recipients`, triggers de progresso, edge functions, `has_role`, RLS. Nenhum código de disparo lê `public_overrides`.
