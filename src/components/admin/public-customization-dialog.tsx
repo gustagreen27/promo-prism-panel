@@ -1275,7 +1275,11 @@ function ClicksGeneratorCard({
               <div className="font-mono">{previewNow.toLocaleString("pt-BR")}</div>
             </div>
             <div>
-              <div className="text-muted-foreground">Projeção (2× entregues)</div>
+              <div className="text-muted-foreground">Cliques em 1 min</div>
+              <div className="font-mono">{previewIn1Min.toLocaleString("pt-BR")}</div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Projeção (2× entregues, +1 min)</div>
               <div className="font-mono">{projected.toLocaleString("pt-BR")}</div>
             </div>
             <div>
@@ -1286,8 +1290,9 @@ function ClicksGeneratorCard({
             </div>
           </div>
           <p className="mt-2 text-[11px] text-muted-foreground">
-            Nunca diminui. Nunca ultrapassa entregues + iniciais. Pausa quando os
-            entregues param ou a simulação pública está pausada.
+            Nunca diminui. Respeita o limite máximo. Com "Cliques por minuto" &gt; 0,
+            o total continua subindo mesmo sem novos entregues. Sem esse valor,
+            o total só aumenta conforme os entregues crescem.
             Distribuição por categoria usa os % definidos em cada lista abaixo.
           </p>
         </div>
