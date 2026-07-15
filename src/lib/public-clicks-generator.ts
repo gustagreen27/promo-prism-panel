@@ -16,6 +16,10 @@ export type ClicksGeneratorConfig = {
   growth?: "linear" | "random";
   use_source?: "real" | "public";
   replace_or_add?: "replace" | "add";
+  // Crescimento por tempo: cliques adicionados por minuto, independente dos
+  // entregues. Útil quando não há novos entregues mas queremos que os cliques
+  // continuem subindo. O total resultante respeita max_clicks.
+  clicks_per_minute?: number | null;
   // Listas manuais opcionais (sobrescrevem os defaults e os overrides).
   cities?: GeneratorCity[];
   countries?: GeneratorCountry[];
