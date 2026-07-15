@@ -101,16 +101,21 @@ export const preflightCampaign = createServerFn({ method: "POST" })
     }
 
     // Meta API: verify phone number is registered on WhatsApp Cloud API
-    if (conn?.phone_number_id && conn?.access_token) {
-      const reg = await checkPhoneNumberRegistration(conn.phone_number_id, conn.access_token);
-      checks.push({
-        key: "phone_registered",
-        label: "Número registrado na WhatsApp Cloud API",
-        ok: reg.ok,
-        message: reg.ok
-          ? `Status: ${reg.status ?? "REGISTERED"}${reg.display_phone_number ? ` · ${reg.display_phone_number}` : ""}`
-          : reg.reason,
-      });
+    if (conn?.phone_number_id) {
+      const effToken = conn.access_token || (conn.use_global_token ? process.env.WHATSAPP_ACCESS_TOKEN : undefined);
+      if (!effToken) {
+        checks.push({ key: "phone_registered", label: "Número registrado na WhatsApp Cloud API", ok: false, message: "Sem token de acesso disponível para validar" });
+      } else {
+        const reg = await checkPhoneNumberRegistration(conn.phone_number_id, effToken);
+        checks.push({
+          key: "phone_registered",
+          label: "Número registrado na WhatsApp Cloud API",
+          ok: reg.ok,
+          message: reg.ok
+            ? `Status: ${reg.status ?? "REGISTERED"}${reg.display_phone_number ? ` · ${reg.display_phone_number}` : ""}`
+            : reg.reason,
+        });
+      }
     }
 
     // Template approved
