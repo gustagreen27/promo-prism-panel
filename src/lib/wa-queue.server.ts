@@ -264,7 +264,12 @@ async function resetStaleProcessing(campaignId: string) {
 export async function processCampaignTick(
   campaignId: string,
   reservationBudget?: number,
+  opts?: WaTickOptions,
 ): Promise<{ processed: number; done: boolean; skipped?: boolean; reason?: string }> {
+  const clock = opts?.clock ?? REAL_CLOCK;
+  const transport = opts?.transport ?? REAL_TRANSPORT;
+  const onRpc = opts?.instrumentation?.onRpc;
+
   const lease = await acquireLease(campaignId);
   if (!lease) return { processed: 0, done: false, skipped: true };
 
