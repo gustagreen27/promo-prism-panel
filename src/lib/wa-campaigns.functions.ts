@@ -111,87 +111,20 @@ export const buildRecipients = createServerFn({ method: "POST" })
     await assertAdmin(context);
     const { data: camp, error } = await context.supabase
       .from("wa_campaigns")
-      .select("*")
+      .select("id, list_id")
       .eq("id", data.id)
       .single();
     if (error) throw error;
     if (!camp.list_id) throw new Error("Selecione uma lista de contatos.");
 
-    // Fetch contacts via list, optionally intersected with tag filters.
-    // PostgREST returns 1000 rows by default, so campaigns must page large lists.
-    const PAGE = 1000;
-    const items: any[] = [];
-    for (let from = 0; ; from += PAGE) {
-      const { data: page, error: pageErr } = await context.supabase
-        .from("contact_list_items")
-        .select("contact:contacts(id,phone,opt_in,opt_out,name)")
-        .eq("list_id", camp.list_id)
-        .range(from, from + PAGE - 1);
-      if (pageErr) throw pageErr;
-      items.push(...(page ?? []));
-      if (!page || page.length < PAGE) break;
-    }
-
-    let contacts = items.map((i: any) => i.contact).filter((c: any) => c && c.phone && c.opt_in && !c.opt_out);
-
-    if (camp.tag_filters && camp.tag_filters.length) {
-      const tagged: any[] = [];
-      for (let from = 0; ; from += PAGE) {
-        const { data: page, error: tagErr } = await context.supabase
-          .from("contact_tag_assignments")
-          .select("contact_id")
-          .in("tag_id", camp.tag_filters)
-          .range(from, from + PAGE - 1);
-        if (tagErr) throw tagErr;
-        tagged.push(...(page ?? []));
-        if (!page || page.length < PAGE) break;
-      }
-      const ok = new Set(tagged.map((r: any) => r.contact_id));
-      contacts = contacts.filter((c: any) => ok.has(c.id));
-    }
-
-    // Exclude opt-outs (global)
-    const phones = contacts.map((c: any) => c.phone);
-    if (phones.length) {
-      const optOuts: any[] = [];
-      for (let i = 0; i < phones.length; i += PAGE) {
-        const { data: page, error: ooErr } = await context.supabase
-          .from("opt_outs")
-          .select("phone")
-          .in("phone", phones.slice(i, i + PAGE));
-        if (ooErr) throw ooErr;
-        optOuts.push(...(page ?? []));
-      }
-      const blocked = new Set(optOuts.map((r: any) => r.phone));
-      contacts = contacts.filter((c: any) => !blocked.has(c.phone));
-    }
-
-    // Dedupe by phone
-    const map = new Map<string, any>();
-    for (const c of contacts) if (!map.has(c.phone)) map.set(c.phone, c);
-    const unique = [...map.values()];
-
-    // Clear previous recipients and insert
-    await context.supabase.from("campaign_recipients").delete().eq("campaign_id", data.id);
-    if (unique.length) {
-      const rows = unique.map((c: any) => ({
-        campaign_id: data.id,
-        contact_id: c.id,
-        phone: c.phone,
-        variables: camp.template_variables ?? {},
-        status: "pending" as const,
-      }));
-      // Chunk insert
-      for (let i = 0; i < rows.length; i += 1000) {
-        await context.supabase.from("campaign_recipients").insert(rows.slice(i, i + 1000));
-      }
-    }
-
-    await context.supabase
-      .from("wa_campaigns")
-      .update({ total_recipients: unique.length })
-      .eq("id", data.id);
-    return { total: unique.length };
+    // Enfileira via RPC server-side (INSERT..SELECT em uma única query),
+    // suporta listas de 100k+ sem estourar o tempo do server function.
+    const { data: total, error: buildErr } = await context.supabase.rpc(
+      "wa_build_recipients" as any,
+      { _campaign_id: data.id, _list_id: camp.list_id }
+    );
+    if (buildErr) throw buildErr;
+    return { total: Number(total ?? 0) };
   });
 
 export const startWaCampaign = createServerFn({ method: "POST" })
