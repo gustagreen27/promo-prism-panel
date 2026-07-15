@@ -997,6 +997,8 @@ export async function processCampaignTick(
         configured_rate: effectiveRate,
         raw_configured_rate: rawCampRate,
         number_max_rate: numberMaxRate,
+        number_global_rate: numberGlobalRate,
+        phone_bucket_rate: phoneBucketRate,
         max_concurrency: campConc,
         avg_started_per_second: avg,
         peak_started_per_second: peak,
