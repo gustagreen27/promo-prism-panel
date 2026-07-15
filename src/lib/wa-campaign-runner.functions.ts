@@ -21,6 +21,49 @@ async function logEvent(supabase: any, campaignId: string, event_type: string, m
   } catch {}
 }
 
+/**
+ * Check if a phone_number_id is registered on WhatsApp Cloud API by calling Meta Graph.
+ * Returns { ok, status?, display_phone_number?, reason? } — reason is user-facing (pt-BR).
+ */
+async function checkPhoneNumberRegistration(phone_number_id: string, access_token: string): Promise<{
+  ok: boolean;
+  status?: string;
+  display_phone_number?: string;
+  code?: number | string;
+  reason?: string;
+}> {
+  try {
+    const url = `https://graph.facebook.com/v20.0/${encodeURIComponent(phone_number_id)}?fields=id,display_phone_number,verified_name,code_verification_status,name_status,status,platform_type,quality_rating`;
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${access_token}` } });
+    const j: any = await r.json().catch(() => ({}));
+    if (!r.ok || j?.error) {
+      const err = j?.error ?? {};
+      const code = err.code ?? r.status;
+      const sub = err.error_subcode;
+      const msg = err.message ?? `HTTP ${r.status}`;
+      // 133010 = Account not registered
+      if (code === 133010 || sub === 133010 || /not\s+registered/i.test(msg)) {
+        return { ok: false, code: 133010, reason: `(#133010) Account not registered — registre o número (POST /register) no gerenciador Meta antes de disparar.` };
+      }
+      if (code === 190 || /access token/i.test(msg)) {
+        return { ok: false, code, reason: `Token de acesso inválido/expirado (${msg})` };
+      }
+      if (code === 100 || r.status === 404) {
+        return { ok: false, code, reason: `Phone Number ID inexistente ou sem permissão (${msg})` };
+      }
+      return { ok: false, code, reason: `Meta: (#${code}) ${msg}` };
+    }
+    const status = String(j?.status ?? "").toUpperCase();
+    // Meta returns status like "CONNECTED"; some numbers omit it but are still usable.
+    if (status && status !== "CONNECTED" && status !== "REGISTERED" && status !== "ACTIVE") {
+      return { ok: false, status, display_phone_number: j?.display_phone_number, reason: `Status Meta: ${status} (número não pronto para disparo)` };
+    }
+    return { ok: true, status: status || "CONNECTED", display_phone_number: j?.display_phone_number };
+  } catch (e: any) {
+    return { ok: false, reason: `Falha ao consultar Meta: ${e?.message ?? String(e)}` };
+  }
+}
+
 const idSchema = z.object({ id: z.string().uuid() });
 
 /**
@@ -54,6 +97,19 @@ export const preflightCampaign = createServerFn({ method: "POST" })
         label: "Número ativo com token válido",
         ok: !!(c && ["ativo", "active", "connected"].includes(String(c.status ?? "").toLowerCase()) && c.access_token && c.phone_number_id),
         message: !c ? "Conexão não encontrada" : !c.access_token ? "Token ausente" : !["ativo", "active", "connected"].includes(String(c.status ?? "").toLowerCase()) ? `Status: ${c.status}` : undefined,
+      });
+    }
+
+    // Meta API: verify phone number is registered on WhatsApp Cloud API
+    if (conn?.phone_number_id && conn?.access_token) {
+      const reg = await checkPhoneNumberRegistration(conn.phone_number_id, conn.access_token);
+      checks.push({
+        key: "phone_registered",
+        label: "Número registrado na WhatsApp Cloud API",
+        ok: reg.ok,
+        message: reg.ok
+          ? `Status: ${reg.status ?? "REGISTERED"}${reg.display_phone_number ? ` · ${reg.display_phone_number}` : ""}`
+          : reg.reason,
       });
     }
 
@@ -152,7 +208,24 @@ export const startCampaignAsync = createServerFn({ method: "POST" })
       .eq("campaign_id", data.id);
     if (!recCount) throw new Error("Gere a fila de destinatários antes de iniciar.");
 
+    // Verify phone number is registered on Meta before dispatching (avoids #133010 mid-run).
+    const { data: connRow } = await supabase
+      .from("whatsapp_connections")
+      .select("access_token,phone_number_id")
+      .eq("id", camp.connection_id)
+      .single();
+    if (!connRow?.phone_number_id || !connRow?.access_token) {
+      throw new Error("Conexão sem Phone Number ID ou token de acesso.");
+    }
+    const reg = await checkPhoneNumberRegistration(connRow.phone_number_id, connRow.access_token);
+    if (!reg.ok) {
+      await supabase.from("wa_campaigns").update({ last_error: reg.reason ?? "Número não registrado" }).eq("id", data.id);
+      await logEvent(supabase, data.id, "preflight_failed", `Validação Meta falhou: ${reg.reason}`, context.userId, { phone_number_id: connRow.phone_number_id, reason: reg.reason, code: reg.code });
+      throw new Error(reg.reason ?? "Número não registrado na WhatsApp Cloud API");
+    }
+
     // Admin async dispatch bypasses stock check.
+
 
 
     await supabase
