@@ -3,6 +3,44 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendTemplateMessage } from "@/lib/wa-send.server";
 import { renderMapping, buildContext } from "@/lib/wa-variables";
 
+// ---------------------------------------------------------------------------
+// Dependency-injection surface (Fase 2, harness end-to-end)
+// - `transport` substitui apenas a chamada HTTP à Meta (sendTemplateMessage).
+// - `clock`     substitui now/sleep para futuros testes de tempo virtual.
+// - `instrumentation` captura latências e granted dos 3 RPCs quentes do hot loop
+//   (wa_try_consume_tokens, wa_acquire_slots, wa_release_slots) para o harness.
+// Defaults preservam 100% do comportamento de produção; nenhum call-site atual
+// precisa ser alterado.
+// ---------------------------------------------------------------------------
+export type WaTransport = {
+  sendTemplateMessage: typeof sendTemplateMessage;
+};
+export type WaClock = {
+  now: () => number;
+  sleep: (ms: number) => Promise<void>;
+};
+export type WaRpcSample = {
+  rpc: "wa_try_consume_tokens" | "wa_acquire_slots" | "wa_release_slots";
+  ms: number;
+  requested?: number;
+  granted?: number;
+};
+export type WaInstrumentation = {
+  onRpc?: (sample: WaRpcSample) => void;
+};
+export type WaTickOptions = {
+  transport?: WaTransport;
+  clock?: WaClock;
+  instrumentation?: WaInstrumentation;
+};
+
+const REAL_CLOCK: WaClock = {
+  now: () => Date.now(),
+  sleep: (ms: number) => new Promise((res) => setTimeout(res, ms)),
+};
+const REAL_TRANSPORT: WaTransport = { sendTemplateMessage };
+
+
 
 const OPT_OUT_REGEX = /\b(parar|sair|cancelar|cancela|remover|descadastrar|n[ãa]o quero|stop|unsubscribe)\b/i;
 
