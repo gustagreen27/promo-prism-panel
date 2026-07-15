@@ -570,6 +570,7 @@ export type Database = {
           page_category: string | null
           participants: Database["public"]["Enums"]["partner_participant"][]
           preview_image_url: string | null
+          public_overrides: Json
           slug: string
           status: Database["public"]["Enums"]["campaign_status"]
           updated_at: string
@@ -607,6 +608,7 @@ export type Database = {
           page_category?: string | null
           participants?: Database["public"]["Enums"]["partner_participant"][]
           preview_image_url?: string | null
+          public_overrides?: Json
           slug: string
           status?: Database["public"]["Enums"]["campaign_status"]
           updated_at?: string
@@ -644,6 +646,7 @@ export type Database = {
           page_category?: string | null
           participants?: Database["public"]["Enums"]["partner_participant"][]
           preview_image_url?: string | null
+          public_overrides?: Json
           slug?: string
           status?: Database["public"]["Enums"]["campaign_status"]
           updated_at?: string

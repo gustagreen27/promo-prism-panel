@@ -1,0 +1,1 @@
+ALTER TABLE public.campaigns ADD COLUMN IF NOT EXISTS public_overrides jsonb NOT NULL DEFAULT '{}'::jsonb;
