@@ -970,7 +970,7 @@ export async function processCampaignTick(
       if (now < nextCampaignPermitAt) {
         rateLimitedBySecond.campaign++;
         const waitMs = Math.max(1, Math.min(nextCampaignPermitAt - now, 50));
-        await new Promise((res) => setTimeout(res, waitMs));
+        await clock.sleep(waitMs);
         continue;
       }
 
