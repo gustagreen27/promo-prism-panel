@@ -947,6 +947,10 @@ export const updateCampaignPublicOverrides = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await assertAdmin(context);
     const clean = sanitizeOverrides(data.overrides);
+    if (clean.simulation) {
+      clean.simulation.updated_at = new Date().toISOString();
+      clean.simulation.updated_by = context.userId;
+    }
     const { error } = await supabaseAdmin
       .from("campaigns")
       .update({ public_overrides: clean } as never)
@@ -954,6 +958,96 @@ export const updateCampaignPublicOverrides = createServerFn({ method: "POST" })
     if (error) throw error;
     return { ok: true, overrides: clean };
   });
+
+// Controle da simulação — apenas mexe em public_overrides.simulation.runtime.
+// NUNCA altera worker, fila, wa_campaigns, campaign_recipients ou webhooks.
+export const controlCampaignSimulation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({
+      id: z.string().uuid(),
+      action: z.enum(["start", "pause", "resume", "restart", "sync_real", "disable"]),
+    }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await assertAdmin(context);
+
+    if (data.action === "disable") {
+      const { error } = await supabaseAdmin
+        .from("campaigns")
+        .update({ public_overrides: {} } as never)
+        .eq("id", data.id);
+      if (error) throw error;
+      return { ok: true };
+    }
+
+    const { data: row, error: readErr } = await supabaseAdmin
+      .from("campaigns")
+      .select("public_overrides")
+      .eq("id", data.id)
+      .single();
+    if (readErr) throw readErr;
+
+    const current = ((row as { public_overrides: Record<string, unknown> }).public_overrides ?? {}) as PublicOverrides;
+    const sim = (current.simulation ?? {}) as NonNullable<PublicOverrides["simulation"]>;
+    const runtime = { ...(sim.runtime ?? { active: false, sim_started_at: null, sim_paused_at: null, accumulated_pause_ms: 0 }) };
+    const nowIso = new Date().toISOString();
+
+    if (data.action === "start") {
+      runtime.active = true;
+      runtime.sim_started_at = nowIso;
+      runtime.sim_paused_at = null;
+      runtime.accumulated_pause_ms = 0;
+    } else if (data.action === "restart") {
+      runtime.active = true;
+      runtime.sim_started_at = nowIso;
+      runtime.sim_paused_at = null;
+      runtime.accumulated_pause_ms = 0;
+    } else if (data.action === "pause") {
+      if (runtime.active && !runtime.sim_paused_at) runtime.sim_paused_at = nowIso;
+    } else if (data.action === "resume") {
+      if (runtime.sim_paused_at) {
+        const pausedFor = Math.max(0, Date.now() - new Date(runtime.sim_paused_at).getTime());
+        runtime.accumulated_pause_ms = (runtime.accumulated_pause_ms ?? 0) + pausedFor;
+        runtime.sim_paused_at = null;
+        runtime.active = true;
+      }
+    } else if (data.action === "sync_real") {
+      // Copia números reais para os overrides fixos, sem tocar em nada operacional.
+      const { data: disp } = await supabaseAdmin
+        .from("wa_campaigns")
+        .select("total_recipients, sent_count, delivered_count, failed_count")
+        .eq("linked_campaign_id", data.id)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const first = disp?.[0];
+      if (first) {
+        current.sent = (first.sent_count as number | null) ?? undefined;
+        current.delivered = (first.delivered_count as number | null) ?? undefined;
+        current.failed = (first.failed_count as number | null) ?? undefined;
+        if (!sim.total_contacts) {
+          (current.simulation ??= { ...sim }).total_contacts = (first.total_recipients as number | null) ?? undefined;
+        }
+      }
+    }
+
+    const nextSim: NonNullable<PublicOverrides["simulation"]> = {
+      ...(current.simulation ?? sim),
+      runtime,
+      updated_at: nowIso,
+      updated_by: context.userId,
+    };
+    const next: PublicOverrides = { ...current, simulation: nextSim };
+
+    const { error } = await supabaseAdmin
+      .from("campaigns")
+      .update({ public_overrides: next } as never)
+      .eq("id", data.id);
+    if (error) throw error;
+    return { ok: true, overrides: next };
+  });
+
 
 export const getPublicCampaignReport = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) => z.object({ id: z.string().uuid() }).parse(data))
