@@ -2713,6 +2713,8 @@ export type Database = {
       }
       wa_rate_limits: {
         Row: {
+          active_inflight: number
+          global_max_concurrency: number
           last_refill_at: string
           max_concurrency: number
           phone_number_id: string
@@ -2724,6 +2726,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          active_inflight?: number
+          global_max_concurrency?: number
           last_refill_at?: string
           max_concurrency?: number
           phone_number_id: string
@@ -2735,6 +2739,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          active_inflight?: number
+          global_max_concurrency?: number
           last_refill_at?: string
           max_concurrency?: number
           phone_number_id?: string
@@ -2744,6 +2750,36 @@ export type Database = {
           throughput_synced_at?: string | null
           tokens?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      wa_tick_lease: {
+        Row: {
+          acquired_at: string | null
+          chain_count: number
+          chained_at: string | null
+          expires_at: string | null
+          holder: string | null
+          id: number
+          last_chain_request_id: number | null
+        }
+        Insert: {
+          acquired_at?: string | null
+          chain_count?: number
+          chained_at?: string | null
+          expires_at?: string | null
+          holder?: string | null
+          id?: number
+          last_chain_request_id?: number | null
+        }
+        Update: {
+          acquired_at?: string | null
+          chain_count?: number
+          chained_at?: string | null
+          expires_at?: string | null
+          holder?: string | null
+          id?: number
+          last_chain_request_id?: number | null
         }
         Relationships: []
       }
@@ -2865,6 +2901,7 @@ export type Database = {
           display_name_status: string | null
           display_phone: string | null
           embedded_signup_completed_at: string | null
+          global_max_concurrency: number
           global_rate_per_second: number
           graph_api_version: string | null
           id: string
@@ -2917,6 +2954,7 @@ export type Database = {
           display_name_status?: string | null
           display_phone?: string | null
           embedded_signup_completed_at?: string | null
+          global_max_concurrency?: number
           global_rate_per_second?: number
           graph_api_version?: string | null
           id?: string
@@ -2969,6 +3007,7 @@ export type Database = {
           display_name_status?: string | null
           display_phone?: string | null
           embedded_signup_completed_at?: string | null
+          global_max_concurrency?: number
           global_rate_per_second?: number
           graph_api_version?: string | null
           id?: string
@@ -4132,6 +4171,18 @@ export type Database = {
       }
       seed_onboarding_checklist: { Args: { _ws: string }; Returns: undefined }
       user_workspace_ids: { Args: { _user: string }; Returns: string[] }
+      wa_acquire_slots: {
+        Args: {
+          _max_conc?: number
+          _phone_number_id: string
+          _requested: number
+        }
+        Returns: {
+          active_after: number
+          granted: number
+          max_concurrency: number
+        }[]
+      }
       wa_available_stock: {
         Args: { _client_id: string; _project_id: string }
         Returns: number
@@ -4166,6 +4217,10 @@ export type Database = {
         Args: { _campaign_id: string }
         Returns: undefined
       }
+      wa_release_slots: {
+        Args: { _count: number; _phone_number_id: string }
+        Returns: number
+      }
       wa_simulate_rate_limiter: {
         Args: {
           _conc?: number
@@ -4182,6 +4237,12 @@ export type Database = {
           total_allowed: number
         }[]
       }
+      wa_tick_acquire_lease: {
+        Args: { _duration_seconds?: number; _holder: string }
+        Returns: boolean
+      }
+      wa_tick_chain: { Args: { _apikey: string; _url: string }; Returns: Json }
+      wa_tick_release_lease: { Args: { _holder: string }; Returns: boolean }
       wa_try_consume_token: {
         Args: {
           _default_conc?: number
@@ -4197,6 +4258,7 @@ export type Database = {
       }
       wa_try_consume_tokens: {
         Args: {
+          _burst_cap_ms?: number
           _default_conc?: number
           _default_rate?: number
           _override_conc?: number
