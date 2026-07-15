@@ -1020,6 +1020,20 @@ function ClicksGeneratorCard({
     [waDispatches],
   );
 
+  const parsedCities = cityList
+    .filter((c) => c.label.trim())
+    .map((c) => ({
+      label: c.label.trim(),
+      percent: Number(c.percent || 0),
+      country: c.country.trim() || null,
+    }));
+  const parsedCountries = countryList
+    .filter((c) => c.label.trim())
+    .map((c) => ({
+      label: c.label.trim(),
+      percent: Number(c.percent || 0),
+    }));
+
   const previewCfg: ClicksGeneratorConfig = {
     enabled,
     initial: Number(initial || 0),
@@ -1031,6 +1045,9 @@ function ClicksGeneratorCard({
     growth,
     use_source: useSource,
     replace_or_add: replaceOrAdd,
+    hierarchical,
+    cities: parsedCities,
+    countries: parsedCountries,
   };
   const seed = useMemo(() => seedFromString(campaignId), [campaignId]);
   const sourceDelivered =
@@ -1043,6 +1060,9 @@ function ClicksGeneratorCard({
           computeGeneratedClicks(sourceDelivered * 2, previewCfg, seed),
         )
       : computeGeneratedClicks(sourceDelivered * 2, previewCfg, seed);
+
+  const citySum = parsedCities.reduce((a, b) => a + (b.percent || 0), 0);
+  const countrySum = parsedCountries.reduce((a, b) => a + (b.percent || 0), 0);
 
   const save = useMutation({
     mutationFn: () =>
@@ -1060,6 +1080,9 @@ function ClicksGeneratorCard({
             growth,
             use_source: useSource,
             replace_or_add: replaceOrAdd,
+            hierarchical,
+            cities: parsedCities,
+            countries: parsedCountries,
           },
         },
       }),
