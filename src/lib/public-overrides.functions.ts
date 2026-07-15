@@ -107,6 +107,7 @@ const settingsPatchSchema = z.object({
       growth: z.enum(["linear", "random"]).default("random"),
       use_source: z.enum(["real", "public"]).default("public"),
       replace_or_add: z.enum(["replace", "add"]).default("replace"),
+      clicks_per_minute: z.number().min(0).max(100000).nullable().optional(),
       cities: z
         .array(
           z.object({
