@@ -993,8 +993,8 @@ export async function processCampaignTick(
       const totalStarted = throughputSamples.reduce((s, x) => s + x.started, 0);
       const peak = throughputSamples.reduce((m, x) => Math.max(m, x.started), 0);
       const avg = +(totalStarted / throughputSamples.length).toFixed(2);
-      await logEvent(campaignId, "throughput_sample", `Cadência do tick: avg ${avg} msg/s (pico ${peak}), config ${campRate} msg/s, ${throughputSamples.length}s`, {
-        configured_rate: campRate,
+      await logEvent(campaignId, "throughput_sample", `Cadência do tick: avg ${avg} msg/s (pico ${peak}), config ${effectiveRate} msg/s, ${throughputSamples.length}s`, {
+        configured_rate: effectiveRate,
         raw_configured_rate: rawCampRate,
         number_max_rate: numberMaxRate,
         max_concurrency: campConc,
