@@ -293,10 +293,13 @@ export async function processCampaignTick(
       .select("*")
       .eq("id", camp.template_id)
       .single();
-    // Fallback: se a conexão não tem token, usar o token global do ambiente
-    if (conn && !conn.access_token) {
+    // Token: quando a conexão está marcada para usar token global,
+    // ignorar qualquer token salvo na conexão (pode estar antigo/expirado).
+    if (conn) {
       const globalToken = process.env.WHATSAPP_ACCESS_TOKEN;
-      if (globalToken) {
+      if ((conn as any).use_global_token) {
+        (conn as any).access_token = globalToken ?? null;
+      } else if (!conn.access_token && globalToken) {
         (conn as any).access_token = globalToken;
       }
     }
