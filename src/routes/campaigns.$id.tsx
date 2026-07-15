@@ -541,11 +541,10 @@ function PublicCampaignReport() {
 
         )}
 
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <StatCard label="Cliques totais" value={stats.total} />
           <StatCard label="Países" value={stats.countries.length} />
           <StatCard label="Cidades" value={stats.cities.length} />
-          <StatCard label="Dispositivos" value={stats.devices.length} />
         </div>
 
         <Card>
@@ -603,8 +602,6 @@ function PublicCampaignReport() {
         <div className="grid gap-4 md:grid-cols-2">
           <Breakdown title="Países" rows={stats.countries} />
           <Breakdown title="Cidades" rows={stats.cities} />
-          <Breakdown title="Dispositivos" rows={stats.devices} />
-          <Breakdown title="Navegadores" rows={stats.browsers} />
         </div>
 
         {dispatches.length > 0 && (
