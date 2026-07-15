@@ -1210,6 +1210,12 @@ function ClicksGeneratorCard({
             value={refresh}
             onChange={setRefresh}
           />
+          <NumField
+            label="Cliques por minuto"
+            value={clicksPerMinute}
+            onChange={setClicksPerMinute}
+            placeholder="0 (desativado)"
+          />
           <div className="space-y-1">
             <Label className="text-xs">Crescimento</Label>
             <Select value={growth} onValueChange={(v) => setGrowth(v as any)}>
