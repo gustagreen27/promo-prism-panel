@@ -312,7 +312,7 @@ function Page() {
   const exportCsv = async () => {
     try {
       toast.info("Preparando CSV com todos os destinatários…");
-      const all = (await getRec({ data: { id } })) as any[];
+      const all = (await getRec({ data: { id, limit: 200000 } })) as any[];
       if (!all?.length) { toast.warning("Sem dados"); return; }
       const esc = (v: any) => {
         const s = v == null ? "" : String(v);

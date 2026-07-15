@@ -492,7 +492,7 @@ export const getCampaignRecipients = createServerFn({ method: "GET" })
     // Cap defensivo: sem limite explícito, no máximo 2000 (evita varrer 1M em campanhas grandes).
     const HARD_CAP = 2000;
     const requestedLimit = data.limit && data.limit > 0
-      ? Math.min(Math.floor(data.limit), 10000)
+      ? Math.min(Math.floor(data.limit), 200000)
       : HARD_CAP;
     const PAGE = 1000;
     const rows: any[] = [];
