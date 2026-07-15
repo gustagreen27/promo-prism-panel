@@ -217,19 +217,38 @@ function PublicCampaignReport() {
               <h2 className="text-lg font-semibold">Disparos WhatsApp em tempo real</h2>
             </div>
             <div className="space-y-4">
-              {dispatches.map((d, i) => (
-                <DispatchCard
-                  key={d.id}
-                  d={d}
-                  overrides={i === 0 ? {
-                    sent: overrides.sent ?? undefined,
-                    delivered: overrides.delivered ?? undefined,
-                    failed: overrides.failed ?? undefined,
-                  } : undefined}
-                />
-              ))}
+              {dispatches.map((d, i) => {
+                let snapshot: SimSnapshot | null = null;
+                if (i === 0 && simulation && simulation.mode !== "real") {
+                  snapshot = computeSimulationSnapshot(
+                    simulation,
+                    {
+                      sent: d.sent_count ?? 0,
+                      delivered: d.delivered_count ?? 0,
+                      failed: d.failed_count ?? 0,
+                      total: d.total_recipients ?? 0,
+                      status: d.status,
+                      clicks: data.clicks.length,
+                    },
+                    new Date(),
+                  );
+                }
+                return (
+                  <DispatchCard
+                    key={d.id}
+                    d={d}
+                    snapshot={snapshot}
+                    overrides={i === 0 ? {
+                      sent: overrides.sent ?? undefined,
+                      delivered: overrides.delivered ?? undefined,
+                      failed: overrides.failed ?? undefined,
+                    } : undefined}
+                  />
+                );
+              })}
             </div>
           </section>
+
         )}
 
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
