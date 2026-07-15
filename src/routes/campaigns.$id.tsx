@@ -63,11 +63,15 @@ export const Route = createFileRoute("/campaigns/$id")({
 function PublicCampaignReport() {
   const { id } = Route.useParams();
   const fn = useServerFn(getPublicCampaignReport);
+
+  // A simulação define seu próprio intervalo de refetch (padrão 15s).
+  const [refetchMs, setRefetchMs] = useState(15000);
+
   const { data, isLoading, error, dataUpdatedAt } = useQuery({
     queryKey: ["public-campaign-report", id],
     queryFn: () => fn({ data: { id } }),
     retry: false,
-    refetchInterval: 15000,
+    refetchInterval: refetchMs,
     refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
     refetchOnMount: "always",
@@ -82,7 +86,27 @@ function PublicCampaignReport() {
     countries?: { label: string; count: number }[] | null;
     cities?: { label: string; count: number }[] | null;
     devices?: { label: string; count: number }[] | null;
+    simulation?: SimulationConfig | null;
   };
+
+  const simulation = useMemo(
+    () => (overrides.simulation ? coerceSimulation(overrides.simulation) : null),
+    [overrides.simulation],
+  );
+
+  // Tick local para o "efeito ao vivo" da simulação
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (!simulation || simulation.mode === "real" || !simulation.runtime?.active) return;
+    if (simulation.growth?.kind === "on_reload") return;
+    const intervalMs = Math.max(1000, (simulation.refetch_interval_sec ?? 5) * 1000);
+    const t = setInterval(() => setTick((n) => n + 1), intervalMs);
+    setRefetchMs(Math.max(intervalMs, 5000));
+    return () => clearInterval(t);
+  }, [simulation]);
+  void tick;
+
+
 
   const stats = useMemo(() => {
     if (!data) return null;
