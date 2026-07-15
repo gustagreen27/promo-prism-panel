@@ -32,7 +32,8 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ErrorCard } from "@/components/admin/query-state";
-import { Copy, ExternalLink, Trash2, BarChart3, Pencil, Play, Pause, Info, MoreVertical } from "lucide-react";
+import { Copy, ExternalLink, Trash2, BarChart3, Pencil, Play, Pause, Info, MoreVertical, Sparkles } from "lucide-react";
+import { PublicOverridesDialog } from "@/components/admin/public-overrides-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -114,6 +115,7 @@ function CampaignRow({
 }) {
   const del = useServerFn(deleteCampaign);
   const update = useServerFn(updateCampaign);
+  const [overridesOpen, setOverridesOpen] = useState(false);
   const isActive = c.status === "active";
   const publicUrl =
     typeof window !== "undefined" ? `${window.location.origin}/${c.slug}` : `/${c.slug}`;
@@ -213,6 +215,10 @@ function CampaignRow({
                 </a>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setOverridesOpen(true)}>
+                <Sparkles className="mr-2 h-4 w-4" /> Personalizar página pública
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
                 onClick={async () => {
@@ -228,6 +234,12 @@ function CampaignRow({
           </DropdownMenu>
         </div>
       </div>
+      <PublicOverridesDialog
+        campaignId={c.id}
+        campaignName={c.name}
+        open={overridesOpen}
+        onOpenChange={setOverridesOpen}
+      />
     </Card>
   );
 }

@@ -68,6 +68,16 @@ function PublicCampaignReport() {
     refetchOnReconnect: true,
   });
 
+  const overrides = (data?.overrides ?? {}) as {
+    total_clicks?: number | null;
+    sent?: number | null;
+    delivered?: number | null;
+    failed?: number | null;
+    countries?: { label: string; count: number }[] | null;
+    cities?: { label: string; count: number }[] | null;
+    devices?: { label: string; count: number }[] | null;
+  };
+
   const stats = useMemo(() => {
     if (!data) return null;
     const clicks = data.clicks;
@@ -98,15 +108,16 @@ function PublicCampaignReport() {
         .map(([label, count]) => ({ label, count }));
     };
     return {
-      total: clicks.length,
-      countries: top("country"),
-      cities: top("city"),
-      devices: top("device_type"),
+      total: overrides.total_clicks != null ? overrides.total_clicks : clicks.length,
+      countries: overrides.countries && overrides.countries.length > 0 ? overrides.countries : top("country"),
+      cities: overrides.cities && overrides.cities.length > 0 ? overrides.cities : top("city"),
+      devices: overrides.devices && overrides.devices.length > 0 ? overrides.devices : top("device_type"),
       browsers: top("browser"),
       series,
       hourly,
     };
-  }, [data]);
+  }, [data, overrides]);
+
 
   if (error) {
     if ((error as Error).message === "NOT_FOUND") throw notFound();
@@ -176,8 +187,16 @@ function PublicCampaignReport() {
               <h2 className="text-lg font-semibold">Disparos WhatsApp em tempo real</h2>
             </div>
             <div className="space-y-4">
-              {dispatches.map((d) => (
-                <DispatchCard key={d.id} d={d} />
+              {dispatches.map((d, i) => (
+                <DispatchCard
+                  key={d.id}
+                  d={d}
+                  overrides={i === 0 ? {
+                    sent: overrides.sent ?? undefined,
+                    delivered: overrides.delivered ?? undefined,
+                    failed: overrides.failed ?? undefined,
+                  } : undefined}
+                />
               ))}
             </div>
           </section>
@@ -390,12 +409,19 @@ type Dispatch = {
   progress: unknown;
 };
 
-function DispatchCard({ d }: { d: Dispatch }) {
+function DispatchCard({
+  d,
+  overrides,
+}: {
+  d: Dispatch;
+  overrides?: { sent?: number; delivered?: number; failed?: number };
+}) {
   const total = d.total_recipients ?? 0;
-  const delivered = d.delivered_count ?? 0;
-  const sent = delivered; // "Enviados" reflete a quantidade de entregues
-  const failed = d.failed_count ?? 0;
-  const percent = total > 0 ? Math.min(100, Math.round((sent / total) * 100)) : 0;
+  const realDelivered = d.delivered_count ?? 0;
+  const delivered = overrides?.delivered ?? realDelivered;
+  const sent = overrides?.sent ?? delivered; // "Enviados" reflete a quantidade de entregues
+  const failed = overrides?.failed ?? (d.failed_count ?? 0);
+  const percent = total > 0 ? Math.min(100, Math.round((sent / Math.max(total, sent)) * 100)) : (sent > 0 ? 100 : 0);
 
   const statusLabel = (() => {
     switch (d.status) {
