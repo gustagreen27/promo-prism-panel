@@ -975,6 +975,26 @@ function ClicksGeneratorCard({
   const [replaceOrAdd, setReplaceOrAdd] = useState<"replace" | "add">(
     cfg.replace_or_add ?? "replace",
   );
+  const [hierarchical, setHierarchical] = useState<boolean>(
+    cfg.hierarchical ?? false,
+  );
+  const [cityList, setCityList] = useState<
+    { label: string; percent: string; country: string }[]
+  >(
+    (cfg.cities ?? []).map((c) => ({
+      label: c.label,
+      percent: String(c.percent ?? 0),
+      country: c.country ?? "",
+    })),
+  );
+  const [countryList, setCountryList] = useState<
+    { label: string; percent: string }[]
+  >(
+    (cfg.countries ?? []).map((c) => ({
+      label: c.label,
+      percent: String(c.percent ?? 0),
+    })),
+  );
 
   // Total público de entregues (soma dos disparos com override ativo, senão reais).
   const publicDelivered = useMemo(() => {
