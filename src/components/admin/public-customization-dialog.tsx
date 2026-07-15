@@ -52,6 +52,11 @@ import {
   upsertPublicDispatch,
   upsertPublicSimulation,
 } from "@/lib/public-overrides.functions";
+import {
+  computeGeneratedClicks,
+  seedFromString,
+  type ClicksGeneratorConfig,
+} from "@/lib/public-clicks-generator";
 
 type Kind = "country" | "city" | "device" | "browser";
 const KIND_LABEL: Record<Kind, string> = {
