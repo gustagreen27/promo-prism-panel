@@ -92,7 +92,13 @@ const STEPS: WizardStep[] = [
 // em wa_campaigns: rate_per_second, max_concurrency, target_per_hour,
 // scheduled_pause_enabled, pause_every_messages, pause_duration_seconds.
 // ─────────────────────────────────────────────────────────────────
-type DispatchPreset = "conservative" | "target_20k" | "custom";
+type DispatchPreset =
+  | "economico"
+  | "intermediario"
+  | "alto_volume"
+  | "muito_alto"
+  | "maximo"
+  | "custom";
 type DispatchConfig = {
   preset: DispatchPreset;
   target_per_hour: number;      // meta operacional (mensagens/h)
@@ -103,13 +109,27 @@ type DispatchConfig = {
   pause_duration_seconds: number; // usado apenas se scheduled_pause_enabled
 };
 
-const DISPATCH_PRESETS: Record<Exclude<DispatchPreset, "custom">, Omit<DispatchConfig, "preset" | "scheduled_pause_enabled" | "pause_every_messages" | "pause_duration_seconds">> = {
-  conservative: { target_per_hour: 20_000, rate_per_second: 6, max_concurrency: 15 },
-  target_20k:   { target_per_hour: 20_000, rate_per_second: 7, max_concurrency: 15 },
+type PresetSpec = {
+  label: string;
+  target_per_hour: number;
+  rate_per_second: number;
+  max_concurrency: number;
 };
 
-function defaultDispatch(preset: DispatchPreset = "target_20k"): DispatchConfig {
-  const p = preset === "custom" ? DISPATCH_PRESETS.target_20k : DISPATCH_PRESETS[preset];
+const DISPATCH_PRESETS: Record<Exclude<DispatchPreset, "custom">, PresetSpec> = {
+  economico:      { label: "Econômico — 20 mil/h — 7 msg/s",     target_per_hour: 20_000,  rate_per_second: 7,  max_concurrency: 15  },
+  intermediario:  { label: "Intermediário — 50 mil/h — 15 msg/s", target_per_hour: 50_000,  rate_per_second: 15, max_concurrency: 40  },
+  alto_volume:    { label: "Alto volume — 100 mil/h — 30 msg/s",  target_per_hour: 100_000, rate_per_second: 30, max_concurrency: 80  },
+  muito_alto:     { label: "Muito alto — 200 mil/h — 60 msg/s",   target_per_hour: 200_000, rate_per_second: 60, max_concurrency: 120 },
+  maximo:         { label: "Máximo — 288 mil/h — 80 msg/s",       target_per_hour: 288_000, rate_per_second: 80, max_concurrency: 160 },
+};
+
+const MAX_RATE_PER_SECOND = 80;
+const MAX_CONCURRENCY_UI = 300;
+const MAX_TARGET_PER_HOUR = 288_000;
+
+function defaultDispatch(preset: DispatchPreset = "economico"): DispatchConfig {
+  const p = preset === "custom" ? DISPATCH_PRESETS.economico : DISPATCH_PRESETS[preset];
   return {
     preset,
     target_per_hour: p.target_per_hour,
