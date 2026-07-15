@@ -1373,3 +1373,155 @@ function ClicksGeneratorCard({
     </Card>
   );
 }
+
+// ============================================================================
+// STATUS MAP CARD — remapeia status reais para status exibidos publicamente.
+// Somente apresentação: nunca altera campaign_recipients.
+// ============================================================================
+const REMAPPABLE_STATUSES = [
+  { key: "failed", label: "Falhou" },
+  { key: "accepted", label: "Aceito" },
+  { key: "pending", label: "Pendente" },
+  { key: "processing", label: "Processando" },
+  { key: "sent", label: "Enviado" },
+  { key: "delivered", label: "Entregue" },
+  { key: "read", label: "Lido" },
+  { key: "replied", label: "Respondido" },
+  { key: "opt_out", label: "Opt-out" },
+  { key: "cancelled", label: "Cancelado" },
+  { key: "skipped", label: "Ignorado" },
+] as const;
+
+const TARGET_STATUS_OPTIONS = [
+  { value: "", label: "Manter status original" },
+  { value: "sent", label: "Enviado" },
+  { value: "delivered", label: "Entregue" },
+  { value: "read", label: "Lido" },
+  { value: "replied", label: "Respondido" },
+  { value: "accepted", label: "Aceito" },
+  { value: "pending", label: "Pendente" },
+  { value: "failed", label: "Falhou" },
+];
+
+function StatusMapCard({
+  campaignId,
+  settings,
+  onChange,
+}: {
+  campaignId: string;
+  settings: any;
+  onChange: () => void;
+}) {
+  const upsertFn = useServerFn(upsertCampaignPublicSettings);
+  const initial = (settings?.status_map ?? {}) as Record<string, string | null>;
+
+  const [failedAsSent, setFailedAsSent] = useState<boolean>(
+    initial.failed === "sent",
+  );
+  const [map, setMap] = useState<Record<string, string>>(() => {
+    const out: Record<string, string> = {};
+    for (const s of REMAPPABLE_STATUSES) {
+      const v = initial[s.key];
+      if (typeof v === "string" && v) out[s.key] = v;
+    }
+    return out;
+  });
+
+  const effectiveMap = useMemo(() => {
+    const out: Record<string, string | null> = { ...map };
+    if (failedAsSent) out.failed = "sent";
+    // Remove entradas vazias
+    for (const k of Object.keys(out)) {
+      if (!out[k]) delete out[k];
+    }
+    return out;
+  }, [map, failedAsSent]);
+
+  const save = useMutation({
+    mutationFn: () =>
+      upsertFn({
+        data: {
+          campaignId,
+          status_map: effectiveMap,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Mapeamento de status salvo");
+      onChange();
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          Mapeamento de status no histórico público
+          {Object.keys(effectiveMap).length > 0 && (
+            <Badge variant="secondary">
+              {Object.keys(effectiveMap).length} regra(s)
+            </Badge>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="rounded-md border p-3 flex items-center justify-between gap-3">
+          <div>
+            <div className="text-sm font-medium">
+              Substituir status "Falhou" por "Enviado" no histórico público
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Atalho rápido. Registros com status real "failed" aparecem como
+              "Enviado" apenas na página pública e no PDF. Números e horários
+              originais são mantidos.
+            </p>
+          </div>
+          <Switch checked={failedAsSent} onCheckedChange={setFailedAsSent} />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs">
+            Mapeamento detalhado (opcional) — sobrescreve o atalho acima
+          </Label>
+          <div className="grid gap-2">
+            {REMAPPABLE_STATUSES.map((s) => (
+              <div key={s.key} className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                <div className="text-sm">{s.label}</div>
+                <div className="text-xs text-muted-foreground">→</div>
+                <Select
+                  value={map[s.key] ?? ""}
+                  onValueChange={(v) =>
+                    setMap((m) => ({ ...m, [s.key]: v }))
+                  }
+                >
+                  <SelectTrigger className="h-8">
+                    <SelectValue placeholder="Manter status original" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TARGET_STATUS_OPTIONS.map((o) => (
+                      <SelectItem key={o.value || "keep"} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Aplica-se aos 100 destinatários mais recentes exibidos em cada
+            bloco de "Histórico de disparos" na página pública. Não altera
+            dados reais, métricas operacionais nem os disparos em /admin.
+            Desligar as opções restaura imediatamente o status real.
+          </p>
+        </div>
+
+        <div>
+          <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
+            <Save className="mr-1 h-4 w-4" /> Salvar mapeamento
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
