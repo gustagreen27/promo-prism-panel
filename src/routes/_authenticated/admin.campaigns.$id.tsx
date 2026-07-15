@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
-import { PublicOverridesDialog } from "@/components/admin/public-overrides-dialog";
+import { PublicCustomizationDialog } from "@/components/admin/public-customization-dialog";
 import { Sparkles } from "lucide-react";
 import {
   getCampaignAnalytics,
@@ -166,9 +166,10 @@ function CampaignDetail() {
         </div>
       </div>
 
-      <PublicOverridesDialog
+      <PublicCustomizationDialog
         campaignId={data.campaign.id}
         campaignName={data.campaign.name ?? "Campanha"}
+        campaignSlug={data.campaign.slug ?? undefined}
         open={overridesOpen}
         onOpenChange={setOverridesOpen}
       />
