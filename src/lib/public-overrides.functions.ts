@@ -95,6 +95,20 @@ const settingsPatchSchema = z.object({
   hourly_series: z
     .array(z.object({ hour: z.string(), count: z.number().int().min(0) }))
     .optional(),
+  clicks_generator: z
+    .object({
+      enabled: z.boolean().default(false),
+      initial: z.number().int().min(0).default(0),
+      rate: z.number().min(0).max(100).default(10),
+      min_pct: z.number().min(0).max(100).nullable().optional(),
+      max_pct: z.number().min(0).max(100).nullable().optional(),
+      max_clicks: z.number().int().min(0).nullable().optional(),
+      refresh_interval_sec: z.number().int().min(1).max(3600).default(10),
+      growth: z.enum(["linear", "random"]).default("random"),
+      use_source: z.enum(["real", "public"]).default("public"),
+      replace_or_add: z.enum(["replace", "add"]).default("replace"),
+    })
+    .optional(),
 });
 
 export const upsertCampaignPublicSettings = createServerFn({ method: "POST" })
