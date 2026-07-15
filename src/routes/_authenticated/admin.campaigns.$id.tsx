@@ -44,6 +44,7 @@ export const Route = createFileRoute("/_authenticated/admin/campaigns/$id")({
 
 function CampaignDetail() {
   const { id } = Route.useParams();
+  const [overridesOpen, setOverridesOpen] = useState(false);
   const fn = useServerFn(getCampaignAnalytics);
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["campaign-analytics", id],
