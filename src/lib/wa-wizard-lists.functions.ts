@@ -46,7 +46,9 @@ export const listWorkspaceLists = createServerFn({ method: "POST" })
     return { lists: (lists ?? []).map((l: any) => ({ ...l, count: counts[l.id] ?? 0 })) };
   });
 
-/** Contagem de contatos de uma lista (pré-visualização). */
+/** Contagem de contatos de uma lista (pré-visualização).
+ *  Usa counts + amostra pequena para não estourar memória/timeout com listas de 100k+.
+ */
 export const previewWorkspaceList = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { workspace_id: string; list_id: string }) =>
@@ -55,26 +57,50 @@ export const previewWorkspaceList = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertWsMember(context as any, data.workspace_id);
     const { supabase } = context as any;
-    // Pagina em blocos para superar o teto default de 1000 linhas do PostgREST.
-    const PAGE = 1000;
-    const all: any[] = [];
-    for (let from = 0; ; from += PAGE) {
-      const { data: items, error } = await supabase
+
+    // 1) Total de itens na lista (head count, não traz linhas)
+    const totalRes = await supabase
+      .from("contact_list_items")
+      .select("list_id", { count: "exact", head: true })
+      .eq("list_id", data.list_id);
+    const total = totalRes.count ?? 0;
+
+    // 2) Amostra pequena de contatos válidos (para exibir na coluna direita)
+    const SAMPLE = 50;
+    const { data: sampleRows, error: sampleErr } = await supabase
+      .from("contact_list_items")
+      .select("contact:contacts!inner(id,name,phone,opt_in,opt_out)")
+      .eq("list_id", data.list_id)
+      .eq("contact.opt_in", true)
+      .eq("contact.opt_out", false)
+      .not("contact.phone", "is", null)
+      .limit(SAMPLE);
+    if (sampleErr) throw sampleErr;
+    const sample = (sampleRows ?? [])
+      .map((r: any) => r.contact)
+      .filter(Boolean)
+      .map((c: any) => ({ id: c.id, name: c.name, phone: c.phone }));
+
+    // 3) Contagem de válidos (head count com filtro no join)
+    let valid = 0;
+    try {
+      const validRes = await supabase
         .from("contact_list_items")
-        .select("contact:contacts(id,name,phone,opt_in,opt_out)")
+        .select("contact:contacts!inner(id)", { count: "exact", head: true })
         .eq("list_id", data.list_id)
-        .range(from, from + PAGE - 1);
-      if (error) throw error;
-      const rows = (items ?? []).map((r: any) => r.contact).filter(Boolean);
-      all.push(...rows);
-      if (!items || items.length < PAGE) break;
+        .eq("contact.opt_in", true)
+        .eq("contact.opt_out", false)
+        .not("contact.phone", "is", null);
+      valid = validRes.count ?? 0;
+    } catch {
+      valid = total; // fallback conservador
     }
-    const valid = all.filter((c: any) => c.opt_in && !c.opt_out && c.phone);
+
     return {
-      total: all.length,
-      valid: valid.length,
-      opt_out: all.length - valid.length,
-      sample: valid.map((c: any) => ({ id: c.id, name: c.name, phone: c.phone })),
+      total,
+      valid,
+      opt_out: Math.max(0, total - valid),
+      sample,
     };
   });
 
