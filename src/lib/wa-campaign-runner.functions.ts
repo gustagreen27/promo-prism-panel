@@ -211,7 +211,7 @@ export const startCampaignAsync = createServerFn({ method: "POST" })
     // Verify phone number is registered on Meta before dispatching (avoids #133010 mid-run).
     const { data: connRow } = await supabase
       .from("whatsapp_connections")
-      .select("access_token,phone_number_id,display_phone_number")
+      .select("access_token,phone_number_id")
       .eq("id", camp.connection_id)
       .single();
     if (!connRow?.phone_number_id || !connRow?.access_token) {
