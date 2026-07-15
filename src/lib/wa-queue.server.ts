@@ -382,21 +382,9 @@ export async function processCampaignTick(
     const rawCampRate = Math.max(1, Number((camp as any).rate_per_second ?? DEFAULT_RATE_PER_SECOND));
     const campRate = Math.min(rawCampRate, numberMaxRate);
     const campConc = Math.max(1, Number((camp as any).max_concurrency ?? DEFAULT_MAX_CONCURRENCY));
-    const chunkSize = Math.max(1, Math.min(campConc * 2, 50));
-    // Sincroniza o token bucket global (compartilhado entre TODAS as campanhas do
-    // mesmo phone_number_id) com o rate/concorrência atualmente configurados.
-    // Sem isso, o wa_rate_limits ficaria travado no valor bootstrap da 1ª campanha.
-    try {
-      await supabaseAdmin.from("wa_rate_limits" as any).upsert(
-        {
-          phone_number_id: phoneNumberId,
-          rate_per_second: campRate,
-          max_concurrency: campConc,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "phone_number_id" },
-      );
-    } catch { /* non-fatal */ }
+    // Reservamos em blocos grandes para sustentar cadências altas (até 80 msg/s).
+    // Cap depende da concorrência para não reservar demais quando o WhatsApp está lento.
+    const chunkSize = Math.max(50, Math.min(campConc * 4, 500));
     // budget = teto de reservas neste tick (não é rate!). Vem do cron como
     // rps * TICK_WINDOW_S, limitado por max_per_hour/day (cap).
     const budget = Math.max(1, Math.min(reservationBudget ?? 1000, cap));
@@ -764,7 +752,20 @@ export async function processCampaignTick(
       }
     };
 
-    // ---- Scheduler: reserva progressiva + token bucket + semáforo ----
+    // ---- Scheduler: reserva em background + token bucket global em LOTE + semáforo ----
+    //
+    // Correções sobre a versão anterior:
+    //  1. wa_try_consume_tokens (RPC) consome N tokens em uma chamada só, evitando 1
+    //     round-trip ao Postgres por mensagem (que travava a cadência em ~20–50 msg/s
+    //     independente do rate configurado).
+    //  2. reserveNextChunk roda em background (não bloqueia o dispatch); o loop só
+    //     espera se a fila local esvazia enquanto não há envios em voo.
+    //  3. chunkSize acompanha campConc (até 500), suportando concorrências altas.
+    //  4. Telemetria por segundo (iniciados / ativos / tokens / rate efetivo) em
+    //     campaign_timeline event_type='throughput_sample'.
+    //  5. Rate limiter continua GLOBAL por phone_number_id: campanhas do mesmo número
+    //     dividem o mesmo bucket em wa_rate_limits; números diferentes têm buckets
+    //     independentes (chave = phone_number_id).
     const inflight = new Set<Promise<void>>();
     const baseSentCount = Number((camp as any).sent_count ?? 0);
     let maxConc = campConc;
@@ -772,6 +773,13 @@ export async function processCampaignTick(
     let reservedTotal = 0;
     let exhausted = false;
     const tickStart = Date.now();
+
+    // Buffer local de tokens (reduz round-trips ao Postgres).
+    let localTokens = 0;
+    let lastTokenSyncAt = 0;
+    let lastTokenWaitUntil = 0;
+
+    let reservingPromise: Promise<number> | null = null;
 
     const reserveNextChunk = async (): Promise<number> => {
       if (exhausted || reservedTotal >= budget) return 0;
@@ -798,42 +806,101 @@ export async function processCampaignTick(
       return chunk.length;
     };
 
+    const kickReserve = () => {
+      if (reservingPromise || exhausted || reservedTotal >= budget) return;
+      reservingPromise = reserveNextChunk().finally(() => {
+        reservingPromise = null;
+      });
+    };
+
+    // Telemetria por segundo
+    let startedThisSecond = 0;
+    let lastTelemetrySecond = Math.floor(Date.now() / 1000);
+    const throughputSamples: Array<{ t: number; started: number; active: number; effRate: number; tokens: number }> = [];
+    const flushTelemetryIfNeeded = () => {
+      const nowSec = Math.floor(Date.now() / 1000);
+      if (nowSec !== lastTelemetrySecond) {
+        throughputSamples.push({
+          t: lastTelemetrySecond,
+          started: startedThisSecond,
+          active: inflight.size,
+          effRate: campRate,
+          tokens: localTokens,
+        });
+        startedThisSecond = 0;
+        lastTelemetrySecond = nowSec;
+      }
+    };
+
+    // Bootstrap
     await reserveNextChunk();
 
     while (!systemicPause) {
       if (Date.now() - tickStart > MAX_TICK_RUNTIME_MS) break;
+      flushTelemetryIfNeeded();
 
-      // Top up quando a fila local cai abaixo de max_concurrency
+      // Kick da próxima reserva antes de esvaziar (top-up em background)
       if (localQueue.length < campConc && !exhausted && reservedTotal < budget) {
-        await reserveNextChunk();
+        kickReserve();
       }
 
+      // Se fila local vazia, esperar reserva ou envios em voo
       if (localQueue.length === 0) {
+        if (reservingPromise) {
+          await reservingPromise;
+          continue;
+        }
         if (inflight.size === 0) break;
         await Promise.race(inflight);
         continue;
       }
 
-      while (inflight.size >= maxConc) {
+      // Aguarda concorrência
+      if (inflight.size >= maxConc) {
         await Promise.race(inflight);
-      }
-
-      // Global token bucket (por phone_number_id, compartilhado entre campanhas).
-      const { data: tok } = await supabaseAdmin.rpc("wa_try_consume_token" as any, {
-        _phone_number_id: phoneNumberId,
-        _default_rate: campRate,
-        _default_conc: campConc,
-      });
-      const row = Array.isArray(tok) ? tok[0] : tok;
-      if (row?.max_concurrency && row.max_concurrency > 0) {
-        maxConc = Math.min(campConc, row.max_concurrency);
-      }
-      if (!row?.allowed) {
-        const waitMs = Math.max(1, Math.min(row?.wait_ms ?? 100, 500));
-        await new Promise((res) => setTimeout(res, waitMs));
         continue;
       }
 
+      // ------ Rate limiter global em LOTE ------
+      // Quantos tokens ainda podemos usar respeitando concorrência disponível e fila
+      const now = Date.now();
+      if (localTokens < 1 && now >= lastTokenWaitUntil) {
+        const wantTokens = Math.min(
+          Math.max(1, maxConc - inflight.size),
+          localQueue.length,
+          Math.max(1, Math.ceil(campRate / 4)), // pega ~250ms de rate por vez
+        );
+        const { data: tok } = await supabaseAdmin.rpc("wa_try_consume_tokens" as any, {
+          _phone_number_id: phoneNumberId,
+          _requested: wantTokens,
+          _default_rate: campRate,
+          _default_conc: campConc,
+          _override_rate: campRate,
+          _override_conc: campConc,
+        });
+        const row = Array.isArray(tok) ? tok[0] : tok;
+        if (row?.max_concurrency && row.max_concurrency > 0) {
+          maxConc = Math.min(campConc, row.max_concurrency);
+        }
+        const granted = Math.max(0, Number(row?.granted ?? 0));
+        localTokens += granted;
+        lastTokenSyncAt = now;
+        if (granted === 0) {
+          const waitMs = Math.max(1, Math.min(row?.wait_ms ?? 50, 250));
+          lastTokenWaitUntil = now + waitMs;
+          await new Promise((res) => setTimeout(res, waitMs));
+          continue;
+        }
+      } else if (localTokens < 1) {
+        // Ainda dentro da janela de espera do bucket
+        const waitMs = Math.max(1, lastTokenWaitUntil - now);
+        await new Promise((res) => setTimeout(res, Math.min(waitMs, 50)));
+        continue;
+      }
+
+      // Despacha uma mensagem (consome 1 token local)
+      localTokens -= 1;
+      startedThisSecond += 1;
       const r = localQueue.shift();
       let p!: Promise<void>;
       p = sendOne(r)
@@ -846,9 +913,15 @@ export async function processCampaignTick(
       inflight.add(p);
     }
 
+    flushTelemetryIfNeeded();
+
     // Drena envios em voo
     if (inflight.size) {
       await Promise.all(inflight);
+    }
+    // Aguarda reserva em background (se houver)
+    if (reservingPromise) {
+      try { await reservingPromise; } catch { /* noop */ }
     }
 
     // Rollback: recipients reservados mas não despachados voltam para pending
@@ -859,6 +932,24 @@ export async function processCampaignTick(
         .update({ status: "pending" })
         .in("id", laterIds);
     }
+
+    // Log de telemetria agregada do tick (média/pico por segundo)
+    if (throughputSamples.length > 0) {
+      const totalStarted = throughputSamples.reduce((s, x) => s + x.started, 0);
+      const peak = throughputSamples.reduce((m, x) => Math.max(m, x.started), 0);
+      const avg = +(totalStarted / throughputSamples.length).toFixed(2);
+      await logEvent(campaignId, "throughput_sample", `Cadência do tick: avg ${avg} msg/s (pico ${peak}), config ${campRate} msg/s, ${throughputSamples.length}s`, {
+        configured_rate: campRate,
+        raw_configured_rate: rawCampRate,
+        number_max_rate: numberMaxRate,
+        max_concurrency: campConc,
+        avg_started_per_second: avg,
+        peak_started_per_second: peak,
+        total_started: totalStarted,
+        samples: throughputSamples,
+      });
+    }
+
 
     const sp = systemicPause as { reason: string; message: string } | null;
     if (sp) {
