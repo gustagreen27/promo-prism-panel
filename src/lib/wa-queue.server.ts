@@ -845,8 +845,13 @@ export async function processCampaignTick(
 
     // Telemetria por segundo
     let startedThisSecond = 0;
+    let rateLimitedBySecond = { global: 0, campaign: 0, concurrency: 0 };
     let lastTelemetrySecond = Math.floor(Date.now() / 1000);
-    const throughputSamples: Array<{ t: number; started: number; active: number; effRate: number; tokens: number }> = [];
+    const throughputSamples: Array<{
+      t: number; started: number; active: number; effRate: number;
+      globalTokens: number; campaignTokens: number;
+      limited_by_global: number; limited_by_campaign: number; limited_by_concurrency: number;
+    }> = [];
     const flushTelemetryIfNeeded = () => {
       const nowSec = Math.floor(Date.now() / 1000);
       if (nowSec !== lastTelemetrySecond) {
@@ -854,10 +859,15 @@ export async function processCampaignTick(
           t: lastTelemetrySecond,
           started: startedThisSecond,
           active: inflight.size,
-          effRate: campRate,
-          tokens: localTokens,
+          effRate: effectiveRate,
+          globalTokens: +localGlobalTokens.toFixed(2),
+          campaignTokens: +campaignTokens.toFixed(2),
+          limited_by_global: rateLimitedBySecond.global,
+          limited_by_campaign: rateLimitedBySecond.campaign,
+          limited_by_concurrency: rateLimitedBySecond.concurrency,
         });
         startedThisSecond = 0;
+        rateLimitedBySecond = { global: 0, campaign: 0, concurrency: 0 };
         lastTelemetrySecond = nowSec;
       }
     };
@@ -887,25 +897,39 @@ export async function processCampaignTick(
 
       // Aguarda concorrência
       if (inflight.size >= maxConc) {
+        rateLimitedBySecond.concurrency++;
         await Promise.race(inflight);
         continue;
       }
 
-      // ------ Rate limiter global em LOTE ------
-      // Quantos tokens ainda podemos usar respeitando concorrência disponível e fila
       const now = Date.now();
-      if (localTokens < 1 && now >= lastTokenWaitUntil) {
+
+      // ------ Gate 1: bucket LOCAL da campanha (protege B com rate 15 vs A com 80) ------
+      refillCampaignBucket();
+      if (campaignTokens < 1) {
+        rateLimitedBySecond.campaign++;
+        // aguarda o próximo token da campanha (~1000/rawCampRate ms)
+        const waitMs = Math.max(5, Math.min(Math.ceil(1000 / rawCampRate), 100));
+        await new Promise((res) => setTimeout(res, waitMs));
+        continue;
+      }
+
+      // ------ Gate 2: bucket GLOBAL do número (compartilhado, atômico no Postgres) ------
+      // O _override_rate/_override_conc reflete o LIMITE DO NÚMERO (nunca o rate
+      // da campanha), evitando "última campanha vence": campanhas diferentes no
+      // mesmo phone_number_id sempre passam o mesmo phoneBucketRate.
+      if (localGlobalTokens < 1 && now >= lastTokenWaitUntil) {
         const wantTokens = Math.min(
           Math.max(1, maxConc - inflight.size),
           localQueue.length,
-          Math.max(1, Math.ceil(campRate / 4)), // pega ~250ms de rate por vez
+          Math.max(1, Math.ceil(phoneBucketRate / 4)), // ~250ms de rate por RPC
         );
         const { data: tok } = await supabaseAdmin.rpc("wa_try_consume_tokens" as any, {
           _phone_number_id: phoneNumberId,
           _requested: wantTokens,
-          _default_rate: campRate,
+          _default_rate: phoneBucketRate,
           _default_conc: campConc,
-          _override_rate: campRate,
+          _override_rate: phoneBucketRate,
           _override_conc: campConc,
         });
         const row = Array.isArray(tok) ? tok[0] : tok;
@@ -913,23 +937,24 @@ export async function processCampaignTick(
           maxConc = Math.min(campConc, row.max_concurrency);
         }
         const granted = Math.max(0, Number(row?.granted ?? 0));
-        localTokens += granted;
-        lastTokenSyncAt = now;
+        localGlobalTokens += granted;
         if (granted === 0) {
+          rateLimitedBySecond.global++;
           const waitMs = Math.max(1, Math.min(row?.wait_ms ?? 50, 250));
           lastTokenWaitUntil = now + waitMs;
           await new Promise((res) => setTimeout(res, waitMs));
           continue;
         }
-      } else if (localTokens < 1) {
-        // Ainda dentro da janela de espera do bucket
+      } else if (localGlobalTokens < 1) {
+        rateLimitedBySecond.global++;
         const waitMs = Math.max(1, lastTokenWaitUntil - now);
         await new Promise((res) => setTimeout(res, Math.min(waitMs, 50)));
         continue;
       }
 
-      // Despacha uma mensagem (consome 1 token local)
-      localTokens -= 1;
+      // Despacha uma mensagem (consome 1 token global + 1 token da campanha)
+      localGlobalTokens -= 1;
+      campaignTokens -= 1;
       startedThisSecond += 1;
       const r = localQueue.shift();
       let p!: Promise<void>;
