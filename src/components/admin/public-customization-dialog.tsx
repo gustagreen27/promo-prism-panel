@@ -425,10 +425,10 @@ function MetricListEditor({
           <p className="text-xs text-muted-foreground">Nenhum item personalizado.</p>
         )}
         {items.map((it, idx) => (
-          <div key={it.id} className="flex items-center gap-2">
+          <div key={it.id} className="flex flex-wrap items-center gap-2">
             <Input
               defaultValue={it.label}
-              className="flex-1"
+              className="min-w-[10rem] flex-1"
               onBlur={(e) =>
                 e.target.value !== it.label &&
                 upd.mutate({
@@ -436,13 +436,15 @@ function MetricListEditor({
                   label: e.target.value,
                   count: it.count,
                   position: it.position,
+                  percent: it.percent ?? null,
                 })
               }
             />
             <Input
               type="number"
               defaultValue={it.count}
-              className="w-28"
+              className="w-24"
+              placeholder="qtd"
               onBlur={(e) =>
                 Number(e.target.value) !== it.count &&
                 upd.mutate({
@@ -450,9 +452,31 @@ function MetricListEditor({
                   label: it.label,
                   count: Number(e.target.value),
                   position: it.position,
+                  percent: it.percent ?? null,
                 })
               }
             />
+            <div className="flex items-center gap-1">
+              <Input
+                type="number"
+                defaultValue={it.percent ?? ""}
+                className="w-20"
+                placeholder="% "
+                onBlur={(e) => {
+                  const v = e.target.value === "" ? null : Number(e.target.value);
+                  if (v !== (it.percent ?? null)) {
+                    upd.mutate({
+                      id: it.id,
+                      label: it.label,
+                      count: it.count,
+                      position: it.position,
+                      percent: v,
+                    });
+                  }
+                }}
+              />
+              <span className="text-xs text-muted-foreground">%</span>
+            </div>
             <Button variant="ghost" size="icon" onClick={() => move(idx, -1)}>
               <ArrowUp className="h-4 w-4" />
             </Button>
