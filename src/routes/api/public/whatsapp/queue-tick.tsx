@@ -155,7 +155,8 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
         const results: any[] = [];
         for (const c of running ?? []) {
           const rps = Math.max(1, Number((c as any).rate_per_second) || 6);
-          const reservationBudget = Math.min(2000, rps * TICK_WINDOW_S);
+          // Suporta até 80 msg/s × 55s = 4400 reservas por tick.
+          const reservationBudget = Math.min(5000, rps * TICK_WINDOW_S);
           try {
             const r = await processCampaignTick(c.id, reservationBudget);
             results.push({ id: c.id, ...r });
