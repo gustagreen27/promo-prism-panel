@@ -8,11 +8,13 @@ export const Route = createFileRoute("/api/public/whatsapp/harness")({
     handlers: {
       POST: async ({ request }) => {
         const token = request.headers.get("x-harness-token");
-        const expected = process.env.WA_HARNESS_TOKEN;
-        if (!expected) {
-          return new Response("harness disabled: WA_HARNESS_TOKEN not set", { status: 503 });
+        const expected1 = process.env.WA_HARNESS_TOKEN;
+        const expected2 = process.env.WA_HARNESS_TOKEN_ALT;
+        if (!expected1 && !expected2) {
+          return new Response("harness disabled: no token env set", { status: 503 });
         }
-        if (!token || token !== expected) {
+        const ok = !!token && ((expected1 && token === expected1) || (expected2 && token === expected2));
+        if (!ok) {
           return new Response("unauthorized", { status: 401 });
         }
         let body: any;
