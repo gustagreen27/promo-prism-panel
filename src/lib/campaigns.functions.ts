@@ -827,6 +827,62 @@ const breakdownRow = z.object({
   count: z.number().int().min(0).max(1_000_000_000),
 });
 
+const simUnitEnum = z.enum(["s", "m", "h"]);
+const simStatusKeyEnum = z.enum([
+  "scheduled", "preparing", "running", "processing", "paused",
+  "resuming", "finishing", "completed", "cancelled",
+]);
+
+const simulationSchema = z.object({
+  mode: z.enum(["real", "custom", "real_plus"]).default("real"),
+  refetch_interval_sec: z.number().int().min(3).max(120).default(5),
+  start_at: z.string().datetime().nullable().optional(),
+  duration_minutes: z.number().int().min(1).max(60 * 24 * 30).nullable().optional(),
+  ends_at: z.string().datetime().nullable().optional(),
+  total_contacts: z.number().int().min(0).max(1_000_000_000).nullable().optional(),
+  initial_percent: z.number().min(0).max(100).default(0),
+  max_percent: z.number().min(0).max(100).default(100),
+  send_rate: z.object({ value: z.number().min(0), unit: simUnitEnum }).nullable().optional(),
+  delivered: z.union([
+    z.object({ mode: z.literal("rate"), value: z.number().min(0), unit: simUnitEnum }),
+    z.object({ mode: z.literal("percent"), value: z.number().min(0).max(100) }),
+  ]).nullable().optional(),
+  failed: z.union([
+    z.object({ mode: z.literal("rate"), value: z.number().min(0), unit: simUnitEnum }),
+    z.object({ mode: z.literal("percent"), value: z.number().min(0).max(100) }),
+  ]).nullable().optional(),
+  clicks: z.object({
+    per_interval: z.number().min(0),
+    interval_sec: z.number().min(1),
+  }).nullable().optional(),
+  growth: z.object({
+    kind: z.enum(["linear", "random", "stepped", "real_multiplier", "on_reload", "realtime"]),
+    random_min: z.number().min(0).max(10).nullable().optional(),
+    random_max: z.number().min(0).max(10).nullable().optional(),
+    steps: z.array(z.object({ t_sec: z.number().min(0), sent: z.number().min(0) })).max(50).nullable().optional(),
+    multiplier: z.number().min(0).max(1000).nullable().optional(),
+  }),
+  pauses: z.array(z.object({
+    after_sent: z.number().int().min(0),
+    duration_sec: z.number().int().min(1).max(60 * 60 * 24),
+    status_label: z.string().trim().max(80).nullable().optional(),
+    recalc_eta: z.boolean().default(false),
+  })).max(50).default([]),
+  status: z.object({
+    override: z.union([simStatusKeyEnum, z.null()]).optional(),
+    labels: z.record(simStatusKeyEnum, z.string().trim().max(80)).default({}),
+  }).default({ override: null, labels: {} }),
+  complete_at: z.string().datetime().nullable().optional(),
+  runtime: z.object({
+    active: z.boolean().default(false),
+    sim_started_at: z.string().datetime().nullable().optional(),
+    sim_paused_at: z.string().datetime().nullable().optional(),
+    accumulated_pause_ms: z.number().int().min(0).default(0),
+  }).default({ active: false, sim_started_at: null, sim_paused_at: null, accumulated_pause_ms: 0 }),
+  updated_at: z.string().datetime().nullable().optional(),
+  updated_by: z.string().uuid().nullable().optional(),
+});
+
 const publicOverridesSchema = z.object({
   total_clicks: z.number().int().min(0).max(1_000_000_000).nullable().optional(),
   sent: z.number().int().min(0).max(1_000_000_000).nullable().optional(),
@@ -835,6 +891,7 @@ const publicOverridesSchema = z.object({
   countries: z.array(breakdownRow).max(50).nullable().optional(),
   cities: z.array(breakdownRow).max(50).nullable().optional(),
   devices: z.array(breakdownRow).max(50).nullable().optional(),
+  simulation: simulationSchema.nullable().optional(),
 });
 
 export type PublicOverrides = z.infer<typeof publicOverridesSchema>;
@@ -857,8 +914,10 @@ function sanitizeOverrides(input: PublicOverrides): PublicOverrides {
   if (co) out.countries = co;
   if (ci) out.cities = ci;
   if (de) out.devices = de;
+  if (input.simulation) out.simulation = input.simulation;
   return out;
 }
+
 
 export const getCampaignPublicOverrides = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
