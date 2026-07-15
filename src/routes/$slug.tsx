@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
-import { resolveCampaign, trackClick, trackEvent } from "@/lib/track.functions";
+import { resolveCampaign, trackEvent } from "@/lib/track.functions";
 
 function emitEvent(slug: string, event_type: string, metadata?: Record<string, unknown>) {
   if (!slug) return;
