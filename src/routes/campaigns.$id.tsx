@@ -187,8 +187,16 @@ function PublicCampaignReport() {
               <h2 className="text-lg font-semibold">Disparos WhatsApp em tempo real</h2>
             </div>
             <div className="space-y-4">
-              {dispatches.map((d) => (
-                <DispatchCard key={d.id} d={d} />
+              {dispatches.map((d, i) => (
+                <DispatchCard
+                  key={d.id}
+                  d={d}
+                  overrides={i === 0 ? {
+                    sent: overrides.sent ?? undefined,
+                    delivered: overrides.delivered ?? undefined,
+                    failed: overrides.failed ?? undefined,
+                  } : undefined}
+                />
               ))}
             </div>
           </section>
