@@ -918,7 +918,7 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
       .select("id, country, region, city, device_type, os, browser, clicked_at, referer")
       .eq("campaign_id", data.id)
       .order("clicked_at", { ascending: false })
-      .limit(5000);
+      .limit(500);
     if (clErr) throw clErr;
 
     const { data: dispatches, error: dErr } = await supabaseAdmin
@@ -932,7 +932,8 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
       normalizeDispatch(r as unknown as WaDispatchRow),
     );
 
-    // Recipients per dispatch (masked phones for public safety)
+    // Amostra pequena de destinatários por disparo (as métricas totais vêm de wa_campaigns).
+    // Buscar a lista inteira (100k+) trava a página pública e explode o payload.
     const dispatchIds = normalizedDispatches.map((d) => d.id as string);
     type PublicRecipient = { phone: string; status: string | null; sent_at: string | null; delivered_at: string | null };
     const recipientsByDispatch: Record<string, PublicRecipient[]> = {};
@@ -944,32 +945,26 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
         const tail = digits.slice(-2);
         return `+${head} ****${tail}`;
       };
-      const PAGE = 1000;
-      const HARD_CAP = 200000;
-      let from = 0;
-      // Paginate to bypass PostgREST's default 1000-row cap and fetch all recipients.
-      while (from < HARD_CAP) {
-        const { data: recs, error: rErr } = await supabaseAdmin
-          .from("campaign_recipients")
-          .select("campaign_id, phone, status, sent_at, delivered_at")
-          .in("campaign_id", dispatchIds)
-          .order("sent_at", { ascending: false, nullsFirst: false })
-          .range(from, from + PAGE - 1);
-        if (rErr) throw rErr;
-        const batch = recs ?? [];
-        for (const r of batch) {
-          const cid = r.campaign_id as string;
-          (recipientsByDispatch[cid] ??= []).push({
+      const PER_DISPATCH = 100;
+      await Promise.all(
+        dispatchIds.map(async (cid) => {
+          const { data: recs, error: rErr } = await supabaseAdmin
+            .from("campaign_recipients")
+            .select("phone, status, sent_at, delivered_at")
+            .eq("campaign_id", cid)
+            .order("sent_at", { ascending: false, nullsFirst: false })
+            .limit(PER_DISPATCH);
+          if (rErr) throw rErr;
+          recipientsByDispatch[cid] = (recs ?? []).map((r) => ({
             phone: maskPhone(r.phone as string),
             status: (r.status as string | null) ?? null,
             sent_at: (r.sent_at as string | null) ?? null,
             delivered_at: (r.delivered_at as string | null) ?? null,
-          });
-        }
-        if (batch.length < PAGE) break;
-        from += PAGE;
-      }
+          }));
+        }),
+      );
     }
+
 
     return {
       campaign: c,
