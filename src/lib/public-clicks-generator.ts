@@ -2,6 +2,9 @@
 // Compõe cliques públicos a partir do total público de entregues, e distribui
 // esse total entre categorias personalizadas por percentual.
 
+export type GeneratorCity = { label: string; percent: number; country?: string | null };
+export type GeneratorCountry = { label: string; percent: number };
+
 export type ClicksGeneratorConfig = {
   enabled?: boolean;
   initial?: number;
@@ -13,6 +16,11 @@ export type ClicksGeneratorConfig = {
   growth?: "linear" | "random";
   use_source?: "real" | "public";
   replace_or_add?: "replace" | "add";
+  // Listas manuais opcionais (sobrescrevem os defaults e os overrides).
+  cities?: GeneratorCity[];
+  countries?: GeneratorCountry[];
+  // Distribui primeiro por país e depois por cidade dentro do país.
+  hierarchical?: boolean;
 };
 
 // PRNG determinístico (mulberry32).
