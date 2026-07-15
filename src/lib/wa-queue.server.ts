@@ -376,9 +376,27 @@ export async function processCampaignTick(
     // - Ignoramos os campos legados batch_size / parallelism / send_rate_per_min /
     //   batch_pause_ms — a velocidade real vem do token bucket + concorrência.
     const phoneNumberId = conn.phone_number_id!;
-    const campRate = Math.max(1, Number((camp as any).rate_per_second ?? DEFAULT_RATE_PER_SECOND));
+    // Global cap por número (whatsapp_connections.maximum_rate_per_second, default 80).
+    // O rate efetivo é min(rate da campanha, teto global do número).
+    const numberMaxRate = Math.max(1, Number((conn as any).maximum_rate_per_second ?? 80));
+    const rawCampRate = Math.max(1, Number((camp as any).rate_per_second ?? DEFAULT_RATE_PER_SECOND));
+    const campRate = Math.min(rawCampRate, numberMaxRate);
     const campConc = Math.max(1, Number((camp as any).max_concurrency ?? DEFAULT_MAX_CONCURRENCY));
     const chunkSize = Math.max(1, Math.min(campConc * 2, 50));
+    // Sincroniza o token bucket global (compartilhado entre TODAS as campanhas do
+    // mesmo phone_number_id) com o rate/concorrência atualmente configurados.
+    // Sem isso, o wa_rate_limits ficaria travado no valor bootstrap da 1ª campanha.
+    try {
+      await supabaseAdmin.from("wa_rate_limits" as any).upsert(
+        {
+          phone_number_id: phoneNumberId,
+          rate_per_second: campRate,
+          max_concurrency: campConc,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "phone_number_id" },
+      );
+    } catch { /* non-fatal */ }
     // budget = teto de reservas neste tick (não é rate!). Vem do cron como
     // rps * TICK_WINDOW_S, limitado por max_per_hour/day (cap).
     const budget = Math.max(1, Math.min(reservationBudget ?? 1000, cap));
