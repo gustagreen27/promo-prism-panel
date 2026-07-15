@@ -963,6 +963,7 @@ function AutoSimForm({
 function ClicksGeneratorCard({
   campaignId,
   settings,
+  masterEnabled,
   waDispatches,
   publicDispatches,
   publicSimulations,
@@ -970,12 +971,14 @@ function ClicksGeneratorCard({
 }: {
   campaignId: string;
   settings: any;
+  masterEnabled: boolean;
   waDispatches: any[];
   publicDispatches: any[];
   publicSimulations: any[];
   onChange: () => void;
 }) {
   const upsertFn = useServerFn(upsertCampaignPublicSettings);
+
   const cfg = (settings?.clicks_generator ?? {}) as ClicksGeneratorConfig;
 
   const [enabled, setEnabled] = useState<boolean>(cfg.enabled ?? false);
