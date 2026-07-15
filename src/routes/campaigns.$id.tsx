@@ -256,6 +256,54 @@ function PublicCampaignReport() {
     let devices = merge(realDevices, "device");
     let browsers = merge(realBrowsers, "browser");
 
+    // Defaults quando o gerador está ativo mas não há dados/personalizações
+    // suficientes: injeta um conjunto plausível de cidades/países/dispositivos
+    // para que a distribuição não fique concentrada em um único item.
+    const DEFAULT_CITIES = [
+      { label: "São Paulo", count: 0, percent: 22 },
+      { label: "Rio de Janeiro", count: 0, percent: 14 },
+      { label: "Belo Horizonte", count: 0, percent: 9 },
+      { label: "Salvador", count: 0, percent: 8 },
+      { label: "Brasília", count: 0, percent: 7 },
+      { label: "Fortaleza", count: 0, percent: 6 },
+      { label: "Curitiba", count: 0, percent: 6 },
+      { label: "Manaus", count: 0, percent: 5 },
+      { label: "Recife", count: 0, percent: 5 },
+      { label: "Porto Alegre", count: 0, percent: 5 },
+      { label: "Goiânia", count: 0, percent: 4 },
+      { label: "Belém", count: 0, percent: 3 },
+      { label: "Campinas", count: 0, percent: 3 },
+      { label: "São Luís", count: 0, percent: 3 },
+    ];
+    const DEFAULT_COUNTRIES = [
+      { label: "Brasil", count: 0, percent: 92 },
+      { label: "Portugal", count: 0, percent: 3 },
+      { label: "Estados Unidos", count: 0, percent: 2 },
+      { label: "Argentina", count: 0, percent: 2 },
+      { label: "Paraguai", count: 0, percent: 1 },
+    ];
+    const DEFAULT_DEVICES = [
+      { label: "mobile", count: 0, percent: 78 },
+      { label: "desktop", count: 0, percent: 18 },
+      { label: "tablet", count: 0, percent: 4 },
+    ];
+    const DEFAULT_BROWSERS = [
+      { label: "Chrome", count: 0, percent: 55 },
+      { label: "Safari", count: 0, percent: 22 },
+      { label: "Android Browser", count: 0, percent: 12 },
+      { label: "Edge", count: 0, percent: 6 },
+      { label: "Firefox", count: 0, percent: 3 },
+      { label: "Opera", count: 0, percent: 2 },
+    ];
+    const hasCustom = (kind: string) =>
+      publicMetrics.some((m) => m.kind === kind);
+    if (generatorActive) {
+      if (!hasCustom("city") && cities.length <= 1) cities = DEFAULT_CITIES;
+      if (!hasCustom("country") && countries.length <= 1) countries = DEFAULT_COUNTRIES;
+      if (!hasCustom("device") && devices.length <= 1) devices = DEFAULT_DEVICES;
+      if (!hasCustom("browser") && browsers.length <= 1) browsers = DEFAULT_BROWSERS;
+    }
+
     const realTotalClicks = clicks.length;
     let total: number;
     if (generatorActive && clicksGenerator) {
