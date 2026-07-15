@@ -130,6 +130,16 @@ function CampaignRow({
             <StatusBadge status={c.status} />
             <IntentScoreBadge score={c.intent_score} />
             <ParticipantsBadges value={(c as any).participants} empty="" />
+            {(() => {
+              const po = (c as any).public_overrides as Record<string, unknown> | null | undefined;
+              const personalized = po && Object.keys(po).length > 0;
+              if (!personalized) return null;
+              return (
+                <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                  <Sparkles className="mr-1 h-3 w-3" /> Página pública personalizada
+                </span>
+              );
+            })()}
             {c.category && (
               <span className="text-xs text-muted-foreground">{c.category}</span>
             )}
