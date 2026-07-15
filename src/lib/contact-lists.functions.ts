@@ -68,14 +68,28 @@ export const deleteList = createServerFn({ method: "POST" })
 
 export const listItems = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ list_id: z.string().uuid() }).parse(d))
+  .inputValidator((d: unknown) => z.object({
+    list_id: z.string().uuid(),
+    limit: z.number().int().min(1).max(5000).optional(),
+    offset: z.number().int().min(0).optional(),
+  }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { data: rows } = await context.supabase
+    const limit = data.limit ?? 500;
+    const offset = data.offset ?? 0;
+    // Split em 2 consultas evita LEFT JOIN LATERAL contacts (top ofensor #3 do banco).
+    const { data: items } = await context.supabase
       .from("contact_list_items")
-      .select("contact:contacts(id,name,phone,opt_in,opt_out)")
-      .eq("list_id", data.list_id);
-    return (rows ?? []).map((r: any) => r.contact).filter(Boolean);
+      .select("contact_id")
+      .eq("list_id", data.list_id)
+      .range(offset, offset + limit - 1);
+    const ids = (items ?? []).map((i: any) => i.contact_id).filter(Boolean);
+    if (!ids.length) return [];
+    const { data: contacts } = await context.supabase
+      .from("contacts")
+      .select("id,name,phone,opt_in,opt_out")
+      .in("id", ids);
+    return contacts ?? [];
   });
 
 export const addContactsToList = createServerFn({ method: "POST" })

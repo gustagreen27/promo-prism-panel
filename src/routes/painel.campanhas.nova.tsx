@@ -291,15 +291,15 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
     async function loadRecipients() {
       const { data: rs } = await supabase
         .from("campaign_recipients")
-        .select("id, phone, status, failed_reason, error_code, contact:contacts(name)")
+        .select("id, phone, status, failed_reason, error_code, contact_name")
         .eq("campaign_id", campaignId!)
         .order("created_at", { ascending: true })
-        .limit(1000);
+        .limit(500);
       if (!alive) return;
       setRecipientsLive(
         (rs ?? []).map((r: any) => ({
           id: r.id,
-          name: r.contact?.name ?? null,
+          name: r.contact_name ?? null,
           phone: r.phone,
           status: r.status,
           failed_reason: r.failed_reason,
