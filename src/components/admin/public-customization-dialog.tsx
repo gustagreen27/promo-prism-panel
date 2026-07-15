@@ -1516,7 +1516,7 @@ const REMAPPABLE_STATUSES = [
 ] as const;
 
 const TARGET_STATUS_OPTIONS = [
-  { value: "", label: "Manter status original" },
+  { value: "__keep", label: "Manter status original" },
   { value: "sent", label: "Enviado" },
   { value: "delivered", label: "Entregue" },
   { value: "read", label: "Lido" },
@@ -1525,6 +1525,7 @@ const TARGET_STATUS_OPTIONS = [
   { value: "pending", label: "Pendente" },
   { value: "failed", label: "Falhou" },
 ];
+
 
 function StatusMapCard({
   campaignId,
