@@ -115,6 +115,7 @@ function CampaignRow({
 }) {
   const del = useServerFn(deleteCampaign);
   const update = useServerFn(updateCampaign);
+  const [overridesOpen, setOverridesOpen] = useState(false);
   const isActive = c.status === "active";
   const publicUrl =
     typeof window !== "undefined" ? `${window.location.origin}/${c.slug}` : `/${c.slug}`;
