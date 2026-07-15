@@ -996,6 +996,9 @@ function ClicksGeneratorCard({
   const [refresh, setRefresh] = useState<string>(
     String(cfg.refresh_interval_sec ?? 10),
   );
+  const [clicksPerMinute, setClicksPerMinute] = useState<string>(
+    cfg.clicks_per_minute != null ? String(cfg.clicks_per_minute) : "",
+  );
   const [growth, setGrowth] = useState<"linear" | "random">(
     cfg.growth ?? "random",
   );
