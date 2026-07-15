@@ -1328,6 +1328,14 @@ function ClicksGeneratorCard({
                   { label: "Assunção", percent: "1", country: "Paraguai" },
                 ]);
                 setHierarchical(true);
+                if (!masterEnabled) {
+                  toast.warning(
+                    "Preset aplicado. Ative “Personalização” e salve para exibir na página pública.",
+                  );
+                } else {
+                  toast.success("Preset Brasil aplicado. Salve para publicar.");
+                }
+
               }}
             >
               <Sparkles className="h-3 w-3 mr-1" /> Aplicar preset Brasil
