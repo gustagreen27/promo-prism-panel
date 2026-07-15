@@ -1,8 +1,14 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getPublicCampaignReport } from "@/lib/campaigns.functions";
+import {
+  coerceSimulation,
+  computeSimulationSnapshot,
+  type SimSnapshot,
+  type SimulationConfig,
+} from "@/lib/public-simulation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
