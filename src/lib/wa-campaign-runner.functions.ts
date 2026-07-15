@@ -222,7 +222,7 @@ export const startCampaignAsync = createServerFn({ method: "POST" })
     if (!connRow?.phone_number_id) {
       throw new Error("Conexão sem Phone Number ID.");
     }
-    const effToken = connRow.access_token || (connRow.use_global_token ? process.env.WHATSAPP_ACCESS_TOKEN : undefined);
+    const effToken = connRow.use_global_token ? process.env.WHATSAPP_ACCESS_TOKEN : connRow.access_token;
     if (!effToken) {
       throw new Error("Conexão sem token de acesso (nem global nem por conexão).");
     }
