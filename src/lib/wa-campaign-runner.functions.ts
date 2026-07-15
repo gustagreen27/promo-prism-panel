@@ -57,6 +57,19 @@ export const preflightCampaign = createServerFn({ method: "POST" })
       });
     }
 
+    // Meta API: verify phone number is registered on WhatsApp Cloud API
+    if (conn?.phone_number_id && conn?.access_token) {
+      const reg = await checkPhoneNumberRegistration(conn.phone_number_id, conn.access_token);
+      checks.push({
+        key: "phone_registered",
+        label: "Número registrado na WhatsApp Cloud API",
+        ok: reg.ok,
+        message: reg.ok
+          ? `Status: ${reg.status ?? "REGISTERED"}${reg.display_phone_number ? ` · ${reg.display_phone_number}` : ""}`
+          : reg.reason,
+      });
+    }
+
     // Template approved
     if (camp.template_id) {
       const { data: t } = await supabase.from("whatsapp_templates").select("status,name").eq("id", camp.template_id).single();
