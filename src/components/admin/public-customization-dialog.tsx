@@ -132,8 +132,14 @@ export function PublicCustomizationDialog({
               campaignId={campaignId}
               slug={campaignSlug}
               enabled={data.settings?.enabled ?? false}
+              attention={
+                !(data.settings?.enabled ?? false) &&
+                (((data.settings as any)?.clicks_generator?.countries?.length ?? 0) > 0 ||
+                  ((data.settings as any)?.clicks_generator?.cities?.length ?? 0) > 0)
+              }
               onChange={invalidate}
             />
+
             <Tabs defaultValue="general" className="flex-1 min-h-0 flex flex-col">
               <TabsList>
                 <TabsTrigger value="general">Métricas gerais</TabsTrigger>
