@@ -1,8 +1,14 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getPublicCampaignReport } from "@/lib/campaigns.functions";
+import {
+  coerceSimulation,
+  computeSimulationSnapshot,
+  type SimSnapshot,
+  type SimulationConfig,
+} from "@/lib/public-simulation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -57,11 +63,15 @@ export const Route = createFileRoute("/campaigns/$id")({
 function PublicCampaignReport() {
   const { id } = Route.useParams();
   const fn = useServerFn(getPublicCampaignReport);
+
+  // A simulação define seu próprio intervalo de refetch (padrão 15s).
+  const [refetchMs, setRefetchMs] = useState(15000);
+
   const { data, isLoading, error, dataUpdatedAt } = useQuery({
     queryKey: ["public-campaign-report", id],
     queryFn: () => fn({ data: { id } }),
     retry: false,
-    refetchInterval: 15000,
+    refetchInterval: refetchMs,
     refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
     refetchOnMount: "always",
@@ -76,7 +86,27 @@ function PublicCampaignReport() {
     countries?: { label: string; count: number }[] | null;
     cities?: { label: string; count: number }[] | null;
     devices?: { label: string; count: number }[] | null;
+    simulation?: SimulationConfig | null;
   };
+
+  const simulation = useMemo(
+    () => (overrides.simulation ? coerceSimulation(overrides.simulation) : null),
+    [overrides.simulation],
+  );
+
+  // Tick local para o "efeito ao vivo" da simulação
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (!simulation || simulation.mode === "real" || !simulation.runtime?.active) return;
+    if (simulation.growth?.kind === "on_reload") return;
+    const intervalMs = Math.max(1000, (simulation.refetch_interval_sec ?? 5) * 1000);
+    const t = setInterval(() => setTick((n) => n + 1), intervalMs);
+    setRefetchMs(Math.max(intervalMs, 5000));
+    return () => clearInterval(t);
+  }, [simulation]);
+  void tick;
+
+
 
   const stats = useMemo(() => {
     if (!data) return null;
@@ -187,19 +217,38 @@ function PublicCampaignReport() {
               <h2 className="text-lg font-semibold">Disparos WhatsApp em tempo real</h2>
             </div>
             <div className="space-y-4">
-              {dispatches.map((d, i) => (
-                <DispatchCard
-                  key={d.id}
-                  d={d}
-                  overrides={i === 0 ? {
-                    sent: overrides.sent ?? undefined,
-                    delivered: overrides.delivered ?? undefined,
-                    failed: overrides.failed ?? undefined,
-                  } : undefined}
-                />
-              ))}
+              {dispatches.map((d, i) => {
+                let snapshot: SimSnapshot | null = null;
+                if (i === 0 && simulation && simulation.mode !== "real") {
+                  snapshot = computeSimulationSnapshot(
+                    simulation,
+                    {
+                      sent: d.sent_count ?? 0,
+                      delivered: d.delivered_count ?? 0,
+                      failed: d.failed_count ?? 0,
+                      total: d.total_recipients ?? 0,
+                      status: d.status,
+                      clicks: data.clicks.length,
+                    },
+                    new Date(),
+                  );
+                }
+                return (
+                  <DispatchCard
+                    key={d.id}
+                    d={d}
+                    snapshot={snapshot}
+                    overrides={i === 0 ? {
+                      sent: overrides.sent ?? undefined,
+                      delivered: overrides.delivered ?? undefined,
+                      failed: overrides.failed ?? undefined,
+                    } : undefined}
+                  />
+                );
+              })}
             </div>
           </section>
+
         )}
 
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -412,18 +461,27 @@ type Dispatch = {
 function DispatchCard({
   d,
   overrides,
+  snapshot,
 }: {
   d: Dispatch;
   overrides?: { sent?: number; delivered?: number; failed?: number };
+  snapshot?: SimSnapshot | null;
 }) {
-  const total = d.total_recipients ?? 0;
+  // Snapshot da simulação tem prioridade máxima quando o modo é custom/real_plus.
+  const total = snapshot?.total ?? d.total_recipients ?? 0;
   const realDelivered = d.delivered_count ?? 0;
-  const delivered = overrides?.delivered ?? realDelivered;
-  const sent = overrides?.sent ?? delivered; // "Enviados" reflete a quantidade de entregues
-  const failed = overrides?.failed ?? (d.failed_count ?? 0);
-  const percent = total > 0 ? Math.min(100, Math.round((sent / Math.max(total, sent)) * 100)) : (sent > 0 ? 100 : 0);
+  const delivered = snapshot?.delivered ?? overrides?.delivered ?? realDelivered;
+  const sent = snapshot?.sent ?? overrides?.sent ?? delivered;
+  const failed = snapshot?.failed ?? overrides?.failed ?? (d.failed_count ?? 0);
+  const percent = snapshot
+    ? snapshot.percent
+    : total > 0
+      ? Math.min(100, Math.round((sent / Math.max(total, sent)) * 100))
+      : sent > 0
+        ? 100
+        : 0;
 
-  const statusLabel = (() => {
+  const statusLabel = snapshot?.status_label ?? (() => {
     switch (d.status) {
       case "running": return "Em execução";
       case "scheduled": return "Agendada";
@@ -435,6 +493,10 @@ function DispatchCard({
       default: return d.status ?? "—";
     }
   })();
+
+  const etaText = snapshot?.eta_at
+    ? new Date(snapshot.eta_at).toLocaleString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+    : null;
 
   return (
     <Card>
@@ -461,16 +523,19 @@ function DispatchCard({
         <div className="space-y-1">
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>Progresso de envio</span>
-            <span>{percent}%</span>
+            <span>
+              {Math.round(percent)}%{etaText ? ` · previsão ${etaText}` : ""}
+            </span>
           </div>
           <div className="h-2 overflow-hidden rounded bg-muted">
-            <div className="h-full bg-primary transition-all" style={{ width: `${percent}%` }} />
+            <div className="h-full bg-primary transition-all" style={{ width: `${Math.max(0, Math.min(100, percent))}%` }} />
           </div>
         </div>
       </CardContent>
     </Card>
   );
 }
+
 
 function MiniStat({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
   return (

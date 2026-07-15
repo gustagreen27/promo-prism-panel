@@ -827,6 +827,62 @@ const breakdownRow = z.object({
   count: z.number().int().min(0).max(1_000_000_000),
 });
 
+const simUnitEnum = z.enum(["s", "m", "h"]);
+const simStatusKeyEnum = z.enum([
+  "scheduled", "preparing", "running", "processing", "paused",
+  "resuming", "finishing", "completed", "cancelled",
+]);
+
+const simulationSchema = z.object({
+  mode: z.enum(["real", "custom", "real_plus"]).default("real"),
+  refetch_interval_sec: z.number().int().min(3).max(120).default(5),
+  start_at: z.string().datetime().nullable().optional(),
+  duration_minutes: z.number().int().min(1).max(60 * 24 * 30).nullable().optional(),
+  ends_at: z.string().datetime().nullable().optional(),
+  total_contacts: z.number().int().min(0).max(1_000_000_000).nullable().optional(),
+  initial_percent: z.number().min(0).max(100).default(0),
+  max_percent: z.number().min(0).max(100).default(100),
+  send_rate: z.object({ value: z.number().min(0), unit: simUnitEnum }).nullable().optional(),
+  delivered: z.union([
+    z.object({ mode: z.literal("rate"), value: z.number().min(0), unit: simUnitEnum }),
+    z.object({ mode: z.literal("percent"), value: z.number().min(0).max(100) }),
+  ]).nullable().optional(),
+  failed: z.union([
+    z.object({ mode: z.literal("rate"), value: z.number().min(0), unit: simUnitEnum }),
+    z.object({ mode: z.literal("percent"), value: z.number().min(0).max(100) }),
+  ]).nullable().optional(),
+  clicks: z.object({
+    per_interval: z.number().min(0),
+    interval_sec: z.number().min(1),
+  }).nullable().optional(),
+  growth: z.object({
+    kind: z.enum(["linear", "random", "stepped", "real_multiplier", "on_reload", "realtime"]),
+    random_min: z.number().min(0).max(10).nullable().optional(),
+    random_max: z.number().min(0).max(10).nullable().optional(),
+    steps: z.array(z.object({ t_sec: z.number().min(0), sent: z.number().min(0) })).max(50).nullable().optional(),
+    multiplier: z.number().min(0).max(1000).nullable().optional(),
+  }),
+  pauses: z.array(z.object({
+    after_sent: z.number().int().min(0),
+    duration_sec: z.number().int().min(1).max(60 * 60 * 24),
+    status_label: z.string().trim().max(80).nullable().optional(),
+    recalc_eta: z.boolean().default(false),
+  })).max(50).default([]),
+  status: z.object({
+    override: z.union([simStatusKeyEnum, z.null()]).optional(),
+    labels: z.record(simStatusKeyEnum, z.string().trim().max(80)).default({}),
+  }).default({ override: null, labels: {} }),
+  complete_at: z.string().datetime().nullable().optional(),
+  runtime: z.object({
+    active: z.boolean().default(false),
+    sim_started_at: z.string().datetime().nullable().optional(),
+    sim_paused_at: z.string().datetime().nullable().optional(),
+    accumulated_pause_ms: z.number().int().min(0).default(0),
+  }).default({ active: false, sim_started_at: null, sim_paused_at: null, accumulated_pause_ms: 0 }),
+  updated_at: z.string().datetime().nullable().optional(),
+  updated_by: z.string().uuid().nullable().optional(),
+});
+
 const publicOverridesSchema = z.object({
   total_clicks: z.number().int().min(0).max(1_000_000_000).nullable().optional(),
   sent: z.number().int().min(0).max(1_000_000_000).nullable().optional(),
@@ -835,6 +891,7 @@ const publicOverridesSchema = z.object({
   countries: z.array(breakdownRow).max(50).nullable().optional(),
   cities: z.array(breakdownRow).max(50).nullable().optional(),
   devices: z.array(breakdownRow).max(50).nullable().optional(),
+  simulation: simulationSchema.nullable().optional(),
 });
 
 export type PublicOverrides = z.infer<typeof publicOverridesSchema>;
@@ -857,8 +914,10 @@ function sanitizeOverrides(input: PublicOverrides): PublicOverrides {
   if (co) out.countries = co;
   if (ci) out.cities = ci;
   if (de) out.devices = de;
+  if (input.simulation) out.simulation = input.simulation;
   return out;
 }
+
 
 export const getCampaignPublicOverrides = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -888,6 +947,10 @@ export const updateCampaignPublicOverrides = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await assertAdmin(context);
     const clean = sanitizeOverrides(data.overrides);
+    if (clean.simulation) {
+      clean.simulation.updated_at = new Date().toISOString();
+      clean.simulation.updated_by = context.userId;
+    }
     const { error } = await supabaseAdmin
       .from("campaigns")
       .update({ public_overrides: clean } as never)
@@ -895,6 +958,96 @@ export const updateCampaignPublicOverrides = createServerFn({ method: "POST" })
     if (error) throw error;
     return { ok: true, overrides: clean };
   });
+
+// Controle da simulação — apenas mexe em public_overrides.simulation.runtime.
+// NUNCA altera worker, fila, wa_campaigns, campaign_recipients ou webhooks.
+export const controlCampaignSimulation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({
+      id: z.string().uuid(),
+      action: z.enum(["start", "pause", "resume", "restart", "sync_real", "disable"]),
+    }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await assertAdmin(context);
+
+    if (data.action === "disable") {
+      const { error } = await supabaseAdmin
+        .from("campaigns")
+        .update({ public_overrides: {} } as never)
+        .eq("id", data.id);
+      if (error) throw error;
+      return { ok: true };
+    }
+
+    const { data: row, error: readErr } = await supabaseAdmin
+      .from("campaigns")
+      .select("public_overrides")
+      .eq("id", data.id)
+      .single();
+    if (readErr) throw readErr;
+
+    const current = ((row as { public_overrides: Record<string, unknown> }).public_overrides ?? {}) as PublicOverrides;
+    const sim = (current.simulation ?? {}) as NonNullable<PublicOverrides["simulation"]>;
+    const runtime = { ...(sim.runtime ?? { active: false, sim_started_at: null, sim_paused_at: null, accumulated_pause_ms: 0 }) };
+    const nowIso = new Date().toISOString();
+
+    if (data.action === "start") {
+      runtime.active = true;
+      runtime.sim_started_at = nowIso;
+      runtime.sim_paused_at = null;
+      runtime.accumulated_pause_ms = 0;
+    } else if (data.action === "restart") {
+      runtime.active = true;
+      runtime.sim_started_at = nowIso;
+      runtime.sim_paused_at = null;
+      runtime.accumulated_pause_ms = 0;
+    } else if (data.action === "pause") {
+      if (runtime.active && !runtime.sim_paused_at) runtime.sim_paused_at = nowIso;
+    } else if (data.action === "resume") {
+      if (runtime.sim_paused_at) {
+        const pausedFor = Math.max(0, Date.now() - new Date(runtime.sim_paused_at).getTime());
+        runtime.accumulated_pause_ms = (runtime.accumulated_pause_ms ?? 0) + pausedFor;
+        runtime.sim_paused_at = null;
+        runtime.active = true;
+      }
+    } else if (data.action === "sync_real") {
+      // Copia números reais para os overrides fixos, sem tocar em nada operacional.
+      const { data: disp } = await supabaseAdmin
+        .from("wa_campaigns")
+        .select("total_recipients, sent_count, delivered_count, failed_count")
+        .eq("linked_campaign_id", data.id)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const first = disp?.[0];
+      if (first) {
+        current.sent = (first.sent_count as number | null) ?? undefined;
+        current.delivered = (first.delivered_count as number | null) ?? undefined;
+        current.failed = (first.failed_count as number | null) ?? undefined;
+        if (!sim.total_contacts) {
+          (current.simulation ??= { ...sim }).total_contacts = (first.total_recipients as number | null) ?? undefined;
+        }
+      }
+    }
+
+    const nextSim: NonNullable<PublicOverrides["simulation"]> = {
+      ...(current.simulation ?? sim),
+      runtime,
+      updated_at: nowIso,
+      updated_by: context.userId,
+    };
+    const next: PublicOverrides = { ...current, simulation: nextSim };
+
+    const { error } = await supabaseAdmin
+      .from("campaigns")
+      .update({ public_overrides: next } as never)
+      .eq("id", data.id);
+    if (error) throw error;
+    return { ok: true, overrides: next };
+  });
+
 
 export const getPublicCampaignReport = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) => z.object({ id: z.string().uuid() }).parse(data))
@@ -970,8 +1123,10 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
       dispatches: normalizedDispatches,
       recipientsByDispatch,
       overrides,
+      server_now: new Date().toISOString(),
     };
   });
+
 
 
 
