@@ -817,6 +817,85 @@ export const setWaCampaignLink = createServerFn({ method: "POST" })
 
 // ---------- Public (unauthenticated) report ----------
 // Returns only safe, non-sensitive campaign metrics for a shareable link.
+// ============================================================================
+// Public overrides — valores personalizados exibidos APENAS na página pública.
+// Não afetam métricas reais, disparos, fila ou destinatários.
+// ============================================================================
+
+const breakdownRow = z.object({
+  label: z.string().trim().min(1).max(80),
+  count: z.number().int().min(0).max(1_000_000_000),
+});
+
+const publicOverridesSchema = z.object({
+  total_clicks: z.number().int().min(0).max(1_000_000_000).nullable().optional(),
+  sent: z.number().int().min(0).max(1_000_000_000).nullable().optional(),
+  delivered: z.number().int().min(0).max(1_000_000_000).nullable().optional(),
+  failed: z.number().int().min(0).max(1_000_000_000).nullable().optional(),
+  countries: z.array(breakdownRow).max(50).nullable().optional(),
+  cities: z.array(breakdownRow).max(50).nullable().optional(),
+  devices: z.array(breakdownRow).max(50).nullable().optional(),
+});
+
+export type PublicOverrides = z.infer<typeof publicOverridesSchema>;
+
+function sanitizeOverrides(input: PublicOverrides): PublicOverrides {
+  const out: PublicOverrides = {};
+  if (input.total_clicks != null) out.total_clicks = input.total_clicks;
+  if (input.sent != null) out.sent = input.sent;
+  if (input.delivered != null) out.delivered = input.delivered;
+  if (input.failed != null) out.failed = input.failed;
+  const cleanList = (rows?: { label: string; count: number }[] | null) =>
+    rows && rows.length > 0
+      ? rows
+          .filter((r) => r.label.trim().length > 0)
+          .map((r) => ({ label: r.label.trim(), count: r.count }))
+      : undefined;
+  const co = cleanList(input.countries ?? undefined);
+  const ci = cleanList(input.cities ?? undefined);
+  const de = cleanList(input.devices ?? undefined);
+  if (co) out.countries = co;
+  if (ci) out.cities = ci;
+  if (de) out.devices = de;
+  return out;
+}
+
+export const getCampaignPublicOverrides = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await assertAdmin(context);
+    const { data: row, error } = await supabaseAdmin
+      .from("campaigns")
+      .select("id, name, public_overrides")
+      .eq("id", data.id)
+      .single();
+    if (error) throw error;
+    return {
+      id: row.id as string,
+      name: row.name as string,
+      overrides: ((row as { public_overrides: unknown }).public_overrides ?? {}) as PublicOverrides,
+    };
+  });
+
+export const updateCampaignPublicOverrides = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ id: z.string().uuid(), overrides: publicOverridesSchema }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await assertAdmin(context);
+    const clean = sanitizeOverrides(data.overrides);
+    const { error } = await supabaseAdmin
+      .from("campaigns")
+      .update({ public_overrides: clean } as never)
+      .eq("id", data.id);
+    if (error) throw error;
+    return { ok: true, overrides: clean };
+  });
+
 export const getPublicCampaignReport = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) => z.object({ id: z.string().uuid() }).parse(data))
   .handler(async ({ data }) => {
@@ -825,7 +904,7 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
     const { data: c, error: cErr } = await supabaseAdmin
       .from("campaigns")
       .select(
-        "id, name, slug, category, status, intent_score, created_at, updated_at",
+        "id, name, slug, category, status, intent_score, created_at, updated_at, public_overrides",
       )
       .eq("id", data.id)
       .maybeSingle();
@@ -851,8 +930,6 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
       normalizeDispatch(r as unknown as WaDispatchRow),
     );
 
-    // Amostra pequena de destinatários por disparo (as métricas totais vêm de wa_campaigns).
-    // Buscar a lista inteira (100k+) trava a página pública e explode o payload.
     const dispatchIds = normalizedDispatches.map((d) => d.id as string);
     type PublicRecipient = { phone: string; status: string | null; sent_at: string | null; delivered_at: string | null };
     const recipientsByDispatch: Record<string, PublicRecipient[]> = {};
@@ -884,13 +961,18 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
       );
     }
 
+    const { public_overrides, ...campaign } = c as typeof c & { public_overrides: unknown };
+    const overrides = (public_overrides ?? {}) as PublicOverrides;
 
     return {
-      campaign: c,
+      campaign,
       clicks: clicks ?? [],
       dispatches: normalizedDispatches,
       recipientsByDispatch,
+      overrides,
     };
   });
+
+
 
 
