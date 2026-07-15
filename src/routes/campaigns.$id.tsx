@@ -269,8 +269,26 @@ function PublicCampaignReport() {
             </div>
             <div className="space-y-4">
               {dispatches.map((d, i) => {
+                const perDispatchOverride = publicDispatches.find((x) => x.wa_campaign_id === d.id) ?? null;
+                const perDispatchSim = publicSimulations.find((x) => x.wa_campaign_id === d.id) ?? null;
+                const perSnap: Snapshot | null =
+                  customEnabled && perDispatchOverride?.enabled
+                    ? computeDispatchSnapshot(
+                        perDispatchOverride as DispatchOverrideRow,
+                        perDispatchSim as DispatchSimRow | null,
+                        {
+                          name: d.name ?? null,
+                          status: d.status ?? null,
+                          total: d.total_recipients ?? 0,
+                          sent: d.sent_count ?? 0,
+                          delivered: d.delivered_count ?? 0,
+                          failed: d.failed_count ?? 0,
+                        },
+                        new Date(),
+                      )
+                    : null;
                 let snapshot: SimSnapshot | null = null;
-                if (i === 0 && simulation && simulation.mode !== "real") {
+                if (!perSnap && i === 0 && simulation && simulation.mode !== "real") {
                   snapshot = computeSimulationSnapshot(
                     simulation,
                     {
@@ -289,7 +307,8 @@ function PublicCampaignReport() {
                     key={d.id}
                     d={d}
                     snapshot={snapshot}
-                    overrides={i === 0 ? {
+                    perSnapshot={perSnap}
+                    overrides={!perSnap && i === 0 ? {
                       sent: overrides.sent ?? undefined,
                       delivered: overrides.delivered ?? undefined,
                       failed: overrides.failed ?? undefined,
