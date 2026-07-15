@@ -1616,12 +1616,9 @@ function DispatchConfigCard({
         <div className="rounded-md border bg-muted/40 p-3">
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             Intervalo calculado
-            <Info
-              className="h-3 w-3 opacity-60"
-              aria-label="O intervalo é a média usada pelo scheduler para distribuir os envios de forma contínua."
-            >
-              <title>O intervalo é a média usada pelo scheduler para distribuir os envios de forma contínua.</title>
-            </Info>
+            <span title="O intervalo é a média usada pelo scheduler para distribuir os envios de forma contínua.">
+              <Info className="h-3 w-3 opacity-60" />
+            </span>
           </div>
           <div className="text-lg font-semibold">{intervalMsLabel}</div>
           <div className="text-[11px] text-muted-foreground">
