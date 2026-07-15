@@ -18,6 +18,7 @@ import {
 import {
   computeGeneratedClicks,
   distributeByPercent,
+  distributeHierarchical,
   scaleSeries,
   seedFromString,
   type ClicksGeneratorConfig,
