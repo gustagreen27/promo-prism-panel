@@ -376,11 +376,28 @@ export async function processCampaignTick(
     // - Ignoramos os campos legados batch_size / parallelism / send_rate_per_min /
     //   batch_pause_ms — a velocidade real vem do token bucket + concorrência.
     const phoneNumberId = conn.phone_number_id!;
-    // Global cap por número (whatsapp_connections.maximum_rate_per_second, default 80).
-    // O rate efetivo é min(rate da campanha, teto global do número).
+    // --------------------------------------------------------------------
+    // Rate limiter: bucket GLOBAL do número + permit LOCAL da campanha
+    // --------------------------------------------------------------------
+    // O bucket em wa_rate_limits representa a capacidade do NÚMERO (compartilhada
+    // entre todas as campanhas do mesmo phone_number_id). O seu rate NÃO pode ser
+    // sobrescrito pelo rate da campanha em curso ("última campanha vence").
+    //
+    // Regra:
+    //   phoneBucketRate = min(global_rate_per_second, maximum_rate_per_second)
+    //   campaignPermitRate = campaign.rate_per_second (limite local, por campanha)
+    //   effectiveRate = min(campaignPermitRate, phoneBucketRate)
+    //
+    // Para despachar 1 envio o scheduler precisa:
+    //   1 permit do bucket global (compartilhado, atômico no Postgres)
+    //   1 permit do bucket local da campanha (in-process token bucket)
+    //   1 vaga de concorrência
     const numberMaxRate = Math.max(1, Number((conn as any).maximum_rate_per_second ?? 80));
+    const numberGlobalRate = Math.max(1, Number((conn as any).global_rate_per_second ?? numberMaxRate));
+    const phoneBucketRate = Math.min(numberGlobalRate, numberMaxRate);
     const rawCampRate = Math.max(1, Number((camp as any).rate_per_second ?? DEFAULT_RATE_PER_SECOND));
-    const campRate = Math.min(rawCampRate, numberMaxRate);
+    // Rate efetivo desta campanha = min(campanha, bucket global do número).
+    const effectiveRate = Math.min(rawCampRate, phoneBucketRate);
     const campConc = Math.max(1, Number((camp as any).max_concurrency ?? DEFAULT_MAX_CONCURRENCY));
     // Reservamos em blocos grandes para sustentar cadências altas (até 80 msg/s).
     // Cap depende da concorrência para não reservar demais quando o WhatsApp está lento.
