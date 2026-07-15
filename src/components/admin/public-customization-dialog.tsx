@@ -1231,6 +1231,60 @@ function ClicksGeneratorCard({
             <Switch checked={hierarchical} onCheckedChange={setHierarchical} />
           </div>
 
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                setCountryList([
+                  { label: "Brasil", percent: "92" },
+                  { label: "Portugal", percent: "3" },
+                  { label: "Estados Unidos", percent: "2" },
+                  { label: "Argentina", percent: "2" },
+                  { label: "Paraguai", percent: "1" },
+                ]);
+                setCityList([
+                  { label: "São Paulo", percent: "18", country: "Brasil" },
+                  { label: "Rio de Janeiro", percent: "12", country: "Brasil" },
+                  { label: "Belo Horizonte", percent: "8", country: "Brasil" },
+                  { label: "Salvador", percent: "7", country: "Brasil" },
+                  { label: "Brasília", percent: "7", country: "Brasil" },
+                  { label: "Fortaleza", percent: "6", country: "Brasil" },
+                  { label: "Curitiba", percent: "6", country: "Brasil" },
+                  { label: "Manaus", percent: "5", country: "Brasil" },
+                  { label: "Recife", percent: "5", country: "Brasil" },
+                  { label: "Porto Alegre", percent: "5", country: "Brasil" },
+                  { label: "Goiânia", percent: "4", country: "Brasil" },
+                  { label: "Belém", percent: "3", country: "Brasil" },
+                  { label: "Campinas", percent: "3", country: "Brasil" },
+                  { label: "São Luís", percent: "3", country: "Brasil" },
+                  { label: "Lisboa", percent: "2", country: "Portugal" },
+                  { label: "Porto", percent: "1", country: "Portugal" },
+                  { label: "Miami", percent: "1", country: "Estados Unidos" },
+                  { label: "Orlando", percent: "1", country: "Estados Unidos" },
+                  { label: "Buenos Aires", percent: "2", country: "Argentina" },
+                  { label: "Assunção", percent: "1", country: "Paraguai" },
+                ]);
+                setHierarchical(true);
+              }}
+            >
+              <Sparkles className="h-3 w-3 mr-1" /> Aplicar preset Brasil
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setCountryList([]);
+                setCityList([]);
+              }}
+            >
+              <Trash2 className="h-3 w-3 mr-1" /> Limpar listas
+            </Button>
+          </div>
+
+
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label className="text-xs">
