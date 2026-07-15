@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { PublicOverridesDialog } from "@/components/admin/public-overrides-dialog";
+import { Sparkles } from "lucide-react";
 import {
   getCampaignAnalytics,
   getCampaignDispatchAudit,
@@ -42,6 +44,7 @@ export const Route = createFileRoute("/_authenticated/admin/campaigns/$id")({
 
 function CampaignDetail() {
   const { id } = Route.useParams();
+  const [overridesOpen, setOverridesOpen] = useState(false);
   const fn = useServerFn(getCampaignAnalytics);
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["campaign-analytics", id],
@@ -157,8 +160,18 @@ function CampaignDetail() {
               <Pencil className="mr-1 h-4 w-4" /> Editar
             </Link>
           </Button>
+          <Button variant="default" size="sm" onClick={() => setOverridesOpen(true)}>
+            <Sparkles className="mr-1 h-4 w-4" /> Personalizar página pública
+          </Button>
         </div>
       </div>
+
+      <PublicOverridesDialog
+        campaignId={data.campaign.id}
+        campaignName={data.campaign.name ?? "Campanha"}
+        open={overridesOpen}
+        onOpenChange={setOverridesOpen}
+      />
 
       <CampaignAnalytics campaignId={id} hours={24} />
 
