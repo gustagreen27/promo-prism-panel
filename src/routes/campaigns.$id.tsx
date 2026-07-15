@@ -68,6 +68,16 @@ function PublicCampaignReport() {
     refetchOnReconnect: true,
   });
 
+  const overrides = (data?.overrides ?? {}) as {
+    total_clicks?: number | null;
+    sent?: number | null;
+    delivered?: number | null;
+    failed?: number | null;
+    countries?: { label: string; count: number }[] | null;
+    cities?: { label: string; count: number }[] | null;
+    devices?: { label: string; count: number }[] | null;
+  };
+
   const stats = useMemo(() => {
     if (!data) return null;
     const clicks = data.clicks;
@@ -98,15 +108,16 @@ function PublicCampaignReport() {
         .map(([label, count]) => ({ label, count }));
     };
     return {
-      total: clicks.length,
-      countries: top("country"),
-      cities: top("city"),
-      devices: top("device_type"),
+      total: overrides.total_clicks != null ? overrides.total_clicks : clicks.length,
+      countries: overrides.countries && overrides.countries.length > 0 ? overrides.countries : top("country"),
+      cities: overrides.cities && overrides.cities.length > 0 ? overrides.cities : top("city"),
+      devices: overrides.devices && overrides.devices.length > 0 ? overrides.devices : top("device_type"),
       browsers: top("browser"),
       series,
       hourly,
     };
-  }, [data]);
+  }, [data, overrides]);
+
 
   if (error) {
     if ((error as Error).message === "NOT_FOUND") throw notFound();
