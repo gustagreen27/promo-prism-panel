@@ -1117,12 +1117,39 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
     const { public_overrides, ...campaign } = c as typeof c & { public_overrides: unknown };
     const overrides = (public_overrides ?? {}) as PublicOverrides;
 
+    // Novas tabelas de personalização por-disparo e métricas gerais.
+    const [pubSettings, pubMetrics, pubDispatches, pubSims] = await Promise.all([
+      supabaseAdmin
+        .from("campaign_public_settings")
+        .select("*")
+        .eq("campaign_id", data.id)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("public_metrics_override")
+        .select("*")
+        .eq("campaign_id", data.id)
+        .order("kind", { ascending: true })
+        .order("position", { ascending: true }),
+      supabaseAdmin
+        .from("campaign_public_dispatches")
+        .select("*")
+        .eq("campaign_id", data.id),
+      supabaseAdmin
+        .from("public_progress_simulation")
+        .select("*")
+        .eq("campaign_id", data.id),
+    ]);
+
     return {
       campaign,
       clicks: clicks ?? [],
       dispatches: normalizedDispatches,
       recipientsByDispatch,
       overrides,
+      publicSettings: pubSettings.data ?? null,
+      publicMetrics: pubMetrics.data ?? [],
+      publicDispatches: pubDispatches.data ?? [],
+      publicSimulations: pubSims.data ?? [],
       server_now: new Date().toISOString(),
     };
   });
