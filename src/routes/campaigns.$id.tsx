@@ -578,7 +578,7 @@ function DispatchCard({
     <Card>
       <CardHeader className="pb-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle className="text-base">{d.name || "Disparo sem nome"}</CardTitle>
+          <CardTitle className="text-base">{displayName || "Disparo sem nome"}</CardTitle>
           <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
             {statusLabel}
           </span>
