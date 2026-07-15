@@ -791,10 +791,23 @@ export async function processCampaignTick(
     let exhausted = false;
     const tickStart = Date.now();
 
-    // Buffer local de tokens (reduz round-trips ao Postgres).
-    let localTokens = 0;
-    let lastTokenSyncAt = 0;
+    // Buffer local de tokens do BUCKET GLOBAL do número (reduz round-trips ao Postgres).
+    let localGlobalTokens = 0;
     let lastTokenWaitUntil = 0;
+
+    // Bucket LOCAL da campanha (in-process): garante que a Campanha B com
+    // rate 15 nunca ultrapasse 15 msg/s, mesmo dividindo o número com uma
+    // Campanha A configurada para 80.
+    let campaignTokens = rawCampRate; // parte cheio
+    let lastCampRefillAt = Date.now();
+    const refillCampaignBucket = () => {
+      const now = Date.now();
+      const elapsedS = (now - lastCampRefillAt) / 1000;
+      if (elapsedS > 0) {
+        campaignTokens = Math.min(rawCampRate, campaignTokens + elapsedS * rawCampRate);
+        lastCampRefillAt = now;
+      }
+    };
 
     let reservingPromise: Promise<number> | null = null;
 
