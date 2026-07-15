@@ -1516,7 +1516,7 @@ const REMAPPABLE_STATUSES = [
 ] as const;
 
 const TARGET_STATUS_OPTIONS = [
-  { value: "", label: "Manter status original" },
+  { value: "__keep", label: "Manter status original" },
   { value: "sent", label: "Enviado" },
   { value: "delivered", label: "Entregue" },
   { value: "read", label: "Lido" },
@@ -1525,6 +1525,7 @@ const TARGET_STATUS_OPTIONS = [
   { value: "pending", label: "Pendente" },
   { value: "failed", label: "Falhou" },
 ];
+
 
 function StatusMapCard({
   campaignId,
@@ -1612,11 +1613,12 @@ function StatusMapCard({
                 <div className="text-sm">{s.label}</div>
                 <div className="text-xs text-muted-foreground">→</div>
                 <Select
-                  value={map[s.key] ?? ""}
+                  value={map[s.key] ? map[s.key] : "__keep"}
                   onValueChange={(v) =>
-                    setMap((m) => ({ ...m, [s.key]: v }))
+                    setMap((m) => ({ ...m, [s.key]: v === "__keep" ? "" : v }))
                   }
                 >
+
                   <SelectTrigger className="h-8">
                     <SelectValue placeholder="Manter status original" />
                   </SelectTrigger>
