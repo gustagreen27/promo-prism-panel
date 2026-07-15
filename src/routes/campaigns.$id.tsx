@@ -602,8 +602,6 @@ function PublicCampaignReport() {
         <div className="grid gap-4 md:grid-cols-2">
           <Breakdown title="Países" rows={stats.countries} />
           <Breakdown title="Cidades" rows={stats.cities} />
-          <Breakdown title="Dispositivos" rows={stats.devices} />
-          <Breakdown title="Navegadores" rows={stats.browsers} />
         </div>
 
         {dispatches.length > 0 && (
