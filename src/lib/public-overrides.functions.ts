@@ -172,6 +172,7 @@ export const upsertMetricOverride = createServerFn({ method: "POST" })
         label: z.string().trim().min(1).max(120),
         count: z.number().int().min(0).max(1_000_000_000),
         position: z.number().int().min(0).max(1000).default(0),
+        percent: z.number().min(0).max(100).nullable().optional(),
       })
       .parse(d),
   )
