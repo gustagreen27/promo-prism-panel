@@ -132,7 +132,8 @@ function CampaignRow({
             <ParticipantsBadges value={(c as any).participants} empty="" />
             {(() => {
               const po = (c as any).public_overrides as Record<string, unknown> | null | undefined;
-              const personalized = po && Object.keys(po).length > 0;
+              const newActive = (c as any).public_customization_enabled === true;
+              const personalized = newActive || (po && Object.keys(po).length > 0);
               if (!personalized) return null;
               return (
                 <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
