@@ -981,6 +981,7 @@ export async function processCampaignTick(
           localQueue.length,
           Math.max(1, Math.ceil(phoneBucketRate / 10)), // ~100ms de rate por RPC = burst cap
         );
+        const tk0 = clock.now();
         const { data: tok } = await supabaseAdmin.rpc("wa_try_consume_tokens" as any, {
           _phone_number_id: phoneNumberId,
           _requested: wantTokens,
@@ -991,6 +992,7 @@ export async function processCampaignTick(
           _burst_cap_ms: 100,
         });
         const row = Array.isArray(tok) ? tok[0] : tok;
+        onRpc?.({ rpc: "wa_try_consume_tokens", ms: clock.now() - tk0, requested: wantTokens, granted: Number(row?.granted ?? 0) });
         if (row?.max_concurrency && row.max_concurrency > 0) {
           maxConc = Math.min(campConc, row.max_concurrency);
         }
@@ -1000,18 +1002,19 @@ export async function processCampaignTick(
           rateLimitedBySecond.global++;
           const waitMs = Math.max(1, Math.min(row?.wait_ms ?? 50, 100));
           lastTokenWaitUntil = now + waitMs;
-          await new Promise((res) => setTimeout(res, waitMs));
+          await clock.sleep(waitMs);
           continue;
         }
       } else if (localGlobalTokens < 1) {
         rateLimitedBySecond.global++;
         const waitMs = Math.max(1, lastTokenWaitUntil - now);
-        await new Promise((res) => setTimeout(res, Math.min(waitMs, 50)));
+        await clock.sleep(Math.min(waitMs, 50));
         continue;
       }
 
       // ------ Gate C: vaga de concorrência GLOBAL do número (atômico no PG) ------
       if (localGlobalSlots < 1) {
+        const sl0 = clock.now();
         const { data: slotRow } = await supabaseAdmin.rpc("wa_acquire_slots" as any, {
           _phone_number_id: phoneNumberId,
           _requested: 1,
@@ -1019,13 +1022,15 @@ export async function processCampaignTick(
         });
         const s = Array.isArray(slotRow) ? slotRow[0] : slotRow;
         const grantedSlots = Math.max(0, Number(s?.granted ?? 0));
+        onRpc?.({ rpc: "wa_acquire_slots", ms: clock.now() - sl0, requested: 1, granted: grantedSlots });
         localGlobalSlots += grantedSlots;
         if (grantedSlots === 0) {
           rateLimitedBySecond.global_slot++;
-          await new Promise((res) => setTimeout(res, 20));
+          await clock.sleep(20);
           continue;
         }
       }
+
 
       // Despacha: consome 1 token global + 1 slot global + agenda próximo spacing da campanha
       localGlobalTokens -= 1;
