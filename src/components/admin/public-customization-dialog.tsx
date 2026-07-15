@@ -1613,11 +1613,12 @@ function StatusMapCard({
                 <div className="text-sm">{s.label}</div>
                 <div className="text-xs text-muted-foreground">→</div>
                 <Select
-                  value={map[s.key] ?? ""}
+                  value={map[s.key] ? map[s.key] : "__keep"}
                   onValueChange={(v) =>
-                    setMap((m) => ({ ...m, [s.key]: v }))
+                    setMap((m) => ({ ...m, [s.key]: v === "__keep" ? "" : v }))
                   }
                 >
+
                   <SelectTrigger className="h-8">
                     <SelectValue placeholder="Manter status original" />
                   </SelectTrigger>
