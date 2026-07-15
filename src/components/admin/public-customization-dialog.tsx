@@ -1086,14 +1086,15 @@ function ClicksGeneratorCard({
   const seed = useMemo(() => seedFromString(campaignId), [campaignId]);
   const sourceDelivered =
     useSource === "real" ? realDelivered : publicDelivered;
-  const previewNow = computeGeneratedClicks(sourceDelivered, previewCfg, seed);
+  const previewNow = computeGeneratedClicks(sourceDelivered, previewCfg, seed, 0);
+  const previewIn1Min = computeGeneratedClicks(sourceDelivered, previewCfg, seed, 60_000);
   const projected =
     previewCfg.max_clicks != null
       ? Math.min(
           previewCfg.max_clicks,
-          computeGeneratedClicks(sourceDelivered * 2, previewCfg, seed),
+          computeGeneratedClicks(sourceDelivered * 2, previewCfg, seed, 60_000),
         )
-      : computeGeneratedClicks(sourceDelivered * 2, previewCfg, seed);
+      : computeGeneratedClicks(sourceDelivered * 2, previewCfg, seed, 60_000);
 
   const citySum = parsedCities.reduce((a, b) => a + (b.percent || 0), 0);
   const countrySum = parsedCountries.reduce((a, b) => a + (b.percent || 0), 0);
