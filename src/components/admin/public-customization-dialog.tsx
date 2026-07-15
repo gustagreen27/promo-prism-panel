@@ -927,11 +927,6 @@ function AutoSimForm({
 // ============================================================================
 // GERADOR DE CLIQUES A PARTIR DOS ENTREGUES
 // ============================================================================
-import {
-  computeGeneratedClicks,
-  seedFromString,
-  type ClicksGeneratorConfig,
-} from "@/lib/public-clicks-generator";
 
 function ClicksGeneratorCard({
   campaignId,
