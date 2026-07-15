@@ -461,18 +461,27 @@ type Dispatch = {
 function DispatchCard({
   d,
   overrides,
+  snapshot,
 }: {
   d: Dispatch;
   overrides?: { sent?: number; delivered?: number; failed?: number };
+  snapshot?: SimSnapshot | null;
 }) {
-  const total = d.total_recipients ?? 0;
+  // Snapshot da simulação tem prioridade máxima quando o modo é custom/real_plus.
+  const total = snapshot?.total ?? d.total_recipients ?? 0;
   const realDelivered = d.delivered_count ?? 0;
-  const delivered = overrides?.delivered ?? realDelivered;
-  const sent = overrides?.sent ?? delivered; // "Enviados" reflete a quantidade de entregues
-  const failed = overrides?.failed ?? (d.failed_count ?? 0);
-  const percent = total > 0 ? Math.min(100, Math.round((sent / Math.max(total, sent)) * 100)) : (sent > 0 ? 100 : 0);
+  const delivered = snapshot?.delivered ?? overrides?.delivered ?? realDelivered;
+  const sent = snapshot?.sent ?? overrides?.sent ?? delivered;
+  const failed = snapshot?.failed ?? overrides?.failed ?? (d.failed_count ?? 0);
+  const percent = snapshot
+    ? snapshot.percent
+    : total > 0
+      ? Math.min(100, Math.round((sent / Math.max(total, sent)) * 100))
+      : sent > 0
+        ? 100
+        : 0;
 
-  const statusLabel = (() => {
+  const statusLabel = snapshot?.status_label ?? (() => {
     switch (d.status) {
       case "running": return "Em execução";
       case "scheduled": return "Agendada";
@@ -484,6 +493,10 @@ function DispatchCard({
       default: return d.status ?? "—";
     }
   })();
+
+  const etaText = snapshot?.eta_at
+    ? new Date(snapshot.eta_at).toLocaleString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+    : null;
 
   return (
     <Card>
@@ -510,16 +523,19 @@ function DispatchCard({
         <div className="space-y-1">
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>Progresso de envio</span>
-            <span>{percent}%</span>
+            <span>
+              {Math.round(percent)}%{etaText ? ` · previsão ${etaText}` : ""}
+            </span>
           </div>
           <div className="h-2 overflow-hidden rounded bg-muted">
-            <div className="h-full bg-primary transition-all" style={{ width: `${percent}%` }} />
+            <div className="h-full bg-primary transition-all" style={{ width: `${Math.max(0, Math.min(100, percent))}%` }} />
           </div>
         </div>
       </CardContent>
     </Card>
   );
 }
+
 
 function MiniStat({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
   return (
