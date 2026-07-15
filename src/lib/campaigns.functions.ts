@@ -96,10 +96,22 @@ export const listCampaigns = createServerFn({ method: "GET" })
       for (const k of Object.keys(seen)) counts[k].unique = seen[k].size;
     }
 
+    // Enriquecer com flag de personalização pública (novas tabelas)
+    const { data: pubEnabled } = ids.length
+      ? await supabaseAdmin
+          .from("campaign_public_settings")
+          .select("campaign_id, enabled")
+          .in("campaign_id", ids)
+      : { data: [] as { campaign_id: string; enabled: boolean }[] };
+    const pubSet = new Set(
+      (pubEnabled ?? []).filter((r: any) => r.enabled).map((r: any) => r.campaign_id as string),
+    );
+
     return (campaigns ?? []).map((c) => ({
       ...c,
       total_clicks: counts[c.id]?.total ?? 0,
       unique_clicks: counts[c.id]?.unique ?? 0,
+      public_customization_enabled: pubSet.has(c.id as string),
     }));
   });
 
@@ -1117,12 +1129,39 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
     const { public_overrides, ...campaign } = c as typeof c & { public_overrides: unknown };
     const overrides = (public_overrides ?? {}) as PublicOverrides;
 
+    // Novas tabelas de personalização por-disparo e métricas gerais.
+    const [pubSettings, pubMetrics, pubDispatches, pubSims] = await Promise.all([
+      supabaseAdmin
+        .from("campaign_public_settings")
+        .select("*")
+        .eq("campaign_id", data.id)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("public_metrics_override")
+        .select("*")
+        .eq("campaign_id", data.id)
+        .order("kind", { ascending: true })
+        .order("position", { ascending: true }),
+      supabaseAdmin
+        .from("campaign_public_dispatches")
+        .select("*")
+        .eq("campaign_id", data.id),
+      supabaseAdmin
+        .from("public_progress_simulation")
+        .select("*")
+        .eq("campaign_id", data.id),
+    ]);
+
     return {
       campaign,
       clicks: clicks ?? [],
       dispatches: normalizedDispatches,
       recipientsByDispatch,
       overrides,
+      publicSettings: pubSettings.data ?? null,
+      publicMetrics: pubMetrics.data ?? [],
+      publicDispatches: pubDispatches.data ?? [],
+      publicSimulations: pubSims.data ?? [],
       server_now: new Date().toISOString(),
     };
   });

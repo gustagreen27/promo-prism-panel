@@ -371,6 +371,104 @@ export type Database = {
           },
         ]
       }
+      campaign_public_dispatches: {
+        Row: {
+          campaign_id: string | null
+          created_at: string
+          enabled: boolean
+          fixed: Json
+          mode: string
+          public_name: string | null
+          public_status: string | null
+          updated_at: string
+          updated_by: string | null
+          wa_campaign_id: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string
+          enabled?: boolean
+          fixed?: Json
+          mode?: string
+          public_name?: string | null
+          public_status?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          wa_campaign_id: string
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string
+          enabled?: boolean
+          fixed?: Json
+          mode?: string
+          public_name?: string | null
+          public_status?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          wa_campaign_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_public_dispatches_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_public_dispatches_wa_campaign_id_fkey"
+            columns: ["wa_campaign_id"]
+            isOneToOne: true
+            referencedRelation: "wa_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_public_settings: {
+        Row: {
+          campaign_id: string
+          clicks_series: Json
+          created_at: string
+          custom_totals: Json
+          enabled: boolean
+          hourly_series: Json
+          metrics_mode: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          campaign_id: string
+          clicks_series?: Json
+          created_at?: string
+          custom_totals?: Json
+          enabled?: boolean
+          hourly_series?: Json
+          metrics_mode?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          clicks_series?: Json
+          created_at?: string
+          custom_totals?: Json
+          enabled?: boolean
+          hourly_series?: Json
+          metrics_mode?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_public_settings_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: true
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_recipients: {
         Row: {
           attempt: number
@@ -1677,6 +1775,140 @@ export type Database = {
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_metrics_override: {
+        Row: {
+          campaign_id: string
+          count: number
+          created_at: string
+          id: string
+          kind: string
+          label: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          count?: number
+          created_at?: string
+          id?: string
+          kind: string
+          label: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          count?: number
+          created_at?: string
+          id?: string
+          kind?: string
+          label?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_metrics_override_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_progress_simulation: {
+        Row: {
+          campaign_id: string | null
+          created_at: string
+          delivered_end: number | null
+          delivered_ratio: number | null
+          delivered_start: number | null
+          duration_sec: number | null
+          end_at: string | null
+          failed_end: number | null
+          failed_ratio: number | null
+          failed_start: number | null
+          growth: string
+          growth_params: Json
+          pauses: Json
+          percent_end: number | null
+          percent_start: number | null
+          refresh_interval_sec: number
+          runtime: Json
+          sent_end: number
+          sent_start: number
+          start_at: string | null
+          status_label: string | null
+          updated_at: string
+          wa_campaign_id: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string
+          delivered_end?: number | null
+          delivered_ratio?: number | null
+          delivered_start?: number | null
+          duration_sec?: number | null
+          end_at?: string | null
+          failed_end?: number | null
+          failed_ratio?: number | null
+          failed_start?: number | null
+          growth?: string
+          growth_params?: Json
+          pauses?: Json
+          percent_end?: number | null
+          percent_start?: number | null
+          refresh_interval_sec?: number
+          runtime?: Json
+          sent_end?: number
+          sent_start?: number
+          start_at?: string | null
+          status_label?: string | null
+          updated_at?: string
+          wa_campaign_id: string
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string
+          delivered_end?: number | null
+          delivered_ratio?: number | null
+          delivered_start?: number | null
+          duration_sec?: number | null
+          end_at?: string | null
+          failed_end?: number | null
+          failed_ratio?: number | null
+          failed_start?: number | null
+          growth?: string
+          growth_params?: Json
+          pauses?: Json
+          percent_end?: number | null
+          percent_start?: number | null
+          refresh_interval_sec?: number
+          runtime?: Json
+          sent_end?: number
+          sent_start?: number
+          start_at?: string | null
+          status_label?: string | null
+          updated_at?: string
+          wa_campaign_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_progress_simulation_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "public_progress_simulation_wa_campaign_id_fkey"
+            columns: ["wa_campaign_id"]
+            isOneToOne: true
+            referencedRelation: "wa_campaigns"
             referencedColumns: ["id"]
           },
         ]

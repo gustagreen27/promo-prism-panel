@@ -9,6 +9,12 @@ import {
   type SimSnapshot,
   type SimulationConfig,
 } from "@/lib/public-simulation";
+import {
+  computeDispatchSnapshot,
+  type DispatchOverrideRow,
+  type DispatchSimRow,
+  type Snapshot,
+} from "@/lib/dispatch-simulation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -106,7 +112,25 @@ function PublicCampaignReport() {
   }, [simulation]);
   void tick;
 
+  // Novas tabelas de personalização por-disparo e métricas gerais
+  const publicSettings = (data as any)?.publicSettings ?? null;
+  const publicMetrics = ((data as any)?.publicMetrics ?? []) as any[];
+  const publicDispatches = ((data as any)?.publicDispatches ?? []) as any[];
+  const publicSimulations = ((data as any)?.publicSimulations ?? []) as any[];
 
+  // Tick para simulações auto por-disparo ativas
+  useEffect(() => {
+    const active = publicSimulations.find((s) => s?.runtime?.active === true && !s?.runtime?.paused_at);
+    if (!active) return;
+    const intervalMs = Math.max(1000, (active.refresh_interval_sec ?? 5) * 1000);
+    const t = setInterval(() => setTick((n) => n + 1), intervalMs);
+    setRefetchMs(Math.max(intervalMs, 5000));
+    return () => clearInterval(t);
+  }, [publicSimulations]);
+
+  const customEnabled = publicSettings?.enabled === true;
+  const metricsMode = (publicSettings?.metrics_mode ?? "real") as "real" | "replace" | "merge";
+  const customTotals = (publicSettings?.custom_totals ?? {}) as Record<string, number | null>;
 
   const stats = useMemo(() => {
     if (!data) return null;
@@ -137,16 +161,52 @@ function PublicCampaignReport() {
         .slice(0, 8)
         .map(([label, count]) => ({ label, count }));
     };
+
+    const merge = (real: { label: string; count: number }[], kind: string) => {
+      const customList = publicMetrics
+        .filter((m) => m.kind === kind)
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+        .map((m) => ({ label: m.label, count: m.count }));
+      if (!customEnabled || metricsMode === "real" || customList.length === 0) return real;
+      if (metricsMode === "replace") return customList;
+      // merge: soma por label
+      const map = new Map<string, number>();
+      for (const r of real) map.set(r.label, (map.get(r.label) ?? 0) + r.count);
+      for (const c of customList) map.set(c.label, (map.get(c.label) ?? 0) + c.count);
+      return Array.from(map.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 20)
+        .map(([label, count]) => ({ label, count }));
+    };
+
+    const realCountries = top("country");
+    const realCities = top("city");
+    const realDevices = top("device_type");
+    const realBrowsers = top("browser");
+
+    const countries = merge(realCountries, "country");
+    const cities = merge(realCities, "city");
+    const devices = merge(realDevices, "device");
+    const browsers = merge(realBrowsers, "browser");
+
+    const realTotalClicks = clicks.length;
+    const total =
+      customEnabled && customTotals.clicks != null
+        ? customTotals.clicks
+        : overrides.total_clicks != null
+          ? overrides.total_clicks
+          : realTotalClicks;
+
     return {
-      total: overrides.total_clicks != null ? overrides.total_clicks : clicks.length,
-      countries: overrides.countries && overrides.countries.length > 0 ? overrides.countries : top("country"),
-      cities: overrides.cities && overrides.cities.length > 0 ? overrides.cities : top("city"),
-      devices: overrides.devices && overrides.devices.length > 0 ? overrides.devices : top("device_type"),
-      browsers: top("browser"),
+      total,
+      countries,
+      cities,
+      devices,
+      browsers,
       series,
       hourly,
     };
-  }, [data, overrides]);
+  }, [data, overrides, publicMetrics, customEnabled, metricsMode, customTotals]);
 
 
   if (error) {
@@ -218,8 +278,26 @@ function PublicCampaignReport() {
             </div>
             <div className="space-y-4">
               {dispatches.map((d, i) => {
+                const perDispatchOverride = publicDispatches.find((x) => x.wa_campaign_id === d.id) ?? null;
+                const perDispatchSim = publicSimulations.find((x) => x.wa_campaign_id === d.id) ?? null;
+                const perSnap: Snapshot | null =
+                  customEnabled && perDispatchOverride?.enabled
+                    ? computeDispatchSnapshot(
+                        perDispatchOverride as DispatchOverrideRow,
+                        perDispatchSim as DispatchSimRow | null,
+                        {
+                          name: d.name ?? null,
+                          status: d.status ?? null,
+                          total: d.total_recipients ?? 0,
+                          sent: d.sent_count ?? 0,
+                          delivered: d.delivered_count ?? 0,
+                          failed: d.failed_count ?? 0,
+                        },
+                        new Date(),
+                      )
+                    : null;
                 let snapshot: SimSnapshot | null = null;
-                if (i === 0 && simulation && simulation.mode !== "real") {
+                if (!perSnap && i === 0 && simulation && simulation.mode !== "real") {
                   snapshot = computeSimulationSnapshot(
                     simulation,
                     {
@@ -238,7 +316,8 @@ function PublicCampaignReport() {
                     key={d.id}
                     d={d}
                     snapshot={snapshot}
-                    overrides={i === 0 ? {
+                    perSnapshot={perSnap}
+                    overrides={!perSnap && i === 0 ? {
                       sent: overrides.sent ?? undefined,
                       delivered: overrides.delivered ?? undefined,
                       failed: overrides.failed ?? undefined,
@@ -462,26 +541,31 @@ function DispatchCard({
   d,
   overrides,
   snapshot,
+  perSnapshot,
 }: {
   d: Dispatch;
   overrides?: { sent?: number; delivered?: number; failed?: number };
   snapshot?: SimSnapshot | null;
+  perSnapshot?: Snapshot | null;
 }) {
-  // Snapshot da simulação tem prioridade máxima quando o modo é custom/real_plus.
-  const total = snapshot?.total ?? d.total_recipients ?? 0;
+  // Prioridade: perSnapshot (novas tabelas por-disparo) > snapshot (simulação antiga) > overrides > real.
+  const displayName = perSnapshot?.name ?? d.name;
+  const total = perSnapshot?.total ?? snapshot?.total ?? d.total_recipients ?? 0;
   const realDelivered = d.delivered_count ?? 0;
-  const delivered = snapshot?.delivered ?? overrides?.delivered ?? realDelivered;
-  const sent = snapshot?.sent ?? overrides?.sent ?? delivered;
-  const failed = snapshot?.failed ?? overrides?.failed ?? (d.failed_count ?? 0);
-  const percent = snapshot
-    ? snapshot.percent
-    : total > 0
-      ? Math.min(100, Math.round((sent / Math.max(total, sent)) * 100))
-      : sent > 0
-        ? 100
-        : 0;
+  const delivered = perSnapshot?.delivered ?? snapshot?.delivered ?? overrides?.delivered ?? realDelivered;
+  const sent = perSnapshot?.sent ?? snapshot?.sent ?? overrides?.sent ?? delivered;
+  const failed = perSnapshot?.failed ?? snapshot?.failed ?? overrides?.failed ?? (d.failed_count ?? 0);
+  const percent = perSnapshot
+    ? perSnapshot.percent
+    : snapshot
+      ? snapshot.percent
+      : total > 0
+        ? Math.min(100, Math.round((sent / Math.max(total, sent)) * 100))
+        : sent > 0
+          ? 100
+          : 0;
 
-  const statusLabel = snapshot?.status_label ?? (() => {
+  const statusLabel = perSnapshot?.status ?? snapshot?.status_label ?? (() => {
     switch (d.status) {
       case "running": return "Em execução";
       case "scheduled": return "Agendada";
@@ -494,15 +578,16 @@ function DispatchCard({
     }
   })();
 
-  const etaText = snapshot?.eta_at
-    ? new Date(snapshot.eta_at).toLocaleString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+  const etaSource = perSnapshot?.eta_at ?? snapshot?.eta_at ?? null;
+  const etaText = etaSource
+    ? new Date(etaSource).toLocaleString("pt-BR", { hour: "2-digit", minute: "2-digit" })
     : null;
 
   return (
     <Card>
       <CardHeader className="pb-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle className="text-base">{d.name || "Disparo sem nome"}</CardTitle>
+          <CardTitle className="text-base">{displayName || "Disparo sem nome"}</CardTitle>
           <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
             {statusLabel}
           </span>
