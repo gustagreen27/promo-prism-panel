@@ -382,21 +382,9 @@ export async function processCampaignTick(
     const rawCampRate = Math.max(1, Number((camp as any).rate_per_second ?? DEFAULT_RATE_PER_SECOND));
     const campRate = Math.min(rawCampRate, numberMaxRate);
     const campConc = Math.max(1, Number((camp as any).max_concurrency ?? DEFAULT_MAX_CONCURRENCY));
-    const chunkSize = Math.max(1, Math.min(campConc * 2, 50));
-    // Sincroniza o token bucket global (compartilhado entre TODAS as campanhas do
-    // mesmo phone_number_id) com o rate/concorrência atualmente configurados.
-    // Sem isso, o wa_rate_limits ficaria travado no valor bootstrap da 1ª campanha.
-    try {
-      await supabaseAdmin.from("wa_rate_limits" as any).upsert(
-        {
-          phone_number_id: phoneNumberId,
-          rate_per_second: campRate,
-          max_concurrency: campConc,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "phone_number_id" },
-      );
-    } catch { /* non-fatal */ }
+    // Reservamos em blocos grandes para sustentar cadências altas (até 80 msg/s).
+    // Cap depende da concorrência para não reservar demais quando o WhatsApp está lento.
+    const chunkSize = Math.max(50, Math.min(campConc * 4, 500));
     // budget = teto de reservas neste tick (não é rate!). Vem do cron como
     // rps * TICK_WINDOW_S, limitado por max_per_hour/day (cap).
     const budget = Math.max(1, Math.min(reservationBudget ?? 1000, cap));
