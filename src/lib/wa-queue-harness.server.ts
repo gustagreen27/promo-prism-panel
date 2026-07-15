@@ -74,7 +74,7 @@ async function setup(params: {
       status: "approved",
       connection_id: conn.id,
       header_type: "none",
-      body_text: "Harness body {{1}}",
+      body: "Harness body {{1}}",
     } as any)
     .select("*")
     .single();
