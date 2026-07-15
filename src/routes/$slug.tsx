@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
-import { resolveCampaign, trackClick, trackEvent } from "@/lib/track.functions";
+import { resolveCampaign, trackEvent } from "@/lib/track.functions";
 
 function emitEvent(slug: string, event_type: string, metadata?: Record<string, unknown>) {
   if (!slug) return;
@@ -117,20 +117,9 @@ export const Route = createFileRoute("/$slug")({
   component: CampaignPublicPage,
 });
 
-function useFireAndForgetTracking(slug: string, enabled: boolean) {
-  useEffect(() => {
-    if (!enabled) return;
-    // fire-and-forget — never block UI on IP-API / insert
-    void trackClick({ data: { slug } }).catch(() => {});
-  }, [slug, enabled]);
-}
-
 function CampaignPublicPage() {
   const data = Route.useLoaderData();
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const trackingEnabled =
-    data.status === "iframe" || data.status === "redirect" || data.status === "wrapper";
-  useFireAndForgetTracking(data.status === "notfound" ? "" : data.slug, trackingEnabled);
 
   // Client-side watchdog for iframe blocks not caught by server HEAD check.
   // Browsers que recusam a conexão (X-Frame-Options, CSP frame-ancestors,
