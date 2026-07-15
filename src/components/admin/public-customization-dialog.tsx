@@ -996,6 +996,9 @@ function ClicksGeneratorCard({
   const [refresh, setRefresh] = useState<string>(
     String(cfg.refresh_interval_sec ?? 10),
   );
+  const [clicksPerMinute, setClicksPerMinute] = useState<string>(
+    cfg.clicks_per_minute != null ? String(cfg.clicks_per_minute) : "",
+  );
   const [growth, setGrowth] = useState<"linear" | "random">(
     cfg.growth ?? "random",
   );
@@ -1072,6 +1075,7 @@ function ClicksGeneratorCard({
     max_pct: maxPct === "" ? null : Number(maxPct),
     max_clicks: maxClicks === "" ? null : Number(maxClicks),
     refresh_interval_sec: Number(refresh || 10),
+    clicks_per_minute: clicksPerMinute === "" ? null : Number(clicksPerMinute),
     growth,
     use_source: useSource,
     replace_or_add: replaceOrAdd,
@@ -1082,14 +1086,15 @@ function ClicksGeneratorCard({
   const seed = useMemo(() => seedFromString(campaignId), [campaignId]);
   const sourceDelivered =
     useSource === "real" ? realDelivered : publicDelivered;
-  const previewNow = computeGeneratedClicks(sourceDelivered, previewCfg, seed);
+  const previewNow = computeGeneratedClicks(sourceDelivered, previewCfg, seed, 0);
+  const previewIn1Min = computeGeneratedClicks(sourceDelivered, previewCfg, seed, 60_000);
   const projected =
     previewCfg.max_clicks != null
       ? Math.min(
           previewCfg.max_clicks,
-          computeGeneratedClicks(sourceDelivered * 2, previewCfg, seed),
+          computeGeneratedClicks(sourceDelivered * 2, previewCfg, seed, 60_000),
         )
-      : computeGeneratedClicks(sourceDelivered * 2, previewCfg, seed);
+      : computeGeneratedClicks(sourceDelivered * 2, previewCfg, seed, 60_000);
 
   const citySum = parsedCities.reduce((a, b) => a + (b.percent || 0), 0);
   const countrySum = parsedCountries.reduce((a, b) => a + (b.percent || 0), 0);
@@ -1107,6 +1112,7 @@ function ClicksGeneratorCard({
             max_pct: maxPct === "" ? null : Number(maxPct),
             max_clicks: maxClicks === "" ? null : Number(maxClicks),
             refresh_interval_sec: Number(refresh || 10),
+            clicks_per_minute: clicksPerMinute === "" ? null : Number(clicksPerMinute),
             growth,
             use_source: useSource,
             replace_or_add: replaceOrAdd,
@@ -1204,6 +1210,12 @@ function ClicksGeneratorCard({
             value={refresh}
             onChange={setRefresh}
           />
+          <NumField
+            label="Cliques por minuto"
+            value={clicksPerMinute}
+            onChange={setClicksPerMinute}
+            placeholder="0 (desativado)"
+          />
           <div className="space-y-1">
             <Label className="text-xs">Crescimento</Label>
             <Select value={growth} onValueChange={(v) => setGrowth(v as any)}>
@@ -1263,7 +1275,11 @@ function ClicksGeneratorCard({
               <div className="font-mono">{previewNow.toLocaleString("pt-BR")}</div>
             </div>
             <div>
-              <div className="text-muted-foreground">Projeção (2× entregues)</div>
+              <div className="text-muted-foreground">Cliques em 1 min</div>
+              <div className="font-mono">{previewIn1Min.toLocaleString("pt-BR")}</div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Projeção (2× entregues, +1 min)</div>
               <div className="font-mono">{projected.toLocaleString("pt-BR")}</div>
             </div>
             <div>
@@ -1274,8 +1290,9 @@ function ClicksGeneratorCard({
             </div>
           </div>
           <p className="mt-2 text-[11px] text-muted-foreground">
-            Nunca diminui. Nunca ultrapassa entregues + iniciais. Pausa quando os
-            entregues param ou a simulação pública está pausada.
+            Nunca diminui. Respeita o limite máximo. Com "Cliques por minuto" &gt; 0,
+            o total continua subindo mesmo sem novos entregues. Sem esse valor,
+            o total só aumenta conforme os entregues crescem.
             Distribuição por categoria usa os % definidos em cada lista abaixo.
           </p>
         </div>
