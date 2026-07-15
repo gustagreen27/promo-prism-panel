@@ -407,34 +407,33 @@ export const getCampaignDispatchAudit = createServerFn({ method: "GET" })
       return { dispatches: [], recipientSummaries: [], messageLogs: [], attempts: [], webhookLogs: [], timeline: [] };
     }
 
-    const countRows = async (campaignId: string, build?: (q: any) => any) => {
-      let q = supabaseAdmin
-        .from("campaign_recipients")
-        .select("id", { count: "exact", head: true })
-        .eq("campaign_id", campaignId);
-      if (build) q = build(q);
-      const { count, error: countError } = await q;
-      if (countError) throw countError;
-      return count ?? 0;
-    };
-
-    const recipientSummaries = await Promise.all(
-      ids.map(async (id) => ({
-        campaign_id: id,
-        total: await countRows(id),
-        pending: await countRows(id, (q) => q.eq("status", "pending")),
-        accepted: await countRows(id, (q) => q.eq("status", "accepted")),
-        sent: await countRows(id, (q) => q.in("status", ["sent", "delivered", "read", "replied"])),
-        delivered: await countRows(id, (q) => q.in("status", ["delivered", "read", "replied"])),
-        read: await countRows(id, (q) => q.in("status", ["read", "replied"])),
-        replied: await countRows(id, (q) => q.eq("status", "replied")),
-        failed: await countRows(id, (q) => q.eq("status", "failed")),
-        with_meta_message_id: await countRows(id, (q) => q.not("meta_message_id", "is", null)),
-        with_sent_at: await countRows(id, (q) => q.not("sent_at", "is", null)),
-        with_delivered_at: await countRows(id, (q) => q.not("delivered_at", "is", null)),
-        with_failed_at: await countRows(id, (q) => q.not("failed_at", "is", null)),
-      })),
-    );
+    // Frente 2: derivar de wa_campaigns.progress (mantido pelo trigger) —
+    // 11 count(*) por dispatch em 1M linhas fazia a auditoria estourar timeout.
+    const recipientSummaries = (dispatches ?? []).map((d: any) => {
+      const p = (d.progress as Record<string, number> | null) ?? {};
+      const total = Number(d.total_recipients ?? p.total ?? 0);
+      const sent = Number(d.sent_count ?? p.sent ?? 0);
+      const delivered = Number(d.delivered_count ?? p.delivered ?? 0);
+      const read = Number(d.read_count ?? p.read ?? 0);
+      const replied = Number(d.replied_count ?? p.replied ?? 0);
+      const failed = Number(d.failed_count ?? p.failed ?? 0);
+      return {
+        campaign_id: d.id as string,
+        total,
+        pending: Number(p.pending ?? 0),
+        accepted: Number(p.accepted ?? 0),
+        sent,
+        delivered,
+        read,
+        replied,
+        failed,
+        // Aproximações (derivadas de status; equivalência boa o bastante para a auditoria).
+        with_meta_message_id: sent,
+        with_sent_at: sent,
+        with_delivered_at: delivered,
+        with_failed_at: failed,
+      };
+    });
 
     const { data: messageLogs, error: logsError } = await supabaseAdmin
       .from("message_logs")
