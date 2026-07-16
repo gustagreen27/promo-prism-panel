@@ -499,12 +499,13 @@ export async function processCampaignTick(
       if (!force && touchCampaignPromise) return;
       lastCampaignTouchAt = now;
       const lastSentAt = new Date().toISOString();
-      const p = supabaseAdmin
-        .from("wa_campaigns")
-        .update({ last_sent_at: lastSentAt, last_error: null })
-        .eq("id", campaignId)
-        .then(() => undefined)
-        .catch((err) => {
+      const p: Promise<void> = (async () => {
+        await supabaseAdmin
+          .from("wa_campaigns")
+          .update({ last_sent_at: lastSentAt, last_error: null })
+          .eq("id", campaignId);
+      })()
+        .catch((err: unknown) => {
           console.error("[wa-queue] campaign heartbeat failed", err);
         })
         .finally(() => {
