@@ -198,6 +198,34 @@ function Page() {
   const [wabaDlg, setWabaDlg] = useState(false);
   const [wabaInput, setWabaInput] = useState("");
 
+  // Credenciais Meta (isoladas por conexão)
+  const getCredsFn = useServerFn(getConnectionCredentials);
+  const debugCredsFn = useServerFn(debugConnectionToken);
+  const subAppsFn = useServerFn(getConnectionSubscribedApps);
+  const [credsDlg, setCredsDlg] = useState(false);
+  const [credAppId, setCredAppId] = useState("");
+  const [credAppSecret, setCredAppSecret] = useState("");
+  const [credVerify, setCredVerify] = useState("");
+  const [credBusiness, setCredBusiness] = useState("");
+  const [credToken, setCredToken] = useState("");
+  const [credUseGlobal, setCredUseGlobal] = useState<boolean | null>(null);
+  const [credDebugResult, setCredDebugResult] = useState<any>(null);
+  const [credSubResult, setCredSubResult] = useState<any>(null);
+  const credsQuery = useQuery({
+    queryKey: ["wa-conn-creds", id],
+    queryFn: () => getCredsFn({ data: { connection_id: id } }),
+    enabled: credsDlg,
+  });
+  useEffect(() => {
+    const c: any = credsQuery.data;
+    if (c && credsDlg) {
+      setCredAppId(c.app_id ?? "");
+      setCredBusiness(c.business_id ?? "");
+      setCredUseGlobal(!!c.use_global_token);
+    }
+  }, [credsQuery.data, credsDlg]);
+
+
   const runAgain = () => diagMut.mutate();
   const invAll = () => {
     qc.invalidateQueries({ queryKey: ["wa-phone-profile", id] });
