@@ -1012,17 +1012,26 @@ export async function processCampaignTick(
         continue;
       }
 
-      // ------ Gate C: vaga de concorrência GLOBAL do número (atômico no PG) ------
+      // ------ Gate C: vaga de concorrência GLOBAL do número (atômico no PG, em BATCH) ------
       if (localGlobalSlots < 1) {
+        // Batch p/ eliminar RPC por dispatch (era ~100ms crítico → limitava a ~6/s).
+        const wantSlots = Math.max(
+          1,
+          Math.min(
+            Math.max(1, maxConc - inflight.size),
+            Math.max(1, localQueue.length),
+            Math.max(1, Math.ceil(phoneBucketRate / 10)), // ~100ms de rate
+          ),
+        );
         const sl0 = clock.now();
         const { data: slotRow } = await supabaseAdmin.rpc("wa_acquire_slots" as any, {
           _phone_number_id: phoneNumberId,
-          _requested: 1,
+          _requested: wantSlots,
           _max_conc: globalMaxConc,
         });
         const s = Array.isArray(slotRow) ? slotRow[0] : slotRow;
         const grantedSlots = Math.max(0, Number(s?.granted ?? 0));
-        onRpc?.({ rpc: "wa_acquire_slots", ms: clock.now() - sl0, requested: 1, granted: grantedSlots });
+        onRpc?.({ rpc: "wa_acquire_slots", ms: clock.now() - sl0, requested: wantSlots, granted: grantedSlots });
         localGlobalSlots += grantedSlots;
         if (grantedSlots === 0) {
           rateLimitedBySecond.global_slot++;
