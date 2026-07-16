@@ -614,6 +614,9 @@ function Page() {
               <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ações corretivas</div>
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" onClick={() => setTokenDlg(true)}>Atualizar token da conexão</Button>
+                <Button size="sm" variant="secondary" onClick={() => { setCredDebugResult(null); setCredSubResult(null); setCredsDlg(true); }}>
+                  <KeyRound className="mr-2 h-4 w-4" />Editar credenciais Meta (App ID / Secret)
+                </Button>
                 <Button size="sm" variant="outline" onClick={() => togGlobalMut.mutate(!(diagMut.data?.token?.source === "global"))} disabled={togGlobalMut.isPending}>
                   {diagMut.data?.token?.source === "global" ? "Usar token próprio" : "Usar token global"}
                 </Button>
