@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import { getPublicCampaignReport } from "@/lib/campaigns.functions";
+import { citiesFromDddCounts } from "@/lib/ddd-cities";
 import {
   coerceSimulation,
   computeSimulationSnapshot,
@@ -248,7 +249,9 @@ function PublicCampaignReport() {
     };
 
     const realCountries = top("country");
-    const realCities = top("city");
+    const dddCounts = ((data as any)?.dddCounts ?? {}) as Record<string, number>;
+    const dddCities = citiesFromDddCounts(dddCounts, 14);
+    const realCities = dddCities.length > 0 ? dddCities : top("city");
     const realDevices = top("device_type");
     const realBrowsers = top("browser");
 

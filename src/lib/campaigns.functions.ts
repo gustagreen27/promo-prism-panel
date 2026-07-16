@@ -1098,7 +1098,9 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
     const dispatchIds = normalizedDispatches.map((d) => d.id as string);
     type PublicRecipient = { phone: string; status: string | null; sent_at: string | null; delivered_at: string | null };
     const recipientsByDispatch: Record<string, PublicRecipient[]> = {};
+    const dddCounts: Record<string, number> = {};
     if (dispatchIds.length > 0) {
+      const { extractDddBR } = await import("@/lib/ddd-cities");
       const maskPhone = (raw: string | null | undefined): string => {
         const digits = String(raw ?? "").replace(/\D/g, "");
         if (digits.length < 6) return raw ?? "—";
@@ -1107,21 +1109,34 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
         return `+${head} ****${tail}`;
       };
       const PER_DISPATCH = 100;
+      const DDD_SAMPLE = 20000;
       await Promise.all(
         dispatchIds.map(async (cid) => {
-          const { data: recs, error: rErr } = await supabaseAdmin
-            .from("campaign_recipients")
-            .select("phone, status, sent_at, delivered_at")
-            .eq("campaign_id", cid)
-            .order("sent_at", { ascending: false, nullsFirst: false })
-            .limit(PER_DISPATCH);
-          if (rErr) throw rErr;
-          recipientsByDispatch[cid] = (recs ?? []).map((r) => ({
+          const [recRes, dddRes] = await Promise.all([
+            supabaseAdmin
+              .from("campaign_recipients")
+              .select("phone, status, sent_at, delivered_at")
+              .eq("campaign_id", cid)
+              .order("sent_at", { ascending: false, nullsFirst: false })
+              .limit(PER_DISPATCH),
+            supabaseAdmin
+              .from("campaign_recipients")
+              .select("phone")
+              .eq("campaign_id", cid)
+              .limit(DDD_SAMPLE),
+          ]);
+          if (recRes.error) throw recRes.error;
+          if (dddRes.error) throw dddRes.error;
+          recipientsByDispatch[cid] = (recRes.data ?? []).map((r) => ({
             phone: maskPhone(r.phone as string),
             status: (r.status as string | null) ?? null,
             sent_at: (r.sent_at as string | null) ?? null,
             delivered_at: (r.delivered_at as string | null) ?? null,
           }));
+          for (const r of dddRes.data ?? []) {
+            const ddd = extractDddBR((r as { phone: string | null }).phone);
+            if (ddd) dddCounts[ddd] = (dddCounts[ddd] ?? 0) + 1;
+          }
         }),
       );
     }
@@ -1157,6 +1172,7 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
       clicks: clicks ?? [],
       dispatches: normalizedDispatches,
       recipientsByDispatch,
+      dddCounts,
       overrides,
       publicSettings: pubSettings.data ?? null,
       publicMetrics: pubMetrics.data ?? [],
