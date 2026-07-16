@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Plus, Trash2, Pencil, RefreshCw, Cloud, PhoneCall, ShieldCheck, KeyRound, UserCog } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
@@ -10,11 +10,12 @@ import { ErrorCard } from "@/components/admin/query-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { listNumbers, createNumber, updateNumber, deleteNumber } from "@/lib/whatsapp-numbers.functions";
+import { updateConnectionToken } from "@/lib/wa-diagnosis.functions";
 import { syncAllWabas } from "@/lib/wa-meta-sync.functions";
 import { addNumberToWaba, requestNumberCode, verifyNumberCode, registerNumberOnCloud } from "@/lib/wa-meta-api.functions";
 import { listWabas } from "@/lib/wa-wabas.functions";
@@ -31,6 +32,7 @@ function Page() {
   const create = useServerFn(createNumber);
   const update = useServerFn(updateNumber);
   const remove = useServerFn(deleteNumber);
+  const updateToken = useServerFn(updateConnectionToken);
   const syncAll = useServerFn(syncAllWabas);
   const clientsFn = useServerFn(listClients);
   const projectsFn = useServerFn(listProjects);
@@ -49,6 +51,8 @@ function Page() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [apiOpen, setApiOpen] = useState(false);
+  const [tokenEditing, setTokenEditing] = useState<any>(null);
+  const [tokenInput, setTokenInput] = useState("");
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["wa-numbers"] });
   const saveMut = useMutation({
@@ -59,6 +63,16 @@ function Page() {
   const delMut = useMutation({
     mutationFn: (id: string) => remove({ data: { id } }),
     onSuccess: () => { toast.success("Removido"); refresh(); },
+  });
+  const tokenMut = useMutation({
+    mutationFn: () => updateToken({ data: { connection_id: tokenEditing.id, access_token: tokenInput.trim() } }),
+    onSuccess: (r: any) => {
+      toast.success(`Token atualizado (…${r.last6})`);
+      setTokenEditing(null);
+      setTokenInput("");
+      refresh();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao atualizar token"),
   });
   const syncMut = useMutation({
     mutationFn: () => syncAll(),
@@ -121,6 +135,9 @@ function Page() {
                   <Button asChild size="icon" variant="ghost" title="Gerenciar perfil">
                     <Link to="/admin/whatsapp/numeros/$id/perfil" params={{ id: r.id }}><UserCog className="h-4 w-4" /></Link>
                   </Button>
+                  <Button size="icon" variant="ghost" title="Trocar token sem alterar outros dados" onClick={() => { setTokenEditing(r); setTokenInput(""); }}>
+                    <KeyRound className="h-4 w-4" />
+                  </Button>
                   <Button size="icon" variant="ghost" onClick={() => { setEditing(r); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                   <Button size="icon" variant="ghost" onClick={() => confirm("Remover este número?") && delMut.mutate(r.id)}><Trash2 className="h-4 w-4" /></Button>
                 </TableCell>
@@ -132,6 +149,27 @@ function Page() {
 
       <Dialog open={apiOpen} onOpenChange={setApiOpen}>
         <AddNumberWizard wabas={wabas} onDone={() => { setApiOpen(false); refresh(); }} />
+      </Dialog>
+
+      <Dialog open={!!tokenEditing} onOpenChange={(v) => { if (!v) { setTokenEditing(null); setTokenInput(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Trocar token da conexão</DialogTitle>
+            <DialogDescription>
+              Atualiza somente o access token de {tokenEditing?.name ?? tokenEditing?.display_phone ?? "esta conexão"}. Nenhum outro dado do número será alterado.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Novo access token</Label>
+            <Input type="password" value={tokenInput} onChange={(e) => setTokenInput(e.target.value)} placeholder="EAAG…" autoComplete="off" />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setTokenEditing(null); setTokenInput(""); }}>Cancelar</Button>
+            <Button onClick={() => tokenMut.mutate()} disabled={tokenMut.isPending || tokenInput.trim().length < 20}>
+              {tokenMut.isPending ? "Salvando…" : "Salvar token"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </>
   );
@@ -250,13 +288,18 @@ function AddNumberWizard({ wabas, onDone }: { wabas: any[]; onDone: () => void }
 }
 
 
-function FormDialog({ editing, clients, projects, onSubmit, saving }: any) {
-  const [form, setForm] = useState<any>(() => editing ?? {
+function initialNumberForm(editing: any) {
+  return editing ? { ...editing, access_token: "" } : {
     name: "", display_phone: "", phone: "", provider: "meta_cloud", phone_number_id: "",
     waba_id: "", business_id: "", access_token: "", verify_token: "", webhook_url: "",
     quality_rating: "", daily_limit: 1000, graph_api_version: "v21.0",
     client_id: "", project_id: "", status: "ativa",
-  });
+  };
+}
+
+function FormDialog({ editing, clients, projects, onSubmit, saving }: any) {
+  const [form, setForm] = useState<any>(() => initialNumberForm(editing));
+  useEffect(() => { setForm(initialNumberForm(editing)); }, [editing]);
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
   return (
     <DialogContent className="max-w-3xl">
@@ -268,7 +311,7 @@ function FormDialog({ editing, clients, projects, onSubmit, saving }: any) {
         <div><Label>WABA ID *</Label><Input value={form.waba_id ?? ""} onChange={(e) => set("waba_id", e.target.value)} /></div>
         <div><Label>Business ID</Label><Input value={form.business_id ?? ""} onChange={(e) => set("business_id", e.target.value)} /></div>
         <div><Label>Versão da Graph API</Label><Input value={form.graph_api_version ?? "v21.0"} onChange={(e) => set("graph_api_version", e.target.value)} /></div>
-        <div className="sm:col-span-2"><Label>Access Token (permanente) *</Label><Input type="password" value={form.access_token ?? ""} onChange={(e) => set("access_token", e.target.value)} /></div>
+        <div className="sm:col-span-2"><Label>Access Token (permanente){editing ? " — deixe em branco para manter" : ""}</Label><Input type="password" value={form.access_token ?? ""} onChange={(e) => set("access_token", e.target.value)} placeholder={editing ? "Cole apenas se quiser trocar" : "EAAG…"} autoComplete="off" /></div>
         <div><Label>Verify Token (webhook)</Label><Input value={form.verify_token ?? ""} onChange={(e) => set("verify_token", e.target.value)} /></div>
         <div><Label>Webhook URL</Label><Input value={form.webhook_url ?? ""} onChange={(e) => set("webhook_url", e.target.value)} placeholder="https://.../api/public/whatsapp/webhook" /></div>
         <div><Label>Qualidade</Label>
