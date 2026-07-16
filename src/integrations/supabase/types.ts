@@ -4266,6 +4266,16 @@ export type Database = {
         Args: { _count: number; _phone_number_id: string }
         Returns: number
       }
+      wa_reserve_campaign_recipients: {
+        Args: { _campaign_id: string; _limit: number; _locked_at?: string }
+        Returns: {
+          attempt: number
+          contact_id: string
+          id: string
+          phone: string
+          variables: Json
+        }[]
+      }
       wa_simulate_rate_limiter: {
         Args: {
           _conc?: number

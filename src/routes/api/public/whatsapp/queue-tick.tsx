@@ -9,9 +9,9 @@ const CHAIN_URL =
 // Só usado como header apikey pelo endpoint público — sem privilégios.
 const CHAIN_APIKEY = process.env.SUPABASE_PUBLISHABLE_KEY || "";
 
-// Duração do lease global do tick. Deve ser > MAX_TICK_RUNTIME_MS (55s)
-// para cobrir todo o run + drenagem, com folga de HTTP timeout.
-const TICK_LEASE_SECONDS = 75;
+// Lease curto para self-chain contínuo: se uma execução cair, o próximo tick
+// retoma em segundos, sem ficar preso até o próximo minuto.
+const TICK_LEASE_SECONDS = 20;
 
 export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
   server: {
@@ -42,12 +42,12 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
           const nowIso = new Date().toISOString();
 
           // Auto-heal de slots/tokens vazados: se um número não teve atividade
-          // no rate_limits nos últimos 90s, nenhum tick anterior está usando
-          // aqueles slots (o lease global do tick dura 75s). Zera contador e
+          // no rate_limits nos últimos 30s, nenhum tick anterior está usando
+          // aqueles slots (o lease global do tick dura 20s). Zera contador e
           // recarrega tokens para evitar pausas longas quando active_inflight
           // fica travado no teto.
           try {
-            const staleRateCutoff = new Date(Date.now() - 90 * 1000).toISOString();
+             const staleRateCutoff = new Date(Date.now() - 30 * 1000).toISOString();
             const { data: staleRates } = await supabaseAdmin
               .from("wa_rate_limits")
               .select("phone_number_id,rate_per_second")
@@ -145,7 +145,7 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
             .lte("scheduled_at", nowIso);
 
           // Auto-heal: libera leases expirados de campanhas em execução
-          const leaseCutoff = new Date(Date.now() - 60 * 1000).toISOString();
+          const leaseCutoff = new Date().toISOString();
           await supabaseAdmin
             .from("wa_campaigns")
             .update({ worker_lease_id: null, worker_lease_until: null })
@@ -153,7 +153,7 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
             .not("worker_lease_until", "is", null)
             .lt("worker_lease_until", leaseCutoff);
 
-          const staleCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+          const staleCutoff = new Date(Date.now() - 60 * 1000).toISOString();
           const nowIso2 = new Date().toISOString();
           const { data: activeLeased } = await supabaseAdmin
             .from("wa_campaigns")
@@ -194,7 +194,7 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
             .select("id, rate_per_second")
             .eq("status", "running");
 
-          const TICK_WINDOW_S = 55;
+          const TICK_WINDOW_S = 12;
           const results: any[] = [];
           for (const c of running ?? []) {
             const rps = Math.max(1, Number((c as any).rate_per_second) || 6);
