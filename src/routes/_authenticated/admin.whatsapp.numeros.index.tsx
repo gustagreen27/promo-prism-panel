@@ -32,7 +32,7 @@ function Page() {
   const create = useServerFn(createNumber);
   const update = useServerFn(updateNumber);
   const remove = useServerFn(deleteNumber);
-  const updateToken = useServerFn(updateConnectionToken);
+  
   const syncAll = useServerFn(syncAllWabas);
   const clientsFn = useServerFn(listClients);
   const projectsFn = useServerFn(listProjects);
