@@ -175,14 +175,15 @@ async function recordClick(
   supabaseAdmin: any,
   campaign: any,
   finalUrl: string,
+  preloadedGeo?: Record<string, unknown> | null,
 ): Promise<string | null> {
   const ip = pickIp();
   const ua = getRequestHeader("user-agent") ?? null;
   const referer = getRequestHeader("referer") ?? null;
   const lang = getRequestHeader("accept-language") ?? null;
 
-  let geo: Record<string, unknown> | null = null;
-  if (ip) geo = await lookupIp(ip);
+  let geo: Record<string, unknown> | null = preloadedGeo ?? null;
+  if (!geo && ip) geo = await lookupIp(ip);
 
   let parsed: ReturnType<UAParser["getResult"]> | null = null;
   if (ua) {
