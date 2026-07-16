@@ -13,7 +13,7 @@ async function loadConnRaw(supabase: any, userId: string, connection_id: string)
   // Precisa checar autorização mas talvez token esteja quebrado — pega os dados brutos.
   const { data, error } = await supabase
     .from("whatsapp_connections")
-    .select("id, workspace_id, waba_id, waba_ref_id, phone_number_id, use_global_token")
+    .select("id, workspace_id, waba_id, waba_ref_id, phone_number_id, use_global_token, app_id, app_secret, verify_token, business_id")
     .eq("id", connection_id)
     .maybeSingle();
   if (error) throw error;
@@ -27,8 +27,17 @@ async function loadConnRaw(supabase: any, userId: string, connection_id: string)
   return data as {
     id: string; workspace_id: string | null; waba_id: string | null;
     waba_ref_id: string | null; phone_number_id: string | null; use_global_token: boolean;
+    app_id: string | null; app_secret: string | null;
+    verify_token: string | null; business_id: string | null;
   };
 }
+
+/** Mascara segredos para retorno seguro ao frontend. */
+function mask(s: string | null | undefined) {
+  if (!s) return null;
+  return { last6: s.slice(-6), length: s.length };
+}
+
 
 /** Atualiza o access_token da conexão (armazena token novo do usuário). */
 export const updateConnectionToken = createServerFn({ method: "POST" })
