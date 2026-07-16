@@ -252,6 +252,14 @@ function CampaignRow({
         open={overridesOpen}
         onOpenChange={setOverridesOpen}
       />
+      <CampaignDialog
+        mode="edit"
+        campaign={c as any}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        onSaved={onChange}
+      />
+
     </Card>
   );
 }
