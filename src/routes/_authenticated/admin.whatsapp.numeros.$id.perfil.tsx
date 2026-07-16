@@ -263,6 +263,36 @@ function Page() {
     onError: (e: any) => toast.error(e?.message ?? "Erro na sincronização"),
   });
 
+  const saveCredsMut = useMutation({
+    mutationFn: () => updateTokenFn({ data: {
+      connection_id: id,
+      access_token: credToken.trim() || undefined,
+      app_id: credAppId.trim() || undefined,
+      app_secret: credAppSecret.trim() || undefined,
+      verify_token: credVerify.trim() || undefined,
+      business_id: credBusiness.trim() || undefined,
+      use_global_token: credUseGlobal ?? undefined,
+    } }),
+    onSuccess: (r: any) => {
+      toast.success(`Credenciais atualizadas${r?.last6 ? ` (token …${r.last6})` : ""}`);
+      setCredToken(""); setCredAppSecret("");
+      credsQuery.refetch();
+      invAll(); runAgain();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao salvar credenciais"),
+  });
+  const debugCredsMut = useMutation({
+    mutationFn: () => debugCredsFn({ data: { connection_id: id } }),
+    onSuccess: (r: any) => setCredDebugResult(r),
+    onError: (e: any) => toast.error(e?.message ?? "Erro no diagnóstico"),
+  });
+  const subCredsMut = useMutation({
+    mutationFn: () => subAppsFn({ data: { connection_id: id } }),
+    onSuccess: (r: any) => setCredSubResult(r),
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao consultar apps inscritos"),
+  });
+
+
   const phone: any = (q.data as any)?.phone ?? {};
   const profile: any = (q.data as any)?.profile ?? {};
   const connMeta: any = (q.data as any)?.connection ?? {};
