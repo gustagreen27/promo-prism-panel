@@ -20,6 +20,7 @@ import { ErrorCard } from "@/components/admin/query-state";
 import {
   updateConnectionToken, toggleGlobalToken, applyFixPhoneNumberId,
   applyFixWabaId, subscribeAppToWaba,
+  getConnectionCredentials, debugConnectionToken, getConnectionSubscribedApps,
 } from "@/lib/wa-diagnosis.functions";
 import { syncWabaNumbers } from "@/lib/wa-meta-sync.functions";
 
