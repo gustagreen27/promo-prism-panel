@@ -17,7 +17,8 @@ export type ProfileAuditAction =
   | "PHONE_NUMBER_ID_CORRECTED"
   | "WABA_ID_CORRECTED"
   | "APP_SUBSCRIBED"
-  | "APP_SUBSCRIBE_FAILED";
+  | "APP_SUBSCRIBE_FAILED"
+  | "CONNECTION_CREDENTIALS_UPDATED";
 
 export async function auditProfileEvent(params: {
   workspace_id?: string | null;
