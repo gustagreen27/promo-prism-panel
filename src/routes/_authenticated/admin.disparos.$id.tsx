@@ -312,6 +312,7 @@ function Page() {
 
   const isPaused = status === "paused";
   const isFinished = ["completed", "partial", "cancelled", "error"].includes(status);
+  const canRetry = (isFinished || isPaused) && ((p.failed ?? 0) > 0 || (isPaused && (p.pending ?? 0) > 0));
 
   const exportCsv = async () => {
     try {
@@ -386,9 +387,10 @@ function Page() {
                 <XCircle className="mr-2 h-4 w-4" />Cancelar
               </Button>
             )}
-            {(isFinished || isPaused) && (p.failed ?? 0) > 0 && (
-              <Button size="sm" variant="outline" onClick={() => m.retry.mutate()}>
-                <RefreshCw className="mr-2 h-4 w-4" />Reprocessar falhas
+            {canRetry && (
+              <Button size="sm" variant="outline" onClick={() => m.retry.mutate()} disabled={m.retry.isPending}>
+                {m.retry.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                Reprocessar falhas
               </Button>
             )}
             {(isRunning || isPaused || status === "error") && (
