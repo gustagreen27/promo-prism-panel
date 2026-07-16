@@ -74,7 +74,7 @@ function CampaignsList() {
             Crie campanhas, gere URLs e acompanhe acessos.
           </p>
         </div>
-        <NewCampaignDialog onCreated={() => refetch()} />
+        <CampaignDialog mode="create" onSaved={() => refetch()} />
       </div>
 
       <div className="flex items-center gap-2">
