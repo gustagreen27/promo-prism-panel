@@ -35,6 +35,7 @@ export function SwapConfigDialog({ open, onOpenChange, campaign, onSuccess }: Sw
   const [headerMediaUrl, setHeaderMediaUrl] = useState<string>("");
   const [rate, setRate] = useState<number>(30);
   const [resume, setResume] = useState<boolean>(true);
+  const [prevBodyVarCount, setPrevBodyVarCount] = useState<number>(0);
 
   // Reset when opened
   useEffect(() => {
