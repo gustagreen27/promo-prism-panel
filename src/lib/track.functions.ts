@@ -39,11 +39,13 @@ function pickIp(): string | null {
 
 async function lookupIp(ip: string) {
   const key = process.env.IP_API_KEY;
-  const fields =
-    "status,country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,as,query";
+  const proFields =
+    "status,message,continent,continentCode,country,countryCode,countryCode3,region,regionName,city,district,zip,lat,lon,timezone,offset,currentTime,currency,callingCode,isp,org,as,asname,reverse,mobile,proxy,hosting,query";
+  const freeFields =
+    "status,country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,as,query,mobile,proxy,hosting";
   const url = key
-    ? `https://pro.ip-api.com/json/${encodeURIComponent(ip)}?fields=${fields}&key=${key}`
-    : `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=${fields}`;
+    ? `https://pro.ip-api.com/json/${encodeURIComponent(ip)}?fields=${proFields}&key=${key}`
+    : `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=${freeFields}`;
   try {
     const res = await fetch(url);
     if (!res.ok) return null;
@@ -53,6 +55,38 @@ async function lookupIp(ip: string) {
   } catch {
     return null;
   }
+}
+
+function mapGeoToRow(geo: Record<string, unknown> | null) {
+  if (!geo) return {};
+  const asRaw = (geo.as as string) ?? null;
+  const asNumber = asRaw ? (asRaw.match(/AS(\d+)/)?.[1] ?? null) : null;
+  return {
+    continent: (geo.continent as string) ?? null,
+    continent_code: (geo.continentCode as string) ?? null,
+    country: (geo.country as string) ?? null,
+    country_code: (geo.countryCode as string) ?? null,
+    country_code3: (geo.countryCode3 as string) ?? null,
+    region_code: (geo.region as string) ?? null,
+    region: (geo.regionName as string) ?? null,
+    city: (geo.city as string) ?? null,
+    district: (geo.district as string) ?? null,
+    zip: (geo.zip as string) ?? null,
+    lat: (geo.lat as number) ?? null,
+    lon: (geo.lon as number) ?? null,
+    timezone: (geo.timezone as string) ?? null,
+    utc_offset: typeof geo.offset === "number" ? (geo.offset as number) : null,
+    currency: (geo.currency as string) ?? null,
+    calling_code: (geo.callingCode as string) ?? null,
+    isp: (geo.isp as string) ?? null,
+    org: (geo.org as string) ?? null,
+    as_name: (geo.asname as string) ?? (asRaw ?? null),
+    as_number: asNumber,
+    reverse_dns: (geo.reverse as string) ?? null,
+    mobile: typeof geo.mobile === "boolean" ? (geo.mobile as boolean) : null,
+    proxy: typeof geo.proxy === "boolean" ? (geo.proxy as boolean) : null,
+    hosting: typeof geo.hosting === "boolean" ? (geo.hosting as boolean) : null,
+  };
 }
 
 // Domínios conhecidos por recusarem iframe (X-Frame-Options/CSP).
@@ -182,17 +216,7 @@ async function recordClick(
       campaign_id: campaign.id,
       workspace_id: campaign.workspace_id ?? null,
       ip,
-      country: (geo?.country as string) ?? null,
-      country_code: (geo?.countryCode as string) ?? null,
-      region: (geo?.regionName as string) ?? null,
-      city: (geo?.city as string) ?? null,
-      zip: (geo?.zip as string) ?? null,
-      lat: (geo?.lat as number) ?? null,
-      lon: (geo?.lon as number) ?? null,
-      timezone: (geo?.timezone as string) ?? null,
-      isp: (geo?.isp as string) ?? null,
-      org: (geo?.org as string) ?? null,
-      as_name: (geo?.as as string) ?? null,
+      ...mapGeoToRow(geo),
       device: parsed?.device?.model ?? parsed?.device?.vendor ?? null,
       device_type: parsed?.device?.type ?? "desktop",
       browser: parsed?.browser?.name ?? null,
@@ -382,17 +406,7 @@ export const trackClick = createServerFn({ method: "POST" })
         campaign_id: campaign.id,
         workspace_id: (campaign as { workspace_id?: string | null }).workspace_id ?? null,
         ip,
-        country: (geo?.country as string) ?? null,
-        country_code: (geo?.countryCode as string) ?? null,
-        region: (geo?.regionName as string) ?? null,
-        city: (geo?.city as string) ?? null,
-        zip: (geo?.zip as string) ?? null,
-        lat: (geo?.lat as number) ?? null,
-        lon: (geo?.lon as number) ?? null,
-        timezone: (geo?.timezone as string) ?? null,
-        isp: (geo?.isp as string) ?? null,
-        org: (geo?.org as string) ?? null,
-        as_name: (geo?.as as string) ?? null,
+        ...mapGeoToRow(geo),
         device: parsed?.device?.model ?? parsed?.device?.vendor ?? null,
         device_type: parsed?.device?.type ?? "desktop",
         browser: parsed?.browser?.name ?? null,
