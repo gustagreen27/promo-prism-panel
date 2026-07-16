@@ -1,5 +1,6 @@
 // Server functions for the async campaign runner (preflight, start/pause/resume/cancel/retry, progress, timeline, report, CSV export)
 import { createServerFn } from "@tanstack/react-start";
+import { getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { renderMapping, fillMetaTemplate, metaVarsIn, buildContext } from "@/lib/wa-variables";
@@ -18,6 +19,29 @@ async function logEvent(supabase: any, campaignId: string, event_type: string, m
       actor_id: actorId,
       payload,
     });
+  } catch {}
+}
+
+const PROJECT_ID = "9c7682d6-edcd-4388-a36c-36249d4d6ab8";
+
+function getRequestBaseUrl() {
+  const host = getRequestHeader("host");
+  if (!host) return null;
+  const proto = getRequestHeader("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
+  return `${proto}://${host}`;
+}
+
+function triggerQueueTick(source = "manual", baseUrl?: string | null) {
+  try {
+    const url = new URL(
+      "/api/public/whatsapp/queue-tick",
+      baseUrl ?? `https://project--${PROJECT_ID}.lovable.app`,
+    );
+    fetch(url.toString(), {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-tick-source": source },
+      body: "{}",
+    }).catch(() => {});
   } catch {}
 }
 
@@ -255,10 +279,7 @@ export const startCampaignAsync = createServerFn({ method: "POST" })
     await logEvent(supabase, data.id, "started", `Campanha iniciada (${recCount} destinatários)`, context.userId, { total: recCount });
 
     // Trigger immediate tick (fire and forget)
-    try {
-      const url = new URL("/api/public/whatsapp/queue-tick", process.env.SUPABASE_URL?.replace(".supabase.co", ".lovable.app") ?? "https://project--9c7682d6-edcd-4388-a36c-36249d4d6ab8.lovable.app");
-      fetch(url.toString(), { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).catch(() => {});
-    } catch {}
+    triggerQueueTick("manual-start", getRequestBaseUrl());
 
     return { ok: true };
   });
@@ -332,11 +353,12 @@ export const retryFailedRecipients = createServerFn({ method: "POST" })
       .eq("status", "failed")
       .select("id");
     if (error) throw error;
-    await logEvent(context.supabase, data.id, "retry", `${updated?.length ?? 0} falhas reenfileiradas`, context.userId);
+    const count = updated?.length ?? 0;
+    await logEvent(context.supabase, data.id, "retry", `${count} falhas reenfileiradas`, context.userId);
     // Retoma a campanha em qualquer estado terminal/pausado — o usuário
     // pediu explicitamente para reprocessar, então limpamos lease/pausa
     // e devolvemos para "running" para o tick pegar imediatamente.
-    await context.supabase
+    const { error: campErr } = await context.supabase
       .from("wa_campaigns")
       .update({
         status: "running",
@@ -350,8 +372,12 @@ export const retryFailedRecipients = createServerFn({ method: "POST" })
       })
       .eq("id", data.id)
       .in("status", ["completed", "partial", "error", "paused"]);
+    if (campErr) throw campErr;
     await context.supabase.rpc("wa_recalc_campaign_progress" as any, { _campaign_id: data.id });
-    return { ok: true, count: updated?.length ?? 0 };
+
+    triggerQueueTick("manual-retry", getRequestBaseUrl());
+
+    return { ok: true, count };
   });
 
 /**
@@ -427,14 +453,7 @@ export const unstickCampaignAsync = createServerFn({ method: "POST" })
     );
 
     // 5) Dispara tick imediato (fire and forget)
-    try {
-      const url = new URL(
-        "/api/public/whatsapp/queue-tick",
-        process.env.SUPABASE_URL?.replace(".supabase.co", ".lovable.app") ??
-          "https://project--9c7682d6-edcd-4388-a36c-36249d4d6ab8.lovable.app",
-      );
-      fetch(url.toString(), { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).catch(() => {});
-    } catch {}
+    triggerQueueTick("manual-unstick", getRequestBaseUrl());
 
     return { ok: true, reenqueued, pending: pendingCount ?? 0, status: newStatus ?? camp.status };
   });

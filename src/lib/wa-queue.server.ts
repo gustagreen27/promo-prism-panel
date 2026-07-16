@@ -783,10 +783,11 @@ export async function processCampaignTick(
       if (isNetworkErr) {
         consecutiveNetworkErrors++;
         if (consecutiveNetworkErrors >= SYSTEMIC_NETWORK_STREAK) {
-          systemicPause = {
-            reason: "network_errors",
-            message: `Auto-pausada: ${consecutiveNetworkErrors} erros de rede consecutivos`,
-          };
+          await logEvent(campaignId, "network_retry_streak", `${consecutiveNetworkErrors} erros de rede consecutivos — mantendo campanha ativa e reagendando tentativas`, {
+            streak: consecutiveNetworkErrors,
+            last_error: result.error,
+          });
+          consecutiveNetworkErrors = 0;
         }
       } else {
         consecutiveNetworkErrors = 0;

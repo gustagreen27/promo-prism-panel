@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 // URL estável do próprio endpoint (self-chain via pg_net).
 // Publicada e preview usam project--{id}.lovable.app como fallback estável.
 const PROJECT_ID = "9c7682d6-edcd-4388-a36c-36249d4d6ab8";
-const CHAIN_URL =
+const FALLBACK_CHAIN_URL =
   process.env.WA_TICK_CHAIN_URL ||
   `https://project--${PROJECT_ID}.lovable.app/api/public/whatsapp/queue-tick`;
 // Só usado como header apikey pelo endpoint público — sem privilégios.
@@ -23,6 +23,11 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
         const tickStartWall = Date.now();
         const source = request.headers.get("x-tick-source") || "cron";
         const holder = `${source}-${crypto.randomUUID()}`;
+        const host = request.headers.get("host");
+        const proto = request.headers.get("x-forwarded-proto") ?? (host?.includes("localhost") ? "http" : "https");
+        const chainUrl = host
+          ? new URL("/api/public/whatsapp/queue-tick", `${proto}://${host}`).toString()
+          : FALLBACK_CHAIN_URL;
 
         // -------- Lease global: impede sobreposição entre cron e chain --------
         const { data: acquired } = await supabaseAdmin.rpc(
@@ -141,8 +146,8 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
             .from("wa_campaigns")
             .update({ status: "running", pause_reason: null, paused_at: null, scheduled_at: null })
             .eq("status", "paused")
-            .eq("pause_reason", "network_error")
-            .lte("scheduled_at", nowIso);
+            .eq("pause_reason", "network_errors")
+            .lte("paused_at", new Date(Date.now() - 60 * 1000).toISOString());
 
           // Auto-heal: libera leases expirados de campanhas em execução
           const leaseCutoff = new Date().toISOString();
@@ -220,7 +225,7 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
           if (hadWork && CHAIN_APIKEY) {
             try {
               const { data: chain } = await supabaseAdmin.rpc("wa_tick_chain" as any, {
-                _url: CHAIN_URL,
+                _url: chainUrl,
                 _apikey: CHAIN_APIKEY,
               });
               chainResult = chain;
