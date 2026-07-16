@@ -6,8 +6,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   ArrowLeft, Play, Pause, XCircle, RefreshCw, Copy, Download, Printer, ListRestart, Loader2,
-  Users, Send, CheckCircle2, Eye, MessageSquare, Ban, TrendingUp, Clock, AlertTriangle, Activity,
+  Users, Send, CheckCircle2, Eye, MessageSquare, Ban, TrendingUp, Clock, AlertTriangle, Activity, Replace,
 } from "lucide-react";
+import { SwapConfigDialog } from "@/components/admin/SwapConfigDialog";
 import { PageHeader } from "@/components/admin/page-header";
 import { ErrorCard } from "@/components/admin/query-state";
 import { StatusBadge } from "@/components/admin/status-badge";
@@ -63,6 +64,7 @@ function Page() {
   const getErrs = useServerFn(getCampaignErrors);
   const getPrev = useServerFn(getRecipientPreviews);
   const [previewSearch, setPreviewSearch] = useState("");
+  const [swapOpen, setSwapOpen] = useState(false);
 
   const campQ = useQuery({
     queryKey: ["wa-camp", id],
@@ -399,6 +401,11 @@ function Page() {
                 Destravar fila
               </Button>
             )}
+            {(isPaused || status === "error" || status === "failed" || isFinished) && (
+              <Button size="sm" variant="secondary" onClick={() => setSwapOpen(true)}>
+                <Replace className="mr-2 h-4 w-4" />Trocar número/template
+              </Button>
+            )}
             <Button size="sm" variant="outline" onClick={() => m.dup.mutate()}>
               <Copy className="mr-2 h-4 w-4" />Duplicar
             </Button>
@@ -711,6 +718,13 @@ function Page() {
           )}
         </TabsContent>
       </Tabs>
+
+      <SwapConfigDialog
+        open={swapOpen}
+        onOpenChange={setSwapOpen}
+        campaign={camp}
+        onSuccess={invalidate}
+      />
     </div>
   );
 }
