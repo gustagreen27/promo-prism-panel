@@ -168,7 +168,15 @@ function pickMeta(c: Record<string, unknown>) {
   };
 }
 
-/** Shared click writer used by both `resolveCampaign` (SSR loader) and the
+const FACEBOOK_ASN_RE = /facebook|meta platforms/i;
+function isFacebookGeo(geo: Record<string, unknown> | null): boolean {
+  if (!geo) return false;
+  const fields = [geo.isp, geo.org, geo.as, geo.asname]
+    .filter((v): v is string => typeof v === "string");
+  return fields.some((v) => FACEBOOK_ASN_RE.test(v));
+}
+
+
  *  client fallback `trackClick`. Roda com service role e faz o enrich de
  *  UA/IP a partir dos headers da request atual. */
 async function recordClick(
