@@ -793,9 +793,10 @@ function DispatchCard({
   // Prioridade: perSnapshot (novas tabelas por-disparo) > snapshot (simulação antiga) > overrides > real.
   const displayName = perSnapshot?.name ?? d.name;
   const total = perSnapshot?.total ?? snapshot?.total ?? d.total_recipients ?? 0;
-  const realDelivered = d.delivered_count ?? 0;
-  const delivered = perSnapshot?.delivered ?? snapshot?.delivered ?? overrides?.delivered ?? realDelivered;
-  const sent = perSnapshot?.sent ?? snapshot?.sent ?? overrides?.sent ?? delivered;
+  const rawDelivered = perSnapshot?.delivered ?? snapshot?.delivered ?? overrides?.delivered ?? (d.delivered_count ?? 0);
+  const sent = perSnapshot?.sent ?? snapshot?.sent ?? overrides?.sent ?? rawDelivered;
+  // Público: sincroniza "recebidos" (entregues) com "enviados".
+  const delivered = sent;
   const failed = perSnapshot?.failed ?? snapshot?.failed ?? overrides?.failed ?? (d.failed_count ?? 0);
   const percent = perSnapshot
     ? perSnapshot.percent
