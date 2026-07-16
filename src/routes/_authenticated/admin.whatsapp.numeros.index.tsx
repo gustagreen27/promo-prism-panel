@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { listNumbers, createNumber, updateNumber, deleteNumber } from "@/lib/whatsapp-numbers.functions";
-import { updateConnectionToken } from "@/lib/wa-diagnosis.functions";
+import { updateConnectionToken, getConnectionCredentials, debugConnectionToken, getConnectionSubscribedApps, subscribeAppToWaba } from "@/lib/wa-diagnosis.functions";
 import { syncAllWabas } from "@/lib/wa-meta-sync.functions";
 import { addNumberToWaba, requestNumberCode, verifyNumberCode, registerNumberOnCloud } from "@/lib/wa-meta-api.functions";
 import { listWabas } from "@/lib/wa-wabas.functions";
@@ -32,7 +32,7 @@ function Page() {
   const create = useServerFn(createNumber);
   const update = useServerFn(updateNumber);
   const remove = useServerFn(deleteNumber);
-  const updateToken = useServerFn(updateConnectionToken);
+  
   const syncAll = useServerFn(syncAllWabas);
   const clientsFn = useServerFn(listClients);
   const projectsFn = useServerFn(listProjects);
@@ -51,8 +51,7 @@ function Page() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [apiOpen, setApiOpen] = useState(false);
-  const [tokenEditing, setTokenEditing] = useState<any>(null);
-  const [tokenInput, setTokenInput] = useState("");
+  const [credsEditing, setCredsEditing] = useState<any>(null);
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["wa-numbers"] });
   const saveMut = useMutation({
@@ -64,16 +63,7 @@ function Page() {
     mutationFn: (id: string) => remove({ data: { id } }),
     onSuccess: () => { toast.success("Removido"); refresh(); },
   });
-  const tokenMut = useMutation({
-    mutationFn: () => updateToken({ data: { connection_id: tokenEditing.id, access_token: tokenInput.trim() } }),
-    onSuccess: (r: any) => {
-      toast.success(`Token atualizado (…${r.last6})`);
-      setTokenEditing(null);
-      setTokenInput("");
-      refresh();
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Erro ao atualizar token"),
-  });
+
   const syncMut = useMutation({
     mutationFn: () => syncAll(),
     onSuccess: (r: any) => {
@@ -135,7 +125,7 @@ function Page() {
                   <Button asChild size="icon" variant="ghost" title="Gerenciar perfil">
                     <Link to="/admin/whatsapp/numeros/$id/perfil" params={{ id: r.id }}><UserCog className="h-4 w-4" /></Link>
                   </Button>
-                  <Button size="icon" variant="ghost" title="Trocar token sem alterar outros dados" onClick={() => { setTokenEditing(r); setTokenInput(""); }}>
+                  <Button size="icon" variant="ghost" title="Trocar credenciais Meta (token, App ID, App Secret) sem alterar outros dados" onClick={() => setCredsEditing(r)}>
                     <KeyRound className="h-4 w-4" />
                   </Button>
                   <Button size="icon" variant="ghost" onClick={() => { setEditing(r); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
@@ -151,25 +141,14 @@ function Page() {
         <AddNumberWizard wabas={wabas} onDone={() => { setApiOpen(false); refresh(); }} />
       </Dialog>
 
-      <Dialog open={!!tokenEditing} onOpenChange={(v) => { if (!v) { setTokenEditing(null); setTokenInput(""); } }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Trocar token da conexão</DialogTitle>
-            <DialogDescription>
-              Atualiza somente o access token de {tokenEditing?.name ?? tokenEditing?.display_phone ?? "esta conexão"}. Nenhum outro dado do número será alterado.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label>Novo access token</Label>
-            <Input type="password" value={tokenInput} onChange={(e) => setTokenInput(e.target.value)} placeholder="EAAG…" autoComplete="off" />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setTokenEditing(null); setTokenInput(""); }}>Cancelar</Button>
-            <Button onClick={() => tokenMut.mutate()} disabled={tokenMut.isPending || tokenInput.trim().length < 20}>
-              {tokenMut.isPending ? "Salvando…" : "Salvar token"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+      <Dialog open={!!credsEditing} onOpenChange={(v) => { if (!v) setCredsEditing(null); }}>
+        {credsEditing && (
+          <CredentialsDialog
+            connection={credsEditing}
+            onClose={() => setCredsEditing(null)}
+            onSaved={() => { setCredsEditing(null); refresh(); }}
+          />
+        )}
       </Dialog>
     </>
   );
@@ -349,6 +328,206 @@ function FormDialog({ editing, clients, projects, onSubmit, saving }: any) {
         </div>
       </div>
       <DialogFooter><Button disabled={saving} onClick={() => onSubmit(form)}>Salvar</Button></DialogFooter>
+    </DialogContent>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────
+// CredentialsDialog — troca token/App ID/App Secret/verify_token/business_id
+// de uma conexão isoladamente, com diagnóstico integrado.
+// Nunca mistura token da conexão com App Secret global.
+// ────────────────────────────────────────────────────────────────────
+function CredentialsDialog({ connection, onClose, onSaved }: { connection: any; onClose: () => void; onSaved: () => void }) {
+  const getCreds = useServerFn(getConnectionCredentials);
+  const updateCreds = useServerFn(updateConnectionToken);
+  const debugFn = useServerFn(debugConnectionToken);
+  const subAppsFn = useServerFn(getConnectionSubscribedApps);
+  const subscribeFn = useServerFn(subscribeAppToWaba);
+
+  const credsQuery = useQuery({
+    queryKey: ["wa-conn-creds", connection.id],
+    queryFn: () => getCreds({ data: { connection_id: connection.id } }),
+  });
+  const c: any = credsQuery.data;
+
+  const [accessToken, setAccessToken] = useState("");
+  const [appId, setAppId] = useState("");
+  const [appSecret, setAppSecret] = useState("");
+  const [verifyToken, setVerifyToken] = useState("");
+  const [businessId, setBusinessId] = useState("");
+  const [useGlobal, setUseGlobal] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (c) {
+      setAppId(c.app_id ?? "");
+      setBusinessId(c.business_id ?? "");
+      setUseGlobal(!!c.use_global_token);
+    }
+  }, [c]);
+
+  const [debugResult, setDebugResult] = useState<any>(null);
+  const [subResult, setSubResult] = useState<any>(null);
+
+  const saveMut = useMutation({
+    mutationFn: () => updateCreds({ data: {
+      connection_id: connection.id,
+      access_token: accessToken.trim() || undefined,
+      app_id: appId.trim() || undefined,
+      app_secret: appSecret.trim() || undefined,
+      verify_token: verifyToken.trim() || undefined,
+      business_id: businessId.trim() || undefined,
+      use_global_token: useGlobal ?? undefined,
+    } }),
+    onSuccess: (r: any) => {
+      toast.success(`Credenciais atualizadas${r?.last6 ? ` (token …${r.last6})` : ""}`);
+      onSaved();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao salvar"),
+  });
+
+  const debugMut = useMutation({
+    mutationFn: () => debugFn({ data: { connection_id: connection.id } }),
+    onSuccess: (r: any) => { setDebugResult(r); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro no diagnóstico"),
+  });
+  const subMut = useMutation({
+    mutationFn: () => subAppsFn({ data: { connection_id: connection.id } }),
+    onSuccess: (r: any) => { setSubResult(r); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao consultar apps inscritos"),
+  });
+  const subscribeMut = useMutation({
+    mutationFn: () => subscribeFn({ data: { connection_id: connection.id } }),
+    onSuccess: () => { toast.success("Aplicativo inscrito no webhook"); subMut.mutate(); },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao inscrever"),
+  });
+
+  return (
+    <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle>Credenciais Meta desta conexão</DialogTitle>
+        <DialogDescription>
+          {connection?.name ?? connection?.display_phone ?? "Conexão"} — cada conexão pode ter
+          seu próprio Access Token, App ID e App Secret. Se marcar “Usar credenciais globais”,
+          esta conexão utilizará as variáveis de ambiente do sistema.
+        </DialogDescription>
+      </DialogHeader>
+
+      {credsQuery.isLoading ? (
+        <div className="text-sm text-muted-foreground">Carregando…</div>
+      ) : (
+        <div className="space-y-4">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={!!useGlobal}
+              onChange={(e) => setUseGlobal(e.target.checked)}
+            />
+            Usar credenciais globais (variáveis do sistema)
+          </label>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2">
+              <Label>Access Token</Label>
+              <Input
+                type="password"
+                autoComplete="off"
+                value={accessToken}
+                onChange={(e) => setAccessToken(e.target.value)}
+                placeholder={c?.access_token_mask ? `Credencial já configurada — termina em …${c.access_token_mask.last6}` : "EAAG…"}
+              />
+              <p className="text-xs text-muted-foreground mt-1">Deixe em branco para manter o valor atual.</p>
+            </div>
+            <div>
+              <Label>Meta App ID</Label>
+              <Input value={appId} onChange={(e) => setAppId(e.target.value)} placeholder="ex.: 864475153084810" />
+            </div>
+            <div>
+              <Label>Meta App Secret</Label>
+              <Input
+                type="password"
+                autoComplete="off"
+                value={appSecret}
+                onChange={(e) => setAppSecret(e.target.value)}
+                placeholder={c?.app_secret_mask ? `Credencial já configurada — termina em …${c.app_secret_mask.last6}` : "app secret"}
+              />
+            </div>
+            <div>
+              <Label>Verify Token (webhook)</Label>
+              <Input
+                value={verifyToken}
+                onChange={(e) => setVerifyToken(e.target.value)}
+                placeholder={c?.verify_token_mask ? `Credencial já configurada — termina em …${c.verify_token_mask.last6}` : "verify token"}
+              />
+            </div>
+            <div>
+              <Label>Business ID</Label>
+              <Input value={businessId} onChange={(e) => setBusinessId(e.target.value)} placeholder="opcional" />
+            </div>
+            <div>
+              <Label>WABA ID</Label>
+              <Input value={c?.waba_id ?? ""} disabled />
+            </div>
+            <div>
+              <Label>Phone Number ID</Label>
+              <Input value={c?.phone_number_id ?? ""} disabled />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2 pt-2 border-t">
+            <Button size="sm" variant="outline" onClick={() => debugMut.mutate()} disabled={debugMut.isPending}>
+              {debugMut.isPending ? "Testando…" : "Testar token (debug_token)"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => subMut.mutate()} disabled={subMut.isPending}>
+              {subMut.isPending ? "Consultando…" : "Ver apps inscritos"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => subscribeMut.mutate()} disabled={subscribeMut.isPending}>
+              {subscribeMut.isPending ? "Inscrevendo…" : "Inscrever app no webhook"}
+            </Button>
+          </div>
+
+          {debugResult && (
+            <div className="rounded-md border p-3 text-xs space-y-1 bg-muted/40">
+              <div className="font-semibold">Resultado do debug_token ({debugResult.source})</div>
+              <div>Token: {debugResult.token_last6 ? `…${debugResult.token_last6}` : "—"}</div>
+              <div>App ID no token: <span className="font-mono">{debugResult.token_app_id ?? "—"}</span></div>
+              <div>App ID configurado: <span className="font-mono">{debugResult.connection_app_id ?? "—"}</span></div>
+              <div>Válido: {debugResult.is_valid ? "sim" : "não"}</div>
+              {debugResult.app_id_matches === false && (
+                <div className="text-destructive whitespace-pre-wrap">{debugResult.message}</div>
+              )}
+              {debugResult.error && (
+                <div className="text-destructive">Erro: {debugResult.error?.message ?? JSON.stringify(debugResult.error)}</div>
+              )}
+              {debugResult.reason && <div className="text-destructive">{debugResult.reason}{debugResult.hint ? ` — ${debugResult.hint}` : ""}</div>}
+            </div>
+          )}
+
+          {subResult && (
+            <div className="rounded-md border p-3 text-xs space-y-1 bg-muted/40">
+              <div className="font-semibold">Apps inscritos na WABA</div>
+              <div>App esperado desta conexão: <span className="font-mono">{subResult.expected_app_id ?? "—"}</span></div>
+              <div>
+                Inscritos: {(subResult.subscribed ?? []).length === 0 ? "nenhum" : (subResult.subscribed as any[]).map((a) => `${a.name ?? "?"} (${a.app_id ?? "?"})`).join(", ")}
+              </div>
+              <div>
+                Status: {subResult.is_subscribed === true ? "app da conexão está inscrito" :
+                         subResult.is_subscribed === false ? "app da conexão NÃO está inscrito" : "indeterminado"}
+              </div>
+              {subResult.error && <div className="text-destructive">Erro: {subResult.error?.message ?? JSON.stringify(subResult.error)}</div>}
+            </div>
+          )}
+        </div>
+      )}
+
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>Cancelar</Button>
+        <Button
+          onClick={() => saveMut.mutate()}
+          disabled={saveMut.isPending || (!accessToken.trim() && !appId.trim() && !appSecret.trim() && !verifyToken.trim() && !businessId.trim() && useGlobal === !!c?.use_global_token)}
+        >
+          {saveMut.isPending ? "Salvando…" : "Salvar credenciais"}
+        </Button>
+      </DialogFooter>
     </DialogContent>
   );
 }

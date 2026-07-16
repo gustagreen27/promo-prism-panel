@@ -13,7 +13,7 @@ async function loadConnRaw(supabase: any, userId: string, connection_id: string)
   // Precisa checar autorização mas talvez token esteja quebrado — pega os dados brutos.
   const { data, error } = await supabase
     .from("whatsapp_connections")
-    .select("id, workspace_id, waba_id, waba_ref_id, phone_number_id, use_global_token")
+    .select("id, workspace_id, waba_id, waba_ref_id, phone_number_id, use_global_token, app_id, app_secret, verify_token, business_id")
     .eq("id", connection_id)
     .maybeSingle();
   if (error) throw error;
@@ -27,31 +27,234 @@ async function loadConnRaw(supabase: any, userId: string, connection_id: string)
   return data as {
     id: string; workspace_id: string | null; waba_id: string | null;
     waba_ref_id: string | null; phone_number_id: string | null; use_global_token: boolean;
+    app_id: string | null; app_secret: string | null;
+    verify_token: string | null; business_id: string | null;
   };
 }
 
-/** Atualiza o access_token da conexão (armazena token novo do usuário). */
+/** Mascara segredos para retorno seguro ao frontend. */
+function mask(s: string | null | undefined) {
+  if (!s) return null;
+  return { last6: s.slice(-6), length: s.length };
+}
+
+
+/**
+ * Atualiza o access_token da conexão e, opcionalmente, também as credenciais
+ * Meta específicas (app_id, app_secret, verify_token, business_id) — tudo
+ * no mesmo save, para que a próxima chamada a debug_token/webhook use o par
+ * (token ↔ App ID/Secret) coerente.
+ * Se um campo for omitido/vazio, o valor atual é preservado (nunca apaga).
+ */
 export const updateConnectionToken = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({
     connection_id: z.string().uuid(),
-    access_token: z.string().trim().min(20).max(4000),
+    access_token: z.string().trim().max(4000).optional(),
+    app_id: z.string().trim().max(80).optional(),
+    app_secret: z.string().trim().max(200).optional(),
+    verify_token: z.string().trim().max(200).optional(),
+    business_id: z.string().trim().max(80).optional(),
+    use_global_token: z.boolean().optional(),
   }).parse(d))
   .handler(async ({ data, context }) => {
     const conn = await loadConnRaw(context.supabase, context.userId, data.connection_id);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const patch: Record<string, any> = { updated_at: new Date().toISOString() };
+    const audit: Record<string, any> = {};
+
+    if (data.access_token && data.access_token.length >= 20) {
+      patch.access_token = data.access_token;
+      patch.use_global_token = false;
+      audit.access_token_last6 = data.access_token.slice(-6);
+    }
+    if (data.app_id !== undefined && data.app_id !== "") {
+      patch.app_id = data.app_id;
+      audit.app_id = data.app_id;
+    }
+    if (data.app_secret !== undefined && data.app_secret !== "") {
+      patch.app_secret = data.app_secret;
+      audit.app_secret_last6 = data.app_secret.slice(-6);
+    }
+    if (data.verify_token !== undefined && data.verify_token !== "") {
+      patch.verify_token = data.verify_token;
+      audit.verify_token_last6 = data.verify_token.slice(-6);
+    }
+    if (data.business_id !== undefined && data.business_id !== "") {
+      patch.business_id = data.business_id;
+      audit.business_id = data.business_id;
+    }
+    if (data.use_global_token === true) {
+      patch.use_global_token = true;
+    } else if (data.use_global_token === false) {
+      patch.use_global_token = false;
+    }
+
+    if (Object.keys(patch).length <= 1) {
+      throw new Error("Informe pelo menos um campo para atualizar.");
+    }
+
     const { error } = await supabaseAdmin
       .from("whatsapp_connections")
-      .update({ access_token: data.access_token, use_global_token: false, updated_at: new Date().toISOString() })
+      .update(patch as any)
       .eq("id", conn.id);
     if (error) throw error;
     await auditProfileEvent({
       workspace_id: conn.workspace_id, connection_id: conn.id, phone_number_id: conn.phone_number_id,
-      user_id: context.userId, action: "TOKEN_UPDATED",
-      new_value: { source: "connection", last6: data.access_token.slice(-6) },
+      user_id: context.userId, action: "CONNECTION_CREDENTIALS_UPDATED",
+      new_value: audit,
     });
-    return { ok: true, last6: data.access_token.slice(-6) };
+    return {
+      ok: true,
+      last6: data.access_token ? data.access_token.slice(-6) : null,
+      updated_fields: Object.keys(audit),
+    };
   });
+
+/** Retorna as credenciais atuais mascaradas para a UI de edição. */
+export const getConnectionCredentials = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ connection_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const conn = await loadConnRaw(context.supabase, context.userId, data.connection_id);
+    // Precisa carregar os segredos com admin (RLS pode não retornar tudo)
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: full } = await supabaseAdmin
+      .from("whatsapp_connections")
+      .select("access_token, app_id, app_secret, verify_token, business_id, use_global_token, waba_id, phone_number_id")
+      .eq("id", conn.id)
+      .maybeSingle();
+    return {
+      use_global_token: !!full?.use_global_token,
+      waba_id: full?.waba_id ?? null,
+      phone_number_id: full?.phone_number_id ?? null,
+      app_id: full?.app_id ?? null,
+      business_id: full?.business_id ?? null,
+      access_token_mask: mask(full?.access_token ?? null),
+      app_secret_mask: mask(full?.app_secret ?? null),
+      verify_token_mask: mask(full?.verify_token ?? null),
+    };
+  });
+
+/**
+ * Executa debug_token usando o App ID + App Secret da conexão (ou global,
+ * quando use_global_token=true / conexão sem credenciais próprias).
+ * NUNCA mistura token da conexão com App Secret de outro app.
+ */
+export const debugConnectionToken = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ connection_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const conn = await loadConnRaw(context.supabase, context.userId, data.connection_id);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: full } = await supabaseAdmin
+      .from("whatsapp_connections")
+      .select("access_token, app_id, app_secret, use_global_token")
+      .eq("id", conn.id)
+      .maybeSingle();
+    if (!full) throw new Error("Conexão não encontrada.");
+
+    const useGlobal = !!full.use_global_token;
+    const inputToken = useGlobal
+      ? (process.env.WHATSAPP_ACCESS_TOKEN || "")
+      : (full.access_token || "");
+    const appId = useGlobal
+      ? (process.env.META_APP_ID || "")
+      : (full.app_id || process.env.META_APP_ID || "");
+    const appSecret = useGlobal
+      ? (process.env.META_APP_SECRET || "")
+      : (full.app_secret || (full.app_id ? "" : (process.env.META_APP_SECRET || "")));
+
+    if (!inputToken) {
+      return { ok: false, reason: "MISSING_TOKEN", source: useGlobal ? "global" : "connection" };
+    }
+    if (!appId || !appSecret) {
+      return {
+        ok: false, reason: "MISSING_APP_CREDENTIALS",
+        source: useGlobal ? "global" : "connection",
+        hint: "Cadastre App ID e App Secret específicos desta conexão para validar o token corretamente.",
+      };
+    }
+
+    const appAccessToken = `${appId}|${appSecret}`;
+    try {
+      const url = "https://graph.facebook.com/v21.0/debug_token"
+        + "?input_token=" + encodeURIComponent(inputToken)
+        + "&access_token=" + encodeURIComponent(appAccessToken);
+      const r = await fetch(url);
+      const j: any = await r.json().catch(() => ({}));
+      const d = j?.data;
+      const tokenAppId: string | null = d?.app_id ? String(d.app_id) : null;
+      const matches = tokenAppId && appId ? tokenAppId === String(appId) : null;
+      return {
+        ok: !!d?.is_valid,
+        source: useGlobal ? "global" : "connection",
+        token_last6: inputToken.slice(-6),
+        connection_app_id: appId,
+        token_app_id: tokenAppId,
+        app_id_matches: matches,
+        is_valid: !!d?.is_valid,
+        expires_at: d?.expires_at ?? null,
+        data_access_expires_at: d?.data_access_expires_at ?? null,
+        scopes: d?.scopes ?? null,
+        type: d?.type ?? null,
+        application: d?.application ?? null,
+        user_id: d?.user_id ?? null,
+        error: d?.error ?? j?.error ?? null,
+        message:
+          matches === false
+            ? `O token informado pertence ao aplicativo ${tokenAppId}, mas esta conexão está configurada com o aplicativo ${appId}. Atualize o App ID e o App Secret desta conexão ou utilize um token emitido pelo aplicativo correto.`
+            : null,
+      };
+    } catch (e: any) {
+      return { ok: false, reason: "REQUEST_FAILED", error: e?.message ?? "erro" };
+    }
+  });
+
+/**
+ * Lista os apps inscritos no webhook da WABA e compara com o App ID da conexão.
+ */
+export const getConnectionSubscribedApps = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ connection_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const conn = await loadConnRaw(context.supabase, context.userId, data.connection_id);
+    if (!conn.waba_id) return { ok: false, reason: "MISSING_WABA_ID" };
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: full } = await supabaseAdmin
+      .from("whatsapp_connections")
+      .select("access_token, app_id, use_global_token")
+      .eq("id", conn.id)
+      .maybeSingle();
+    const useGlobal = !!full?.use_global_token;
+    const token = useGlobal ? (process.env.WHATSAPP_ACCESS_TOKEN || "") : (full?.access_token || "");
+    const expectedAppId = useGlobal
+      ? (process.env.META_APP_ID || "")
+      : (full?.app_id || process.env.META_APP_ID || "");
+    if (!token) return { ok: false, reason: "MISSING_TOKEN" };
+
+    try {
+      const r = await fetch(`https://graph.facebook.com/v21.0/${conn.waba_id}/subscribed_apps`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const j: any = await r.json().catch(() => ({}));
+      if (!r.ok || j?.error) {
+        return { ok: false, error: j?.error ?? { message: `HTTP ${r.status}` } };
+      }
+      const apps: any[] = Array.isArray(j?.data) ? j.data : [];
+      const subscribed = apps.map((a) => ({
+        app_id: a?.whatsapp_business_api_data?.id ?? a?.id ?? null,
+        name: a?.whatsapp_business_api_data?.name ?? a?.name ?? null,
+      }));
+      const isSubscribed = expectedAppId
+        ? subscribed.some((a) => String(a.app_id) === String(expectedAppId))
+        : null;
+      return { ok: true, expected_app_id: expectedAppId || null, subscribed, is_subscribed: isSubscribed };
+    } catch (e: any) {
+      return { ok: false, error: { message: e?.message ?? "erro" } };
+    }
+  });
+
 
 /** Alterna entre token global e token próprio da conexão. */
 export const toggleGlobalToken = createServerFn({ method: "POST" })

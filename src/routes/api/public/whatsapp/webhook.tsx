@@ -27,21 +27,53 @@ function mapTemplateStatus(ev: string | undefined | null): string | null {
   return null;
 }
 
-function verifySignature(rawBody: string, signatureHeader: string | null): boolean {
-  const secret = process.env.META_APP_SECRET;
-  if (!secret) return false;
-  if (!signatureHeader || !signatureHeader.startsWith("sha256=")) return false;
-  const provided = signatureHeader.slice("sha256=".length).trim();
-  const expected = createHmac("sha256", secret).update(rawBody, "utf8").digest("hex");
+function computeSig(rawBody: string, secret: string): string {
+  return createHmac("sha256", secret).update(rawBody, "utf8").digest("hex");
+}
+
+function safeCompareHex(providedHex: string, expectedHex: string): boolean {
   try {
-    const a = Buffer.from(provided, "hex");
-    const b = Buffer.from(expected, "hex");
+    const a = Buffer.from(providedHex, "hex");
+    const b = Buffer.from(expectedHex, "hex");
     if (a.length !== b.length || a.length === 0) return false;
     return timingSafeEqual(a, b);
   } catch {
     return false;
   }
 }
+
+function verifySignatureWithSecret(rawBody: string, signatureHeader: string | null, secret: string | null | undefined): boolean {
+  if (!secret) return false;
+  if (!signatureHeader || !signatureHeader.startsWith("sha256=")) return false;
+  const provided = signatureHeader.slice("sha256=".length).trim();
+  return safeCompareHex(provided, computeSig(rawBody, secret));
+}
+
+/**
+ * Extrai phone_number_id / waba_id do payload sem confiar em nenhuma assinatura.
+ * Usado apenas para localizar qual conexão possui o App Secret esperado.
+ */
+function extractRoutingHints(rawBody: string): { phone_number_ids: string[]; waba_ids: string[] } {
+  const phones = new Set<string>();
+  const wabas = new Set<string>();
+  try {
+    const p = JSON.parse(rawBody);
+    const entries: any[] = Array.isArray(p?.entry) ? p.entry : [];
+    for (const e of entries) {
+      if (e?.id) wabas.add(String(e.id));
+      const changes: any[] = Array.isArray(e?.changes) ? e.changes : [];
+      for (const c of changes) {
+        const v = c?.value ?? {};
+        const pnid = v?.metadata?.phone_number_id ?? v?.phone_number_id ?? v?.phone_number;
+        if (pnid) phones.add(String(pnid));
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return { phone_number_ids: Array.from(phones), waba_ids: Array.from(wabas) };
+}
+
 
 // Extrai a mensagem de erro mais informativa de uma entrada `errors[]` da Meta.
 function extractError(err: any) {
@@ -115,20 +147,51 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
       POST: async ({ request }) => {
         const rawBody = await request.text();
         const sig = request.headers.get("x-hub-signature-256");
-        const strict = !!process.env.META_APP_SECRET;
-        const valid = verifySignature(rawBody, sig);
-
+        const globalSecret = process.env.META_APP_SECRET;
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+        // 1) Tenta validar com o App Secret global (retrocompatível).
+        let valid = verifySignatureWithSecret(rawBody, sig, globalSecret);
+        let matchedBy: string | null = valid ? "global" : null;
+
+        // 2) Se falhou, tenta com o App Secret específico de cada conexão
+        //    apontada pelo payload (por phone_number_id ou waba_id).
+        if (!valid && sig) {
+          const hints = extractRoutingHints(rawBody);
+          if (hints.phone_number_ids.length || hints.waba_ids.length) {
+            const q = supabaseAdmin
+              .from("whatsapp_connections")
+              .select("id, app_secret, phone_number_id, waba_id, use_global_token");
+            const orFilters: string[] = [];
+            for (const p of hints.phone_number_ids) orFilters.push(`phone_number_id.eq.${p}`);
+            for (const w of hints.waba_ids) orFilters.push(`waba_id.eq.${w}`);
+            const { data: candidates } = await q.or(orFilters.join(","));
+            for (const c of (candidates ?? []) as any[]) {
+              // Se conexão usa credencial global, o global já foi tentado acima.
+              if (c.use_global_token) continue;
+              if (!c.app_secret) continue;
+              if (verifySignatureWithSecret(rawBody, sig, c.app_secret)) {
+                valid = true;
+                matchedBy = `connection:${c.id}`;
+                break;
+              }
+            }
+          }
+        }
+
+        const strict = !!globalSecret; // manter comportamento estrito quando há segredo global
         if (strict && !valid) {
           // Log sanitizado — nunca gravar assinatura nem corpo cru.
           await supabaseAdmin.from("whatsapp_webhook_logs").insert({
             event_type: "invalid_signature",
-            payload: { has_signature: !!sig, bytes: rawBody.length },
+            payload: { has_signature: !!sig, bytes: rawBody.length, matched_by: null },
             error: "invalid X-Hub-Signature-256",
           });
           return new Response("invalid signature", { status: 401 });
         }
+        // (matchedBy é apenas registrado nos logs abaixo, quando aplicável)
+        void matchedBy;
+
 
         let payload: any = {};
         try {
