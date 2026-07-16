@@ -125,7 +125,7 @@ function Page() {
                   <Button asChild size="icon" variant="ghost" title="Gerenciar perfil">
                     <Link to="/admin/whatsapp/numeros/$id/perfil" params={{ id: r.id }}><UserCog className="h-4 w-4" /></Link>
                   </Button>
-                  <Button size="icon" variant="ghost" title="Trocar token sem alterar outros dados" onClick={() => { setTokenEditing(r); setTokenInput(""); }}>
+                  <Button size="icon" variant="ghost" title="Trocar credenciais Meta (token, App ID, App Secret) sem alterar outros dados" onClick={() => setCredsEditing(r)}>
                     <KeyRound className="h-4 w-4" />
                   </Button>
                   <Button size="icon" variant="ghost" onClick={() => { setEditing(r); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
