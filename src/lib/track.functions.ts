@@ -168,12 +168,12 @@ function pickMeta(c: Record<string, unknown>) {
   };
 }
 
-const FACEBOOK_ASN_RE = /facebook|meta platforms/i;
+const WRAPPER_ASN_RE = /facebook|meta platforms|amazon(\.com)?|amazon technologies|aws|amazon-02/i;
 function isFacebookGeo(geo: Record<string, unknown> | null): boolean {
   if (!geo) return false;
   const fields = [geo.isp, geo.org, geo.as, geo.asname]
     .filter((v): v is string => typeof v === "string");
-  return fields.some((v) => FACEBOOK_ASN_RE.test(v));
+  return fields.some((v) => WRAPPER_ASN_RE.test(v));
 }
 
 /** Shared click writer used by both `resolveCampaign` (SSR loader) and the
