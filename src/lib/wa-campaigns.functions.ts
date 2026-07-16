@@ -336,3 +336,214 @@ export const availableStock = createServerFn({ method: "POST" })
     });
     return Number(avail ?? 0);
   });
+
+/**
+ * Troca número/template (e demais parâmetros) de uma campanha pausada/erro/finalizada,
+ * preservando envios já processados. Reenfileira apenas destinatários "processing"
+ * sem wamid; contatos já enviados/entregues/lidos/falhos permanecem intactos.
+ * Registra a mudança em campaign_timeline (event_type=config_swap) e opcionalmente
+ * retoma a campanha (resume=true) se houver pendentes.
+ */
+export const swapCampaignConfig = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      id: z.string().uuid(),
+      connection_id: z.string().uuid().nullish(),
+      template_id: z.string().uuid().nullish(),
+      template_variables: z.record(z.string()).nullish(),
+      variables_mapping: z.record(z.string()).nullish(),
+      button_url_mapping: z.record(z.string()).nullish(),
+      send_rate_per_min: z.number().int().min(1).nullish(),
+      resume: z.boolean().optional().default(true),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabase, userId } = context as any;
+
+    const { data: camp, error: cErr } = await supabase
+      .from("wa_campaigns")
+      .select("id, status, connection_id, template_id, template_variables, variables_mapping, button_url_mapping, send_rate_per_min, connection:whatsapp_connections(id,name,display_phone,phone,phone_number_id), template:whatsapp_templates(id,name,status,language)")
+      .eq("id", data.id)
+      .single();
+    if (cErr) throw cErr;
+    if (!camp) throw new Error("Campanha não encontrada");
+
+    const allowed = ["paused", "error", "failed", "draft", "completed", "partial"];
+    if (!allowed.includes(String(camp.status))) {
+      throw new Error(`Só é possível trocar número/template com a campanha pausada, com erro ou finalizada. Status atual: ${camp.status}`);
+    }
+
+    const newConnectionId = (data.connection_id ?? camp.connection_id) as string | null;
+    const newTemplateId = (data.template_id ?? camp.template_id) as string | null;
+    if (!newConnectionId) throw new Error("Selecione um número de WhatsApp.");
+    if (!newTemplateId) throw new Error("Selecione um template.");
+
+    // Valida template
+    const { data: tpl, error: tErr } = await supabase
+      .from("whatsapp_templates")
+      .select("id,name,status,language,connection_id,body,header_type,buttons")
+      .eq("id", newTemplateId)
+      .single();
+    if (tErr) throw tErr;
+    if (!tpl) throw new Error("Template inválido.");
+    const tst = String(tpl.status ?? "").toLowerCase();
+    if (!["approved", "aprovado", "active", "ativo"].includes(tst)) {
+      throw new Error(`Template selecionado não está ativo (status: ${tpl.status}).`);
+    }
+    if (tpl.connection_id && tpl.connection_id !== newConnectionId) {
+      throw new Error("Template não é compatível com o número selecionado.");
+    }
+
+    // Valida conexão
+    const { data: conn, error: connErr } = await supabase
+      .from("whatsapp_connections")
+      .select("id,name,display_phone,phone,phone_number_id,status")
+      .eq("id", newConnectionId)
+      .single();
+    if (connErr) throw connErr;
+    if (!conn) throw new Error("Número não encontrado.");
+    const cst = String(conn.status ?? "").toLowerCase();
+    if (!["ativo", "ativa", "active", "connected"].includes(cst)) {
+      throw new Error(`Número selecionado não está ativo (status: ${conn.status}).`);
+    }
+    if (!conn.phone_number_id) throw new Error("Número selecionado não tem phone_number_id configurado.");
+
+    // Se o template mudou e tem variáveis, exige mapeamento novo
+    const templateChanged = newTemplateId !== camp.template_id;
+    if (templateChanged) {
+      const body = String(tpl.body ?? "");
+      const bodyVarNums = Array.from(body.matchAll(/\{\{\s*(\d+)\s*\}\}/g)).map((m) => Number(m[1]));
+      const providedMap = (data.template_variables ?? data.variables_mapping ?? {}) as Record<string, string>;
+      for (const n of bodyVarNums) {
+        const v = providedMap[String(n)];
+        if (!v || !String(v).trim()) {
+          throw new Error(`O novo template exige a variável {{${n}}} — configure o novo mapeamento antes de continuar.`);
+        }
+      }
+      const urlButton = (Array.isArray(tpl.buttons) ? tpl.buttons : []).find(
+        (b: any) => String(b?.type ?? "").toLowerCase() === "url" && typeof b?.url === "string",
+      ) as any;
+      if (urlButton?.url) {
+        const urlVarNums = Array.from(String(urlButton.url).matchAll(/\{\{\s*(\d+)\s*\}\}/g)).map((m) => Number(m[1]));
+        const btnMap = (data.button_url_mapping ?? {}) as Record<string, string>;
+        for (const n of urlVarNums) {
+          if (!btnMap[String(n)] || !String(btnMap[String(n)]).trim()) {
+            throw new Error(`O botão do novo template exige a variável {{${n}}} na URL — configure o novo mapeamento.`);
+          }
+        }
+      }
+    }
+
+    // Monta patch
+    const patch: Record<string, any> = {
+      connection_id: newConnectionId,
+      template_id: newTemplateId,
+      last_error: null,
+      pause_reason: null,
+    };
+    if (data.template_variables !== undefined) patch.template_variables = data.template_variables ?? {};
+    if (data.variables_mapping !== undefined) patch.variables_mapping = data.variables_mapping ?? {};
+    if (data.button_url_mapping !== undefined) patch.button_url_mapping = data.button_url_mapping ?? {};
+    if (data.send_rate_per_min != null) patch.send_rate_per_min = data.send_rate_per_min;
+
+    const { error: upErr } = await supabase.from("wa_campaigns").update(patch).eq("id", data.id);
+    if (upErr) throw upErr;
+
+    // Reseta processing órfãos → pending
+    const { data: resetRows } = await supabase
+      .from("campaign_recipients")
+      .update({ status: "pending", failed_reason: null, error_code: null })
+      .eq("campaign_id", data.id)
+      .eq("status", "processing")
+      .is("meta_message_id", null)
+      .select("id");
+    const reenqueued = resetRows?.length ?? 0;
+
+    // Libera lease
+    await supabase
+      .from("wa_campaigns")
+      .update({ worker_lease_id: null, worker_lease_until: null })
+      .eq("id", data.id);
+
+    // Conta pendentes reais
+    const { count: pendingCount } = await supabase
+      .from("campaign_recipients")
+      .select("id", { count: "exact", head: true })
+      .eq("campaign_id", data.id)
+      .eq("status", "pending");
+
+    // Timeline
+    const fromLabel = (camp as any).connection?.display_phone ?? (camp as any).connection?.phone ?? camp.connection_id ?? "—";
+    const toLabel = conn.display_phone ?? conn.phone ?? newConnectionId;
+    const fromTpl = (camp as any).template?.name ?? camp.template_id ?? "—";
+    await supabase.from("campaign_timeline").insert({
+      campaign_id: data.id,
+      event_type: "config_swap",
+      message: `Configuração trocada — número: ${fromLabel} → ${toLabel} · template: ${fromTpl} → ${tpl.name}`,
+      actor_id: userId,
+      payload: {
+        from: {
+          connection_id: camp.connection_id,
+          template_id: camp.template_id,
+          connection_phone: (camp as any).connection?.display_phone ?? (camp as any).connection?.phone ?? null,
+          phone_number_id: (camp as any).connection?.phone_number_id ?? null,
+          template_name: (camp as any).template?.name ?? null,
+          template_variables: (camp as any).template_variables ?? null,
+          variables_mapping: (camp as any).variables_mapping ?? null,
+          button_url_mapping: (camp as any).button_url_mapping ?? null,
+          send_rate_per_min: camp.send_rate_per_min ?? null,
+        },
+        to: {
+          connection_id: newConnectionId,
+          template_id: newTemplateId,
+          connection_phone: conn.display_phone ?? conn.phone ?? null,
+          phone_number_id: conn.phone_number_id,
+          template_name: tpl.name,
+          template_variables: patch.template_variables ?? undefined,
+          variables_mapping: patch.variables_mapping ?? undefined,
+          button_url_mapping: patch.button_url_mapping ?? undefined,
+          send_rate_per_min: patch.send_rate_per_min ?? camp.send_rate_per_min ?? null,
+        },
+        reenqueued_processing: reenqueued,
+        pending_after: pendingCount ?? 0,
+      },
+    });
+
+    // Retoma se pedido
+    let newStatus: string | null = null;
+    if (data.resume !== false && (pendingCount ?? 0) > 0) {
+      newStatus = "running";
+      await supabase
+        .from("wa_campaigns")
+        .update({
+          status: "running",
+          paused_at: null,
+          finished_at: null,
+          resumed_at: new Date().toISOString(),
+        })
+        .eq("id", data.id);
+    }
+
+    await supabase.rpc("wa_recalc_campaign_progress" as any, { _campaign_id: data.id });
+
+    // Dispara tick (fire-and-forget)
+    try {
+      const base = process.env.SUPABASE_URL?.replace(".supabase.co", ".lovable.app")
+        ?? "https://project--9c7682d6-edcd-4388-a36c-36249d4d6ab8.lovable.app";
+      const url = new URL("/api/public/whatsapp/queue-tick", base);
+      fetch(url.toString(), {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-tick-source": "config-swap" },
+        body: "{}",
+      }).catch(() => {});
+    } catch {}
+
+    return {
+      ok: true,
+      reenqueued,
+      pending: pendingCount ?? 0,
+      status: newStatus ?? camp.status,
+    };
+  });
