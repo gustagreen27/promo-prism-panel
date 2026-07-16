@@ -48,6 +48,7 @@ export function SwapConfigDialog({ open, onOpenChange, campaign, onSuccess }: Sw
       if (/^\d+$/.test(k)) bodyOnly[k] = String(v ?? "");
     }
     setBodyVars(bodyOnly);
+    setPrevBodyVarCount(Object.keys(bodyOnly).length);
     setBtnVars(((campaign.button_url_mapping ?? {}) as Record<string, string>) || {});
     setHeaderMediaUrl(String(tv._header_image_url ?? ""));
     setRate(Number(campaign.send_rate_per_min ?? 30));
