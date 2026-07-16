@@ -401,6 +401,11 @@ function Page() {
                 Destravar fila
               </Button>
             )}
+            {(isPaused || status === "error" || status === "failed" || isFinished) && (
+              <Button size="sm" variant="secondary" onClick={() => setSwapOpen(true)}>
+                <Replace className="mr-2 h-4 w-4" />Trocar número/template
+              </Button>
+            )}
             <Button size="sm" variant="outline" onClick={() => m.dup.mutate()}>
               <Copy className="mr-2 h-4 w-4" />Duplicar
             </Button>
