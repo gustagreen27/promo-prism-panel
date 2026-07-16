@@ -41,6 +41,33 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
         try {
           const nowIso = new Date().toISOString();
 
+          // Auto-heal de slots/tokens vazados: se um número não teve atividade
+          // no rate_limits nos últimos 90s, nenhum tick anterior está usando
+          // aqueles slots (o lease global do tick dura 75s). Zera contador e
+          // recarrega tokens para evitar pausas longas quando active_inflight
+          // fica travado no teto.
+          try {
+            const staleRateCutoff = new Date(Date.now() - 90 * 1000).toISOString();
+            const { data: staleRates } = await supabaseAdmin
+              .from("wa_rate_limits")
+              .select("phone_number_id,rate_per_second")
+              .lt("updated_at", staleRateCutoff)
+              .gt("active_inflight", 0);
+            for (const r of staleRates ?? []) {
+              await supabaseAdmin
+                .from("wa_rate_limits")
+                .update({
+                  active_inflight: 0,
+                  tokens: r.rate_per_second ?? 0,
+                  last_refill_at: nowIso,
+                  updated_at: nowIso,
+                })
+                .eq("phone_number_id", r.phone_number_id as string);
+            }
+          } catch (err) {
+            console.error("[queue-tick] rate-limit heal failed", err);
+          }
+
           // Preflight validation of scheduled campaigns whose time has come
           const { data: due } = await supabaseAdmin
             .from("wa_campaigns")
