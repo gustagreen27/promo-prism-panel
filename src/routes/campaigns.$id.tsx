@@ -795,9 +795,9 @@ function DispatchCard({
   const total = perSnapshot?.total ?? snapshot?.total ?? d.total_recipients ?? 0;
   const rawDelivered = perSnapshot?.delivered ?? snapshot?.delivered ?? overrides?.delivered ?? (d.delivered_count ?? 0);
   const sent = perSnapshot?.sent ?? snapshot?.sent ?? overrides?.sent ?? rawDelivered;
-  // Público: sincroniza "recebidos" (entregues) com "enviados".
-  const delivered = sent;
   const failed = perSnapshot?.failed ?? snapshot?.failed ?? overrides?.failed ?? (d.failed_count ?? 0);
+  // Público: entregues = enviados − falhas.
+  const delivered = Math.max(0, sent - failed);
   const percent = perSnapshot
     ? perSnapshot.percent
     : snapshot
