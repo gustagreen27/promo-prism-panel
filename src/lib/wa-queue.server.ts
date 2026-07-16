@@ -490,6 +490,29 @@ export async function processCampaignTick(
     let consecutiveNetworkErrors = 0;
     let consecutive429 = 0;
     let systemicPause: { reason: string; message: string } | null = null;
+    let lastCampaignTouchAt = 0;
+    let touchCampaignPromise: Promise<void> | null = null;
+
+    const touchCampaignAfterAccept = (force = false) => {
+      const now = Date.now();
+      if (!force && now - lastCampaignTouchAt < 2000) return;
+      if (!force && touchCampaignPromise) return;
+      lastCampaignTouchAt = now;
+      const lastSentAt = new Date().toISOString();
+      const p: Promise<void> = (async () => {
+        await supabaseAdmin
+          .from("wa_campaigns")
+          .update({ last_sent_at: lastSentAt, last_error: null })
+          .eq("id", campaignId);
+      })()
+        .catch((err: unknown) => {
+          console.error("[wa-queue] campaign heartbeat failed", err);
+        })
+        .finally(() => {
+          if (touchCampaignPromise === p) touchCampaignPromise = null;
+        });
+      touchCampaignPromise = p;
+    };
 
     const applyBackoff = (attempts: number): number => {
       // 1s, 2s, 4s, 8s (cap) + up to 30% jitter.
@@ -698,17 +721,22 @@ export async function processCampaignTick(
             next_attempt_at: null,
           })
           .eq("id", r.id);
-        await logEvent(
-          campaignId,
-          "send_accepted",
-          `Meta aceitou envio para ${r.phone} (wamid=${wamid}, message_status=${metaStatus || "n/d"})`,
-          {
-            recipient_id: r.id,
-            wamid,
-            message_status: metaStatus || null,
-            http_status: (result as any).httpStatus,
-          },
-        );
+        touchCampaignAfterAccept();
+        if (sent <= 3 || sent % 500 === 0) {
+          await logEvent(
+            campaignId,
+            "send_accepted",
+            `Meta aceitou envio (${sent} neste tick, amostra)`,
+            {
+              recipient_id: r.id,
+              wamid,
+              message_status: metaStatus || null,
+              http_status: (result as any).httpStatus,
+              sampled: true,
+              accepted_in_tick: sent,
+            },
+          );
+        }
         if ((camp as any).reservation_id) {
           await supabaseAdmin.rpc("wallet_consume_reservation" as any, {
             _reservation_id: (camp as any).reservation_id,
@@ -1069,6 +1097,9 @@ export async function processCampaignTick(
     }
     if (reservingPromise) {
       try { await reservingPromise; } catch { /* noop */ }
+    }
+    if (touchCampaignPromise) {
+      try { await touchCampaignPromise; } catch { /* noop */ }
     }
     // Libera todos os slots restantes (batch final)
     await flushSlotReleases(true);

@@ -26,6 +26,18 @@ export type WaSendResult =
   | { ok: true; metaMessageId: string; messageStatus: string | null; wamid: string | null; raw: any; httpStatus: number }
   | { ok: false; error: string; code?: string; raw?: any; httpStatus?: number };
 
+const META_SEND_TIMEOUT_MS = 8000;
+
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = META_SEND_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 
 function buildBodyComponents(variables?: Record<string, string>) {
   if (!variables) return [];
@@ -96,7 +108,7 @@ export async function sendTemplateMessage(input: WaSendInput): Promise<WaSendRes
   };
 
   try {
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -124,7 +136,12 @@ export async function sendTemplateMessage(input: WaSendInput): Promise<WaSendRes
     if (!id) return { ok: false, error: "No message id returned", raw: json, httpStatus: res.status };
     return { ok: true, metaMessageId: id, messageStatus, wamid, raw: json, httpStatus: res.status };
   } catch (e: any) {
-    return { ok: false, error: e?.message ?? "Network error", code: "network_error" };
+    const timedOut = e?.name === "AbortError";
+    return {
+      ok: false,
+      error: timedOut ? `Meta Graph timeout após ${META_SEND_TIMEOUT_MS}ms` : (e?.message ?? "Network error"),
+      code: "network_error",
+    };
   }
 }
 
@@ -212,7 +229,7 @@ export async function sendWhatsAppTemplateFrgc01(input: SendFrgc01Input): Promis
   const payload = buildFrgc01Payload(input);
 
   try {
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -239,7 +256,13 @@ export async function sendWhatsAppTemplateFrgc01(input: SendFrgc01Input): Promis
     }
     return { ok: true, metaMessageId: id, status, requestPayload: payload, raw: json, httpStatus: res.status };
   } catch (e: any) {
-    return { ok: false, error: e?.message ?? "Network error", requestPayload: payload };
+    const timedOut = e?.name === "AbortError";
+    return {
+      ok: false,
+      error: timedOut ? `Meta Graph timeout após ${META_SEND_TIMEOUT_MS}ms` : (e?.message ?? "Network error"),
+      code: "network_error",
+      requestPayload: payload,
+    };
   }
 }
 
