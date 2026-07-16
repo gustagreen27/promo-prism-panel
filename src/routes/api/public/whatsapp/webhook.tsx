@@ -147,20 +147,51 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
       POST: async ({ request }) => {
         const rawBody = await request.text();
         const sig = request.headers.get("x-hub-signature-256");
-        const strict = !!process.env.META_APP_SECRET;
-        const valid = verifySignature(rawBody, sig);
-
+        const globalSecret = process.env.META_APP_SECRET;
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+        // 1) Tenta validar com o App Secret global (retrocompatível).
+        let valid = verifySignatureWithSecret(rawBody, sig, globalSecret);
+        let matchedBy: string | null = valid ? "global" : null;
+
+        // 2) Se falhou, tenta com o App Secret específico de cada conexão
+        //    apontada pelo payload (por phone_number_id ou waba_id).
+        if (!valid && sig) {
+          const hints = extractRoutingHints(rawBody);
+          if (hints.phone_number_ids.length || hints.waba_ids.length) {
+            const q = supabaseAdmin
+              .from("whatsapp_connections")
+              .select("id, app_secret, phone_number_id, waba_id, use_global_token");
+            const orFilters: string[] = [];
+            for (const p of hints.phone_number_ids) orFilters.push(`phone_number_id.eq.${p}`);
+            for (const w of hints.waba_ids) orFilters.push(`waba_id.eq.${w}`);
+            const { data: candidates } = await q.or(orFilters.join(","));
+            for (const c of (candidates ?? []) as any[]) {
+              // Se conexão usa credencial global, o global já foi tentado acima.
+              if (c.use_global_token) continue;
+              if (!c.app_secret) continue;
+              if (verifySignatureWithSecret(rawBody, sig, c.app_secret)) {
+                valid = true;
+                matchedBy = `connection:${c.id}`;
+                break;
+              }
+            }
+          }
+        }
+
+        const strict = !!globalSecret; // manter comportamento estrito quando há segredo global
         if (strict && !valid) {
           // Log sanitizado — nunca gravar assinatura nem corpo cru.
           await supabaseAdmin.from("whatsapp_webhook_logs").insert({
             event_type: "invalid_signature",
-            payload: { has_signature: !!sig, bytes: rawBody.length },
+            payload: { has_signature: !!sig, bytes: rawBody.length, matched_by: null },
             error: "invalid X-Hub-Signature-256",
           });
           return new Response("invalid signature", { status: 401 });
         }
+        // (matchedBy é apenas registrado nos logs abaixo, quando aplicável)
+        void matchedBy;
+
 
         let payload: any = {};
         try {
