@@ -64,6 +64,7 @@ function Page() {
   const getErrs = useServerFn(getCampaignErrors);
   const getPrev = useServerFn(getRecipientPreviews);
   const [previewSearch, setPreviewSearch] = useState("");
+  const [swapOpen, setSwapOpen] = useState(false);
 
   const campQ = useQuery({
     queryKey: ["wa-camp", id],
