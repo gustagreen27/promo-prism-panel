@@ -27,21 +27,53 @@ function mapTemplateStatus(ev: string | undefined | null): string | null {
   return null;
 }
 
-function verifySignature(rawBody: string, signatureHeader: string | null): boolean {
-  const secret = process.env.META_APP_SECRET;
-  if (!secret) return false;
-  if (!signatureHeader || !signatureHeader.startsWith("sha256=")) return false;
-  const provided = signatureHeader.slice("sha256=".length).trim();
-  const expected = createHmac("sha256", secret).update(rawBody, "utf8").digest("hex");
+function computeSig(rawBody: string, secret: string): string {
+  return createHmac("sha256", secret).update(rawBody, "utf8").digest("hex");
+}
+
+function safeCompareHex(providedHex: string, expectedHex: string): boolean {
   try {
-    const a = Buffer.from(provided, "hex");
-    const b = Buffer.from(expected, "hex");
+    const a = Buffer.from(providedHex, "hex");
+    const b = Buffer.from(expectedHex, "hex");
     if (a.length !== b.length || a.length === 0) return false;
     return timingSafeEqual(a, b);
   } catch {
     return false;
   }
 }
+
+function verifySignatureWithSecret(rawBody: string, signatureHeader: string | null, secret: string | null | undefined): boolean {
+  if (!secret) return false;
+  if (!signatureHeader || !signatureHeader.startsWith("sha256=")) return false;
+  const provided = signatureHeader.slice("sha256=".length).trim();
+  return safeCompareHex(provided, computeSig(rawBody, secret));
+}
+
+/**
+ * Extrai phone_number_id / waba_id do payload sem confiar em nenhuma assinatura.
+ * Usado apenas para localizar qual conexão possui o App Secret esperado.
+ */
+function extractRoutingHints(rawBody: string): { phone_number_ids: string[]; waba_ids: string[] } {
+  const phones = new Set<string>();
+  const wabas = new Set<string>();
+  try {
+    const p = JSON.parse(rawBody);
+    const entries: any[] = Array.isArray(p?.entry) ? p.entry : [];
+    for (const e of entries) {
+      if (e?.id) wabas.add(String(e.id));
+      const changes: any[] = Array.isArray(e?.changes) ? e.changes : [];
+      for (const c of changes) {
+        const v = c?.value ?? {};
+        const pnid = v?.metadata?.phone_number_id ?? v?.phone_number_id ?? v?.phone_number;
+        if (pnid) phones.add(String(pnid));
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return { phone_number_ids: Array.from(phones), waba_ids: Array.from(wabas) };
+}
+
 
 // Extrai a mensagem de erro mais informativa de uma entrada `errors[]` da Meta.
 function extractError(err: any) {
