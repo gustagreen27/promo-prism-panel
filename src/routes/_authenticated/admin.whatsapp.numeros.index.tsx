@@ -51,8 +51,7 @@ function Page() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [apiOpen, setApiOpen] = useState(false);
-  const [tokenEditing, setTokenEditing] = useState<any>(null);
-  const [tokenInput, setTokenInput] = useState("");
+  const [credsEditing, setCredsEditing] = useState<any>(null);
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["wa-numbers"] });
   const saveMut = useMutation({
@@ -64,16 +63,7 @@ function Page() {
     mutationFn: (id: string) => remove({ data: { id } }),
     onSuccess: () => { toast.success("Removido"); refresh(); },
   });
-  const tokenMut = useMutation({
-    mutationFn: () => updateToken({ data: { connection_id: tokenEditing.id, access_token: tokenInput.trim() } }),
-    onSuccess: (r: any) => {
-      toast.success(`Token atualizado (…${r.last6})`);
-      setTokenEditing(null);
-      setTokenInput("");
-      refresh();
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Erro ao atualizar token"),
-  });
+
   const syncMut = useMutation({
     mutationFn: () => syncAll(),
     onSuccess: (r: any) => {
