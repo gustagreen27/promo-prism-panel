@@ -224,7 +224,11 @@ function Page() {
     }),
     retry: useMutation({
       mutationFn: () => retryFn({ data: { id } }),
-      onSuccess: (r: any) => { toast.success(`${r.count} falhas reenfileiradas`); invalidate(); },
+      onSuccess: (r: any) => {
+        toast.success(`${r.count} falhas reenfileiradas · campanha retomada`);
+        invalidate();
+      },
+      onError: (e: any) => toast.error(e?.message ?? "Erro ao reprocessar falhas"),
     }),
     dup: useMutation({
       mutationFn: () => dupFn({ data: { id } }),
