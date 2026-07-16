@@ -63,7 +63,18 @@ export function SwapConfigDialog({ open, onOpenChange, campaign, onSuccess }: Sw
   useEffect(() => {
     if (!open || !connectionId) { setTemplates([]); return; }
     listTemplates({ data: { connection_id: connectionId } })
-      .then((r: any) => setTemplates(r?.templates ?? []))
+      .then((r: any) => {
+        const list = r?.templates ?? [];
+        setTemplates(list);
+        // Clear pre-selected template if it's not active/approved (e.g. disabled by Meta)
+        setTemplateId((current) => {
+          if (!current) return current;
+          const found = list.find((t: any) => t.id === current);
+          const st = String(found?.status ?? "").toLowerCase();
+          if (!found || !["approved", "aprovado", "active", "ativo"].includes(st)) return "";
+          return current;
+        });
+      })
       .catch(() => setTemplates([]));
   }, [open, connectionId, listTemplates]);
 
