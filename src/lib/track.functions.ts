@@ -307,7 +307,17 @@ export const resolveCampaign = createServerFn({ method: "POST" })
     }
 
     const finalUrl = applyUtms(campaign.destination_url, campaign);
-    const mode = ((campaign as Record<string, unknown>).open_mode as string) || "smart";
+    let mode = ((campaign as Record<string, unknown>).open_mode as string) || "smart";
+
+    // Lookup geo cedo para (a) forçar wrapper quando o clique vier do ASN do
+    // Facebook/Meta (in-app browser bloqueia redirect e iframe) e (b)
+    // reaproveitar o resultado no recordClick, evitando duas chamadas à API.
+    const earlyIp = pickIp();
+    const earlyGeo = earlyIp ? await lookupIp(earlyIp) : null;
+    const facebookTraffic = isFacebookGeo(earlyGeo);
+    if (facebookTraffic) {
+      mode = "wrapper";
+    }
 
     let iframeAllowed = true;
     if (mode === "redirect") {
@@ -340,7 +350,7 @@ export const resolveCampaign = createServerFn({ method: "POST" })
     // do cliente, que era abortado nos modos redirect/wrapper). Nunca falha
     // a resolução: se o insert der erro, seguimos com o redirect normal.
     try {
-      await recordClick(supabaseAdmin, campaign, finalUrl);
+      await recordClick(supabaseAdmin, campaign, finalUrl, earlyGeo);
     } catch {
       /* ignore — métricas não devem quebrar o link */
     }
