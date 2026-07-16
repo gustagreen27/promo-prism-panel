@@ -171,13 +171,12 @@ function CampaignRow({
         <Button
           variant="ghost"
           size="sm"
-          asChild
+          onClick={() => setEditOpen(true)}
           className="text-primary hover:text-primary hover:bg-primary/10 font-semibold tracking-wide text-xs uppercase"
         >
-          <Link to="/admin/campaigns/$id/edit" params={{ id: c.id }}>
-            <Pencil className="mr-1 h-4 w-4" /> Editar campanha
-          </Link>
+          <Pencil className="mr-1 h-4 w-4" /> Editar campanha
         </Button>
+
 
         <div className="flex items-center gap-2">
           <Button
