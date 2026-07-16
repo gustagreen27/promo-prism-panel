@@ -249,7 +249,9 @@ function PublicCampaignReport() {
     };
 
     const realCountries = top("country");
-    const realCities = top("city");
+    const dddCounts = ((data as any)?.dddCounts ?? {}) as Record<string, number>;
+    const dddCities = citiesFromDddCounts(dddCounts, 14);
+    const realCities = dddCities.length > 0 ? dddCities : top("city");
     const realDevices = top("device_type");
     const realBrowsers = top("browser");
 
