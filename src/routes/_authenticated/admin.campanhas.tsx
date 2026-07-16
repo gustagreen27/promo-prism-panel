@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   createCampaign,
   deleteCampaign,
@@ -74,7 +74,7 @@ function CampaignsList() {
             Crie campanhas, gere URLs e acompanhe acessos.
           </p>
         </div>
-        <NewCampaignDialog onCreated={() => refetch()} />
+        <CampaignDialog mode="create" onSaved={() => refetch()} />
       </div>
 
       <div className="flex items-center gap-2">
@@ -116,6 +116,8 @@ function CampaignRow({
   const del = useServerFn(deleteCampaign);
   const update = useServerFn(updateCampaign);
   const [overridesOpen, setOverridesOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+
   const isActive = c.status === "active";
   const publicUrl =
     typeof window !== "undefined" ? `${window.location.origin}/${c.slug}` : `/${c.slug}`;
@@ -169,13 +171,12 @@ function CampaignRow({
         <Button
           variant="ghost"
           size="sm"
-          asChild
+          onClick={() => setEditOpen(true)}
           className="text-primary hover:text-primary hover:bg-primary/10 font-semibold tracking-wide text-xs uppercase"
         >
-          <Link to="/admin/campaigns/$id/edit" params={{ id: c.id }}>
-            <Pencil className="mr-1 h-4 w-4" /> Editar campanha
-          </Link>
+          <Pencil className="mr-1 h-4 w-4" /> Editar campanha
         </Button>
+
 
         <div className="flex items-center gap-2">
           <Button
@@ -251,6 +252,14 @@ function CampaignRow({
         open={overridesOpen}
         onOpenChange={setOverridesOpen}
       />
+      <CampaignDialog
+        mode="edit"
+        campaign={c as any}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        onSaved={onChange}
+      />
+
     </Card>
   );
 }
@@ -269,42 +278,92 @@ function MetaStat({ label, value, truncate }: { label: string; value: string | n
   );
 }
 
-function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
-  const [destination, setDestination] = useState("");
-  const [slugTouched, setSlugTouched] = useState(false);
-  const [campaignType, setCampaignType] = useState<string>("");
-  const [linkIntent, setLinkIntent] = useState<string>("");
-  const [pageCategory, setPageCategory] = useState<string>("");
-  const [linkTitle, setLinkTitle] = useState("");
-  const [linkDescription, setLinkDescription] = useState("");
-  const [intermediateText, setIntermediateText] = useState("");
-  const [ctaLabel, setCtaLabel] = useState("");
-  const [openMode, setOpenMode] = useState<string>("smart");
-  const [participants, setParticipants] = useState<Participant[]>([]);
+type CampaignDialogProps =
+  | {
+      mode: "create";
+      onSaved: () => void;
+      open?: undefined;
+      onOpenChange?: undefined;
+      campaign?: undefined;
+    }
+  | {
+      mode: "edit";
+      campaign: Record<string, any>;
+      open: boolean;
+      onOpenChange: (v: boolean) => void;
+      onSaved: () => void;
+    };
+
+function CampaignDialog(props: CampaignDialogProps) {
+  const isEdit = props.mode === "edit";
+  const c = isEdit ? props.campaign : undefined;
+
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = isEdit ? props.open : internalOpen;
+  const setOpen = isEdit ? props.onOpenChange : setInternalOpen;
+
+  const [name, setName] = useState(c?.name ?? "");
+  const [slug, setSlug] = useState(c?.slug ?? "");
+  const [destination, setDestination] = useState(c?.destination_url ?? "");
+  const [slugTouched, setSlugTouched] = useState(isEdit);
+  const [campaignType, setCampaignType] = useState<string>(c?.campaign_type ?? "");
+  const [linkIntent, setLinkIntent] = useState<string>(c?.link_intent ?? "");
+  const [pageCategory, setPageCategory] = useState<string>(c?.page_category ?? "");
+  const [linkTitle, setLinkTitle] = useState(c?.link_title ?? "");
+  const [linkDescription, setLinkDescription] = useState(c?.link_description ?? "");
+  const [intermediateText, setIntermediateText] = useState(c?.intermediate_text ?? "");
+  const [ctaLabel, setCtaLabel] = useState(c?.cta_label ?? "");
+  const [openMode, setOpenMode] = useState<string>(c?.open_mode ?? "smart");
+  const [participants, setParticipants] = useState<Participant[]>(
+    (c?.participants as Participant[]) ?? [],
+  );
+
+  // Re-hydrate when opening the edit dialog (in case the row data updated).
+  const cId = c?.id;
+  useEffect(() => {
+    if (!isEdit || !open || !c) return;
+    setName(c.name ?? "");
+    setSlug(c.slug ?? "");
+    setDestination(c.destination_url ?? "");
+    setCampaignType(c.campaign_type ?? "");
+    setLinkIntent(c.link_intent ?? "");
+    setPageCategory(c.page_category ?? "");
+    setLinkTitle(c.link_title ?? "");
+    setLinkDescription(c.link_description ?? "");
+    setIntermediateText(c.intermediate_text ?? "");
+    setCtaLabel(c.cta_label ?? "");
+    setOpenMode(c.open_mode ?? "smart");
+    setParticipants((c.participants as Participant[]) ?? []);
+    setSlugTouched(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, cId, isEdit]);
 
   const create = useServerFn(createCampaign);
+  const update = useServerFn(updateCampaign);
   const queryClient = useQueryClient();
   const router = useRouter();
+
   const mutation = useMutation({
     mutationFn: (input: Record<string, unknown>) =>
-      create({ data: input as never }),
-    onSuccess: (created) => {
-      toast.success("Campanha criada como rascunho");
+      isEdit
+        ? update({ data: { id: cId, ...input } as never })
+        : create({ data: input as never }),
+    onSuccess: (saved: any) => {
+      toast.success(isEdit ? "Campanha atualizada" : "Campanha criada como rascunho");
       queryClient.invalidateQueries({ queryKey: ["campaigns"] });
       router.invalidate();
-      setName(""); setSlug(""); setDestination(""); setSlugTouched(false);
-      setCampaignType(""); setLinkIntent(""); setPageCategory("");
-      setLinkTitle(""); setLinkDescription(""); setIntermediateText(""); setCtaLabel("");
-      setOpenMode("smart");
-      setParticipants([]);
       setOpen(false);
-      onCreated();
-      router.navigate({ to: "/admin/campaigns/$id/edit", params: { id: created.id } });
+      props.onSaved();
+      if (!isEdit) {
+        setName(""); setSlug(""); setDestination(""); setSlugTouched(false);
+        setCampaignType(""); setLinkIntent(""); setPageCategory("");
+        setLinkTitle(""); setLinkDescription(""); setIntermediateText(""); setCtaLabel("");
+        setOpenMode("smart");
+        setParticipants([]);
+        router.navigate({ to: "/admin/campaigns/$id/edit", params: { id: saved.id } });
+      }
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Falha ao criar"),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Falha ao salvar"),
   });
 
   function onIntentChange(value: string) {
@@ -319,7 +378,7 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
       og_description: "",
       page_category: pageCategory,
     };
-    const { next, changed } = applyIntentPreset(form, value, false);
+    const { next, changed } = applyIntentPreset(form, value, isEdit);
     if (changed.length === 0) return;
     if (changed.includes("link_title")) setLinkTitle(next.link_title);
     if (changed.includes("link_description")) setLinkDescription(next.link_description);
@@ -330,15 +389,18 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>Nova campanha</Button>
-      </DialogTrigger>
+      {!isEdit && (
+        <DialogTrigger asChild>
+          <Button>Nova campanha</Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Nova campanha</DialogTitle>
+          <DialogTitle>{isEdit ? "Editar campanha" : "Nova campanha"}</DialogTitle>
           <DialogDescription>
-            Defina nome, slug, destino e a intenção do link. Os campos serão pré-preenchidos
-            conforme a intenção escolhida — você poderá ajustar tudo no editor.
+            {isEdit
+              ? "Ajuste os campos da campanha e salve as alterações."
+              : "Defina nome, slug, destino e a intenção do link. Os campos serão pré-preenchidos conforme a intenção escolhida — você poderá ajustar tudo no editor."}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -485,7 +547,9 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
 
           <DialogFooter>
             <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? "Criando..." : "Criar e configurar"}
+              {mutation.isPending
+                ? (isEdit ? "Salvando..." : "Criando...")
+                : (isEdit ? "Salvar alterações" : "Criar e configurar")}
             </Button>
           </DialogFooter>
         </form>
@@ -493,3 +557,4 @@ function NewCampaignDialog({ onCreated }: { onCreated: () => void }) {
     </Dialog>
   );
 }
+
