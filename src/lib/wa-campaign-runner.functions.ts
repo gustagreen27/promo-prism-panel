@@ -319,18 +319,38 @@ export const retryFailedRecipients = createServerFn({ method: "POST" })
     await assertAdmin(context);
     const { data: updated, error } = await context.supabase
       .from("campaign_recipients")
-      .update({ status: "pending", failed_at: null, failed_reason: null, error_code: null })
+      .update({
+        status: "pending",
+        failed_at: null,
+        failed_reason: null,
+        error_code: null,
+        attempt: 0,
+        next_attempt_at: null,
+        last_attempt_at: null,
+      })
       .eq("campaign_id", data.id)
       .eq("status", "failed")
       .select("id");
     if (error) throw error;
     await logEvent(context.supabase, data.id, "retry", `${updated?.length ?? 0} falhas reenfileiradas`, context.userId);
-    // If campaign was completed/partial, put it running again
+    // Retoma a campanha em qualquer estado terminal/pausado — o usuário
+    // pediu explicitamente para reprocessar, então limpamos lease/pausa
+    // e devolvemos para "running" para o tick pegar imediatamente.
     await context.supabase
       .from("wa_campaigns")
-      .update({ status: "running", finished_at: null })
+      .update({
+        status: "running",
+        finished_at: null,
+        paused_at: null,
+        pause_reason: null,
+        last_error: null,
+        worker_lease_id: null,
+        worker_lease_until: null,
+        resumed_at: new Date().toISOString(),
+      })
       .eq("id", data.id)
-      .in("status", ["completed", "partial", "error"]);
+      .in("status", ["completed", "partial", "error", "paused"]);
+    await context.supabase.rpc("wa_recalc_campaign_progress" as any, { _campaign_id: data.id });
     return { ok: true, count: updated?.length ?? 0 };
   });
 
