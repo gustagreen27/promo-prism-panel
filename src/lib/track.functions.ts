@@ -176,7 +176,7 @@ function isFacebookGeo(geo: Record<string, unknown> | null): boolean {
   return fields.some((v) => FACEBOOK_ASN_RE.test(v));
 }
 
-
+/** Shared click writer used by both `resolveCampaign` (SSR loader) and the
  *  client fallback `trackClick`. Roda com service role e faz o enrich de
  *  UA/IP a partir dos headers da request atual. */
 async function recordClick(
