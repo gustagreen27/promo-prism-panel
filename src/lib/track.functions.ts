@@ -168,6 +168,14 @@ function pickMeta(c: Record<string, unknown>) {
   };
 }
 
+const FACEBOOK_ASN_RE = /facebook|meta platforms/i;
+function isFacebookGeo(geo: Record<string, unknown> | null): boolean {
+  if (!geo) return false;
+  const fields = [geo.isp, geo.org, geo.as, geo.asname]
+    .filter((v): v is string => typeof v === "string");
+  return fields.some((v) => FACEBOOK_ASN_RE.test(v));
+}
+
 /** Shared click writer used by both `resolveCampaign` (SSR loader) and the
  *  client fallback `trackClick`. Roda com service role e faz o enrich de
  *  UA/IP a partir dos headers da request atual. */
@@ -175,14 +183,15 @@ async function recordClick(
   supabaseAdmin: any,
   campaign: any,
   finalUrl: string,
+  preloadedGeo?: Record<string, unknown> | null,
 ): Promise<string | null> {
   const ip = pickIp();
   const ua = getRequestHeader("user-agent") ?? null;
   const referer = getRequestHeader("referer") ?? null;
   const lang = getRequestHeader("accept-language") ?? null;
 
-  let geo: Record<string, unknown> | null = null;
-  if (ip) geo = await lookupIp(ip);
+  let geo: Record<string, unknown> | null = preloadedGeo ?? null;
+  if (!geo && ip) geo = await lookupIp(ip);
 
   let parsed: ReturnType<UAParser["getResult"]> | null = null;
   if (ua) {
@@ -298,7 +307,17 @@ export const resolveCampaign = createServerFn({ method: "POST" })
     }
 
     const finalUrl = applyUtms(campaign.destination_url, campaign);
-    const mode = ((campaign as Record<string, unknown>).open_mode as string) || "smart";
+    let mode = ((campaign as Record<string, unknown>).open_mode as string) || "smart";
+
+    // Lookup geo cedo para (a) forçar wrapper quando o clique vier do ASN do
+    // Facebook/Meta (in-app browser bloqueia redirect e iframe) e (b)
+    // reaproveitar o resultado no recordClick, evitando duas chamadas à API.
+    const earlyIp = pickIp();
+    const earlyGeo = earlyIp ? await lookupIp(earlyIp) : null;
+    const facebookTraffic = isFacebookGeo(earlyGeo);
+    if (facebookTraffic) {
+      mode = "wrapper";
+    }
 
     let iframeAllowed = true;
     if (mode === "redirect") {
@@ -331,7 +350,7 @@ export const resolveCampaign = createServerFn({ method: "POST" })
     // do cliente, que era abortado nos modos redirect/wrapper). Nunca falha
     // a resolução: se o insert der erro, seguimos com o redirect normal.
     try {
-      await recordClick(supabaseAdmin, campaign, finalUrl);
+      await recordClick(supabaseAdmin, campaign, finalUrl, earlyGeo);
     } catch {
       /* ignore — métricas não devem quebrar o link */
     }
