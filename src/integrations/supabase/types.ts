@@ -220,85 +220,124 @@ export type Database = {
       campaign_clicks: {
         Row: {
           as_name: string | null
+          as_number: string | null
           browser: string | null
           browser_version: string | null
+          calling_code: string | null
           campaign_id: string
           city: string | null
           clicked_at: string
+          continent: string | null
+          continent_code: string | null
           country: string | null
           country_code: string | null
+          country_code3: string | null
+          currency: string | null
           device: string | null
           device_type: string | null
+          district: string | null
           final_url: string | null
+          hosting: boolean | null
           id: string
           ip: string | null
           isp: string | null
           language: string | null
           lat: number | null
           lon: number | null
+          mobile: boolean | null
           org: string | null
           os: string | null
           os_version: string | null
+          proxy: boolean | null
           referer: string | null
           region: string | null
+          region_code: string | null
+          reverse_dns: string | null
           timezone: string | null
           user_agent: string | null
+          utc_offset: number | null
           workspace_id: string | null
           zip: string | null
         }
         Insert: {
           as_name?: string | null
+          as_number?: string | null
           browser?: string | null
           browser_version?: string | null
+          calling_code?: string | null
           campaign_id: string
           city?: string | null
           clicked_at?: string
+          continent?: string | null
+          continent_code?: string | null
           country?: string | null
           country_code?: string | null
+          country_code3?: string | null
+          currency?: string | null
           device?: string | null
           device_type?: string | null
+          district?: string | null
           final_url?: string | null
+          hosting?: boolean | null
           id?: string
           ip?: string | null
           isp?: string | null
           language?: string | null
           lat?: number | null
           lon?: number | null
+          mobile?: boolean | null
           org?: string | null
           os?: string | null
           os_version?: string | null
+          proxy?: boolean | null
           referer?: string | null
           region?: string | null
+          region_code?: string | null
+          reverse_dns?: string | null
           timezone?: string | null
           user_agent?: string | null
+          utc_offset?: number | null
           workspace_id?: string | null
           zip?: string | null
         }
         Update: {
           as_name?: string | null
+          as_number?: string | null
           browser?: string | null
           browser_version?: string | null
+          calling_code?: string | null
           campaign_id?: string
           city?: string | null
           clicked_at?: string
+          continent?: string | null
+          continent_code?: string | null
           country?: string | null
           country_code?: string | null
+          country_code3?: string | null
+          currency?: string | null
           device?: string | null
           device_type?: string | null
+          district?: string | null
           final_url?: string | null
+          hosting?: boolean | null
           id?: string
           ip?: string | null
           isp?: string | null
           language?: string | null
           lat?: number | null
           lon?: number | null
+          mobile?: boolean | null
           org?: string | null
           os?: string | null
           os_version?: string | null
+          proxy?: boolean | null
           referer?: string | null
           region?: string | null
+          region_code?: string | null
+          reverse_dns?: string | null
           timezone?: string | null
           user_agent?: string | null
+          utc_offset?: number | null
           workspace_id?: string | null
           zip?: string | null
         }
