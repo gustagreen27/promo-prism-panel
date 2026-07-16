@@ -718,6 +718,13 @@ function Page() {
           )}
         </TabsContent>
       </Tabs>
+
+      <SwapConfigDialog
+        open={swapOpen}
+        onOpenChange={setSwapOpen}
+        campaign={camp}
+        onSuccess={invalidate}
+      />
     </div>
   );
 }
