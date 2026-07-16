@@ -238,6 +238,20 @@ export function SwapConfigDialog({ open, onOpenChange, campaign, onSuccess }: Sw
               </div>
             </div>
 
+            {selectedTemplate && prevBodyVarCount > 0 && tplBodyVarNums.length !== prevBodyVarCount && (
+              <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div>
+                    <div className="font-semibold">Quantidade de variáveis mudou</div>
+                    <div className="mt-0.5">
+                      O template anterior tinha <b>{prevBodyVarCount}</b> variável(is); o novo tem <b>{tplBodyVarNums.length}</b>.
+                      Refaça o mapeamento abaixo antes de salvar.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             {selectedTemplate && (tplRequiresMedia || tplBodyVarNums.length > 0 || tplUrlVarNums.length > 0) && (
               <div className="rounded-lg border p-3 space-y-3">
                 {tplRequiresMedia && (
