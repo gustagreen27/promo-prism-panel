@@ -53,11 +53,13 @@ const RETRYABLE_CODES = new Set([
   "368", "500", "502", "503", "504",
 ]);
 const MAX_ATTEMPTS = 5;
-const LEASE_MS = 3 * 60 * 1000;
-const PROCESSING_STALE_MS = 5 * 60 * 1000;
-// Deixe ~5s de folga para o cron de 60s: um tick termina, releaseLease roda,
-// e o próximo cron encontra o lease livre. Evita sobreposição por overrun.
-const MAX_TICK_RUNTIME_MS = 55 * 1000;
+// Leases curtos: se uma execução for interrompida pelo runtime ou por uma
+// chamada externa lenta, o próximo tick retoma em segundos — não em minutos.
+const LEASE_MS = 30 * 1000;
+const PROCESSING_STALE_MS = 45 * 1000;
+// Ticks curtos + self-chain contínuo. Evita a arquitetura “um blocão por minuto”
+// e limita o blast radius de qualquer request travada.
+const MAX_TICK_RUNTIME_MS = 10 * 1000;
 // Rate limiter defaults (used to bootstrap wa_rate_limits on first call).
 // The real values live in wa_rate_limits per phone_number_id and are shared
 // by every campaign using the same número.
@@ -445,8 +447,11 @@ export async function processCampaignTick(
     // Concorrência GLOBAL por número (compartilhada entre campanhas do mesmo phone_number_id).
     // Aquisição atômica no Postgres via wa_acquire_slots; release em lote (1×/s).
     const globalMaxConc = Math.max(campConc, Number((conn as any).global_max_concurrency ?? 200));
-    // Reservamos em blocos grandes para sustentar cadências altas (até 80 msg/s).
-    const chunkSize = Math.max(50, Math.min(campConc * 4, 500));
+    // Mantém só ~1s de buffer local. Antes, chunks de até 500 deixavam centenas
+    // de destinatários em `processing` quando o Worker era interrompido, criando
+    // pausas de minutos. O fluxo agora reabastece continuamente, em buffers curtos.
+    const chunkSize = Math.max(20, Math.min(Math.ceil(effectiveRate), 100));
+    const queueLowWatermark = Math.max(10, Math.ceil(effectiveRate / 2));
     // budget = teto de reservas neste tick (não é rate!).
     const budget = Math.max(1, Math.min(reservationBudget ?? 1000, cap));
 
@@ -543,13 +548,9 @@ export async function processCampaignTick(
     };
 
     const sendOne = async (r: any): Promise<void> => {
-      // Opt-out check
-      const { data: oo } = await supabaseAdmin
-        .from("opt_outs")
-        .select("id")
-        .eq("phone", r.phone)
-        .maybeSingle();
-      if (oo) {
+      // Opt-out/contact são pré-carregados por chunk para não fazer 2 consultas
+      // por destinatário no hot path.
+      if ((r as any)._optedOut) {
         await supabaseAdmin
           .from("campaign_recipients")
           .update({ status: "opt_out", failed_reason: "Contato em opt-out" })
@@ -567,15 +568,7 @@ export async function processCampaignTick(
       const recVars = (r.variables as Record<string, string> | null) || {};
       const mergedVars = { ...campVars, ...recVars };
 
-      let contactRow: any = null;
-      if ((r as any).contact_id) {
-        const { data: c } = await supabaseAdmin.from("contacts").select("*").eq("id", (r as any).contact_id).maybeSingle();
-        contactRow = c;
-      }
-      if (!contactRow) {
-        const { data: c } = await supabaseAdmin.from("contacts").select("*").eq("phone", r.phone).maybeSingle();
-        contactRow = c;
-      }
+      const contactRow = (r as any)._contact ?? null;
       const ctx = buildContext({
         contact: contactRow ?? { phone: r.phone },
         client: clientRow,
@@ -780,6 +773,7 @@ export async function processCampaignTick(
         );
       const isTokenErr = result.code === "190" || /token|OAuthException/i.test(result.error || "");
       const isRateLimit = result.code === "130429";
+      const isPausedTemplate = result.code === "132015" || /template .*paused|temporarily unavailable/i.test(result.error || "");
       const isRetryable = isNetworkErr || isRateLimit ||
         (result.code ? RETRYABLE_CODES.has(String(result.code)) : false);
       const shouldRetry = isRetryable && attempts < MAX_ATTEMPTS;
@@ -814,6 +808,13 @@ export async function processCampaignTick(
         systemicPause = {
           reason: "invalid_token",
           message: `Auto-pausada: token inválido/expirado (${result.error})`,
+        };
+      }
+
+      if (isPausedTemplate) {
+        systemicPause = {
+          reason: "template_paused",
+          message: `Auto-pausada: template pausado/rejeitado pela Meta (${result.error})`,
         };
       }
 
@@ -904,22 +905,35 @@ export async function processCampaignTick(
       if (exhausted || reservedTotal >= budget) return 0;
       const want = Math.min(chunkSize, budget - reservedTotal);
       const ts = new Date().toISOString();
-      const { data: chunk } = await supabaseAdmin
-        .from("campaign_recipients")
-        .select("*")
-        .eq("campaign_id", campaignId)
-        .eq("status", "pending")
-        .or(`next_attempt_at.is.null,next_attempt_at.lte.${ts}`)
-        .order("next_attempt_at", { ascending: true, nullsFirst: true })
-        .limit(want);
+      const { data: chunk } = await supabaseAdmin.rpc("wa_reserve_campaign_recipients" as any, {
+        _campaign_id: campaignId,
+        _limit: want,
+        _locked_at: ts,
+      });
       if (!chunk || chunk.length === 0) {
         exhausted = true;
         return 0;
       }
-      await supabaseAdmin
-        .from("campaign_recipients")
-        .update({ status: "processing", last_attempt_at: ts })
-        .in("id", chunk.map((r: any) => r.id));
+      const rawPhones: string[] = [...new Set((chunk as any[]).map((r: any) => String(r.phone ?? "")).filter(Boolean))];
+      const contactIds: string[] = [...new Set((chunk as any[]).map((r: any) => String(r.contact_id ?? "")).filter(Boolean))];
+      const [optOutRes, contactByIdRes, contactByPhoneRes] = await Promise.all([
+        rawPhones.length
+          ? supabaseAdmin.from("opt_outs").select("phone").in("phone", rawPhones)
+          : Promise.resolve({ data: [] } as any),
+        contactIds.length
+          ? supabaseAdmin.from("contacts").select("*").in("id", contactIds)
+          : Promise.resolve({ data: [] } as any),
+        rawPhones.length
+          ? supabaseAdmin.from("contacts").select("*").in("phone", rawPhones)
+          : Promise.resolve({ data: [] } as any),
+      ]);
+      const optedOut = new Set(((optOutRes as any).data ?? []).map((x: any) => String(x.phone)));
+      const contactsById = new Map(((contactByIdRes as any).data ?? []).map((x: any) => [String(x.id), x]));
+      const contactsByPhone = new Map(((contactByPhoneRes as any).data ?? []).map((x: any) => [String(x.phone), x]));
+      for (const r of chunk as any[]) {
+        (r as any)._optedOut = optedOut.has(String(r.phone));
+        (r as any)._contact = (r.contact_id ? contactsById.get(String(r.contact_id)) : null) ?? contactsByPhone.get(String(r.phone)) ?? null;
+      }
       localQueue.push(...chunk);
       reservedTotal += chunk.length;
       return chunk.length;
@@ -974,7 +988,7 @@ export async function processCampaignTick(
         await flushSlotReleases();
       }
 
-      if (localQueue.length < campConc && !exhausted && reservedTotal < budget) {
+      if (localQueue.length < queueLowWatermark && !exhausted && reservedTotal < budget) {
         kickReserve();
       }
 
@@ -1002,12 +1016,12 @@ export async function processCampaignTick(
         continue;
       }
 
-      // ------ Gate B: bucket GLOBAL do número (compartilhado, cap 100ms de burst) ------
+      // ------ Gate B: bucket GLOBAL do número ------
       if (localGlobalTokens < 1 && now >= lastTokenWaitUntil) {
         const wantTokens = Math.min(
           Math.max(1, maxConc - inflight.size),
           localQueue.length,
-          Math.max(1, Math.ceil(phoneBucketRate / 10)), // ~100ms de rate por RPC = burst cap
+          Math.max(1, Math.ceil(phoneBucketRate)), // ~1s de rate por RPC; pacing local impede rajada
         );
         const tk0 = clock.now();
         const { data: tok } = await supabaseAdmin.rpc("wa_try_consume_tokens" as any, {
@@ -1017,7 +1031,7 @@ export async function processCampaignTick(
           _default_conc: campConc,
           _override_rate: phoneBucketRate,
           _override_conc: campConc,
-          _burst_cap_ms: 100,
+          _burst_cap_ms: 1000,
         });
         const row = Array.isArray(tok) ? tok[0] : tok;
         onRpc?.({ rpc: "wa_try_consume_tokens", ms: clock.now() - tk0, requested: wantTokens, granted: Number(row?.granted ?? 0) });
@@ -1048,7 +1062,7 @@ export async function processCampaignTick(
           Math.min(
             Math.max(1, maxConc - inflight.size),
             Math.max(1, localQueue.length),
-            Math.max(1, Math.ceil(phoneBucketRate / 10)), // ~100ms de rate
+            Math.max(1, Math.ceil(phoneBucketRate)), // ~1s de rate por RPC; pacing local impede rajada
           ),
         );
         const sl0 = clock.now();
