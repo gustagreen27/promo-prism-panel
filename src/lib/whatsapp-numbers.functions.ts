@@ -16,7 +16,7 @@ const fields = {
   phone_number_id: optStr(80),
   waba_id: optStr(80),
   business_id: optStr(80),
-  access_token: optStr(2000),
+  access_token: optStr(4000),
   verify_token: optStr(200),
   webhook_url: optStr(500),
   quality_rating: optStr(40),
@@ -64,6 +64,7 @@ export const updateNumber = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { id, ...patch } = data;
+    if (!patch.access_token) delete patch.access_token;
     const { data: row, error } = await context.supabase
       .from("whatsapp_connections")
       .update(patch)
