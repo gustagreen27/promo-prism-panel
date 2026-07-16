@@ -2924,6 +2924,8 @@ export type Database = {
           access_token: string | null
           adaptive_rate_enabled: boolean
           api_key: string | null
+          app_id: string | null
+          app_secret: string | null
           business_id: string | null
           client_id: string | null
           code_verification_status: string | null
@@ -2977,6 +2979,8 @@ export type Database = {
           access_token?: string | null
           adaptive_rate_enabled?: boolean
           api_key?: string | null
+          app_id?: string | null
+          app_secret?: string | null
           business_id?: string | null
           client_id?: string | null
           code_verification_status?: string | null
@@ -3030,6 +3034,8 @@ export type Database = {
           access_token?: string | null
           adaptive_rate_enabled?: boolean
           api_key?: string | null
+          app_id?: string | null
+          app_secret?: string | null
           business_id?: string | null
           client_id?: string | null
           code_verification_status?: string | null
