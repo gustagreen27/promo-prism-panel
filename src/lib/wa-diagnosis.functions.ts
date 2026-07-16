@@ -96,7 +96,7 @@ export const updateConnectionToken = createServerFn({ method: "POST" })
 
     const { error } = await supabaseAdmin
       .from("whatsapp_connections")
-      .update(patch)
+      .update(patch as any)
       .eq("id", conn.id);
     if (error) throw error;
     await auditProfileEvent({
