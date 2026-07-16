@@ -141,25 +141,14 @@ function Page() {
         <AddNumberWizard wabas={wabas} onDone={() => { setApiOpen(false); refresh(); }} />
       </Dialog>
 
-      <Dialog open={!!tokenEditing} onOpenChange={(v) => { if (!v) { setTokenEditing(null); setTokenInput(""); } }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Trocar token da conexão</DialogTitle>
-            <DialogDescription>
-              Atualiza somente o access token de {tokenEditing?.name ?? tokenEditing?.display_phone ?? "esta conexão"}. Nenhum outro dado do número será alterado.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label>Novo access token</Label>
-            <Input type="password" value={tokenInput} onChange={(e) => setTokenInput(e.target.value)} placeholder="EAAG…" autoComplete="off" />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setTokenEditing(null); setTokenInput(""); }}>Cancelar</Button>
-            <Button onClick={() => tokenMut.mutate()} disabled={tokenMut.isPending || tokenInput.trim().length < 20}>
-              {tokenMut.isPending ? "Salvando…" : "Salvar token"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+      <Dialog open={!!credsEditing} onOpenChange={(v) => { if (!v) setCredsEditing(null); }}>
+        {credsEditing && (
+          <CredentialsDialog
+            connection={credsEditing}
+            onClose={() => setCredsEditing(null)}
+            onSaved={() => { setCredsEditing(null); refresh(); }}
+          />
+        )}
       </Dialog>
     </>
   );
