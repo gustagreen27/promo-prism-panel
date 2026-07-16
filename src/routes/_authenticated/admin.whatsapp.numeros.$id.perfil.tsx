@@ -699,6 +699,127 @@ function Page() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Credenciais Meta desta conexão */}
+      <Dialog open={credsDlg} onOpenChange={(o) => { setCredsDlg(o); if (!o) { setCredToken(""); setCredAppSecret(""); } }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Credenciais Meta desta conexão</DialogTitle>
+            <DialogDescription>
+              Cada conexão pode ter seu próprio Access Token, App ID e App Secret.
+              Se marcar “Usar credenciais globais”, esta conexão utilizará as variáveis de ambiente do sistema.
+            </DialogDescription>
+          </DialogHeader>
+
+          {credsQuery.isLoading ? (
+            <div className="text-sm text-muted-foreground">Carregando…</div>
+          ) : (
+            <div className="space-y-4">
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={!!credUseGlobal} onChange={(e) => setCredUseGlobal(e.target.checked)} />
+                Usar credenciais globais (variáveis do sistema)
+              </label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="sm:col-span-2">
+                  <Label>Access Token</Label>
+                  <Input
+                    type="password" autoComplete="off"
+                    value={credToken} onChange={(e) => setCredToken(e.target.value)}
+                    placeholder={(credsQuery.data as any)?.access_token_mask ? `Credencial já configurada — termina em …${(credsQuery.data as any).access_token_mask.last6}` : "EAAG…"}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Deixe em branco para manter o valor atual.</p>
+                </div>
+                <div>
+                  <Label>Meta App ID</Label>
+                  <Input value={credAppId} onChange={(e) => setCredAppId(e.target.value)} placeholder="ex.: 864475153084810" />
+                </div>
+                <div>
+                  <Label>Meta App Secret</Label>
+                  <Input
+                    type="password" autoComplete="off"
+                    value={credAppSecret} onChange={(e) => setCredAppSecret(e.target.value)}
+                    placeholder={(credsQuery.data as any)?.app_secret_mask ? `Credencial já configurada — termina em …${(credsQuery.data as any).app_secret_mask.last6}` : "app secret"}
+                  />
+                </div>
+                <div>
+                  <Label>Verify Token (webhook)</Label>
+                  <Input
+                    value={credVerify} onChange={(e) => setCredVerify(e.target.value)}
+                    placeholder={(credsQuery.data as any)?.verify_token_mask ? `Credencial já configurada — termina em …${(credsQuery.data as any).verify_token_mask.last6}` : "verify token"}
+                  />
+                </div>
+                <div>
+                  <Label>Business ID</Label>
+                  <Input value={credBusiness} onChange={(e) => setCredBusiness(e.target.value)} placeholder="opcional" />
+                </div>
+                <div>
+                  <Label>WABA ID</Label>
+                  <Input value={(credsQuery.data as any)?.waba_id ?? ""} disabled />
+                </div>
+                <div>
+                  <Label>Phone Number ID</Label>
+                  <Input value={(credsQuery.data as any)?.phone_number_id ?? ""} disabled />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-2 border-t">
+                <Button size="sm" variant="outline" onClick={() => debugCredsMut.mutate()} disabled={debugCredsMut.isPending}>
+                  {debugCredsMut.isPending ? "Testando…" : "Testar token (debug_token)"}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => subCredsMut.mutate()} disabled={subCredsMut.isPending}>
+                  {subCredsMut.isPending ? "Consultando…" : "Ver apps inscritos"}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => subscribeMut.mutate()} disabled={subscribeMut.isPending}>
+                  {subscribeMut.isPending ? "Inscrevendo…" : "Inscrever app no webhook"}
+                </Button>
+              </div>
+
+              {credDebugResult && (
+                <div className="rounded-md border p-3 text-xs space-y-1 bg-muted/40">
+                  <div className="font-semibold">Resultado do debug_token ({credDebugResult.source})</div>
+                  <div>Token: {credDebugResult.token_last6 ? `…${credDebugResult.token_last6}` : "—"}</div>
+                  <div>App ID no token: <span className="font-mono">{credDebugResult.token_app_id ?? "—"}</span></div>
+                  <div>App ID configurado: <span className="font-mono">{credDebugResult.connection_app_id ?? "—"}</span></div>
+                  <div>Válido: {credDebugResult.is_valid ? "sim" : "não"}</div>
+                  {credDebugResult.app_id_matches === false && (
+                    <div className="text-destructive whitespace-pre-wrap">{credDebugResult.message}</div>
+                  )}
+                  {credDebugResult.error && (
+                    <div className="text-destructive">Erro: {credDebugResult.error?.message ?? JSON.stringify(credDebugResult.error)}</div>
+                  )}
+                  {credDebugResult.reason && <div className="text-destructive">{credDebugResult.reason}{credDebugResult.hint ? ` — ${credDebugResult.hint}` : ""}</div>}
+                </div>
+              )}
+
+              {credSubResult && (
+                <div className="rounded-md border p-3 text-xs space-y-1 bg-muted/40">
+                  <div className="font-semibold">Apps inscritos na WABA</div>
+                  <div>App esperado desta conexão: <span className="font-mono">{credSubResult.expected_app_id ?? "—"}</span></div>
+                  <div>
+                    Inscritos: {(credSubResult.subscribed ?? []).length === 0 ? "nenhum" : (credSubResult.subscribed as any[]).map((a) => `${a.name ?? "?"} (${a.app_id ?? "?"})`).join(", ")}
+                  </div>
+                  <div>
+                    Status: {credSubResult.is_subscribed === true ? "app da conexão está inscrito" :
+                             credSubResult.is_subscribed === false ? "app da conexão NÃO está inscrito" : "indeterminado"}
+                  </div>
+                  {credSubResult.error && <div className="text-destructive">Erro: {credSubResult.error?.message ?? JSON.stringify(credSubResult.error)}</div>}
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCredsDlg(false)}>Fechar</Button>
+            <Button
+              onClick={() => saveCredsMut.mutate()}
+              disabled={saveCredsMut.isPending || (!credToken.trim() && !credAppId.trim() && !credAppSecret.trim() && !credVerify.trim() && !credBusiness.trim() && credUseGlobal === !!(credsQuery.data as any)?.use_global_token)}
+            >
+              {saveCredsMut.isPending ? "Salvando…" : "Salvar credenciais"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
