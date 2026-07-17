@@ -109,7 +109,7 @@ function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId
       <div className="flex items-center justify-between mb-3">
         <div>
           <h3 className="font-semibold">{w.name}</h3>
-          <p className="text-xs text-muted-foreground">/{w.slug} · {w.plan} · <Badge variant="outline">{w.status}</Badge></p>
+          <div className="text-xs text-muted-foreground flex items-center gap-1">/{w.slug} · {w.plan} · <Badge variant="outline">{w.status}</Badge></div>
         </div>
         <div className="text-xs text-muted-foreground">
           {w.wabas.length} WABA · {w.connections.length} números
