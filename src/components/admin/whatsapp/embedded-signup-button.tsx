@@ -149,16 +149,24 @@ export function EmbeddedSignupButton({
     sessionRef.current = null;
     setLoading(true);
 
-    const extras: Record<string, any> =
-      mode === "coexistence"
-        ? {
-            featureType: "whatsapp_business_app_onboarding",
-            sessionInfoVersion: "3",
-            version: "v4",
-            features: [{ name: "app_only_install" }],
-          }
-        : { setup: {}, featureType: "", sessionInfoVersion: "3", version: "v4" };
+    // Extras: NUNCA envia setup:{} ou featureType:"" — Meta rejeita chaves vazias
+    // silenciosamente e o sample oficial só inclui essas chaves quando têm valor real.
+    const extras: Record<string, any> = { sessionInfoVersion: "3", version: "v4" };
+    if (mode === "coexistence") {
+      extras.featureType = "whatsapp_business_app_onboarding";
+      extras.features = [{ name: "app_only_install" }];
+    }
 
+    // Watchdog do popup: se o callback do FB não disparar em 5min (usuário fechou
+    // a janela sem CANCEL, bloqueador de popup, extensão etc.), libera o botão.
+    // NÃO cancela nem interfere no callback real: apenas destrava o `loading`.
+    let done = false;
+    const watchdog = window.setTimeout(() => {
+      if (!done) {
+        setLoading(false);
+        toast.message("O popup do Facebook não respondeu em 5 minutos. Tente novamente.");
+      }
+    }, 5 * 60 * 1000);
 
     window.FB.login(
       async (resp: any) => {
@@ -212,6 +220,8 @@ export function EmbeddedSignupButton({
             toast.error(msg);
           }
         } finally {
+          done = true;
+          window.clearTimeout(watchdog);
           setLoading(false);
         }
       },
@@ -223,6 +233,7 @@ export function EmbeddedSignupButton({
       },
     );
   }
+
 
   const defaultLabel = mode === "coexistence" ? "Conectar sem remover do WhatsApp" : "Conectar WhatsApp";
   const Icon = mode === "coexistence" ? Smartphone : MessageCircle;
