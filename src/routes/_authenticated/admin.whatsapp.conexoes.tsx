@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { EmbeddedSignupButton } from "@/components/admin/whatsapp/embedded-signup-button";
 import {
   listWorkspaceConnections,
   setWorkspaceBusinessId,
@@ -66,6 +67,13 @@ function Page() {
         title="Conexões"
         description="Vincule cada workspace ao seu Business Manager (BM) e ao número padrão de envio."
       />
+      <div className="mb-4 flex flex-wrap gap-2 rounded-xl border bg-card p-4">
+        <div className="flex-1 min-w-[220px]">
+          <div className="font-semibold text-sm">Conectar novo WhatsApp Business</div>
+          <div className="text-xs text-muted-foreground">Abre o Cadastro incorporado da Meta em um popup.</div>
+        </div>
+        <EmbeddedSignupButton mode="coexistence" label="Conectar WhatsApp" />
+      </div>
       {isLoading ? (
         <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
       ) : error ? (
@@ -101,7 +109,7 @@ function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId
       <div className="flex items-center justify-between mb-3">
         <div>
           <h3 className="font-semibold">{w.name}</h3>
-          <p className="text-xs text-muted-foreground">/{w.slug} · {w.plan} · <Badge variant="outline">{w.status}</Badge></p>
+          <div className="text-xs text-muted-foreground flex items-center gap-1">/{w.slug} · {w.plan} · <Badge variant="outline">{w.status}</Badge></div>
         </div>
         <div className="text-xs text-muted-foreground">
           {w.wabas.length} WABA · {w.connections.length} números
