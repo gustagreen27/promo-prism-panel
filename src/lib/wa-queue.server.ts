@@ -666,7 +666,7 @@ export async function processCampaignTick(
       const result = await transport.sendTemplateMessage({
         phoneNumberId: conn.phone_number_id!,
         accessToken: conn.access_token!,
-        graphVersion: conn.graph_api_version || "v21.0",
+        graphVersion: resolveGraphVersion(conn.graph_api_version),
         to: r.phone.replace(/\D/g, ""),
         templateName: tpl.name,
         languageCode: tpl.language || "pt_BR",
