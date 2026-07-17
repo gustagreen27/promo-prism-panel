@@ -145,6 +145,9 @@ function PublicCampaignReport() {
     const t = setInterval(() => setTick((n) => n + 1), intervalMs);
     setRefetchMs((prev) => Math.min(prev, intervalMs));
     return () => clearInterval(t);
+  }, [publicSettings]);
+
+
 
 
   // Atualização quase em tempo real: enquanto houver disparo em execução
