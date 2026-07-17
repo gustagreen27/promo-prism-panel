@@ -478,12 +478,17 @@ export const getCampaignProgress = createServerFn({ method: "GET" })
     const pending = num("pending");
     const processing = num("processing");
     const accepted = num("accepted");
-    const deliveredBase = num("delivered");
-    const readBase = num("read");
+    // progress json (wa_recalc_campaign_progress) já entrega os totais acumulados:
+    //   sent = accepted+sent+delivered+read+replied
+    //   delivered = delivered+read+replied
+    //   read = read+replied
+    // Não re-somar aqui, senão delivered fica maior que sent.
     const replied = num("replied");
-    const delivered = deliveredBase + readBase + replied;
-    const read = readBase + replied;
-    const sent = num("sent");
+    const delivered = num("delivered");
+    const read = num("read");
+    const sentRaw = num("sent");
+    // Sanidade: entregues nunca pode passar de enviadas.
+    const sent = Math.max(sentRaw, delivered);
     const processed = Number(stored.processed ?? (total - pending - processing)) || 0;
     const liveProgress = {
       total,
