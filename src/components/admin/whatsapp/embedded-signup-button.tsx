@@ -71,14 +71,28 @@ export function EmbeddedSignupButton({
 
   useEffect(() => {
     if (!cfg) return;
-    if (window.FB) {
+    let cancelled = false;
+    const initFB = () => {
+      if (cancelled || !window.FB) return;
+      // FB.init is idempotent per appId+version — safe to call again after HMR/remount.
       window.FB.init({ appId: cfg.appId, cookie: true, xfbml: false, version: cfg.graphVersion });
       setReady(true);
-      return;
+    };
+    if (window.FB) {
+      initFB();
+      return () => {
+        cancelled = true;
+      };
     }
+    // Chain onto any existing fbAsyncInit instead of clobbering it (other consumers may rely on it).
+    const prev = window.fbAsyncInit;
     window.fbAsyncInit = () => {
-      window.FB!.init({ appId: cfg.appId, cookie: true, xfbml: false, version: cfg.graphVersion });
-      setReady(true);
+      try {
+        prev?.();
+      } catch {
+        /* ignore other consumers' errors */
+      }
+      initFB();
     };
     const id = "facebook-jssdk";
     if (!document.getElementById(id)) {
@@ -90,7 +104,11 @@ export function EmbeddedSignupButton({
       s.src = "https://connect.facebook.net/en_US/sdk.js";
       document.body.appendChild(s);
     }
+    return () => {
+      cancelled = true;
+    };
   }, [cfg]);
+
 
   useEffect(() => {
     function onMessage(ev: MessageEvent) {
