@@ -2,6 +2,7 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendTemplateMessage } from "@/lib/wa-send.server";
 import { renderMapping, buildContext } from "@/lib/wa-variables";
+import { GRAPH_VERSION, resolveGraphVersion } from "@/lib/meta/graph-version";
 
 // ---------------------------------------------------------------------------
 // Dependency-injection surface (Fase 2, harness end-to-end)
@@ -63,7 +64,9 @@ const MAX_TICK_RUNTIME_MS = 10 * 1000;
 // Rate limiter defaults (used to bootstrap wa_rate_limits on first call).
 // The real values live in wa_rate_limits per phone_number_id and are shared
 // by every campaign using the same número.
-const DEFAULT_RATE_PER_SECOND = 6;
+// Default rate = 1 msg/s. Only used when the campaign row has NULL rate_per_second
+// (a value of 0 or an explicit number is honored below via ?? not ||).
+const DEFAULT_RATE_PER_SECOND = 1;
 const DEFAULT_MAX_CONCURRENCY = 15;
 // Systemic-error thresholds — pause the campaign only when the whole path is broken,
 // individual errors go through retry-with-backoff instead.
@@ -663,7 +666,7 @@ export async function processCampaignTick(
       const result = await transport.sendTemplateMessage({
         phoneNumberId: conn.phone_number_id!,
         accessToken: conn.access_token!,
-        graphVersion: conn.graph_api_version || "v21.0",
+        graphVersion: resolveGraphVersion(conn.graph_api_version),
         to: r.phone.replace(/\D/g, ""),
         templateName: tpl.name,
         languageCode: tpl.language || "pt_BR",

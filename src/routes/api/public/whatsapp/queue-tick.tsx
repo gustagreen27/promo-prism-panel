@@ -46,19 +46,48 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
         try {
           const nowIso = new Date().toISOString();
 
-          // Auto-heal de slots/tokens vazados: se um número não teve atividade
-          // no rate_limits nos últimos 30s, nenhum tick anterior está usando
-          // aqueles slots (o lease global do tick dura 20s). Zera contador e
-          // recarrega tokens para evitar pausas longas quando active_inflight
-          // fica travado no teto.
+          // Auto-heal de slots vazados.
+          // GUARDA: só devolvemos capacidade quando é impossível haver
+          // requisições em andamento — ou seja, wa_rate_limits está parado há
+          // mais de 30s E não há campanha 'running' com lease de tick ativo
+          // nesse número E não há recipients em 'processing' recentes.
+          // Isso impede devolução de slots enquanto sends ainda estão em voo.
           try {
-             const staleRateCutoff = new Date(Date.now() - 30 * 1000).toISOString();
+            const staleRateCutoff = new Date(Date.now() - 30 * 1000).toISOString();
             const { data: staleRates } = await supabaseAdmin
               .from("wa_rate_limits")
               .select("phone_number_id,rate_per_second")
               .lt("updated_at", staleRateCutoff)
               .gt("active_inflight", 0);
             for (const r of staleRates ?? []) {
+              const phoneId = r.phone_number_id as string;
+              // Existem recipients em 'processing' há pouco tempo neste número?
+              const { data: conns } = await supabaseAdmin
+                .from("whatsapp_connections")
+                .select("id")
+                .eq("phone_number_id", phoneId);
+              const connIds = (conns ?? []).map((c: any) => c.id as string);
+              let busy = false;
+              if (connIds.length > 0) {
+                const recentIso = new Date(Date.now() - 30 * 1000).toISOString();
+                const { data: activeCamps } = await supabaseAdmin
+                  .from("wa_campaigns")
+                  .select("id")
+                  .in("connection_id", connIds)
+                  .eq("status", "running")
+                  .gt("worker_lease_until", nowIso);
+                if ((activeCamps?.length ?? 0) > 0) busy = true;
+                if (!busy) {
+                  const { count: procCount } = await supabaseAdmin
+                    .from("campaign_recipients")
+                    .select("id", { count: "exact", head: true })
+                    .in("campaign_id", (activeCamps ?? []).map((c: any) => c.id) as any)
+                    .eq("status", "processing")
+                    .gte("last_attempt_at", recentIso);
+                  if ((procCount ?? 0) > 0) busy = true;
+                }
+              }
+              if (busy) continue;
               await supabaseAdmin
                 .from("wa_rate_limits")
                 .update({
@@ -67,11 +96,12 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
                   last_refill_at: nowIso,
                   updated_at: nowIso,
                 })
-                .eq("phone_number_id", r.phone_number_id as string);
+                .eq("phone_number_id", phoneId);
             }
           } catch (err) {
             console.error("[queue-tick] rate-limit heal failed", err);
           }
+
 
           // Preflight validation of scheduled campaigns whose time has come
           const { data: due } = await supabaseAdmin
@@ -202,15 +232,32 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
           const TICK_WINDOW_S = 12;
           const results: any[] = [];
           for (const c of running ?? []) {
-            const rps = Math.max(1, Number((c as any).rate_per_second) || 6);
+            // Rate default = 1 msg/s quando a campanha não define; qualquer valor
+            // explícito (inclusive baixo) é respeitado sem clamp para cima.
+            const rps = Math.max(1, Number((c as any).rate_per_second ?? 1));
             const reservationBudget = Math.min(5000, rps * TICK_WINDOW_S);
             try {
               const r = await processCampaignTick(c.id, reservationBudget);
               results.push({ id: c.id, ...r });
             } catch (e: any) {
-              results.push({ id: c.id, error: e?.message });
+              const msg = e?.message ?? String(e);
+              results.push({ id: c.id, error: msg });
+              // Registro visível na campanha: last_error + timeline event.
+              try {
+                await supabaseAdmin
+                  .from("wa_campaigns")
+                  .update({ last_error: `tick_failed: ${msg}` })
+                  .eq("id", c.id);
+                await supabaseAdmin.from("campaign_timeline").insert({
+                  campaign_id: c.id,
+                  event_type: "tick_failed",
+                  message: `Tick falhou: ${msg}`,
+                  payload: { source },
+                });
+              } catch { /* best-effort */ }
             }
           }
+
 
           const hadWork = (running?.length ?? 0) > 0;
           const wallMs = Date.now() - tickStartWall;

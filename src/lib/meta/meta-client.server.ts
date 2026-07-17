@@ -3,8 +3,9 @@
  * Centraliza versão, timeout, parser de erros e chamadas HTTP.
  */
 
-export const META_GRAPH_VERSION = process.env.META_GRAPH_VERSION ?? "v21.0";
-export const META_GRAPH = `https://graph.facebook.com/${META_GRAPH_VERSION}`;
+import { GRAPH_VERSION, GRAPH_BASE } from "@/lib/meta/graph-version";
+export const META_GRAPH_VERSION = GRAPH_VERSION;
+export const META_GRAPH = GRAPH_BASE;
 
 export type MetaApiError = {
   message: string;
