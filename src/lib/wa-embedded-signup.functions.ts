@@ -1,9 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-
-const GRAPH_VERSION = process.env.META_GRAPH_API_VERSION || "v25.0";
-const GRAPH = `https://graph.facebook.com/${GRAPH_VERSION}`;
+import { GRAPH_VERSION, GRAPH_BASE as GRAPH } from "@/lib/meta/graph-version";
 
 async function assertAdmin(ctx: { supabase: any; userId: string }) {
   const { data } = await ctx.supabase.rpc("has_role", { _user_id: ctx.userId, _role: "admin" });
