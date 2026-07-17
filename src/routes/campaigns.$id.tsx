@@ -151,9 +151,9 @@ function PublicCampaignReport() {
 
 
   // Atualização quase em tempo real: enquanto houver disparo em execução
-  // e nenhuma simulação/gerador ativo controlando o intervalo, faz polling
-  // rápido (3s) para refletir webhooks de status assim que chegam. Sem
-  // disparo ativo, volta para 30s.
+  // OU cliques recentes (últimos 5 min), faz polling rápido para refletir
+  // webhooks de status e novos cliques assim que chegam. Sem atividade
+  // recente, volta para 30s.
   useEffect(() => {
     const simActive =
       (simulation && simulation.mode !== "real" && simulation.runtime?.active) ||
@@ -163,8 +163,15 @@ function PublicCampaignReport() {
     const hasRunning = (data?.dispatches ?? []).some(
       (d: { status: string | null }) => d.status === "running" || d.status === "scheduled",
     );
-    setRefetchMs(hasRunning ? 3000 : 30000);
-  }, [data?.dispatches, simulation, publicSimulations, publicSettings]);
+    const now = Date.now();
+    const recentClick = ((data as any)?.clicks ?? []).some((c: { clicked_at: string }) => {
+      const t = new Date(c.clicked_at).getTime();
+      return Number.isFinite(t) && now - t < 5 * 60 * 1000;
+    });
+    if (hasRunning) setRefetchMs(3000);
+    else if (recentClick) setRefetchMs(5000);
+    else setRefetchMs(30000);
+  }, [data, simulation, publicSimulations, publicSettings]);
 
 
 
