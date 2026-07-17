@@ -803,13 +803,15 @@ function DispatchCard({
   // mesma métrica do admin. `sent` e `failed` são contagens independentes que somam ao total,
   // portanto `sent − failed` não representa entregues.
   const delivered = Math.max(0, Math.min(rawDelivered, sent));
+  const progressData = ((d.progress ?? {}) as Record<string, unknown>);
+  const processed = Number(progressData.processed ?? sent + failed) || 0;
   const percent = perSnapshot
     ? perSnapshot.percent
     : snapshot
       ? snapshot.percent
       : total > 0
-        ? Math.min(100, Math.round((sent / Math.max(total, sent)) * 100))
-        : sent > 0
+        ? Math.min(100, Math.round((processed / Math.max(total, processed)) * 100))
+        : processed > 0
           ? 100
           : 0;
 
