@@ -799,8 +799,10 @@ function DispatchCard({
   const rawDelivered = perSnapshot?.delivered ?? snapshot?.delivered ?? overrides?.delivered ?? (d.delivered_count ?? 0);
   const sent = perSnapshot?.sent ?? snapshot?.sent ?? overrides?.sent ?? rawDelivered;
   const failed = perSnapshot?.failed ?? snapshot?.failed ?? overrides?.failed ?? (d.failed_count ?? 0);
-  // Público: entregues = enviados − falhas.
-  const delivered = Math.max(0, sent - failed);
+  // Público: entregues reais reportados pela Meta (delivered + read + replied),
+  // mesma métrica do admin. `sent` e `failed` são contagens independentes que somam ao total,
+  // portanto `sent − failed` não representa entregues.
+  const delivered = Math.max(0, Math.min(rawDelivered, sent));
   const percent = perSnapshot
     ? perSnapshot.percent
     : snapshot
