@@ -1,7 +1,7 @@
 // Server-only helper for Meta Graph API (WhatsApp Business Platform).
 // Import ONLY inside .handler() bodies via: const { ... } = await import("@/lib/wa-meta.server");
 
-const GRAPH = "https://graph.facebook.com/v21.0";
+import { GRAPH_BASE as GRAPH } from "@/lib/meta/graph-version";
 
 export type MetaError = {
   ok: false;
