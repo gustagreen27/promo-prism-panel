@@ -2,6 +2,7 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendTemplateMessage } from "@/lib/wa-send.server";
 import { renderMapping, buildContext } from "@/lib/wa-variables";
+import { GRAPH_VERSION, resolveGraphVersion } from "@/lib/meta/graph-version";
 
 // ---------------------------------------------------------------------------
 // Dependency-injection surface (Fase 2, harness end-to-end)
