@@ -64,7 +64,9 @@ const MAX_TICK_RUNTIME_MS = 10 * 1000;
 // Rate limiter defaults (used to bootstrap wa_rate_limits on first call).
 // The real values live in wa_rate_limits per phone_number_id and are shared
 // by every campaign using the same número.
-const DEFAULT_RATE_PER_SECOND = 6;
+// Default rate = 1 msg/s. Only used when the campaign row has NULL rate_per_second
+// (a value of 0 or an explicit number is honored below via ?? not ||).
+const DEFAULT_RATE_PER_SECOND = 1;
 const DEFAULT_MAX_CONCURRENCY = 15;
 // Systemic-error thresholds — pause the campaign only when the whole path is broken,
 // individual errors go through retry-with-backoff instead.
