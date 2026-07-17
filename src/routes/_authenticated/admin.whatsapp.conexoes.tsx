@@ -67,6 +67,13 @@ function Page() {
         title="Conexões"
         description="Vincule cada workspace ao seu Business Manager (BM) e ao número padrão de envio."
       />
+      <div className="mb-4 flex flex-wrap gap-2 rounded-xl border bg-card p-4">
+        <div className="flex-1 min-w-[220px]">
+          <div className="font-semibold text-sm">Conectar novo WhatsApp Business</div>
+          <div className="text-xs text-muted-foreground">Abre o Cadastro incorporado da Meta em um popup.</div>
+        </div>
+        <EmbeddedSignupButton mode="coexistence" label="Conectar WhatsApp" />
+      </div>
       {isLoading ? (
         <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
       ) : error ? (
