@@ -262,6 +262,41 @@ export const completeEmbeddedSignup = createServerFn({ method: "POST" })
     baseLog.connection_id = connectionId;
     await logStep(supabase, baseLog, "upsert_connection", "ok", { connection_id: connectionId, status: connPayload.status });
 
+    // 6b) STANDARD only: register phone number in Cloud API (idempotent).
+    // - Skips when the number is already verified/registered (avoids duplicate registration).
+    // - PIN comes from META_ES_REGISTER_PIN; if missing we log and skip (no throw).
+    // - Any Meta "already registered" error is treated as success.
+    if (!isCoexistence) {
+      const alreadyRegistered =
+        (phJson?.code_verification_status === "VERIFIED") &&
+        (String(phJson?.status || "").toUpperCase() === "CONNECTED");
+      const pin = process.env.META_ES_REGISTER_PIN;
+      if (alreadyRegistered) {
+        await logStep(supabase, baseLog, "register_phone", "ok", { skipped: true, reason: "already_registered" });
+      } else if (!pin) {
+        await logStep(supabase, baseLog, "register_phone", "error", null, "META_ES_REGISTER_PIN não configurado — número não será auto-registrado.");
+      } else {
+        try {
+          const regRes = await gfetch(`/${data.phone_number_id}/register`, {
+            method: "POST",
+            body: JSON.stringify({ messaging_product: "whatsapp", pin }),
+          });
+          const regJson: any = await regRes.json().catch(() => ({}));
+          const errMsg: string = regJson?.error?.message || "";
+          const errCode: string = String(regJson?.error?.code || "");
+          const isDupe = /already .*registered|already .*in use/i.test(errMsg) || errCode === "133005";
+          if (regRes.ok || isDupe) {
+            await logStep(supabase, baseLog, "register_phone", "ok", { idempotent: isDupe, http: regRes.status });
+          } else {
+            await logStep(supabase, baseLog, "register_phone", "error", regJson, errMsg || `HTTP ${regRes.status}`);
+          }
+        } catch (e: any) {
+          await logStep(supabase, baseLog, "register_phone", "error", null, e?.message ?? "register call failed");
+        }
+      }
+    }
+
+
     // 7) auto-sync full WABA (best-effort) — traz eventuais outros números da mesma WABA
     try {
       const { _syncOneWabaInternal } = await import("@/lib/wa-meta-sync.functions");
