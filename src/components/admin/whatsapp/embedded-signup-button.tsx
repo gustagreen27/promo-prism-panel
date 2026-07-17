@@ -75,7 +75,7 @@ export function EmbeddedSignupButton({
     const initFB = () => {
       if (cancelled || !window.FB) return;
       // FB.init is idempotent per appId+version — safe to call again after HMR/remount.
-      window.FB.init({ appId: cfg.appId, cookie: true, xfbml: false, version: cfg.graphVersion });
+      window.FB.init({ appId: cfg.appId, cookie: true, xfbml: true, autoLogAppEvents: true, version: cfg.graphVersion });
       setReady(true);
     };
     if (window.FB) {
