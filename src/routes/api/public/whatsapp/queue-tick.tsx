@@ -11,7 +11,7 @@ const CHAIN_APIKEY = process.env.SUPABASE_PUBLISHABLE_KEY || "";
 
 // Lease curto para self-chain contínuo: se uma execução cair, o próximo tick
 // retoma em segundos, sem ficar preso até o próximo minuto.
-const TICK_LEASE_SECONDS = 20;
+const TICK_LEASE_SECONDS = 6;
 
 export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
   server: {
@@ -42,6 +42,14 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
             source,
           });
         }
+        let tickLeaseReleased = false;
+        const releaseTickLeaseOnce = async () => {
+          if (tickLeaseReleased) return;
+          tickLeaseReleased = true;
+          try {
+            await supabaseAdmin.rpc("wa_tick_release_lease" as any, { _holder: holder });
+          } catch { /* ignore */ }
+        };
 
         try {
           const nowIso = new Date().toISOString();
@@ -231,6 +239,13 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
 
           const TICK_WINDOW_S = 12;
           const results: any[] = [];
+
+          // O lease global só protege a etapa de manutenção/seleção do tick.
+          // O controle contra duplicidade real fica no lease por campanha +
+          // SKIP LOCKED dos destinatários. Liberar aqui evita que uma execução
+          // fique segurando o cron enquanto espera respostas da Graph API.
+          await releaseTickLeaseOnce();
+
           for (const c of running ?? []) {
             // Rate default = 1 msg/s quando a campanha não define; qualquer valor
             // explícito (inclusive baixo) é respeitado sem clamp para cima.
@@ -263,9 +278,7 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
           const wallMs = Date.now() - tickStartWall;
 
           // ---- Libera lease ANTES de encadear (wa_tick_chain checa lease livre) ----
-          try {
-            await supabaseAdmin.rpc("wa_tick_release_lease" as any, { _holder: holder });
-          } catch { /* ignore */ }
+          await releaseTickLeaseOnce();
 
           // ---- Self-chain: só se houve trabalho e não estamos perto do fim do lease ----
           let chainResult: any = null;
@@ -291,9 +304,7 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
           });
         } catch (err) {
           // libera lease em caso de exceção
-          try {
-            await supabaseAdmin.rpc("wa_tick_release_lease" as any, { _holder: holder });
-          } catch { /* ignore */ }
+          await releaseTickLeaseOnce();
           throw err;
         }
       },

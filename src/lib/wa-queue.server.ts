@@ -54,10 +54,12 @@ const RETRYABLE_CODES = new Set([
   "368", "500", "502", "503", "504",
 ]);
 const MAX_ATTEMPTS = 5;
-// Leases curtos: se uma execução for interrompida pelo runtime ou por uma
-// chamada externa lenta, o próximo tick retoma em segundos — não em minutos.
-const LEASE_MS = 30 * 1000;
-const PROCESSING_STALE_MS = 45 * 1000;
+// Lease bem curto: o processamento é seguro por reserva atômica com SKIP LOCKED,
+// então o próximo tick pode entrar em poucos segundos sem duplicar destinatário.
+// Antes 30s fazia o efeito indesejado de "bloco, pausa, bloco" quando o runtime
+// encerrava antes do finally liberar o lease.
+const LEASE_MS = 5 * 1000;
+const PROCESSING_STALE_MS = 20 * 1000;
 // Ticks curtos + self-chain contínuo. Evita a arquitetura “um blocão por minuto”
 // e limita o blast radius de qualquer request travada.
 const MAX_TICK_RUNTIME_MS = 10 * 1000;
@@ -277,6 +279,13 @@ export async function processCampaignTick(
 
   const lease = await acquireLease(campaignId);
   if (!lease) return { processed: 0, done: false, skipped: true };
+  let campaignLeaseReleased = false;
+
+  const releaseCampaignLeaseOnce = async () => {
+    if (campaignLeaseReleased) return;
+    campaignLeaseReleased = true;
+    await releaseLease(campaignId);
+  };
 
   try {
     const { data: camp } = await supabaseAdmin
@@ -446,7 +455,16 @@ export async function processCampaignTick(
     const rawCampRate = Math.max(1, Number((camp as any).rate_per_second ?? DEFAULT_RATE_PER_SECOND));
     // Rate efetivo desta campanha = min(campanha, bucket global do número).
     const effectiveRate = Math.min(rawCampRate, phoneBucketRate);
-    const campConc = Math.max(1, Number((camp as any).max_concurrency ?? DEFAULT_MAX_CONCURRENCY));
+    // Para manter N requisições reais por segundo, a concorrência precisa cobrir
+    // a latência da Graph API. Ex.: 80/s com timeout de ~8s precisa de ~640+
+    // requisições em voo; com só 120/200, o sistema envia um bloco e para até
+    // liberar slots. Calcula um piso automático e preserva valores maiores.
+    const requiredConcurrencyForRate = Math.ceil(effectiveRate * 10);
+    const campConc = Math.max(
+      1,
+      Number((camp as any).max_concurrency ?? DEFAULT_MAX_CONCURRENCY),
+      requiredConcurrencyForRate,
+    );
     // Concorrência GLOBAL por número (compartilhada entre campanhas do mesmo phone_number_id).
     // Aquisição atômica no Postgres via wa_acquire_slots; release em lote (1×/s).
     const globalMaxConc = Math.max(campConc, Number((conn as any).global_max_concurrency ?? 200));
@@ -664,12 +682,9 @@ export async function processCampaignTick(
       }
 
       const permitGrantedAt = new Date().toISOString();
-      // Marca antes do fetch para separar "permit adquirido" de "request iniciado"
-      // e permitir análise de spacing por request_started_at, imune a jitter de gravação.
-      await supabaseAdmin
-        .from("campaign_recipients")
-        .update({ permit_granted_at: permitGrantedAt })
-        .eq("id", r.id);
+      // Não faz write no banco antes do fetch da Meta: esse update por mensagem
+      // no hot path era suficiente para transformar 80/s em blocos lentos.
+      // Persistimos o timestamp junto com o resultado final abaixo.
       const result = await transport.sendTemplateMessage({
         phoneNumberId: conn.phone_number_id!,
         accessToken: conn.access_token!,
@@ -725,6 +740,7 @@ export async function processCampaignTick(
             sent_at: new Date().toISOString(),
             request_started_at: (result as any).requestStartedAt ?? null,
             response_received_at: (result as any).responseReceivedAt ?? null,
+            permit_granted_at: permitGrantedAt,
             dedup_key: r.id,
             attempt: attempts,
             next_attempt_at: null,
@@ -851,6 +867,7 @@ export async function processCampaignTick(
           attempt: attempts,
           request_started_at: (result as any).requestStartedAt ?? null,
           response_received_at: (result as any).responseReceivedAt ?? null,
+          permit_granted_at: permitGrantedAt,
         })
         .eq("id", r.id);
       if ((camp as any).reservation_id) {
@@ -895,6 +912,7 @@ export async function processCampaignTick(
     // Vagas de concorrência global do número (acquire atômico, release em batch).
     let localGlobalSlots = 0;
     let slotReleasePending = 0;
+    let unusedSlotsReleased = 0;
     let lastSlotFlushAt = Date.now();
     const flushSlotReleases = async (force = false) => {
       const now = Date.now();
@@ -916,6 +934,14 @@ export async function processCampaignTick(
         slotReleasePending += count;
         console.error("[wa-queue] wa_release_slots failed", err);
       }
+    };
+
+    const releaseUnusedAcquiredSlots = async () => {
+      if (localGlobalSlots <= 0) return;
+      unusedSlotsReleased += localGlobalSlots;
+      slotReleasePending += localGlobalSlots;
+      localGlobalSlots = 0;
+      await flushSlotReleases(true);
     };
 
     let reservingPromise: Promise<number> | null = null;
@@ -1122,7 +1148,18 @@ export async function processCampaignTick(
       inflight.add(p);
     }
 
+    // IMPORTANTE: slots adquiridos em batch e não usados neste tick também
+    // pertencem ao contador global. Se não devolver aqui, active_inflight fica
+    // preso no teto e os próximos ticks parecem “travados por minuto”.
+    await releaseUnusedAcquiredSlots();
+
     flushTelemetryIfNeeded();
+
+    // A partir daqui não abrimos novas requisições, só esperamos respostas já
+    // em voo para gravar resultado e devolver slots. Libera o lease da campanha
+    // antes desse drain para outro tick continuar abrindo requests e evitar
+    // o padrão "manda bloco, espera tudo terminar, manda outro bloco".
+    await releaseCampaignLeaseOnce();
 
     // Drena envios em voo
     if (inflight.size) {
@@ -1186,6 +1223,7 @@ export async function processCampaignTick(
         phone_bucket_rate: phoneBucketRate,
         max_concurrency: campConc,
         global_max_concurrency: globalMaxConc,
+        unused_slots_released: unusedSlotsReleased,
         avg_started_per_second: avg,
         peak_started_per_second: peak,
         total_started: totalStarted,
@@ -1266,7 +1304,7 @@ export async function processCampaignTick(
 
     return { processed: sent + failed, done: false };
   } finally {
-    await releaseLease(campaignId);
+    await releaseCampaignLeaseOnce();
   }
 }
 
