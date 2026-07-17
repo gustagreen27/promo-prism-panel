@@ -142,8 +142,14 @@ export function EmbeddedSignupButton({
 
     const extras: Record<string, any> =
       mode === "coexistence"
-        ? { featureType: "whatsapp_business_app_onboarding", sessionInfoVersion: "3" }
-        : { setup: {}, featureType: "", sessionInfoVersion: "3" };
+        ? {
+            featureType: "whatsapp_business_app_onboarding",
+            sessionInfoVersion: "3",
+            version: "v4",
+            features: [{ name: "app_only_install" }],
+          }
+        : { setup: {}, featureType: "", sessionInfoVersion: "3", version: "v4" };
+
 
     window.FB.login(
       async (resp: any) => {
