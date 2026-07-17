@@ -121,7 +121,7 @@ export function EmbeddedSignupButton({
 
   useEffect(() => {
     function onMessage(ev: MessageEvent) {
-      if (!FB_ORIGINS.has(ev.origin)) return;
+      if (!isFacebookOrigin(ev.origin)) return;
       try {
         const data = typeof ev.data === "string" ? JSON.parse(ev.data) : ev.data;
         if (!data || data.type !== "WA_EMBEDDED_SIGNUP") return;
