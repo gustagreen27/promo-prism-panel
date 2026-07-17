@@ -19,12 +19,14 @@ export type WaSendInput = {
   /** Legado: um único botão URL. Usado se `buttons` estiver vazio. */
   buttonUrlParam?: string | null;
   buttonIndex?: number;
+  /** Chave opaca ecoada pela Meta em status webhooks; usada como dedup key server-side. */
+  bizOpaqueCallbackData?: string | null;
 };
 
 
 export type WaSendResult =
-  | { ok: true; metaMessageId: string; messageStatus: string | null; wamid: string | null; raw: any; httpStatus: number }
-  | { ok: false; error: string; code?: string; raw?: any; httpStatus?: number };
+  | { ok: true; metaMessageId: string; messageStatus: string | null; wamid: string | null; raw: any; httpStatus: number; requestStartedAt: string; responseReceivedAt: string }
+  | { ok: false; error: string; code?: string; raw?: any; httpStatus?: number; requestStartedAt: string; responseReceivedAt: string };
 
 const META_SEND_TIMEOUT_MS = 8000;
 
