@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const GRAPH_VERSION = process.env.META_GRAPH_API_VERSION || "v21.0";
+const GRAPH_VERSION = process.env.META_GRAPH_API_VERSION || "v25.0";
 const GRAPH = `https://graph.facebook.com/${GRAPH_VERSION}`;
 
 async function assertAdmin(ctx: { supabase: any; userId: string }) {
