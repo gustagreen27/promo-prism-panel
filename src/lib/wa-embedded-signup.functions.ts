@@ -263,16 +263,20 @@ export const completeEmbeddedSignup = createServerFn({ method: "POST" })
     await logStep(supabase, baseLog, "upsert_connection", "ok", { connection_id: connectionId, status: connPayload.status });
 
     // 6b) STANDARD only: register phone number in Cloud API (idempotent).
-    // - Skips when the number is already verified/registered (avoids duplicate registration).
-    // - PIN comes from META_ES_REGISTER_PIN; if missing we log and skip (no throw).
-    // - Any Meta "already registered" error is treated as success.
+    // - Pré-requisito real do /register: o número já ter tido o código verificado (VERIFIED).
+    //   NÃO exigimos status=CONNECTED antes — CONNECTED é justamente o resultado do /register.
+    // - Se a Meta responder "already registered / already in use" (133005), tratamos como OK.
+    // - PIN vem de META_ES_REGISTER_PIN; ausente = log e segue (não lança).
     if (!isCoexistence) {
-      const alreadyRegistered =
-        (phJson?.code_verification_status === "VERIFIED") &&
-        (String(phJson?.status || "").toUpperCase() === "CONNECTED");
+      const verificationStatus = String(phJson?.code_verification_status || "").toUpperCase();
+      const phoneStatus = String(phJson?.status || "").toUpperCase();
+      const alreadyConnected = phoneStatus === "CONNECTED";
+      const canRegister = verificationStatus === "VERIFIED";
       const pin = process.env.META_ES_REGISTER_PIN;
-      if (alreadyRegistered) {
-        await logStep(supabase, baseLog, "register_phone", "ok", { skipped: true, reason: "already_registered" });
+      if (alreadyConnected) {
+        await logStep(supabase, baseLog, "register_phone", "ok", { skipped: true, reason: "already_connected", phone_status: phoneStatus });
+      } else if (!canRegister) {
+        await logStep(supabase, baseLog, "register_phone", "error", { code_verification_status: verificationStatus, phone_status: phoneStatus }, "Número não verificado (code_verification_status != VERIFIED) — /register não será chamado.");
       } else if (!pin) {
         await logStep(supabase, baseLog, "register_phone", "error", null, "META_ES_REGISTER_PIN não configurado — número não será auto-registrado.");
       } else {
