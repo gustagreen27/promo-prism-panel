@@ -2770,6 +2770,7 @@ export type Database = {
           max_concurrency: number
           phone_number_id: string
           rate_per_second: number
+          slot_updated_at: string | null
           throughput_level: string | null
           throughput_mps: number | null
           throughput_synced_at: string | null
@@ -2783,6 +2784,7 @@ export type Database = {
           max_concurrency?: number
           phone_number_id: string
           rate_per_second?: number
+          slot_updated_at?: string | null
           throughput_level?: string | null
           throughput_mps?: number | null
           throughput_synced_at?: string | null
@@ -2796,6 +2798,7 @@ export type Database = {
           max_concurrency?: number
           phone_number_id?: string
           rate_per_second?: number
+          slot_updated_at?: string | null
           throughput_level?: string | null
           throughput_mps?: number | null
           throughput_synced_at?: string | null
