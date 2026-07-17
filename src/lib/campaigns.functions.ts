@@ -773,7 +773,7 @@ function normalizeDispatch<T extends WaDispatchRow>(r: T): T {
   // Sem override público habilitado, sempre mostra o real.
   const sent = Math.max(rawSent, rawDelivered);
   const delivered = Math.min(sent, rawDelivered);
-  const processed = Math.min(total, unified + failed);
+  const processed = Math.min(total, sent + failed);
   const percent = total > 0 ? Math.min(100, Math.round((processed / total) * 100)) : 0;
   const progress = {
     ...(r.progress ?? {}),
