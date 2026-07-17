@@ -663,6 +663,13 @@ export async function processCampaignTick(
         return;
       }
 
+      const permitGrantedAt = new Date().toISOString();
+      // Marca antes do fetch para separar "permit adquirido" de "request iniciado"
+      // e permitir análise de spacing por request_started_at, imune a jitter de gravação.
+      await supabaseAdmin
+        .from("campaign_recipients")
+        .update({ permit_granted_at: permitGrantedAt })
+        .eq("id", r.id);
       const result = await transport.sendTemplateMessage({
         phoneNumberId: conn.phone_number_id!,
         accessToken: conn.access_token!,
@@ -674,6 +681,9 @@ export async function processCampaignTick(
         headerType: resolvedHeaderType,
         headerValue: resolvedHeaderValue,
         buttons: dynButtons,
+        // Dedupe determinístico: Meta ecoa em cada webhook e trata callback_data repetido
+        // como idempotente em janela curta — fecha o gap "Meta aceitou, DB caiu, retry duplicou".
+        bizOpaqueCallbackData: r.id,
       });
 
       const attempts = (r.attempt ?? 0) + 1;
@@ -713,6 +723,9 @@ export async function processCampaignTick(
             status: finalRecipientStatus,
             meta_message_id: wamid,
             sent_at: new Date().toISOString(),
+            request_started_at: (result as any).requestStartedAt ?? null,
+            response_received_at: (result as any).responseReceivedAt ?? null,
+            dedup_key: r.id,
             attempt: attempts,
             next_attempt_at: null,
           })
@@ -836,6 +849,8 @@ export async function processCampaignTick(
           failed_reason: result.error,
           error_code: result.code,
           attempt: attempts,
+          request_started_at: (result as any).requestStartedAt ?? null,
+          response_received_at: (result as any).responseReceivedAt ?? null,
         })
         .eq("id", r.id);
       if ((camp as any).reservation_id) {

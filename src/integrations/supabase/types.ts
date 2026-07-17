@@ -526,6 +526,7 @@ export type Database = {
           contact_id: string | null
           contact_name: string | null
           created_at: string
+          dedup_key: string | null
           delivered_at: string | null
           error_code: string | null
           failed_at: string | null
@@ -535,10 +536,13 @@ export type Database = {
           locked_route_id: string | null
           meta_message_id: string | null
           next_attempt_at: string | null
+          permit_granted_at: string | null
           phone: string
           read_at: string | null
           replied_at: string | null
+          request_started_at: string | null
           responded_at: string | null
+          response_received_at: string | null
           route_id: string | null
           sent_at: string | null
           status: Database["public"]["Enums"]["wa_recipient_status"]
@@ -554,6 +558,7 @@ export type Database = {
           contact_id?: string | null
           contact_name?: string | null
           created_at?: string
+          dedup_key?: string | null
           delivered_at?: string | null
           error_code?: string | null
           failed_at?: string | null
@@ -563,10 +568,13 @@ export type Database = {
           locked_route_id?: string | null
           meta_message_id?: string | null
           next_attempt_at?: string | null
+          permit_granted_at?: string | null
           phone: string
           read_at?: string | null
           replied_at?: string | null
+          request_started_at?: string | null
           responded_at?: string | null
+          response_received_at?: string | null
           route_id?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["wa_recipient_status"]
@@ -582,6 +590,7 @@ export type Database = {
           contact_id?: string | null
           contact_name?: string | null
           created_at?: string
+          dedup_key?: string | null
           delivered_at?: string | null
           error_code?: string | null
           failed_at?: string | null
@@ -591,10 +600,13 @@ export type Database = {
           locked_route_id?: string | null
           meta_message_id?: string | null
           next_attempt_at?: string | null
+          permit_granted_at?: string | null
           phone?: string
           read_at?: string | null
           replied_at?: string | null
+          request_started_at?: string | null
           responded_at?: string | null
+          response_received_at?: string | null
           route_id?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["wa_recipient_status"]

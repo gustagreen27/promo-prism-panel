@@ -19,12 +19,14 @@ export type WaSendInput = {
   /** Legado: um único botão URL. Usado se `buttons` estiver vazio. */
   buttonUrlParam?: string | null;
   buttonIndex?: number;
+  /** Chave opaca ecoada pela Meta em status webhooks; usada como dedup key server-side. */
+  bizOpaqueCallbackData?: string | null;
 };
 
 
 export type WaSendResult =
-  | { ok: true; metaMessageId: string; messageStatus: string | null; wamid: string | null; raw: any; httpStatus: number }
-  | { ok: false; error: string; code?: string; raw?: any; httpStatus?: number };
+  | { ok: true; metaMessageId: string; messageStatus: string | null; wamid: string | null; raw: any; httpStatus: number; requestStartedAt: string; responseReceivedAt: string }
+  | { ok: false; error: string; code?: string; raw?: any; httpStatus?: number; requestStartedAt: string; responseReceivedAt: string };
 
 const META_SEND_TIMEOUT_MS = 8000;
 
@@ -92,7 +94,7 @@ function buildButtonComponents(
 export async function sendTemplateMessage(input: WaSendInput): Promise<WaSendResult> {
   const ver = input.graphVersion || "v21.0";
   const url = `https://graph.facebook.com/${ver}/${input.phoneNumberId}/messages`;
-  const body = {
+  const body: Record<string, any> = {
     messaging_product: "whatsapp",
     to: input.to,
     type: "template",
@@ -106,7 +108,13 @@ export async function sendTemplateMessage(input: WaSendInput): Promise<WaSendRes
       ],
     },
   };
+  // Meta ecoa esse valor em cada status callback (sent/delivered/read/failed) —
+  // usamos recipient_id como chave para dedupe determinístico do lado do provedor.
+  if (input.bizOpaqueCallbackData) {
+    body.biz_opaque_callback_data = String(input.bizOpaqueCallbackData);
+  }
 
+  const requestStartedAt = new Date().toISOString();
   try {
     const res = await fetchWithTimeout(url, {
       method: "POST",
@@ -117,6 +125,7 @@ export async function sendTemplateMessage(input: WaSendInput): Promise<WaSendRes
       body: JSON.stringify(body),
     });
     const json: any = await res.json().catch(() => ({}));
+    const responseReceivedAt = new Date().toISOString();
     if (!res.ok) {
       const err = json?.error;
       const details = err?.error_data?.details;
@@ -127,20 +136,24 @@ export async function sendTemplateMessage(input: WaSendInput): Promise<WaSendRes
         code: err?.code ? String(err.code) : String(res.status),
         raw: json,
         httpStatus: res.status,
+        requestStartedAt,
+        responseReceivedAt,
       };
     }
     const msg = json?.messages?.[0];
     const id = msg?.id;
     const messageStatus: string | null = msg?.message_status ?? null;
     const wamid: string | null = id ?? null;
-    if (!id) return { ok: false, error: "No message id returned", raw: json, httpStatus: res.status };
-    return { ok: true, metaMessageId: id, messageStatus, wamid, raw: json, httpStatus: res.status };
+    if (!id) return { ok: false, error: "No message id returned", raw: json, httpStatus: res.status, requestStartedAt, responseReceivedAt };
+    return { ok: true, metaMessageId: id, messageStatus, wamid, raw: json, httpStatus: res.status, requestStartedAt, responseReceivedAt };
   } catch (e: any) {
     const timedOut = e?.name === "AbortError";
     return {
       ok: false,
       error: timedOut ? `Meta Graph timeout após ${META_SEND_TIMEOUT_MS}ms` : (e?.message ?? "Network error"),
       code: "network_error",
+      requestStartedAt,
+      responseReceivedAt: new Date().toISOString(),
     };
   }
 }
