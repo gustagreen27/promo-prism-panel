@@ -849,6 +849,8 @@ export async function processCampaignTick(
           failed_reason: result.error,
           error_code: result.code,
           attempt: attempts,
+          request_started_at: (result as any).requestStartedAt ?? null,
+          response_received_at: (result as any).responseReceivedAt ?? null,
         })
         .eq("id", r.id);
       if ((camp as any).reservation_id) {
