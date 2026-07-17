@@ -767,12 +767,12 @@ function normalizeDispatch<T extends WaDispatchRow>(r: T): T {
   const rawSent = Number(r.sent_count ?? 0);
   const rawDelivered = Number(r.delivered_count ?? 0);
   const failed = Number(r.failed_count ?? 0);
-  // Regra: Enviados = Entregues. Quando webhooks de entrega não retornam
-  // (delivered=0 em campanha concluída), usa o maior valor conhecido para
-  // que ambos reflitam o real disparado.
-  const unified = Math.max(rawSent, rawDelivered);
-  const sent = unified;
-  const delivered = unified;
+  // Enviados: maior valor conhecido (sent do Meta ou entregues, caso o
+  // webhook de sent não tenha chegado). Entregues: valor real reportado
+  // pela Meta (delivered+read+replied agregados), limitado a sent.
+  // Sem override público habilitado, sempre mostra o real.
+  const sent = Math.max(rawSent, rawDelivered);
+  const delivered = Math.min(sent, rawDelivered);
   const processed = Math.min(total, unified + failed);
   const percent = total > 0 ? Math.min(100, Math.round((processed / total) * 100)) : 0;
   const progress = {
