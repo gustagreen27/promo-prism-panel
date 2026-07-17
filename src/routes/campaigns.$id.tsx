@@ -148,6 +148,26 @@ function PublicCampaignReport() {
   }, [publicSettings]);
 
 
+
+
+  // Atualização quase em tempo real: enquanto houver disparo em execução
+  // e nenhuma simulação/gerador ativo controlando o intervalo, faz polling
+  // rápido (3s) para refletir webhooks de status assim que chegam. Sem
+  // disparo ativo, volta para 30s.
+  useEffect(() => {
+    const simActive =
+      (simulation && simulation.mode !== "real" && simulation.runtime?.active) ||
+      publicSimulations.some((s) => s?.runtime?.active === true && !s?.runtime?.paused_at) ||
+      (publicSettings?.clicks_generator?.enabled === true && publicSettings?.enabled === true);
+    if (simActive) return;
+    const hasRunning = (data?.dispatches ?? []).some(
+      (d: { status: string | null }) => d.status === "running" || d.status === "scheduled",
+    );
+    setRefetchMs(hasRunning ? 3000 : 30000);
+  }, [data?.dispatches, simulation, publicSimulations, publicSettings]);
+
+
+
   const customEnabled = publicSettings?.enabled === true;
   const metricsMode = (publicSettings?.metrics_mode ?? "real") as "real" | "replace" | "merge";
   const customTotals = (publicSettings?.custom_totals ?? {}) as Record<string, number | null>;
