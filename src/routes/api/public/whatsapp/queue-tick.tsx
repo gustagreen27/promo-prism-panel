@@ -232,15 +232,32 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
           const TICK_WINDOW_S = 12;
           const results: any[] = [];
           for (const c of running ?? []) {
-            const rps = Math.max(1, Number((c as any).rate_per_second) || 6);
+            // Rate default = 1 msg/s quando a campanha não define; qualquer valor
+            // explícito (inclusive baixo) é respeitado sem clamp para cima.
+            const rps = Math.max(1, Number((c as any).rate_per_second ?? 1));
             const reservationBudget = Math.min(5000, rps * TICK_WINDOW_S);
             try {
               const r = await processCampaignTick(c.id, reservationBudget);
               results.push({ id: c.id, ...r });
             } catch (e: any) {
-              results.push({ id: c.id, error: e?.message });
+              const msg = e?.message ?? String(e);
+              results.push({ id: c.id, error: msg });
+              // Registro visível na campanha: last_error + timeline event.
+              try {
+                await supabaseAdmin
+                  .from("wa_campaigns")
+                  .update({ last_error: `tick_failed: ${msg}` })
+                  .eq("id", c.id);
+                await supabaseAdmin.from("campaign_timeline").insert({
+                  campaign_id: c.id,
+                  event_type: "tick_failed",
+                  message: `Tick falhou: ${msg}`,
+                  payload: { source },
+                });
+              } catch { /* best-effort */ }
             }
           }
+
 
           const hadWork = (running?.length ?? 0) > 0;
           const wallMs = Date.now() - tickStartWall;
