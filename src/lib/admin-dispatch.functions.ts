@@ -16,13 +16,11 @@ export const adminListAllNumbers = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     const { supabase, userId } = context as any;
     await assertAdmin(supabase, userId);
+    // Admin: mostra TODOS os números cadastrados (independente de status de verificação
+    // ou sync). O admin precisa conseguir enviar/testar por qualquer conexão existente.
     const { data, error } = await supabase
       .from("whatsapp_connections")
       .select("id, display_name, nome_interno, name, display_phone, phone, phone_number_id, waba_id, status, quality_rating, daily_cap, paused_at, visibility, code_verification_status, meta_sync_status")
-      .is("paused_at", null)
-      .in("status", ["ativo", "ativa", "active", "connected"])
-      .eq("code_verification_status", "VERIFIED")
-      .eq("meta_sync_status", "connected")
       .order("display_name", { ascending: true });
     if (error) throw error;
     const rows = (data ?? []).map((c: any) => ({
