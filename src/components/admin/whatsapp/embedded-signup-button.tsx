@@ -33,7 +33,16 @@ type Props = {
   disabled?: boolean;
 };
 
-const FB_ORIGINS = new Set(["https://www.facebook.com", "https://web.facebook.com"]);
+// Meta pode usar múltiplos hosts do Facebook para postar o resultado do ES.
+// Aceita qualquer subdomínio de facebook.com em https:// (padrão do sample oficial).
+function isFacebookOrigin(origin: string): boolean {
+  try {
+    const u = new URL(origin);
+    return u.protocol === "https:" && (u.hostname === "facebook.com" || u.hostname.endsWith(".facebook.com"));
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Meta Embedded Signup button. Supports two modes:
