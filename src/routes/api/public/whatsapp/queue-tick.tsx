@@ -46,19 +46,48 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
         try {
           const nowIso = new Date().toISOString();
 
-          // Auto-heal de slots/tokens vazados: se um número não teve atividade
-          // no rate_limits nos últimos 30s, nenhum tick anterior está usando
-          // aqueles slots (o lease global do tick dura 20s). Zera contador e
-          // recarrega tokens para evitar pausas longas quando active_inflight
-          // fica travado no teto.
+          // Auto-heal de slots vazados.
+          // GUARDA: só devolvemos capacidade quando é impossível haver
+          // requisições em andamento — ou seja, wa_rate_limits está parado há
+          // mais de 30s E não há campanha 'running' com lease de tick ativo
+          // nesse número E não há recipients em 'processing' recentes.
+          // Isso impede devolução de slots enquanto sends ainda estão em voo.
           try {
-             const staleRateCutoff = new Date(Date.now() - 30 * 1000).toISOString();
+            const staleRateCutoff = new Date(Date.now() - 30 * 1000).toISOString();
             const { data: staleRates } = await supabaseAdmin
               .from("wa_rate_limits")
               .select("phone_number_id,rate_per_second")
               .lt("updated_at", staleRateCutoff)
               .gt("active_inflight", 0);
             for (const r of staleRates ?? []) {
+              const phoneId = r.phone_number_id as string;
+              // Existem recipients em 'processing' há pouco tempo neste número?
+              const { data: conns } = await supabaseAdmin
+                .from("whatsapp_connections")
+                .select("id")
+                .eq("phone_number_id", phoneId);
+              const connIds = (conns ?? []).map((c: any) => c.id as string);
+              let busy = false;
+              if (connIds.length > 0) {
+                const recentIso = new Date(Date.now() - 30 * 1000).toISOString();
+                const { data: activeCamps } = await supabaseAdmin
+                  .from("wa_campaigns")
+                  .select("id")
+                  .in("connection_id", connIds)
+                  .eq("status", "running")
+                  .gt("worker_lease_until", nowIso);
+                if ((activeCamps?.length ?? 0) > 0) busy = true;
+                if (!busy) {
+                  const { count: procCount } = await supabaseAdmin
+                    .from("campaign_recipients")
+                    .select("id", { count: "exact", head: true })
+                    .in("campaign_id", (activeCamps ?? []).map((c: any) => c.id) as any)
+                    .eq("status", "processing")
+                    .gte("last_attempt_at", recentIso);
+                  if ((procCount ?? 0) > 0) busy = true;
+                }
+              }
+              if (busy) continue;
               await supabaseAdmin
                 .from("wa_rate_limits")
                 .update({
@@ -67,11 +96,12 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
                   last_refill_at: nowIso,
                   updated_at: nowIso,
                 })
-                .eq("phone_number_id", r.phone_number_id as string);
+                .eq("phone_number_id", phoneId);
             }
           } catch (err) {
             console.error("[queue-tick] rate-limit heal failed", err);
           }
+
 
           // Preflight validation of scheduled campaigns whose time has come
           const { data: due } = await supabaseAdmin
