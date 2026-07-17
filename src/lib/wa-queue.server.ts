@@ -723,6 +723,9 @@ export async function processCampaignTick(
             status: finalRecipientStatus,
             meta_message_id: wamid,
             sent_at: new Date().toISOString(),
+            request_started_at: (result as any).requestStartedAt ?? null,
+            response_received_at: (result as any).responseReceivedAt ?? null,
+            dedup_key: r.id,
             attempt: attempts,
             next_attempt_at: null,
           })
