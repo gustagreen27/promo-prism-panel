@@ -474,11 +474,18 @@ export const getCampaignProgress = createServerFn({ method: "GET" })
 
     let clicks = 0;
     if ((camp as any)?.linked_campaign_id) {
-      const { count } = await context.supabase
+      // Conta pessoas únicas (por IP) que clicaram, não cliques totais.
+      const { data: rows } = await context.supabase
         .from("campaign_clicks")
-        .select("*", { count: "exact", head: true })
-        .eq("campaign_id", (camp as any).linked_campaign_id);
-      clicks = count ?? 0;
+        .select("ip")
+        .eq("campaign_id", (camp as any).linked_campaign_id)
+        .limit(200000);
+      const uniq = new Set<string>();
+      for (const r of (rows ?? []) as any[]) {
+        const k = (r?.ip ?? "").toString().trim();
+        if (k) uniq.add(k);
+      }
+      clicks = uniq.size;
     }
 
     const stored = ((camp.progress as any) ?? {}) as Record<string, unknown>;
