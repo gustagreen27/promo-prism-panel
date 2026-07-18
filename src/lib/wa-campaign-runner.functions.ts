@@ -467,10 +467,19 @@ export const getCampaignProgress = createServerFn({ method: "GET" })
     await assertAdmin(context);
     const { data: camp, error } = await context.supabase
       .from("wa_campaigns")
-      .select("id,status,progress,last_error,last_sent_at,avg_speed_per_min,started_at,finished_at,total_recipients,scheduled_at")
+      .select("id,status,progress,last_error,last_sent_at,avg_speed_per_min,started_at,finished_at,total_recipients,scheduled_at,linked_campaign_id")
       .eq("id", data.id)
       .single();
     if (error) throw error;
+
+    let clicks = 0;
+    if ((camp as any)?.linked_campaign_id) {
+      const { count } = await context.supabase
+        .from("campaign_clicks")
+        .select("*", { count: "exact", head: true })
+        .eq("campaign_id", (camp as any).linked_campaign_id);
+      clicks = count ?? 0;
+    }
 
     const stored = ((camp.progress as any) ?? {}) as Record<string, unknown>;
     const num = (key: string) => Number(stored[key] ?? 0) || 0;
