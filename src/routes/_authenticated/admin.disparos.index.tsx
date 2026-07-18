@@ -455,7 +455,8 @@ function getDeliveryMetrics(c: any) {
   const cancelled = num(progress.cancelled, c.cancelled_count);
   const skipped = num(progress.skipped, c.skipped_count);
   const processed = num(progress.processed, sent + failed + optOut + cancelled + skipped);
-  return { total, sent, delivered, read, failed, processed };
+  const clicks = num(c.clicks_count);
+  return { total, sent, delivered, read, failed, processed, clicks };
 }
 
 function DeliverySummaryCard({ icon, label, value, total, tone }: { icon: React.ReactNode; label: string; value: number; total: number; tone?: "danger" }) {
