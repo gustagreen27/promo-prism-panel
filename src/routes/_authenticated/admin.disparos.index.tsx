@@ -245,10 +245,11 @@ function ListView({ onNew }: { onNew: () => void }) {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <DeliverySummaryCard icon={<Send className="h-4 w-4" />} label="Enviados" value={deliveryTotals.sent} total={deliveryTotals.total} />
         <DeliverySummaryCard icon={<CheckCheck className="h-4 w-4" />} label="Recebidos" value={deliveryTotals.delivered} total={deliveryTotals.sent} />
         <DeliverySummaryCard icon={<Eye className="h-4 w-4" />} label="Lidas" value={deliveryTotals.read} total={deliveryTotals.delivered} />
+        <DeliverySummaryCard icon={<MousePointerClick className="h-4 w-4" />} label="Cliques" value={deliveryTotals.clicks} total={deliveryTotals.delivered} />
         <DeliverySummaryCard icon={<AlertTriangle className="h-4 w-4" />} label="Falhas" value={deliveryTotals.failed} total={deliveryTotals.total} tone="danger" />
       </div>
 
