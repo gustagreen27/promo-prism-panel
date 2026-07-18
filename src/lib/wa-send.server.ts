@@ -2,7 +2,7 @@
 // Never import this from a route or *.functions.ts module scope.
 // Always: const { sendTemplateMessage } = await import("@/lib/wa-send.server");
 
-export type WaSendButton = { index: number; urlParam: string };
+export type WaSendButton = { index: number; urlParam: string; fullUrl?: string };
 
 export type WaSendInput = {
   phoneNumberId: string;
@@ -86,7 +86,7 @@ function buildButtonComponents(
     type: "button",
     sub_type: "url",
     index: String(b.index),
-    parameters: [{ type: "text", text: b.urlParam }],
+    parameters: [{ type: "text", text: b.fullUrl ?? b.urlParam }],
   }));
 }
 

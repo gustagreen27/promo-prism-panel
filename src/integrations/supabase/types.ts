@@ -249,6 +249,7 @@ export type Database = {
           os: string | null
           os_version: string | null
           proxy: boolean | null
+          recipient_id: string | null
           referer: string | null
           region: string | null
           region_code: string | null
@@ -256,6 +257,7 @@ export type Database = {
           timezone: string | null
           user_agent: string | null
           utc_offset: number | null
+          wa_campaign_id: string | null
           workspace_id: string | null
           zip: string | null
         }
@@ -290,6 +292,7 @@ export type Database = {
           os?: string | null
           os_version?: string | null
           proxy?: boolean | null
+          recipient_id?: string | null
           referer?: string | null
           region?: string | null
           region_code?: string | null
@@ -297,6 +300,7 @@ export type Database = {
           timezone?: string | null
           user_agent?: string | null
           utc_offset?: number | null
+          wa_campaign_id?: string | null
           workspace_id?: string | null
           zip?: string | null
         }
@@ -331,6 +335,7 @@ export type Database = {
           os?: string | null
           os_version?: string | null
           proxy?: boolean | null
+          recipient_id?: string | null
           referer?: string | null
           region?: string | null
           region_code?: string | null
@@ -338,6 +343,7 @@ export type Database = {
           timezone?: string | null
           user_agent?: string | null
           utc_offset?: number | null
+          wa_campaign_id?: string | null
           workspace_id?: string | null
           zip?: string | null
         }
@@ -347,6 +353,20 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_clicks_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_recipients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_clicks_wa_campaign_id_fkey"
+            columns: ["wa_campaign_id"]
+            isOneToOne: false
+            referencedRelation: "wa_campaigns"
             referencedColumns: ["id"]
           },
           {
@@ -4272,6 +4292,13 @@ export type Database = {
       wa_consume_stock: {
         Args: { _client_id: string; _project_id: string; _qty: number }
         Returns: boolean
+      }
+      wa_count_dispatch_clicks: {
+        Args: { _campaign_ids: string[]; _from?: string; _to?: string }
+        Returns: {
+          clicks: number
+          wa_campaign_id: string
+        }[]
       }
       wa_recalc_campaign_progress: {
         Args: { _campaign_id: string }

@@ -473,25 +473,12 @@ export const getCampaignProgress = createServerFn({ method: "GET" })
     if (error) throw error;
 
     let clicks = 0;
-    if ((camp as any)?.linked_campaign_id) {
-      // NÃO dá para atribuir cliques a um disparo específico quando várias bases
-      // compartilham a mesma campanha pública (o link é o mesmo para todos os
-      // destinatários e campaign_clicks não guarda recipient_id). Retornamos o
-      // total honesto de IPs únicos da campanha pública. Se precisar de contagem
-      // por disparo, é necessário implementar rastreamento por destinatário
-      // (parâmetro ?r=<recipient_id> no link enviado).
-      const { data: rows } = await context.supabase
-        .from("campaign_clicks")
-        .select("ip")
-        .eq("campaign_id", (camp as any).linked_campaign_id)
-        .limit(200000);
-      const uniq = new Set<string>();
-      for (const r of (rows ?? []) as any[]) {
-        const k = (r?.ip ?? "").toString().trim();
-        if (k) uniq.add(k);
-      }
-      clicks = uniq.size;
-    }
+    const { data: clickRows } = await context.supabase.rpc("wa_count_dispatch_clicks" as any, {
+      _campaign_ids: [data.id],
+      _from: null,
+      _to: null,
+    });
+    clicks = Number(((clickRows ?? []) as any[])[0]?.clicks ?? 0) || 0;
 
 
 

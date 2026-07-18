@@ -34,19 +34,20 @@ export const listWaCampaigns = createServerFn({ method: "GET" })
       .order("created_at", { ascending: false });
     if (error) throw error;
     const rows = (data ?? []) as any[];
-    const linkedIds = Array.from(new Set(rows.map((r) => r.linked_campaign_id).filter(Boolean))) as string[];
+    const campaignIds = rows.map((r) => r.id).filter(Boolean) as string[];
     const clicksByCampaign: Record<string, number> = {};
-    if (linkedIds.length) {
-      const { data: clickRows } = await context.supabase
-        .from("campaign_clicks")
-        .select("campaign_id")
-        .in("campaign_id", linkedIds);
+    if (campaignIds.length) {
+      const { data: clickRows } = await context.supabase.rpc("wa_count_dispatch_clicks" as any, {
+        _campaign_ids: campaignIds,
+        _from: null,
+        _to: null,
+      });
       for (const c of (clickRows ?? []) as any[]) {
-        const k = c.campaign_id as string;
-        clicksByCampaign[k] = (clicksByCampaign[k] ?? 0) + 1;
+        const k = c.wa_campaign_id as string;
+        clicksByCampaign[k] = Number(c.clicks ?? 0) || 0;
       }
     }
-    return rows.map((r) => ({ ...r, clicks_count: r.linked_campaign_id ? (clicksByCampaign[r.linked_campaign_id] ?? 0) : 0 }));
+    return rows.map((r) => ({ ...r, clicks_count: clicksByCampaign[r.id] ?? 0 }));
   });
 
 export const getWaCampaign = createServerFn({ method: "GET" })

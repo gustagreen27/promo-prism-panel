@@ -34,8 +34,14 @@ type LoaderData =
   | { status: "wrapper"; slug: string; meta: Meta; url: string; mode: OpenMode };
 
 export const Route = createFileRoute("/$slug")({
-  loader: async ({ params }): Promise<LoaderData> => {
-    const res = await resolveCampaign({ data: { slug: params.slug } });
+  validateSearch: (s: Record<string, unknown>) => ({
+    w: typeof s.w === "string" ? s.w : undefined,
+    wac: typeof s.wac === "string" ? s.wac : undefined,
+    r: typeof s.r === "string" ? s.r : undefined,
+  }),
+  loader: async ({ params, location }): Promise<LoaderData> => {
+    const search = location.search as { w?: string; wac?: string; r?: string };
+    const res = await resolveCampaign({ data: { slug: params.slug, wa_campaign_id: search.wac ?? search.w, recipient_id: search.r } });
     if (!res.ok && "notFound" in res && res.notFound) {
       return { status: "notfound", slug: params.slug };
     }

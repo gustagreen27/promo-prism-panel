@@ -5,6 +5,8 @@ import { UAParser } from "ua-parser-js";
 
 const inputSchema = z.object({
   slug: z.string().trim().min(1).max(120),
+  wa_campaign_id: z.string().uuid().optional(),
+  recipient_id: z.string().uuid().optional(),
 });
 
 const EVENT_TYPES = [
@@ -184,6 +186,7 @@ async function recordClick(
   campaign: any,
   finalUrl: string,
   preloadedGeo?: Record<string, unknown> | null,
+  attribution?: { wa_campaign_id: string; recipient_id: string } | null,
 ): Promise<string | null> {
   const ip = pickIp();
   const ua = getRequestHeader("user-agent") ?? null;
@@ -224,6 +227,8 @@ async function recordClick(
     .insert({
       campaign_id: campaign.id,
       workspace_id: campaign.workspace_id ?? null,
+      wa_campaign_id: attribution?.wa_campaign_id ?? null,
+      recipient_id: attribution?.recipient_id ?? null,
       ip,
       ...mapGeoToRow(geo),
       device: parsed?.device?.model ?? parsed?.device?.vendor ?? null,
@@ -276,6 +281,32 @@ async function recordClick(
   }
 
   return clickId;
+}
+
+async function resolveDispatchAttribution(
+  supabaseAdmin: any,
+  publicCampaignId: string,
+  waCampaignId?: string,
+  recipientId?: string,
+): Promise<{ wa_campaign_id: string; recipient_id: string } | null> {
+  if (!waCampaignId || !recipientId) return null;
+
+  const { data: waCampaign } = await supabaseAdmin
+    .from("wa_campaigns")
+    .select("id,linked_campaign_id")
+    .eq("id", waCampaignId)
+    .maybeSingle();
+  if (!waCampaign || waCampaign.linked_campaign_id !== publicCampaignId) return null;
+
+  const { data: recipient } = await supabaseAdmin
+    .from("campaign_recipients")
+    .select("id,campaign_id")
+    .eq("id", recipientId)
+    .eq("campaign_id", waCampaignId)
+    .maybeSingle();
+  if (!recipient) return null;
+
+  return { wa_campaign_id: waCampaignId, recipient_id: recipientId };
 }
 
 /**
@@ -350,7 +381,13 @@ export const resolveCampaign = createServerFn({ method: "POST" })
     // do cliente, que era abortado nos modos redirect/wrapper). Nunca falha
     // a resolução: se o insert der erro, seguimos com o redirect normal.
     try {
-      await recordClick(supabaseAdmin, campaign, finalUrl, earlyGeo);
+      const attribution = await resolveDispatchAttribution(
+        supabaseAdmin,
+        campaign.id,
+        data.wa_campaign_id,
+        data.recipient_id,
+      );
+      await recordClick(supabaseAdmin, campaign, finalUrl, earlyGeo, attribution);
     } catch {
       /* ignore — métricas não devem quebrar o link */
     }
@@ -384,98 +421,13 @@ export const trackClick = createServerFn({ method: "POST" })
     }
 
     const finalUrl = applyUtms(campaign.destination_url, campaign as Record<string, unknown>);
-    const ip = pickIp();
-    const ua = getRequestHeader("user-agent") ?? null;
-    const referer = getRequestHeader("referer") ?? null;
-    const lang = getRequestHeader("accept-language") ?? null;
-
-    let geo: Record<string, unknown> | null = null;
-    if (ip) geo = await lookupIp(ip);
-
-    let parsed: ReturnType<UAParser["getResult"]> | null = null;
-    if (ua) {
-      try { parsed = new UAParser(ua).getResult(); } catch { parsed = null; }
-    }
-
-    const isBot = ua ? BOT_RE.test(ua) : false;
-
-    // Detecta clique duplicado / visitante recorrente nos últimos 30 dias.
-    let isReturning = false;
-    let isDuplicate = false;
-    if (ip) {
-      const sinceReturning = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      const sinceDuplicate = new Date(Date.now() - 60 * 1000).toISOString();
-      const { data: prior } = await supabaseAdmin
-        .from("campaign_clicks")
-        .select("id, clicked_at")
-        .eq("campaign_id", campaign.id)
-        .eq("ip", ip)
-        .gte("clicked_at", sinceReturning)
-        .order("clicked_at", { ascending: false })
-        .limit(1);
-      if (prior && prior.length > 0) {
-        isReturning = true;
-        if ((prior[0]?.clicked_at ?? "") >= sinceDuplicate) isDuplicate = true;
-      }
-    }
-
-    const { data: inserted } = await supabaseAdmin
-      .from("campaign_clicks")
-      .insert({
-        campaign_id: campaign.id,
-        workspace_id: (campaign as { workspace_id?: string | null }).workspace_id ?? null,
-        ip,
-        ...mapGeoToRow(geo),
-        device: parsed?.device?.model ?? parsed?.device?.vendor ?? null,
-        device_type: parsed?.device?.type ?? "desktop",
-        browser: parsed?.browser?.name ?? null,
-        browser_version: parsed?.browser?.version ?? null,
-        os: parsed?.os?.name ?? null,
-        os_version: parsed?.os?.version ?? null,
-        referer,
-        user_agent: ua,
-        language: lang,
-        final_url: finalUrl,
-      } as never)
-      .select("id")
-      .maybeSingle();
-
-    const clickId = (inserted as { id?: string } | null)?.id ?? null;
-
-    // Eventos automáticos derivados do clique.
-    const autoEvents: { event_type: EventType; metadata: Record<string, unknown> }[] = [
-      { event_type: "page_view", metadata: { referer, language: lang } },
-    ];
-    const hasUtm = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"].some(
-      (k) => (campaign as Record<string, unknown>)[k],
+    const attribution = await resolveDispatchAttribution(
+      supabaseAdmin,
+      campaign.id,
+      data.wa_campaign_id,
+      data.recipient_id,
     );
-    if (hasUtm) {
-      autoEvents.push({
-        event_type: "utm_detected",
-        metadata: {
-          source: (campaign as Record<string, unknown>).utm_source,
-          medium: (campaign as Record<string, unknown>).utm_medium,
-          campaign: (campaign as Record<string, unknown>).utm_campaign,
-        },
-      });
-    }
-    if (isBot) autoEvents.push({ event_type: "bot_detected", metadata: { ua } });
-    if (isReturning) autoEvents.push({ event_type: "returning_visitor", metadata: {} });
-    if (isDuplicate) autoEvents.push({ event_type: "duplicate_click", metadata: {} });
-
-    try {
-      await supabaseAdmin.from("campaign_events").insert(
-        autoEvents.map((e) => ({
-          campaign_id: campaign.id,
-          click_id: clickId,
-          event_type: e.event_type,
-          metadata: e.metadata,
-        })) as never,
-      );
-    } catch {
-      /* ignore */
-    }
-
+    const clickId = await recordClick(supabaseAdmin, campaign, finalUrl, null, attribution);
     return { ok: true as const, click_id: clickId };
   });
 
