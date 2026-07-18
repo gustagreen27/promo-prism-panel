@@ -473,13 +473,31 @@ export const getCampaignProgress = createServerFn({ method: "GET" })
     if (error) throw error;
 
     let clicks = 0;
-    if ((camp as any)?.linked_campaign_id) {
-      // Conta pessoas únicas (por IP) que clicaram, não cliques totais.
-      const { data: rows } = await context.supabase
+    if ((camp as any)?.linked_campaign_id && (camp as any)?.started_at) {
+      // Escopa cliques a ESTE disparo: janela = started_at deste disparo
+      // até o started_at do próximo disparo com o mesmo linked_campaign_id
+      // (ou agora, se este for o mais recente). Evita somar cliques de
+      // disparos anteriores/posteriores que compartilham a mesma campanha pública.
+      const startedAt = (camp as any).started_at as string;
+      const { data: nextDispatch } = await context.supabase
+        .from("wa_campaigns")
+        .select("started_at")
+        .eq("linked_campaign_id", (camp as any).linked_campaign_id)
+        .neq("id", data.id)
+        .gt("started_at", startedAt)
+        .order("started_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      let q = context.supabase
         .from("campaign_clicks")
         .select("ip")
         .eq("campaign_id", (camp as any).linked_campaign_id)
+        .gte("clicked_at", startedAt)
         .limit(200000);
+      if ((nextDispatch as any)?.started_at) {
+        q = q.lt("clicked_at", (nextDispatch as any).started_at);
+      }
+      const { data: rows } = await q;
       const uniq = new Set<string>();
       for (const r of (rows ?? []) as any[]) {
         const k = (r?.ip ?? "").toString().trim();
@@ -487,6 +505,7 @@ export const getCampaignProgress = createServerFn({ method: "GET" })
       }
       clicks = uniq.size;
     }
+
 
     const stored = ((camp.progress as any) ?? {}) as Record<string, unknown>;
     const num = (key: string) => Number(stored[key] ?? 0) || 0;
