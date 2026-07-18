@@ -520,7 +520,7 @@ export const getCampaignProgress = createServerFn({ method: "GET" })
     const speed = Number(camp.avg_speed_per_min ?? 0);
     const etaMinutes = speed > 0 ? Math.ceil(remaining / speed) : null;
 
-    return { ...camp, total_recipients: total || camp.total_recipients, progress: liveProgress, eta_minutes: etaMinutes };
+    return { ...camp, total_recipients: total || camp.total_recipients, progress: liveProgress, eta_minutes: etaMinutes, clicks };
   });
 
 export const getCampaignTimeline = createServerFn({ method: "GET" })
