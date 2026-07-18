@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import {
   Plus, Search, Play, Pause, XCircle, Eye, RefreshCw, ArrowLeft,
   Calendar, CheckCircle2, AlertTriangle, Clock, Rocket, MessageSquareText, CalendarClock, Trash2,
-  Send, CheckCheck,
+  Send, CheckCheck, MousePointerClick,
 } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { ErrorCard } from "@/components/admin/query-state";
@@ -169,8 +169,9 @@ function ListView({ onNew }: { onNew: () => void }) {
       acc.delivered += item.metrics.delivered;
       acc.read += item.metrics.read;
       acc.failed += item.metrics.failed;
+      acc.clicks += item.metrics.clicks;
       return acc;
-    }, { total: 0, sent: 0, delivered: 0, read: 0, failed: 0 });
+    }, { total: 0, sent: 0, delivered: 0, read: 0, failed: 0, clicks: 0 });
   }, [filtered]);
 
   const startMut = useMutation({
@@ -244,10 +245,11 @@ function ListView({ onNew }: { onNew: () => void }) {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <DeliverySummaryCard icon={<Send className="h-4 w-4" />} label="Enviados" value={deliveryTotals.sent} total={deliveryTotals.total} />
         <DeliverySummaryCard icon={<CheckCheck className="h-4 w-4" />} label="Recebidos" value={deliveryTotals.delivered} total={deliveryTotals.sent} />
         <DeliverySummaryCard icon={<Eye className="h-4 w-4" />} label="Lidas" value={deliveryTotals.read} total={deliveryTotals.delivered} />
+        <DeliverySummaryCard icon={<MousePointerClick className="h-4 w-4" />} label="Cliques" value={deliveryTotals.clicks} total={deliveryTotals.delivered} />
         <DeliverySummaryCard icon={<AlertTriangle className="h-4 w-4" />} label="Falhas" value={deliveryTotals.failed} total={deliveryTotals.total} tone="danger" />
       </div>
 
@@ -261,7 +263,7 @@ function ListView({ onNew }: { onNew: () => void }) {
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map(({ campaign: c, metrics }) => {
             const meta = STATUS_META[c.status] ?? { label: c.status ?? "—", className: "bg-muted" };
-            const { total, sent, delivered, read, failed, processed } = metrics;
+            const { total, sent, delivered, read, failed, processed, clicks } = metrics;
             const pct = total > 0 ? Math.round((processed / total) * 100) : 0;
             const whenLabel = c.scheduled_at
               ? `Agendado para ${new Date(c.scheduled_at).toLocaleString("pt-BR")}`
@@ -311,10 +313,11 @@ function ListView({ onNew }: { onNew: () => void }) {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-4 gap-2 rounded-lg border bg-muted/30 p-2 text-center">
+                  <div className="grid grid-cols-5 gap-2 rounded-lg border bg-muted/30 p-2 text-center">
                     <CampaignMetric label="Enviados" value={sent} />
                     <CampaignMetric label="Recebidos" value={delivered} />
                     <CampaignMetric label="Lidas" value={read} />
+                    <CampaignMetric label="Cliques" value={clicks} />
                     <CampaignMetric label="Falhas" value={failed} danger={failed > 0} />
                   </div>
 
@@ -454,7 +457,8 @@ function getDeliveryMetrics(c: any) {
   const cancelled = num(progress.cancelled, c.cancelled_count);
   const skipped = num(progress.skipped, c.skipped_count);
   const processed = num(progress.processed, sent + failed + optOut + cancelled + skipped);
-  return { total, sent, delivered, read, failed, processed };
+  const clicks = num(c.clicks_count);
+  return { total, sent, delivered, read, failed, processed, clicks };
 }
 
 function DeliverySummaryCard({ icon, label, value, total, tone }: { icon: React.ReactNode; label: string; value: number; total: number; tone?: "danger" }) {

@@ -24,7 +24,7 @@ export const whatsappReport = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
 
-    let campQ = context.supabase.from("wa_campaigns").select("id");
+    let campQ = context.supabase.from("wa_campaigns").select("id, linked_campaign_id");
     if (data.waba_ref_id) campQ = campQ.eq("waba_ref_id", data.waba_ref_id);
     if (data.connection_id) campQ = campQ.eq("connection_id", data.connection_id);
     if (data.client_id) campQ = campQ.eq("client_id", data.client_id);
@@ -33,9 +33,10 @@ export const whatsappReport = createServerFn({ method: "POST" })
     if (data.campaign_id) campQ = campQ.eq("id", data.campaign_id);
     const { data: camps } = await campQ;
     const campIds = (camps ?? []).map((c: any) => c.id);
+    const linkedIds = Array.from(new Set(((camps ?? []) as any[]).map((c) => c.linked_campaign_id).filter(Boolean))) as string[];
 
     if (!campIds.length) {
-      return { sent: 0, delivered: 0, read: 0, failed: 0, replied: 0, opt_outs: 0, cost: 0, revenue: 0, profit: 0, delivery_rate: 0, read_rate: 0 };
+      return { sent: 0, delivered: 0, read: 0, failed: 0, replied: 0, opt_outs: 0, clicks: 0, cost: 0, revenue: 0, profit: 0, delivery_rate: 0, read_rate: 0, click_rate: 0 };
     }
 
     let recQ = context.supabase.from("campaign_recipients")
@@ -64,13 +65,25 @@ export const whatsappReport = createServerFn({ method: "POST" })
       revenue = (revs ?? []).reduce((a: number, r: any) => a + Number(r.amount || 0), 0);
     } catch { /* idem */ }
 
-
+    let clicks = 0;
+    if (linkedIds.length) {
+      let cq = context.supabase
+        .from("campaign_clicks")
+        .select("*", { count: "exact", head: true })
+        .in("campaign_id", linkedIds);
+      if (data.from) cq = cq.gte("clicked_at", data.from);
+      if (data.to) cq = cq.lte("clicked_at", data.to);
+      const { count } = await cq;
+      clicks = count ?? 0;
+    }
 
     return {
       sent, delivered, read, failed, replied,
       opt_outs: optOuts ?? 0,
+      clicks,
       cost, revenue, profit: revenue - cost,
       delivery_rate: sent ? +(delivered / sent * 100).toFixed(2) : 0,
       read_rate: delivered ? +(read / delivered * 100).toFixed(2) : 0,
+      click_rate: delivered ? +(clicks / delivered * 100).toFixed(2) : 0,
     };
   });
