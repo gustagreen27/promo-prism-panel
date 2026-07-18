@@ -65,13 +65,25 @@ export const whatsappReport = createServerFn({ method: "POST" })
       revenue = (revs ?? []).reduce((a: number, r: any) => a + Number(r.amount || 0), 0);
     } catch { /* idem */ }
 
-
+    let clicks = 0;
+    if (linkedIds.length) {
+      let cq = context.supabase
+        .from("campaign_clicks")
+        .select("*", { count: "exact", head: true })
+        .in("campaign_id", linkedIds);
+      if (data.from) cq = cq.gte("clicked_at", data.from);
+      if (data.to) cq = cq.lte("clicked_at", data.to);
+      const { count } = await cq;
+      clicks = count ?? 0;
+    }
 
     return {
       sent, delivered, read, failed, replied,
       opt_outs: optOuts ?? 0,
+      clicks,
       cost, revenue, profit: revenue - cost,
       delivery_rate: sent ? +(delivered / sent * 100).toFixed(2) : 0,
       read_rate: delivered ? +(read / delivered * 100).toFixed(2) : 0,
+      click_rate: delivered ? +(clicks / delivered * 100).toFixed(2) : 0,
     };
   });
