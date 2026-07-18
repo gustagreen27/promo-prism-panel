@@ -313,10 +313,11 @@ function ListView({ onNew }: { onNew: () => void }) {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-4 gap-2 rounded-lg border bg-muted/30 p-2 text-center">
+                  <div className="grid grid-cols-5 gap-2 rounded-lg border bg-muted/30 p-2 text-center">
                     <CampaignMetric label="Enviados" value={sent} />
                     <CampaignMetric label="Recebidos" value={delivered} />
                     <CampaignMetric label="Lidas" value={read} />
+                    <CampaignMetric label="Cliques" value={clicks} />
                     <CampaignMetric label="Falhas" value={failed} danger={failed > 0} />
                   </div>
 
