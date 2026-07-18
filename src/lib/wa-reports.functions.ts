@@ -33,7 +33,6 @@ export const whatsappReport = createServerFn({ method: "POST" })
     if (data.campaign_id) campQ = campQ.eq("id", data.campaign_id);
     const { data: camps } = await campQ;
     const campIds = (camps ?? []).map((c: any) => c.id);
-    const linkedIds = Array.from(new Set(((camps ?? []) as any[]).map((c) => c.linked_campaign_id).filter(Boolean))) as string[];
 
     if (!campIds.length) {
       return { sent: 0, delivered: 0, read: 0, failed: 0, replied: 0, opt_outs: 0, clicks: 0, cost: 0, revenue: 0, profit: 0, delivery_rate: 0, read_rate: 0, click_rate: 0 };
@@ -66,16 +65,12 @@ export const whatsappReport = createServerFn({ method: "POST" })
     } catch { /* idem */ }
 
     let clicks = 0;
-    if (linkedIds.length) {
-      let cq = context.supabase
-        .from("campaign_clicks")
-        .select("*", { count: "exact", head: true })
-        .in("campaign_id", linkedIds);
-      if (data.from) cq = cq.gte("clicked_at", data.from);
-      if (data.to) cq = cq.lte("clicked_at", data.to);
-      const { count } = await cq;
-      clicks = count ?? 0;
-    }
+    const { data: clickRows } = await context.supabase.rpc("wa_count_dispatch_clicks" as any, {
+      _campaign_ids: campIds,
+      _from: data.from ?? null,
+      _to: data.to ?? null,
+    });
+    clicks = ((clickRows ?? []) as any[]).reduce((sum, r) => sum + (Number(r.clicks ?? 0) || 0), 0);
 
     return {
       sent, delivered, read, failed, replied,

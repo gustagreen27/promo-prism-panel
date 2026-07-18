@@ -268,6 +268,16 @@ async function resetStaleProcessing(campaignId: string) {
   }
 }
 
+function addDispatchTrackingToButtonParam(value: string, campaignId: string, recipientId: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+  const hashAt = trimmed.indexOf("#");
+  const beforeHash = hashAt >= 0 ? trimmed.slice(0, hashAt) : trimmed;
+  const hash = hashAt >= 0 ? trimmed.slice(hashAt) : "";
+  const sep = beforeHash.includes("?") ? "&" : "?";
+  return `${beforeHash}${sep}wac=${encodeURIComponent(campaignId)}&r=${encodeURIComponent(recipientId)}${hash}`;
+}
+
 export async function processCampaignTick(
   campaignId: string,
   reservationBudget?: number,
@@ -661,7 +671,7 @@ export async function processCampaignTick(
           missingButtons.push(`{{${firstVarKey}}} do botão "${b?.text ?? `#${idx}`}"`);
           return;
         }
-        dynButtons.push({ index: idx, urlParam: value });
+        dynButtons.push({ index: idx, urlParam: addDispatchTrackingToButtonParam(value, campaignId, r.id) });
       });
 
       if (missingButtons.length && !dynButtons.length) {
