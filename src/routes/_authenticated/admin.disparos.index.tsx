@@ -263,7 +263,7 @@ function ListView({ onNew }: { onNew: () => void }) {
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map(({ campaign: c, metrics }) => {
             const meta = STATUS_META[c.status] ?? { label: c.status ?? "—", className: "bg-muted" };
-            const { total, sent, delivered, read, failed, processed } = metrics;
+            const { total, sent, delivered, read, failed, processed, clicks } = metrics;
             const pct = total > 0 ? Math.round((processed / total) * 100) : 0;
             const whenLabel = c.scheduled_at
               ? `Agendado para ${new Date(c.scheduled_at).toLocaleString("pt-BR")}`
