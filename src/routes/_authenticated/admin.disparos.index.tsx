@@ -169,8 +169,9 @@ function ListView({ onNew }: { onNew: () => void }) {
       acc.delivered += item.metrics.delivered;
       acc.read += item.metrics.read;
       acc.failed += item.metrics.failed;
+      acc.clicks += item.metrics.clicks;
       return acc;
-    }, { total: 0, sent: 0, delivered: 0, read: 0, failed: 0 });
+    }, { total: 0, sent: 0, delivered: 0, read: 0, failed: 0, clicks: 0 });
   }, [filtered]);
 
   const startMut = useMutation({
