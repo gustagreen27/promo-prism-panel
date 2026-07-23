@@ -1541,15 +1541,28 @@ function FAQ() {
 // ============ FINAL CTA ============
 function FinalCTA() {
   return (
-    <section className="py-20 sm:py-28">
-      <div className={container}>
-        <div className="rounded-2xl border border-white/8 bg-[#111317] p-8 sm:p-12">
+    <section className="relative overflow-hidden py-20 sm:py-28 bg-[#052e28] border-y border-emerald-500/20">
+      <div
+        aria-hidden
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(50% 60% at 80% 30%, rgba(16,185,129,0.25), transparent 60%), radial-gradient(40% 60% at 10% 80%, rgba(5,46,40,0.9), transparent 60%)",
+        }}
+      />
+      <div className={`${container} relative`}>
+        <div className="rounded-3xl border border-white/10 bg-black/30 backdrop-blur-sm p-8 sm:p-12 shadow-[0_40px_80px_-40px_rgba(0,0,0,0.6)]">
           <div className="grid lg:grid-cols-12 gap-8 items-center">
             <div className="lg:col-span-8">
-              <h2 className="text-2xl sm:text-[32px] font-semibold text-white tracking-tight leading-tight max-w-xl">
-                Pronto para alcançar sua base pelo WhatsApp Oficial?
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-medium text-emerald-300 uppercase tracking-widest">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Simulação gratuita
+              </div>
+              <h2 className="mt-4 text-2xl sm:text-[34px] font-semibold text-white tracking-tight leading-tight max-w-xl">
+                Pronto para alcançar sua base pelo{" "}
+                <span className="text-emerald-300">WhatsApp Oficial?</span>
               </h2>
-              <p className="mt-3 text-[15px] text-neutral-400 max-w-lg">
+              <p className="mt-3 text-[15px] text-emerald-100/70 max-w-lg">
                 Simule o volume e receba a proposta em minutos, direto no
                 WhatsApp comercial.
               </p>
@@ -1560,7 +1573,7 @@ function FinalCTA() {
                   trackPixel("ClickPrimaryCTA", { source: "final" });
                   scrollToId("simulador");
                 }}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3.5 text-[15px] font-medium text-neutral-950 hover:bg-emerald-400 transition-colors"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-4 text-[15px] font-semibold text-[#052e28] hover:bg-emerald-50 shadow-[0_10px_30px_-10px_rgba(255,255,255,0.4)] transition-all"
               >
                 Simular minha campanha
                 <ArrowRight className="h-4 w-4" />
@@ -1571,9 +1584,9 @@ function FinalCTA() {
                     "Olá! Vim do site da Disparos FR e gostaria de falar com um especialista."
                   )
                 }
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-5 py-3.5 text-[15px] font-medium text-neutral-100 hover:bg-white/[0.05] transition-colors"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/5 px-5 py-4 text-[15px] font-medium text-white hover:bg-white/10 transition-colors"
               >
-                <MessageCircle className="h-4 w-4 text-emerald-500" />
+                <MessageCircle className="h-4 w-4 text-emerald-300" />
                 Falar com um especialista
               </button>
             </div>
