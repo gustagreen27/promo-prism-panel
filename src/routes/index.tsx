@@ -69,7 +69,7 @@ const START_OPTIONS = [
   "Apenas pesquisando",
 ];
 
-const BASE_OPTIONS = ["Sim", "Parcialmente", "Ainda preciso verificar"];
+
 
 function formatBRL(v: number) {
   return v.toLocaleString("pt-BR", {
@@ -255,7 +255,7 @@ function Header({
         <div className="hidden md:flex items-center gap-3">
           <button
             onClick={() =>
-              openWhatsApp("Olá! Vim do site da Disparos FR.")
+              openWhatsApp("Olá! Vim do site da Disparos FR e quero falar com um especialista.")
             }
             className="text-sm text-neutral-300 hover:text-white transition-colors"
           >
@@ -268,7 +268,7 @@ function Header({
             }}
             className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400 transition-colors"
           >
-            Calcular campanha
+            Simular minha campanha
           </button>
         </div>
         <button
@@ -301,7 +301,7 @@ function Header({
             }}
             className="mt-2 block w-full rounded-full bg-emerald-500 px-4 py-3 text-sm font-medium text-neutral-950"
           >
-            Calcular campanha
+            Simular minha campanha
           </button>
         </div>
       )}
@@ -326,25 +326,24 @@ function Hero() {
         <div className="lg:col-span-6 lg:pt-6">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-neutral-300">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Campanhas para bases acima de 10 mil contatos
+            Para empresas com bases acima de 10 mil contatos
           </div>
           <h1 className="mt-5 text-[34px] sm:text-5xl lg:text-[56px] font-semibold tracking-tight leading-[1.05] text-white">
-            Envie campanhas para sua base pelo{" "}
+            Alcance sua base de clientes pelo{" "}
             <span className="whitespace-nowrap">WhatsApp Oficial</span>
           </h1>
           <p className="mt-4 text-lg text-neutral-300">
-            Valores{" "}
+            Campanhas{" "}
             <span className="font-semibold text-emerald-400">
               a partir de R$ 0,13 por envio
             </span>
-            <span className="text-neutral-500">
-              {" "}
-              — condição para bases acima de 250 mil contatos.
+            <span className="block text-[13px] text-neutral-500 mt-1">
+              Condição disponível para volumes acima de 250 mil contatos.
             </span>
           </p>
-          <p className="mt-3 text-[15px] leading-relaxed text-neutral-400 max-w-lg">
-            Estrutura, segmentação e acompanhamento em tempo real para empresas
-            que precisam alcançar milhares de clientes.
+          <p className="mt-4 text-[15px] leading-relaxed text-neutral-300 max-w-lg">
+            Você envia a base. Nossa equipe configura a campanha. E você
+            acompanha enviados, entregues e falhas em tempo real.
           </p>
 
           <div className="mt-7 flex flex-col sm:flex-row gap-3">
@@ -355,7 +354,7 @@ function Hero() {
               }}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-6 py-3.5 text-[15px] font-medium text-neutral-950 hover:bg-emerald-400 transition-colors"
             >
-              Calcular minha campanha
+              Simular minha campanha
               <ArrowRight className="h-4 w-4" />
             </button>
             <button
@@ -377,7 +376,7 @@ function Hero() {
             </li>
             <li className="inline-flex items-center gap-2">
               <Check className="h-3.5 w-3.5 text-emerald-500" />
-              Atendimento pelo WhatsApp
+              Atendimento humano
             </li>
           </ul>
         </div>
@@ -700,9 +699,7 @@ type FormData = {
   name: string;
   company: string;
   whatsapp: string;
-  email: string;
   start: string;
-  optin: string;
 };
 
 const STORAGE_KEY = "disparosfr:form";
@@ -878,12 +875,12 @@ function SimulatorSection() {
                   }}
                   className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-[14px] font-medium text-neutral-950 hover:bg-emerald-400 transition-colors"
                 >
-                  Continuar para a proposta
+                  Simular minha campanha
                   <ArrowRight className="h-4 w-4" />
                 </button>
                 <p className="mt-3 text-[11px] leading-relaxed text-neutral-500">
-                  Nenhum pagamento é solicitado agora. Você revisa tudo antes de
-                  seguir.
+                  Simulação gratuita e sem compromisso. Nenhum pagamento é
+                  solicitado agora.
                 </p>
               </div>
             </div>
@@ -924,9 +921,7 @@ function QualifyForm({
       name: "",
       company: "",
       whatsapp: "",
-      email: "",
       start: "",
-      optin: "",
     };
   });
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>(
@@ -956,12 +951,9 @@ function QualifyForm({
       if (!data.company.trim()) e.company = "Informe a empresa";
       const digits = data.whatsapp.replace(/\D/g, "");
       if (digits.length < 10) e.whatsapp = "WhatsApp inválido";
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email))
-        e.email = "E-mail inválido";
     }
     if (step === 3) {
       if (!data.start) e.start = "Selecione uma opção";
-      if (!data.optin) e.optin = "Selecione uma opção";
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -1073,12 +1065,13 @@ Gostaria de receber a proposta.`;
                 error={errors.whatsapp}
               />
               <Field
-                label="E-mail"
-                value={data.email}
-                onChange={(v) => update("email", v)}
-                placeholder="voce@empresa.com"
-                type="email"
-                error={errors.email}
+                label="Quantidade de contatos"
+                value={formatInt(data.volume)}
+                onChange={(v) => {
+                  const n = Number(v.replace(/\D/g, ""));
+                  if (!Number.isNaN(n)) update("volume", n);
+                }}
+                inputMode="tel"
               />
             </div>
             <p className="mt-3 text-[12px] text-neutral-500">
@@ -1110,28 +1103,6 @@ Gostaria de receber a proposta.`;
                 ))}
               </div>
               {errors.start && <ErrorMsg text={errors.start} />}
-            </div>
-            <div className="mt-5">
-              <div className="text-[13px] font-medium text-neutral-300 mb-2">
-                Sua base autorizou receber comunicações da empresa?
-              </div>
-              <div className="grid sm:grid-cols-3 gap-2">
-                {BASE_OPTIONS.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => update("optin", s)}
-                    className={`min-h-12 rounded-lg border px-3 py-3 text-[14px] transition-colors text-left ${
-                      data.optin === s
-                        ? "bg-emerald-500/10 border-emerald-500/50 text-white"
-                        : "bg-white/[0.02] border-white/8 text-neutral-300 hover:bg-white/[0.05]"
-                    }`}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-              {errors.optin && <ErrorMsg text={errors.optin} />}
             </div>
           </StepShell>
         )}
@@ -1178,7 +1149,7 @@ Gostaria de receber a proposta.`;
             onClick={submit}
             className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-[14px] font-medium text-neutral-950 hover:bg-emerald-400 transition-colors"
           >
-            <MessageCircle className="h-4 w-4" /> Receber proposta no WhatsApp
+            <MessageCircle className="h-4 w-4" /> Continuar pelo WhatsApp
           </button>
         )}
       </div>
@@ -1563,19 +1534,19 @@ function FinalCTA() {
                 }}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3.5 text-[15px] font-medium text-neutral-950 hover:bg-emerald-400 transition-colors"
               >
-                Calcular minha campanha
+                Simular minha campanha
                 <ArrowRight className="h-4 w-4" />
               </button>
               <button
                 onClick={() =>
                   openWhatsApp(
-                    "Olá! Vim do site da Disparos FR e gostaria de mais informações."
+                    "Olá! Vim do site da Disparos FR e gostaria de falar com um especialista."
                   )
                 }
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-5 py-3.5 text-[15px] font-medium text-neutral-100 hover:bg-white/[0.05] transition-colors"
               >
                 <MessageCircle className="h-4 w-4 text-emerald-500" />
-                Falar com especialista
+                Falar com um especialista
               </button>
             </div>
           </div>
@@ -1598,8 +1569,8 @@ function Footer() {
               className="h-8 w-auto"
             />
             <p className="mt-4 text-[13px] text-neutral-400 leading-relaxed max-w-sm">
-              Campanhas de WhatsApp pela API Oficial para empresas com base
-              autorizada.
+              Campanhas realizadas por meio da API Oficial do WhatsApp
+              Business, para empresas com base própria e autorizada.
             </p>
           </div>
           <div className="md:col-span-3">
@@ -1715,7 +1686,7 @@ function MobileStickyCTA() {
         }}
         className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3.5 text-[15px] font-medium text-neutral-950"
       >
-        Simular campanha
+        Simular minha campanha
         <ArrowRight className="h-4 w-4" />
       </button>
     </div>
