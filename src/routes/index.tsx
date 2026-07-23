@@ -255,7 +255,7 @@ function Header({
         <div className="hidden md:flex items-center gap-3">
           <button
             onClick={() =>
-              openWhatsApp("Olá! Vim do site da Disparos FR.")
+              openWhatsApp("Olá! Vim do site da Disparos FR e quero falar com um especialista.")
             }
             className="text-sm text-neutral-300 hover:text-white transition-colors"
           >
@@ -268,7 +268,7 @@ function Header({
             }}
             className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400 transition-colors"
           >
-            Calcular campanha
+            Simular minha campanha
           </button>
         </div>
         <button
