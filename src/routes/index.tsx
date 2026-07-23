@@ -24,6 +24,7 @@ import {
   Activity,
   ArrowRight,
 } from "lucide-react";
+import logoAsset from "@/assets/disparos-fr-logo-new.png.asset.json";
 
 // ============ CONFIG ============
 const WHATSAPP_NUMBER = "5511999999999"; // editar aqui
@@ -189,9 +190,12 @@ function Header({
   return (
     <header className="fixed top-0 inset-x-0 z-50 bg-[#08090b]/80 backdrop-blur-xl border-b border-white/5">
       <div className="max-w-7xl mx-auto px-5 h-16 flex items-center justify-between">
-        <a href="#top" className="flex items-center gap-1 font-black tracking-tight text-lg">
-          <span className="text-white">DISPAROS</span>
-          <span className="text-emerald-500">FR</span>
+        <a href="#top" className="flex items-center">
+          <img
+            src={logoAsset.url}
+            alt="Disparos FR"
+            className="h-8 w-auto"
+          />
         </a>
         <nav className="hidden md:flex items-center gap-8 text-sm text-gray-300">
           {links.map((l) => (
@@ -1380,9 +1384,12 @@ function Footer() {
       <div className="max-w-7xl mx-auto px-5">
         <div className="grid md:grid-cols-4 gap-10 mb-10">
           <div className="md:col-span-2">
-            <div className="font-black text-lg tracking-tight mb-3">
-              <span className="text-white">DISPAROS</span>
-              <span className="text-emerald-500">FR</span>
+            <div className="mb-3">
+              <img
+                src={logoAsset.url}
+                alt="Disparos FR"
+                className="h-10 w-auto"
+              />
             </div>
             <p className="text-sm text-gray-400 max-w-sm leading-relaxed">
               Campanhas de WhatsApp pela API Oficial com relatórios em tempo
