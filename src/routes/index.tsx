@@ -877,12 +877,12 @@ function SimulatorSection() {
                   }}
                   className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-[14px] font-medium text-neutral-950 hover:bg-emerald-400 transition-colors"
                 >
-                  Continuar para a proposta
+                  Simular minha campanha
                   <ArrowRight className="h-4 w-4" />
                 </button>
                 <p className="mt-3 text-[11px] leading-relaxed text-neutral-500">
-                  Nenhum pagamento é solicitado agora. Você revisa tudo antes de
-                  seguir.
+                  Simulação gratuita e sem compromisso. Nenhum pagamento é
+                  solicitado agora.
                 </p>
               </div>
             </div>
