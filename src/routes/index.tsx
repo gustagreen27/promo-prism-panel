@@ -746,8 +746,16 @@ function SimulatorSection() {
   return (
     <section
       id="simulador"
-      className="relative border-y border-white/5 bg-[#0d0e11] py-20 sm:py-28"
+      className="relative overflow-hidden border-y border-emerald-500/20 bg-[#052e28] py-20 sm:py-28"
     >
+      <div
+        aria-hidden
+        className="absolute inset-0 pointer-events-none opacity-60"
+        style={{
+          background:
+            "radial-gradient(60% 40% at 20% 0%, rgba(16,185,129,0.18), transparent 60%), radial-gradient(50% 40% at 100% 100%, rgba(6,95,70,0.5), transparent 60%)",
+        }}
+      />
       <div className={container}>
         <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-start">
           <div className="lg:col-span-5">
