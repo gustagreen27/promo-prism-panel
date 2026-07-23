@@ -1714,7 +1714,7 @@ function MobileStickyCTA() {
         }}
         className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3.5 text-[15px] font-medium text-neutral-950"
       >
-        Simular campanha
+        Simular minha campanha
         <ArrowRight className="h-4 w-4" />
       </button>
     </div>
