@@ -921,9 +921,7 @@ function QualifyForm({
       name: "",
       company: "",
       whatsapp: "",
-      email: "",
       start: "",
-      optin: "",
     };
   });
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>(
@@ -953,12 +951,9 @@ function QualifyForm({
       if (!data.company.trim()) e.company = "Informe a empresa";
       const digits = data.whatsapp.replace(/\D/g, "");
       if (digits.length < 10) e.whatsapp = "WhatsApp inválido";
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email))
-        e.email = "E-mail inválido";
     }
     if (step === 3) {
       if (!data.start) e.start = "Selecione uma opção";
-      if (!data.optin) e.optin = "Selecione uma opção";
     }
     setErrors(e);
     return Object.keys(e).length === 0;
