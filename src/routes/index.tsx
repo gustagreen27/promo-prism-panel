@@ -1149,7 +1149,7 @@ Gostaria de receber a proposta.`;
             onClick={submit}
             className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-[14px] font-medium text-neutral-950 hover:bg-emerald-400 transition-colors"
           >
-            <MessageCircle className="h-4 w-4" /> Receber proposta no WhatsApp
+            <MessageCircle className="h-4 w-4" /> Continuar pelo WhatsApp
           </button>
         )}
       </div>
