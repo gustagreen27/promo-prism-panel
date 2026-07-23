@@ -699,9 +699,7 @@ type FormData = {
   name: string;
   company: string;
   whatsapp: string;
-  email: string;
   start: string;
-  optin: string;
 };
 
 const STORAGE_KEY = "disparosfr:form";
