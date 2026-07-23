@@ -326,25 +326,24 @@ function Hero() {
         <div className="lg:col-span-6 lg:pt-6">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-neutral-300">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Campanhas para bases acima de 10 mil contatos
+            Para empresas com bases acima de 10 mil contatos
           </div>
           <h1 className="mt-5 text-[34px] sm:text-5xl lg:text-[56px] font-semibold tracking-tight leading-[1.05] text-white">
-            Envie campanhas para sua base pelo{" "}
+            Alcance sua base de clientes pelo{" "}
             <span className="whitespace-nowrap">WhatsApp Oficial</span>
           </h1>
           <p className="mt-4 text-lg text-neutral-300">
-            Valores{" "}
+            Campanhas{" "}
             <span className="font-semibold text-emerald-400">
               a partir de R$ 0,13 por envio
             </span>
-            <span className="text-neutral-500">
-              {" "}
-              — condição para bases acima de 250 mil contatos.
+            <span className="block text-[13px] text-neutral-500 mt-1">
+              Condição disponível para volumes acima de 250 mil contatos.
             </span>
           </p>
-          <p className="mt-3 text-[15px] leading-relaxed text-neutral-400 max-w-lg">
-            Estrutura, segmentação e acompanhamento em tempo real para empresas
-            que precisam alcançar milhares de clientes.
+          <p className="mt-4 text-[15px] leading-relaxed text-neutral-300 max-w-lg">
+            Você envia a base. Nossa equipe configura a campanha. E você
+            acompanha enviados, entregues e falhas em tempo real.
           </p>
 
           <div className="mt-7 flex flex-col sm:flex-row gap-3">
@@ -355,7 +354,7 @@ function Hero() {
               }}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-6 py-3.5 text-[15px] font-medium text-neutral-950 hover:bg-emerald-400 transition-colors"
             >
-              Calcular minha campanha
+              Simular minha campanha
               <ArrowRight className="h-4 w-4" />
             </button>
             <button
@@ -377,7 +376,7 @@ function Hero() {
             </li>
             <li className="inline-flex items-center gap-2">
               <Check className="h-3.5 w-3.5 text-emerald-500" />
-              Atendimento pelo WhatsApp
+              Atendimento humano
             </li>
           </ul>
         </div>
