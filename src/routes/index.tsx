@@ -1,36 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Menu,
   X,
   MessageCircle,
   ShieldCheck,
-  BarChart3,
-  MapPin,
-  Headphones,
-  Zap,
-  Users,
-  Send,
-  CheckCircle2,
-  AlertTriangle,
   ChevronRight,
   ChevronLeft,
-  Plus,
-  Sparkles,
-  LineChart,
-  Target,
-  Palette,
-  Clock,
-  Activity,
   ArrowRight,
+  Check,
+  Plus,
+  Minus,
+  Circle,
 } from "lucide-react";
 import logoAsset from "@/assets/disparos-fr-logo-new.png.asset.json";
 
 // ============ CONFIG ============
 const WHATSAPP_NUMBER = "5511999999999"; // editar aqui
-const BRAND = { primary: "#22c55e" };
 
-// ============ META PIXEL EVENTS ============
+// ============ META PIXEL ============
 type PixelEvent =
   | "PageView"
   | "ClickPrimaryCTA"
@@ -41,27 +29,28 @@ type PixelEvent =
   | "ClickWhatsApp";
 
 function trackPixel(event: PixelEvent, data?: Record<string, unknown>) {
-  // Preparado para Meta Pixel: window.fbq && window.fbq('trackCustom', event, data)
-  if (typeof window !== "undefined") {
-    // eslint-disable-next-line no-console
-    console.debug("[pixel]", event, data ?? {});
-    const w = window as unknown as { fbq?: (...args: unknown[]) => void };
-    if (typeof w.fbq === "function") {
-      w.fbq("trackCustom", event, data ?? {});
-    }
-  }
+  if (typeof window === "undefined") return;
+  // eslint-disable-next-line no-console
+  console.debug("[pixel]", event, data ?? {});
+  const w = window as unknown as { fbq?: (...args: unknown[]) => void };
+  if (typeof w.fbq === "function") w.fbq("trackCustom", event, data ?? {});
 }
 
-// ============ HELPERS ============
-const VOLUMES = [
-  { key: "10k", label: "10 mil contatos", count: 10000, price: 0.27 },
-  { key: "50k", label: "50 mil contatos", count: 50000, price: 0.22 },
-  { key: "100k", label: "100 mil contatos", count: 100000, price: 0.19 },
-  { key: "250k", label: "250 mil contatos", count: 250000, price: 0.16 },
-  { key: "250k+", label: "Mais de 250 mil contatos", count: 300000, price: 0.13 },
+// ============ PRICING ============
+// Faixas comerciais reais — o preço de R$0,13 é exclusivo para 250k+ contatos.
+const TIERS = [
+  { min: 10_000, max: 49_999, price: 0.27, label: "10 mil a 50 mil" },
+  { min: 50_000, max: 99_999, price: 0.22, label: "50 mil a 100 mil" },
+  { min: 100_000, max: 249_999, price: 0.19, label: "100 mil a 250 mil" },
+  { min: 250_000, max: Infinity, price: 0.13, label: "Acima de 250 mil" },
 ] as const;
 
-type VolumeKey = (typeof VOLUMES)[number]["key"];
+const PRESETS = [10_000, 25_000, 50_000, 100_000, 250_000, 500_000];
+
+function priceFor(volume: number) {
+  const tier = TIERS.find((t) => volume >= t.min && volume <= t.max) ?? TIERS[0];
+  return { price: tier.price, tier };
+}
 
 const SEGMENTS = [
   "Financeiro",
@@ -77,7 +66,7 @@ const START_OPTIONS = [
   "O mais rápido possível",
   "Nesta semana",
   "Nos próximos 15 dias",
-  "Apenas estou pesquisando",
+  "Apenas pesquisando",
 ];
 
 const BASE_OPTIONS = ["Sim", "Parcialmente", "Ainda preciso verificar"];
@@ -90,7 +79,7 @@ function formatBRL(v: number) {
   });
 }
 
-function formatNumber(v: number) {
+function formatInt(v: number) {
   return v.toLocaleString("pt-BR");
 }
 
@@ -123,12 +112,12 @@ export const Route = createFileRoute("/")({
     meta: [
       {
         title:
-          "Disparos FR — Campanhas de WhatsApp pela API Oficial a partir de R$ 0,13",
+          "Disparos FR — Campanhas de WhatsApp pela API Oficial para bases 10k+",
       },
       {
         name: "description",
         content:
-          "Campanhas de WhatsApp em escala pela API Oficial: relatórios em tempo real, segmentação por DDD e suporte especializado para bases acima de 10 mil contatos.",
+          "Estrutura, segmentação e acompanhamento em tempo real para empresas que precisam alcançar milhares de clientes pelo WhatsApp Oficial.",
       },
       {
         property: "og:title",
@@ -137,7 +126,7 @@ export const Route = createFileRoute("/")({
       {
         property: "og:description",
         content:
-          "Simule sua campanha, veja o valor por envio e fale com um especialista.",
+          "Simule o volume, veja o valor por envio e receba a proposta pelo WhatsApp.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -155,20 +144,65 @@ function LandingPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#08090b] text-white font-sans antialiased selection:bg-emerald-500/30">
+    <div className="min-h-screen bg-[#0b0c0e] text-neutral-100 font-sans antialiased selection:bg-emerald-500/20 selection:text-white">
       <Header menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
-      <Hero />
-      <Credibility />
-      <HowItWorks />
-      <Simulator />
-      <Differentiators />
-      <DashboardDemo />
-      <Results />
-      <ForWho />
-      <FAQ />
-      <FinalCTA />
+      <main>
+        <Hero />
+        <Metrics />
+        <HowItWorks />
+        <SimulatorSection />
+        <PanelSection />
+        <UseCases />
+        <Compare />
+        <FAQ />
+        <FinalCTA />
+      </main>
       <Footer />
-      <FloatingWhatsApp />
+      <MobileStickyCTA />
+    </div>
+  );
+}
+
+// ============ SHARED PRIMITIVES ============
+const container = "mx-auto w-full max-w-6xl px-5 sm:px-6";
+
+function Eyebrow({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-400">
+      <span className="h-px w-6 bg-neutral-700" />
+      {children}
+    </div>
+  );
+}
+
+function SectionHead({
+  eyebrow,
+  title,
+  lead,
+  align = "left",
+}: {
+  eyebrow: string;
+  title: React.ReactNode;
+  lead?: React.ReactNode;
+  align?: "left" | "center";
+}) {
+  return (
+    <div
+      className={
+        align === "center"
+          ? "mx-auto max-w-2xl text-center"
+          : "max-w-2xl"
+      }
+    >
+      <Eyebrow>{eyebrow}</Eyebrow>
+      <h2 className="mt-4 text-3xl sm:text-4xl font-semibold tracking-tight text-white leading-[1.1]">
+        {title}
+      </h2>
+      {lead && (
+        <p className="mt-4 text-[15px] leading-relaxed text-neutral-400">
+          {lead}
+        </p>
+      )}
     </div>
   );
 }
@@ -181,23 +215,33 @@ function Header({
   menuOpen: boolean;
   setMenuOpen: (v: boolean) => void;
 }) {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const on = () => setScrolled(window.scrollY > 8);
+    on();
+    window.addEventListener("scroll", on, { passive: true });
+    return () => window.removeEventListener("scroll", on);
+  }, []);
+
   const links = [
     { label: "Como funciona", id: "como-funciona" },
-    { label: "Diferenciais", id: "diferenciais" },
-    { label: "Resultados", id: "resultados" },
+    { label: "Simulador", id: "simulador" },
+    { label: "Painel", id: "painel" },
     { label: "Dúvidas", id: "faq" },
   ];
   return (
-    <header className="fixed top-0 inset-x-0 z-50 bg-[#08090b]/80 backdrop-blur-xl border-b border-white/5">
-      <div className="max-w-7xl mx-auto px-5 h-16 flex items-center justify-between">
-        <a href="#top" className="flex items-center">
-          <img
-            src={logoAsset.url}
-            alt="Disparos FR"
-            className="h-8 w-auto"
-          />
+    <header
+      className={`fixed inset-x-0 top-0 z-50 transition-colors ${
+        scrolled
+          ? "bg-[#0b0c0e]/85 backdrop-blur border-b border-white/5"
+          : "bg-transparent"
+      }`}
+    >
+      <div className={`${container} flex h-16 items-center justify-between`}>
+        <a href="#top" className="flex items-center gap-2" aria-label="Disparos FR">
+          <img src={logoAsset.url} alt="Disparos FR" className="h-7 w-auto" />
         </a>
-        <nav className="hidden md:flex items-center gap-8 text-sm text-gray-300">
+        <nav className="hidden md:flex items-center gap-7 text-sm text-neutral-300">
           {links.map((l) => (
             <button
               key={l.id}
@@ -207,26 +251,36 @@ function Header({
               {l.label}
             </button>
           ))}
+        </nav>
+        <div className="hidden md:flex items-center gap-3">
+          <button
+            onClick={() =>
+              openWhatsApp("Olá! Vim do site da Disparos FR.")
+            }
+            className="text-sm text-neutral-300 hover:text-white transition-colors"
+          >
+            Falar com um especialista
+          </button>
           <button
             onClick={() => {
               trackPixel("ClickPrimaryCTA", { source: "header" });
               scrollToId("simulador");
             }}
-            className="bg-emerald-500 text-black px-4 py-2 rounded-full text-sm font-semibold hover:bg-emerald-400 transition-all"
+            className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400 transition-colors"
           >
-            Simular campanha
+            Calcular campanha
           </button>
-        </nav>
+        </div>
         <button
           className="md:hidden p-2 -mr-2 text-white"
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label="Menu"
         >
-          {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          {menuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
       </div>
       {menuOpen && (
-        <div className="md:hidden border-t border-white/5 bg-[#08090b] px-5 py-4 flex flex-col gap-4">
+        <div className="md:hidden border-t border-white/5 bg-[#0b0c0e] px-5 py-4 space-y-3">
           {links.map((l) => (
             <button
               key={l.id}
@@ -234,7 +288,7 @@ function Header({
                 setMenuOpen(false);
                 setTimeout(() => scrollToId(l.id), 50);
               }}
-              className="text-left text-gray-300 hover:text-white"
+              className="block w-full text-left py-2 text-neutral-300"
             >
               {l.label}
             </button>
@@ -245,9 +299,9 @@ function Header({
               trackPixel("ClickPrimaryCTA", { source: "mobile-menu" });
               setTimeout(() => scrollToId("simulador"), 50);
             }}
-            className="bg-emerald-500 text-black px-4 py-3 rounded-full text-sm font-semibold"
+            className="mt-2 block w-full rounded-full bg-emerald-500 px-4 py-3 text-sm font-medium text-neutral-950"
           >
-            Simular campanha
+            Calcular campanha
           </button>
         </div>
       )}
@@ -258,136 +312,220 @@ function Header({
 // ============ HERO ============
 function Hero() {
   return (
-    <section id="top" className="relative pt-28 md:pt-36 pb-20 overflow-hidden">
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-20 left-1/4 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[140px]" />
-        <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-emerald-500/5 rounded-full blur-[120px]" />
-      </div>
-      <div className="max-w-7xl mx-auto px-5 grid lg:grid-cols-2 gap-14 items-center relative">
-        <div>
-          <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full mb-6">
-            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-            <span className="text-xs font-semibold tracking-wide uppercase text-gray-300">
-              API Oficial WhatsApp Business
-            </span>
+    <section id="top" className="relative pt-28 sm:pt-32 pb-16 sm:pb-24">
+      {/* single subtle atmosphere — sem glow verde exagerado */}
+      <div
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-[420px] pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(60% 60% at 70% 0%, rgba(255,255,255,0.04), transparent 70%)",
+        }}
+      />
+      <div className={`${container} relative grid lg:grid-cols-12 gap-10 lg:gap-14 items-start`}>
+        <div className="lg:col-span-6 lg:pt-6">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-neutral-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            Campanhas para bases acima de 10 mil contatos
           </div>
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-[1.05] mb-6">
-            Disparos no WhatsApp pela API Oficial{" "}
-            <span className="text-emerald-500">a partir de R$ 0,13</span>
+          <h1 className="mt-5 text-[34px] sm:text-5xl lg:text-[56px] font-semibold tracking-tight leading-[1.05] text-white">
+            Envie campanhas para sua base pelo{" "}
+            <span className="whitespace-nowrap">WhatsApp Oficial</span>
           </h1>
-          <p className="text-lg text-gray-300 leading-relaxed mb-3 max-w-xl">
-            Alcance milhares de clientes com campanhas segmentadas, relatórios
-            em tempo real e suporte completo na configuração.
+          <p className="mt-4 text-lg text-neutral-300">
+            Valores{" "}
+            <span className="font-semibold text-emerald-400">
+              a partir de R$ 0,13 por envio
+            </span>
+            <span className="text-neutral-500">
+              {" "}
+              — condição para bases acima de 250 mil contatos.
+            </span>
           </p>
-          <p className="text-sm text-gray-500 mb-8 max-w-xl">
-            Solução indicada para empresas com bases acima de 10 mil contatos.
+          <p className="mt-3 text-[15px] leading-relaxed text-neutral-400 max-w-lg">
+            Estrutura, segmentação e acompanhamento em tempo real para empresas
+            que precisam alcançar milhares de clientes.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 mb-6">
+
+          <div className="mt-7 flex flex-col sm:flex-row gap-3">
             <button
               onClick={() => {
                 trackPixel("ClickPrimaryCTA", { source: "hero" });
                 scrollToId("simulador");
               }}
-              className="px-6 py-4 bg-emerald-500 text-black rounded-2xl font-bold hover:bg-emerald-400 transition-all shadow-[0_10px_30px_-10px_rgba(34,197,94,0.6)] hover:-translate-y-0.5 flex items-center justify-center gap-2"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-6 py-3.5 text-[15px] font-medium text-neutral-950 hover:bg-emerald-400 transition-colors"
             >
-              Calcular minha campanha <ArrowRight className="w-5 h-5" />
+              Calcular minha campanha
+              <ArrowRight className="h-4 w-4" />
             </button>
             <button
-              onClick={() =>
-                openWhatsApp(
-                  "Olá! Gostaria de falar com um especialista da Disparos FR."
-                )
-              }
-              className="px-6 py-4 bg-white/5 border border-white/10 text-white rounded-2xl font-semibold hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+              onClick={() => scrollToId("como-funciona")}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-6 py-3.5 text-[15px] font-medium text-neutral-100 hover:bg-white/[0.05] transition-colors"
             >
-              <MessageCircle className="w-5 h-5 text-emerald-500" />
-              Falar com um especialista
+              Ver como funciona
             </button>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {[
-              "API Oficial",
-              "Relatórios em tempo real",
-              "Segmentação por DDD",
-              "Suporte especializado",
-            ].map((t) => (
-              <span
-                key={t}
-                className="text-xs font-medium px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-gray-300"
-              >
-                {t}
-              </span>
-            ))}
-          </div>
+
+          <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-[13px] text-neutral-400">
+            <li className="inline-flex items-center gap-2">
+              <Check className="h-3.5 w-3.5 text-emerald-500" />
+              Simulação gratuita
+            </li>
+            <li className="inline-flex items-center gap-2">
+              <Check className="h-3.5 w-3.5 text-emerald-500" />
+              Sem compromisso
+            </li>
+            <li className="inline-flex items-center gap-2">
+              <Check className="h-3.5 w-3.5 text-emerald-500" />
+              Atendimento pelo WhatsApp
+            </li>
+          </ul>
         </div>
-        <HeroMockup />
+
+        <div className="lg:col-span-6">
+          <DashboardMock compact />
+        </div>
       </div>
     </section>
   );
 }
 
-function HeroMockup() {
-  const [progress, setProgress] = useState(20);
+// ============ DASHBOARD MOCK (realistic) ============
+function DashboardMock({ compact = false }: { compact?: boolean }) {
+  // Dados intencionalmente não-redondos.
+  const total = 48_732;
+  const [sent, setSent] = useState(37_849);
+  const delivered = 35_971;
+  const failed = 1_878;
+  const rate = 95.0;
+  const progress = Math.round((sent / total) * 1000) / 10; // 77.7
+
   useEffect(() => {
     const id = setInterval(() => {
-      setProgress((p) => (p >= 87 ? 87 : p + 1));
-    }, 40);
+      setSent((s) => (s < 38_400 ? s + 7 : s));
+    }, 900);
     return () => clearInterval(id);
   }, []);
+
   return (
     <div className="relative">
-      <div className="absolute -inset-6 bg-gradient-to-tr from-emerald-500/20 to-transparent rounded-[2rem] blur-2xl" />
-      <div className="relative bg-[#0f1114] border border-white/10 rounded-3xl p-6 shadow-2xl">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/20 grid place-items-center">
-              <Activity className="w-4 h-4 text-emerald-500" />
-            </div>
-            <div>
-              <div className="text-sm font-semibold">Campanha #4821</div>
-              <div className="text-[10px] text-gray-500 uppercase tracking-widest">
-                Base premium
-              </div>
-            </div>
+      <div className="relative overflow-hidden rounded-2xl border border-white/8 bg-[#101216] shadow-[0_30px_60px_-30px_rgba(0,0,0,0.6)]">
+        {/* window chrome */}
+        <div className="flex items-center justify-between border-b border-white/5 px-4 py-2.5">
+          <div className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-white/10" />
+            <span className="h-2.5 w-2.5 rounded-full bg-white/10" />
+            <span className="h-2.5 w-2.5 rounded-full bg-white/10" />
           </div>
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            Campanha em execução
+          <div className="text-[11px] text-neutral-500 font-mono">
+            painel.disparosfr.com
+          </div>
+          <span className="text-[10px] uppercase tracking-widest text-neutral-600">
+            Demonstração
           </span>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 mb-5">
-          <MockStat label="Contatos" value="100.000" />
-          <MockStat label="Enviados" value="87.432" accent />
-          <MockStat label="Entregues" value="83.109" />
-          <MockStat label="Falhas" value="4.323" muted />
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-gray-400 font-medium">Progresso</span>
-            <span className="text-sm font-bold text-emerald-400">
-              {progress}%
-            </span>
+        <div className="p-5 sm:p-6">
+          {/* header row */}
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="text-[11px] uppercase tracking-[0.18em] text-neutral-500">
+                Campanha
+              </div>
+              <div className="mt-1 flex items-center gap-2 text-[15px] font-medium text-white truncate">
+                Lançamento Julho
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Em execução
+                </span>
+              </div>
+              <div className="mt-1 text-[12px] text-neutral-500">
+                Iniciada 12/07 · 09:14 · Segmentado SP/RJ/MG
+              </div>
+            </div>
+            <div className="hidden sm:flex items-center gap-1 rounded-md border border-white/8 bg-white/[0.02] p-0.5 text-[11px] text-neutral-400">
+              <span className="rounded px-2 py-1 bg-white/[0.06] text-white">
+                Hoje
+              </span>
+              <span className="px-2 py-1">7d</span>
+              <span className="px-2 py-1">30d</span>
+            </div>
           </div>
-          <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-100"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        </div>
 
-        <div className="mt-5 pt-5 border-t border-white/5 flex items-center justify-between text-xs">
-          <span className="text-gray-500">Última atualização agora</span>
-          <span className="text-gray-400 font-medium">78,9 msg/min</span>
+          {/* KPIs */}
+          <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <Kpi label="Contatos" value={formatInt(total)} />
+            <Kpi label="Enviados" value={formatInt(sent)} />
+            <Kpi label="Entregues" value={formatInt(delivered)} accent />
+            <Kpi label="Falhas" value={formatInt(failed)} muted />
+          </div>
+
+          {/* progress */}
+          <div className="mt-5">
+            <div className="flex items-baseline justify-between">
+              <div className="text-[12px] text-neutral-400">
+                Progresso da campanha
+              </div>
+              <div className="text-[13px] font-medium text-white">
+                {progress.toFixed(1).replace(".", ",")}%
+              </div>
+            </div>
+            <div className="mt-2 h-1.5 rounded-full bg-white/5 overflow-hidden">
+              <div
+                className="h-full bg-emerald-500 transition-[width] duration-700 ease-out"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <div className="mt-2 flex items-center justify-between text-[11px] text-neutral-500">
+              <span>Velocidade média · 78,9 msg/min</span>
+              <span>Atualizado há 12 segundos</span>
+            </div>
+          </div>
+
+          {/* mini list */}
+          {!compact && (
+            <div className="mt-6 rounded-xl border border-white/6 bg-white/[0.015]">
+              <div className="px-4 py-2.5 text-[11px] uppercase tracking-widest text-neutral-500 border-b border-white/5">
+                Campanhas recentes
+              </div>
+              <MiniRow
+                name="Lançamento Julho"
+                meta="48.732 contatos · 95,0% entrega"
+                status="Em execução"
+                tone="emerald"
+              />
+              <MiniRow
+                name="Reativação SP"
+                meta="21.410 contatos · 93,4% entrega"
+                status="Concluída"
+                tone="muted"
+              />
+              <MiniRow
+                name="Base premium 12/26"
+                meta="9.870 contatos · pausada"
+                status="Atenção"
+                tone="warn"
+              />
+            </div>
+          )}
+          {compact && (
+            <div className="mt-6 grid grid-cols-3 gap-2 text-[11px] text-neutral-400">
+              <MiniStat k="Taxa entrega" v="95,0%" />
+              <MiniStat k="Iniciada" v="12/07 09:14" />
+              <MiniStat k="Última msg" v="há 12 s" />
+            </div>
+          )}
         </div>
       </div>
+      <p className="mt-3 text-[11px] text-neutral-500 flex items-center gap-1.5">
+        <Circle className="h-2 w-2 fill-neutral-600 text-neutral-600" />
+        Demonstração da plataforma. Dados ilustrativos.
+      </p>
     </div>
   );
 }
 
-function MockStat({
+function Kpi({
   label,
   value,
   accent,
@@ -399,19 +537,17 @@ function MockStat({
   muted?: boolean;
 }) {
   return (
-    <div
-      className={`rounded-2xl p-4 border ${
-        accent
-          ? "bg-emerald-500/10 border-emerald-500/20"
-          : "bg-white/[0.02] border-white/5"
-      }`}
-    >
-      <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">
+    <div className="rounded-lg border border-white/6 bg-white/[0.02] p-3">
+      <div className="text-[10px] uppercase tracking-widest text-neutral-500">
         {label}
       </div>
       <div
-        className={`text-xl font-bold ${
-          muted ? "text-gray-400" : accent ? "text-emerald-400" : "text-white"
+        className={`mt-1 text-[17px] font-semibold tabular-nums ${
+          accent
+            ? "text-emerald-400"
+            : muted
+              ? "text-neutral-400"
+              : "text-white"
         }`}
       >
         {value}
@@ -420,23 +556,69 @@ function MockStat({
   );
 }
 
-// ============ CREDIBILITY ============
-function Credibility() {
+function MiniStat({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="rounded-md border border-white/6 bg-white/[0.02] px-3 py-2">
+      <div className="text-[10px] uppercase tracking-widest text-neutral-500">
+        {k}
+      </div>
+      <div className="text-white text-[12px] font-medium mt-0.5">{v}</div>
+    </div>
+  );
+}
+
+function MiniRow({
+  name,
+  meta,
+  status,
+  tone,
+}: {
+  name: string;
+  meta: string;
+  status: string;
+  tone: "emerald" | "muted" | "warn";
+}) {
+  const toneClass =
+    tone === "emerald"
+      ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+      : tone === "warn"
+        ? "text-amber-300 bg-amber-500/10 border-amber-500/20"
+        : "text-neutral-400 bg-white/5 border-white/10";
+  return (
+    <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/5 last:border-b-0">
+      <div className="min-w-0">
+        <div className="text-[13px] text-white truncate">{name}</div>
+        <div className="text-[11px] text-neutral-500 truncate">{meta}</div>
+      </div>
+      <span
+        className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${toneClass}`}
+      >
+        {status}
+      </span>
+    </div>
+  );
+}
+
+// ============ METRICS strip ============
+function Metrics() {
   const items = [
-    { n: "250 mil+", t: "Mensagens processadas" },
-    { n: "10k a 250k", t: "Campanhas por operação" },
-    { n: "Tempo real", t: "Acompanhamento da campanha" },
-    { n: "Sempre", t: "Atendimento durante a campanha" },
+    { n: "10k – 500k+", t: "Contatos por campanha" },
+    { n: "API Oficial", t: "WhatsApp Business Platform" },
+    { n: "Tempo real", t: "Acompanhamento de envios" },
+    { n: "Atendimento", t: "Especialista dedicado" },
   ];
   return (
-    <section className="py-14 border-y border-white/5 bg-white/[0.015]">
-      <div className="max-w-7xl mx-auto px-5 grid grid-cols-2 md:grid-cols-4 gap-8">
-        {items.map((i) => (
-          <div key={i.t} className="text-center md:text-left">
-            <div className="text-2xl md:text-3xl font-black tracking-tight text-white">
+    <section className="border-y border-white/5 bg-white/[0.015]">
+      <div className={`${container} grid grid-cols-2 md:grid-cols-4 py-8`}>
+        {items.map((i, idx) => (
+          <div
+            key={i.t}
+            className={`px-2 ${idx > 0 ? "md:border-l md:border-white/5" : ""}`}
+          >
+            <div className="text-[19px] sm:text-[22px] font-semibold text-white tracking-tight">
               {i.n}
             </div>
-            <div className="text-xs md:text-sm text-gray-400 mt-1">{i.t}</div>
+            <div className="mt-1 text-[12px] text-neutral-500">{i.t}</div>
           </div>
         ))}
       </div>
@@ -448,52 +630,72 @@ function Credibility() {
 function HowItWorks() {
   const steps = [
     {
-      t: "Envie sua base",
-      d: "Recebemos os contatos e analisamos a estrutura da sua campanha.",
+      n: "01",
+      t: "Você envia a base",
+      d: "Recebemos os contatos, o objetivo da campanha e a mensagem que você quer transmitir.",
     },
     {
-      t: "Configuramos a campanha",
-      d: "Preparamos número, identidade, mensagem, template e segmentação.",
+      n: "02",
+      t: "A equipe configura",
+      d: "Preparamos número, template, identidade comercial e segmentação por DDD.",
     },
     {
-      t: "Iniciamos os envios",
-      d: "A campanha é executada utilizando a estrutura oficial do WhatsApp Business.",
+      n: "03",
+      t: "A campanha executa",
+      d: "Os envios rodam pela API Oficial com controle de velocidade e retentativa.",
     },
     {
-      t: "Acompanhe os resultados",
-      d: "Visualize enviados, entregues, falhas e o progresso da campanha em tempo real.",
+      n: "04",
+      t: "Você acompanha",
+      d: "Enviados, entregues, falhas e progresso atualizados no painel em tempo real.",
     },
   ];
   return (
-    <section id="como-funciona" className="py-24 md:py-32">
-      <div className="max-w-7xl mx-auto px-5">
-        <SectionTitle
-          eyebrow="Como funciona"
-          title="Sua campanha pronta em poucos passos"
-        />
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4 mt-14">
-          {steps.map((s, i) => (
-            <div
-              key={s.t}
-              className="relative rounded-3xl bg-[#0f1114] border border-white/10 p-6 hover:border-emerald-500/30 transition-all group"
-            >
-              <div className="text-emerald-500 font-black text-sm mb-4 tracking-widest">
-                0{i + 1}
-              </div>
-              <div className="text-lg font-bold mb-2">{s.t}</div>
-              <p className="text-sm text-gray-400 leading-relaxed">{s.d}</p>
-              <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-            </div>
-          ))}
+    <section id="como-funciona" className="py-20 sm:py-28">
+      <div className={container}>
+        <div className="grid lg:grid-cols-12 gap-10">
+          <div className="lg:col-span-5">
+            <SectionHead
+              eyebrow="Como funciona"
+              title={
+                <>
+                  Uma operação
+                  <br />
+                  em quatro passos.
+                </>
+              }
+              lead="Você envia a base. A equipe configura a campanha. E você acompanha a execução."
+            />
+          </div>
+          <ol className="lg:col-span-7 divide-y divide-white/5 border-y border-white/5">
+            {steps.map((s) => (
+              <li
+                key={s.n}
+                className="grid grid-cols-[64px_1fr] gap-4 py-6 items-start"
+              >
+                <div className="text-[13px] font-mono text-neutral-500 pt-1">
+                  {s.n}
+                </div>
+                <div>
+                  <div className="text-[17px] font-medium text-white">
+                    {s.t}
+                  </div>
+                  <p className="mt-1.5 text-[14px] leading-relaxed text-neutral-400">
+                    {s.d}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
         </div>
       </div>
     </section>
   );
 }
 
-// ============ SIMULATOR + FORM ============
+// ============ SIMULATOR ============
 type FormData = {
-  volume: VolumeKey;
+  volume: number;
   segment: string;
   name: string;
   company: string;
@@ -505,126 +707,194 @@ type FormData = {
 
 const STORAGE_KEY = "disparosfr:form";
 
-function Simulator() {
-  const [volume, setVolume] = useState<VolumeKey>("100k");
+function SimulatorSection() {
+  const [volume, setVolume] = useState<number>(100_000);
   const [showForm, setShowForm] = useState(false);
-
-  const current = VOLUMES.find((v) => v.key === volume)!;
-  const total = current.count * current.price;
+  const [started, setStarted] = useState(false);
+  const { price, tier } = useMemo(() => priceFor(volume), [volume]);
+  const total = volume * price;
 
   useEffect(() => {
     trackPixel("SelectVolume", { volume });
   }, [volume]);
 
-  return (
-    <section id="simulador" className="py-24 md:py-32 bg-white/[0.015] border-y border-white/5">
-      <div className="max-w-6xl mx-auto px-5">
-        <SectionTitle
-          eyebrow="Simulador"
-          title="Calcule sua campanha"
-          subtitle="Selecione o tamanho da sua base para visualizar a condição estimada."
-        />
+  function onPickPreset(v: number) {
+    setVolume(v);
+    if (!started) {
+      trackPixel("StartSimulation");
+      setStarted(true);
+    }
+  }
 
-        <div className="mt-12 grid lg:grid-cols-5 gap-6">
-          <div className="lg:col-span-3 space-y-3">
-            {VOLUMES.map((v) => {
-              const active = v.key === volume;
-              return (
-                <button
-                  key={v.key}
-                  onClick={() => {
-                    setVolume(v.key);
-                    if (!showForm) trackPixel("StartSimulation");
-                  }}
-                  className={`w-full text-left rounded-2xl border p-5 flex items-center justify-between transition-all ${
-                    active
-                      ? "bg-emerald-500/10 border-emerald-500/50"
-                      : "bg-[#0f1114] border-white/10 hover:border-white/20"
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div
-                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                        active
-                          ? "border-emerald-500 bg-emerald-500"
-                          : "border-white/20"
-                      }`}
-                    >
-                      {active && (
-                        <div className="w-2 h-2 rounded-full bg-black" />
-                      )}
+  return (
+    <section
+      id="simulador"
+      className="relative border-y border-white/5 bg-[#0d0e11] py-20 sm:py-28"
+    >
+      <div className={container}>
+        <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+          <div className="lg:col-span-5">
+            <SectionHead
+              eyebrow="Simulador"
+              title={
+                <>
+                  Calcule sua campanha em segundos.
+                </>
+              }
+              lead="Escolha o volume da base e veja a faixa comercial aplicada. Depois você recebe a proposta detalhada pelo WhatsApp."
+            />
+            <ul className="mt-8 space-y-3 text-[14px] text-neutral-300">
+              <li className="flex gap-3">
+                <Check className="mt-0.5 h-4 w-4 text-emerald-500 shrink-0" />
+                Valor por envio varia conforme o volume selecionado.
+              </li>
+              <li className="flex gap-3">
+                <Check className="mt-0.5 h-4 w-4 text-emerald-500 shrink-0" />
+                Preço de R$ 0,13 aplicável para bases acima de 250 mil.
+              </li>
+              <li className="flex gap-3">
+                <Check className="mt-0.5 h-4 w-4 text-emerald-500 shrink-0" />
+                Proposta final considera template, segmentação e estrutura.
+              </li>
+            </ul>
+          </div>
+
+          <div className="lg:col-span-7">
+            <div className="grid md:grid-cols-5 gap-4">
+              {/* Controls */}
+              <div className="md:col-span-3 rounded-2xl border border-white/8 bg-[#111317] p-5 sm:p-6">
+                <div className="text-[11px] uppercase tracking-widest text-neutral-500">
+                  Volume da base
+                </div>
+                <div className="mt-2 flex items-end justify-between gap-3">
+                  <div>
+                    <div className="text-[28px] sm:text-[32px] font-semibold text-white tabular-nums leading-none">
+                      {formatInt(volume)}
                     </div>
-                    <div>
-                      <div className="font-semibold">{v.label}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">
-                        {formatBRL(v.price)} por envio
-                      </div>
+                    <div className="text-[12px] text-neutral-500 mt-1">
+                      contatos
                     </div>
                   </div>
-                  <ChevronRight
-                    className={`w-5 h-5 ${
-                      active ? "text-emerald-500" : "text-gray-600"
-                    }`}
-                  />
-                </button>
-              );
-            })}
-          </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() =>
+                        onPickPreset(Math.max(10_000, volume - 10_000))
+                      }
+                      className="h-9 w-9 grid place-items-center rounded-md border border-white/8 bg-white/[0.02] text-neutral-300 hover:bg-white/[0.06]"
+                      aria-label="Diminuir"
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() =>
+                        onPickPreset(Math.min(1_000_000, volume + 10_000))
+                      }
+                      className="h-9 w-9 grid place-items-center rounded-md border border-white/8 bg-white/[0.02] text-neutral-300 hover:bg-white/[0.06]"
+                      aria-label="Aumentar"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
 
-          <div className="lg:col-span-2">
-            <div className="sticky top-24 rounded-3xl bg-[#0f1114] border border-white/10 p-6">
-              <div className="text-xs font-semibold text-emerald-500 uppercase tracking-widest mb-2">
-                Resumo estimado
+                <input
+                  type="range"
+                  min={10_000}
+                  max={1_000_000}
+                  step={5_000}
+                  value={volume}
+                  onChange={(e) => onPickPreset(Number(e.target.value))}
+                  className="mt-5 w-full accent-emerald-500"
+                  aria-label="Volume de contatos"
+                />
+                <div className="mt-1 flex justify-between text-[11px] text-neutral-500">
+                  <span>10k</span>
+                  <span>250k</span>
+                  <span>1M</span>
+                </div>
+
+                <div className="mt-5">
+                  <div className="text-[11px] uppercase tracking-widest text-neutral-500 mb-2">
+                    Atalhos
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {PRESETS.map((p) => {
+                      const active = p === volume;
+                      return (
+                        <button
+                          key={p}
+                          onClick={() => onPickPreset(p)}
+                          className={`rounded-md px-2 py-2 text-[13px] font-medium transition-colors border ${
+                            active
+                              ? "bg-emerald-500 text-neutral-950 border-emerald-500"
+                              : "bg-white/[0.02] text-neutral-300 border-white/8 hover:bg-white/[0.06]"
+                          }`}
+                        >
+                          {p >= 1_000_000
+                            ? `${p / 1_000_000}M`
+                            : `${p / 1_000}k`}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="mt-5 rounded-xl border border-white/6 bg-white/[0.02] p-4 text-[12px] text-neutral-400 leading-relaxed">
+                  Sua base deve ser própria e composta por contatos que
+                  esperam ou autorizaram receber comunicações.
+                </div>
               </div>
-              <div className="text-sm text-gray-400 mb-4">{current.label}</div>
-              <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-5 mb-5">
-                <div className="text-xs text-gray-400 mb-1">
-                  Valor por envio
+
+              {/* Summary */}
+              <div className="md:col-span-2 rounded-2xl border border-white/8 bg-[#111317] p-5 sm:p-6 flex flex-col">
+                <div className="text-[11px] uppercase tracking-widest text-neutral-500">
+                  Resumo estimado
                 </div>
-                <div className="text-2xl font-black text-emerald-400 mb-4">
-                  {formatBRL(current.price)}
+                <div className="mt-3">
+                  <div className="text-[12px] text-neutral-500">Faixa</div>
+                  <div className="text-[14px] text-white">{tier.label}</div>
                 </div>
-                <div className="text-xs text-gray-400 mb-1">Valor total estimado</div>
-                <div className="text-3xl font-black text-white">
-                  {formatBRL(total)}
+                <div className="mt-4">
+                  <div className="text-[12px] text-neutral-500">
+                    Valor por envio
+                  </div>
+                  <div className="text-[26px] font-semibold text-emerald-400 tabular-nums leading-none mt-1">
+                    {formatBRL(price)}
+                  </div>
                 </div>
+                <div className="mt-5 pt-5 border-t border-white/5">
+                  <div className="text-[12px] text-neutral-500">
+                    Total estimado
+                  </div>
+                  <div className="text-[24px] font-semibold text-white tabular-nums leading-none mt-1">
+                    {formatBRL(total)}
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    trackPixel("StartForm");
+                    setShowForm(true);
+                    setTimeout(() => scrollToId("formulario"), 60);
+                  }}
+                  className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-[14px] font-medium text-neutral-950 hover:bg-emerald-400 transition-colors"
+                >
+                  Continuar para a proposta
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+                <p className="mt-3 text-[11px] leading-relaxed text-neutral-500">
+                  Nenhum pagamento é solicitado agora. Você revisa tudo antes de
+                  seguir.
+                </p>
               </div>
-              <ul className="space-y-2 text-sm text-gray-300 mb-5">
-                {[
-                  "Segmentação por DDD",
-                  "Personalização da mensagem",
-                  "Relatório em tempo real",
-                  "Suporte durante a campanha",
-                ].map((f) => (
-                  <li key={f} className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <p className="text-[11px] text-gray-500 leading-relaxed mb-5">
-                Valor estimado. A proposta final pode variar conforme o tipo de
-                campanha, estrutura necessária, template e qualidade da base.
-              </p>
-              <button
-                onClick={() => {
-                  trackPixel("StartForm");
-                  setShowForm(true);
-                  setTimeout(() => scrollToId("formulario"), 60);
-                }}
-                className="w-full py-4 bg-emerald-500 text-black rounded-2xl font-bold hover:bg-emerald-400 transition-all shadow-[0_10px_30px_-10px_rgba(34,197,94,0.6)]"
-              >
-                Continuar minha simulação
-              </button>
             </div>
+
+            {showForm && (
+              <div id="formulario" className="mt-8">
+                <QualifyForm initialVolume={volume} total={total} />
+              </div>
+            )}
           </div>
         </div>
-
-        {showForm && (
-          <div id="formulario" className="mt-16">
-            <QualifyForm initialVolume={volume} total={total} />
-          </div>
-        )}
       </div>
     </section>
   );
@@ -635,7 +905,7 @@ function QualifyForm({
   initialVolume,
   total: _total,
 }: {
-  initialVolume: VolumeKey;
+  initialVolume: number;
   total: number;
 }) {
   const [step, setStep] = useState(1);
@@ -644,7 +914,8 @@ function QualifyForm({
     if (typeof window !== "undefined") {
       try {
         const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) return { ...JSON.parse(stored), volume: initialVolume };
+        if (stored)
+          return { ...JSON.parse(stored), volume: initialVolume } as FormData;
       } catch {}
     }
     return {
@@ -668,9 +939,9 @@ function QualifyForm({
     } catch {}
   }, [data]);
 
-  const totalSteps = 5;
-  const currentVol = VOLUMES.find((v) => v.key === data.volume)!;
-  const estimated = currentVol.count * currentVol.price;
+  const totalSteps = 4;
+  const { price, tier } = priceFor(data.volume);
+  const estimated = data.volume * price;
 
   function update<K extends keyof FormData>(k: K, v: FormData[K]) {
     setData((d) => ({ ...d, [k]: v }));
@@ -679,8 +950,8 @@ function QualifyForm({
 
   function validateStep(): boolean {
     const e: Partial<Record<keyof FormData, string>> = {};
-    if (step === 2 && !data.segment) e.segment = "Selecione um segmento";
-    if (step === 3) {
+    if (step === 1 && !data.segment) e.segment = "Selecione um segmento";
+    if (step === 2) {
       if (!data.name.trim()) e.name = "Informe seu nome";
       if (!data.company.trim()) e.company = "Informe a empresa";
       const digits = data.whatsapp.replace(/\D/g, "");
@@ -688,7 +959,7 @@ function QualifyForm({
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email))
         e.email = "E-mail inválido";
     }
-    if (step === 4) {
+    if (step === 3) {
       if (!data.start) e.start = "Selecione uma opção";
       if (!data.optin) e.optin = "Selecione uma opção";
     }
@@ -705,224 +976,209 @@ function QualifyForm({
     setDone(true);
     trackPixel("CompleteForm", { volume: data.volume, segment: data.segment });
     setTimeout(() => {
-      const msg = `Olá! Acabei de fazer uma simulação no site da Disparos FR.
+      const msg = `Olá! Fiz uma simulação no site da Disparos FR.
 
 Nome: ${data.name}
 Empresa: ${data.company}
 Segmento: ${data.segment}
-Volume aproximado: ${currentVol.label}
+Volume: ${formatInt(data.volume)} contatos (${tier.label})
 Valor estimado: ${formatBRL(estimated)}
 Previsão de início: ${data.start}
 
-Gostaria de receber uma análise da minha campanha.`;
+Gostaria de receber a proposta.`;
       openWhatsApp(msg);
-    }, 1600);
+    }, 1400);
   }
 
   if (done) {
     return (
-      <div className="max-w-2xl mx-auto rounded-3xl bg-[#0f1114] border border-emerald-500/30 p-10 text-center">
-        <div className="w-16 h-16 rounded-full bg-emerald-500/20 grid place-items-center mx-auto mb-6">
-          <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+      <div className="rounded-2xl border border-emerald-500/25 bg-[#111317] p-8 text-center">
+        <div className="mx-auto h-11 w-11 rounded-full bg-emerald-500/15 grid place-items-center">
+          <Check className="h-5 w-5 text-emerald-400" />
         </div>
-        <h3 className="text-2xl font-black mb-3">Simulação concluída!</h3>
-        <p className="text-gray-400 mb-6">
-          Agora vamos direcionar você para falar com um especialista da Disparos FR.
+        <h3 className="mt-4 text-[18px] font-semibold text-white">
+          Simulação enviada
+        </h3>
+        <p className="mt-2 text-[14px] text-neutral-400">
+          Você será direcionado para um especialista com os dados já
+          preenchidos.
         </p>
-        <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-          Abrindo WhatsApp...
+        <div className="mt-4 inline-flex items-center gap-2 text-[12px] text-neutral-500">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          Abrindo WhatsApp…
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto rounded-3xl bg-[#0f1114] border border-white/10 p-6 md:p-8">
-      <div className="flex items-center justify-between mb-2 text-xs text-gray-400">
+    <div className="rounded-2xl border border-white/8 bg-[#111317] p-5 sm:p-7">
+      <div className="flex items-center justify-between text-[12px] text-neutral-400">
         <span>
           Etapa {step} de {totalSteps}
         </span>
-        <span>{Math.round((step / totalSteps) * 100)}%</span>
+        <span className="text-neutral-500">Leva menos de um minuto</span>
       </div>
-      <div className="h-1.5 bg-white/5 rounded-full overflow-hidden mb-8">
+      <div className="mt-2 h-1 rounded-full bg-white/5 overflow-hidden">
         <div
           className="h-full bg-emerald-500 transition-all duration-500"
           style={{ width: `${(step / totalSteps) * 100}%` }}
         />
       </div>
 
-      {step === 1 && (
-        <StepShell title="Qual é o seu volume de contatos?">
-          <div className="space-y-2">
-            {VOLUMES.map((v) => (
-              <label
-                key={v.key}
-                className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all ${
-                  data.volume === v.key
-                    ? "bg-emerald-500/10 border-emerald-500/50"
-                    : "bg-white/[0.02] border-white/10 hover:border-white/20"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    className="accent-emerald-500"
-                    checked={data.volume === v.key}
-                    onChange={() => update("volume", v.key)}
-                  />
-                  <span className="font-medium">{v.label}</span>
-                </div>
-                <span className="text-sm text-gray-400">
-                  {formatBRL(v.price)}
-                </span>
-              </label>
-            ))}
-          </div>
-        </StepShell>
-      )}
-
-      {step === 2 && (
-        <StepShell title="Qual é o segmento da sua empresa?">
-          <div className="grid grid-cols-2 gap-2">
-            {SEGMENTS.map((s) => (
-              <button
-                type="button"
-                key={s}
-                onClick={() => update("segment", s)}
-                className={`p-3 rounded-xl border text-sm font-medium transition-all ${
-                  data.segment === s
-                    ? "bg-emerald-500/10 border-emerald-500/50 text-white"
-                    : "bg-white/[0.02] border-white/10 text-gray-300 hover:border-white/20"
-                }`}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-          {errors.segment && <ErrorMsg text={errors.segment} />}
-        </StepShell>
-      )}
-
-      {step === 3 && (
-        <StepShell title="Seus dados de contato">
-          <div className="space-y-3">
-            <Field
-              label="Nome"
-              value={data.name}
-              onChange={(v) => update("name", v)}
-              error={errors.name}
-            />
-            <Field
-              label="Nome da empresa"
-              value={data.company}
-              onChange={(v) => update("company", v)}
-              error={errors.company}
-            />
-            <Field
-              label="WhatsApp"
-              value={data.whatsapp}
-              onChange={(v) => update("whatsapp", maskPhone(v))}
-              placeholder="(11) 99999-9999"
-              inputMode="tel"
-              error={errors.whatsapp}
-            />
-            <Field
-              label="E-mail"
-              value={data.email}
-              onChange={(v) => update("email", v)}
-              placeholder="voce@empresa.com"
-              type="email"
-              error={errors.email}
-            />
-          </div>
-        </StepShell>
-      )}
-
-      {step === 4 && (
-        <StepShell title="Sobre a sua campanha">
-          <div>
-            <div className="text-sm font-semibold mb-2">
-              Quando pretende iniciar a campanha?
-            </div>
-            <div className="grid gap-2">
-              {START_OPTIONS.map((s) => (
+      <div className="mt-7">
+        {step === 1 && (
+          <StepShell title="Qual é o segmento da sua empresa?">
+            <div className="grid grid-cols-2 gap-2">
+              {SEGMENTS.map((s) => (
                 <button
-                  key={s}
                   type="button"
-                  onClick={() => update("start", s)}
-                  className={`text-left p-3 rounded-xl border text-sm transition-all ${
-                    data.start === s
-                      ? "bg-emerald-500/10 border-emerald-500/50"
-                      : "bg-white/[0.02] border-white/10 hover:border-white/20"
+                  key={s}
+                  onClick={() => update("segment", s)}
+                  className={`min-h-12 rounded-lg border px-3 py-3 text-[14px] font-medium transition-colors text-left ${
+                    data.segment === s
+                      ? "bg-emerald-500/10 border-emerald-500/50 text-white"
+                      : "bg-white/[0.02] border-white/8 text-neutral-300 hover:bg-white/[0.05]"
                   }`}
                 >
                   {s}
                 </button>
               ))}
             </div>
-            {errors.start && <ErrorMsg text={errors.start} />}
-          </div>
-          <div className="mt-6">
-            <div className="text-sm font-semibold mb-2">
-              Sua base é composta por clientes ou contatos que aceitaram receber
-              comunicações?
-            </div>
-            <div className="grid gap-2">
-              {BASE_OPTIONS.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => update("optin", s)}
-                  className={`text-left p-3 rounded-xl border text-sm transition-all ${
-                    data.optin === s
-                      ? "bg-emerald-500/10 border-emerald-500/50"
-                      : "bg-white/[0.02] border-white/10 hover:border-white/20"
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-            {errors.optin && <ErrorMsg text={errors.optin} />}
-          </div>
-        </StepShell>
-      )}
+            {errors.segment && <ErrorMsg text={errors.segment} />}
+          </StepShell>
+        )}
 
-      {step === 5 && (
-        <StepShell title="Confirme os dados da simulação">
-          <div className="rounded-2xl bg-white/[0.02] border border-white/10 p-5 space-y-2 text-sm">
-            <Row k="Nome" v={data.name} />
-            <Row k="Empresa" v={data.company} />
-            <Row k="Segmento" v={data.segment} />
-            <Row k="Quantidade" v={currentVol.label} />
-            <Row k="Valor estimado" v={formatBRL(estimated)} accent />
-            <Row k="Prazo de início" v={data.start} />
-          </div>
-        </StepShell>
-      )}
+        {step === 2 && (
+          <StepShell title="Seus dados de contato">
+            <div className="grid sm:grid-cols-2 gap-3">
+              <Field
+                label="Nome"
+                value={data.name}
+                onChange={(v) => update("name", v)}
+                error={errors.name}
+              />
+              <Field
+                label="Empresa"
+                value={data.company}
+                onChange={(v) => update("company", v)}
+                error={errors.company}
+              />
+              <Field
+                label="WhatsApp"
+                value={data.whatsapp}
+                onChange={(v) => update("whatsapp", maskPhone(v))}
+                placeholder="(11) 99999-9999"
+                inputMode="tel"
+                error={errors.whatsapp}
+              />
+              <Field
+                label="E-mail"
+                value={data.email}
+                onChange={(v) => update("email", v)}
+                placeholder="voce@empresa.com"
+                type="email"
+                error={errors.email}
+              />
+            </div>
+            <p className="mt-3 text-[12px] text-neutral-500">
+              Seus dados serão utilizados somente para preparar sua proposta.
+            </p>
+          </StepShell>
+        )}
 
-      <div className="flex items-center justify-between mt-8">
+        {step === 3 && (
+          <StepShell title="Sobre a campanha">
+            <div>
+              <div className="text-[13px] font-medium text-neutral-300 mb-2">
+                Quando pretende iniciar?
+              </div>
+              <div className="grid sm:grid-cols-2 gap-2">
+                {START_OPTIONS.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => update("start", s)}
+                    className={`min-h-12 rounded-lg border px-3 py-3 text-[14px] transition-colors text-left ${
+                      data.start === s
+                        ? "bg-emerald-500/10 border-emerald-500/50 text-white"
+                        : "bg-white/[0.02] border-white/8 text-neutral-300 hover:bg-white/[0.05]"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+              {errors.start && <ErrorMsg text={errors.start} />}
+            </div>
+            <div className="mt-5">
+              <div className="text-[13px] font-medium text-neutral-300 mb-2">
+                Sua base autorizou receber comunicações da empresa?
+              </div>
+              <div className="grid sm:grid-cols-3 gap-2">
+                {BASE_OPTIONS.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => update("optin", s)}
+                    className={`min-h-12 rounded-lg border px-3 py-3 text-[14px] transition-colors text-left ${
+                      data.optin === s
+                        ? "bg-emerald-500/10 border-emerald-500/50 text-white"
+                        : "bg-white/[0.02] border-white/8 text-neutral-300 hover:bg-white/[0.05]"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+              {errors.optin && <ErrorMsg text={errors.optin} />}
+            </div>
+          </StepShell>
+        )}
+
+        {step === 4 && (
+          <StepShell title="Confirme os dados da simulação">
+            <div className="rounded-xl border border-white/8 bg-white/[0.02] divide-y divide-white/5">
+              <Row k="Nome" v={data.name} />
+              <Row k="Empresa" v={data.company} />
+              <Row k="Segmento" v={data.segment} />
+              <Row
+                k="Volume"
+                v={`${formatInt(data.volume)} contatos · ${tier.label}`}
+              />
+              <Row k="Valor por envio" v={formatBRL(price)} />
+              <Row k="Total estimado" v={formatBRL(estimated)} accent />
+              <Row k="Início" v={data.start} />
+            </div>
+            <p className="mt-3 text-[12px] text-neutral-500">
+              Valor estimado, sujeito à análise. Você poderá revisar tudo com
+              o especialista.
+            </p>
+          </StepShell>
+        )}
+      </div>
+
+      <div className="mt-7 flex items-center justify-between">
         <button
           onClick={() => setStep(Math.max(1, step - 1))}
           disabled={step === 1}
-          className="flex items-center gap-1 text-sm text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-1 text-[13px] text-neutral-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
         >
-          <ChevronLeft className="w-4 h-4" /> Voltar
+          <ChevronLeft className="h-4 w-4" /> Voltar
         </button>
         {step < totalSteps ? (
           <button
             onClick={next}
-            className="px-6 py-3 bg-emerald-500 text-black rounded-xl font-bold hover:bg-emerald-400 transition-all flex items-center gap-2"
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-[14px] font-medium text-neutral-950 hover:bg-emerald-400 transition-colors"
           >
-            Continuar <ChevronRight className="w-4 h-4" />
+            Continuar <ChevronRight className="h-4 w-4" />
           </button>
         ) : (
           <button
             onClick={submit}
-            className="px-6 py-3 bg-emerald-500 text-black rounded-xl font-bold hover:bg-emerald-400 transition-all flex items-center gap-2"
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-[14px] font-medium text-neutral-950 hover:bg-emerald-400 transition-colors"
           >
-            <MessageCircle className="w-4 h-4" /> Receber proposta pelo WhatsApp
+            <MessageCircle className="h-4 w-4" /> Receber proposta no WhatsApp
           </button>
         )}
       </div>
@@ -939,7 +1195,7 @@ function StepShell({
 }) {
   return (
     <div>
-      <h3 className="text-xl md:text-2xl font-bold mb-5">{title}</h3>
+      <h3 className="text-[18px] font-semibold text-white mb-4">{title}</h3>
       {children}
     </div>
   );
@@ -964,7 +1220,7 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">
+      <label className="block text-[11px] font-medium uppercase tracking-widest text-neutral-500 mb-1.5">
         {label}
       </label>
       <input
@@ -973,9 +1229,11 @@ function Field({
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className={`w-full rounded-xl bg-white/[0.02] border ${
-          error ? "border-red-500/60" : "border-white/10"
-        } px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-emerald-500/60 transition-colors`}
+        className={`w-full h-12 rounded-lg bg-white/[0.02] border px-3.5 text-[15px] text-white placeholder:text-neutral-600 focus:outline-none transition-colors ${
+          error
+            ? "border-red-500/60 focus:border-red-500"
+            : "border-white/10 focus:border-emerald-500/60"
+        }`}
       />
       {error && <ErrorMsg text={error} />}
     </div>
@@ -983,15 +1241,23 @@ function Field({
 }
 
 function ErrorMsg({ text }: { text: string }) {
-  return <div className="text-xs text-red-400 mt-1.5">{text}</div>;
+  return <div className="mt-1.5 text-[12px] text-red-400">{text}</div>;
 }
 
-function Row({ k, v, accent }: { k: string; v: string; accent?: boolean }) {
+function Row({
+  k,
+  v,
+  accent,
+}: {
+  k: string;
+  v: string;
+  accent?: boolean;
+}) {
   return (
-    <div className="flex justify-between gap-4">
-      <span className="text-gray-400">{k}</span>
+    <div className="flex justify-between gap-4 px-4 py-3 text-[14px]">
+      <span className="text-neutral-500">{k}</span>
       <span
-        className={`font-semibold text-right ${
+        className={`text-right font-medium ${
           accent ? "text-emerald-400" : "text-white"
         }`}
       >
@@ -1001,135 +1267,44 @@ function Row({ k, v, accent }: { k: string; v: string; accent?: boolean }) {
   );
 }
 
-// ============ DIFFERENTIATORS ============
-function Differentiators() {
-  const items = [
-    {
-      i: ShieldCheck,
-      t: "API Oficial",
-      d: "Campanhas executadas utilizando a estrutura oficial do WhatsApp Business.",
-    },
-    {
-      i: MapPin,
-      t: "Segmentação por DDD",
-      d: "Possibilidade de organizar campanhas por regiões e grupos específicos.",
-    },
-    {
-      i: Sparkles,
-      t: "Mensagens personalizadas",
-      d: "Personalização com nome, telefone e outras informações disponíveis na base.",
-    },
-    {
-      i: BarChart3,
-      t: "Relatório em tempo real",
-      d: "Acompanhe enviados, entregues, falhas e progresso da campanha.",
-    },
-    {
-      i: Palette,
-      t: "Identidade comercial",
-      d: "Configuração de nome, foto e apresentação comercial do número.",
-    },
-    {
-      i: Headphones,
-      t: "Suporte especializado",
-      d: "Acompanhamento antes, durante e após o início dos envios.",
-    },
-  ];
+// ============ PANEL (dashboard) section ============
+function PanelSection() {
   return (
-    <section id="diferenciais" className="py-24 md:py-32">
-      <div className="max-w-7xl mx-auto px-5">
-        <SectionTitle
-          eyebrow="Diferenciais"
-          title="Estrutura profissional para campanhas de grande volume"
-        />
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3 mt-14">
-          {items.map((it) => (
-            <div
-              key={it.t}
-              className="rounded-3xl bg-[#0f1114] border border-white/10 p-6 hover:border-emerald-500/30 hover:-translate-y-1 transition-all"
-            >
-              <div className="w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 grid place-items-center mb-5">
-                <it.i className="w-5 h-5 text-emerald-500" />
-              </div>
-              <div className="text-lg font-bold mb-2">{it.t}</div>
-              <p className="text-sm text-gray-400 leading-relaxed">{it.d}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ============ DASHBOARD DEMO ============
-function DashboardDemo() {
-  const bars = [22, 38, 46, 55, 62, 71, 78, 84, 82, 88, 91, 87];
-  return (
-    <section className="py-24 md:py-32 bg-white/[0.015] border-y border-white/5">
-      <div className="max-w-7xl mx-auto px-5">
-        <SectionTitle
-          eyebrow="Painel"
-          title="Acompanhe cada etapa da sua campanha"
-        />
-        <div className="mt-14 rounded-3xl bg-[#0f1114] border border-white/10 p-6 md:p-8">
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
-            <StatCard label="Contatos" value="180.000" />
-            <StatCard label="Enviadas" value="164.221" />
-            <StatCard label="Entregues" value="158.902" accent />
-            <StatCard label="Falhas" value="5.319" muted />
-            <StatCard label="Taxa entrega" value="96,8%" />
-            <StatCard label="Progresso" value="91%" accent />
+    <section id="painel" className="py-20 sm:py-28">
+      <div className={container}>
+        <div className="grid lg:grid-cols-12 gap-10 items-center">
+          <div className="lg:col-span-5 order-2 lg:order-1">
+            <DashboardMock />
           </div>
-
-          <div className="grid lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 rounded-2xl bg-white/[0.02] border border-white/5 p-5">
-              <div className="flex items-center justify-between mb-5">
-                <div>
-                  <div className="text-sm font-semibold">
-                    Evolução dos envios
-                  </div>
-                  <div className="text-xs text-gray-500">Últimas 12 horas</div>
-                </div>
-                <LineChart className="w-5 h-5 text-emerald-500" />
-              </div>
-              <div className="flex items-end gap-2 h-40">
-                {bars.map((h, i) => (
-                  <div
-                    key={i}
-                    className="flex-1 bg-gradient-to-t from-emerald-500/60 to-emerald-400 rounded-t-md"
-                    style={{ height: `${h}%` }}
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-5">
-              <div className="text-sm font-semibold mb-4">Campanhas</div>
-              <div className="space-y-3">
-                {[
-                  { n: "Base premium 12/26", s: "Em execução", c: "emerald" },
-                  { n: "Reativação SP", s: "Concluída", c: "gray" },
-                  { n: "Ofertas Sudeste", s: "Parcial", c: "yellow" },
-                ].map((c) => (
-                  <div
-                    key={c.n}
-                    className="flex items-center justify-between text-sm"
-                  >
-                    <span className="text-gray-300">{c.n}</span>
-                    <span
-                      className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${
-                        c.c === "emerald"
-                          ? "bg-emerald-500/15 text-emerald-400"
-                          : c.c === "yellow"
-                            ? "bg-yellow-500/15 text-yellow-400"
-                            : "bg-white/10 text-gray-400"
-                      }`}
-                    >
-                      {c.s}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
+          <div className="lg:col-span-7 order-1 lg:order-2 lg:pl-6">
+            <SectionHead
+              eyebrow="Painel"
+              title={
+                <>
+                  Saiba quantas mensagens foram enviadas, entregues ou
+                  apresentaram falha.
+                </>
+              }
+              lead="Cada campanha tem seu próprio painel com progresso, velocidade e detalhamento por número."
+            />
+            <dl className="mt-8 grid sm:grid-cols-2 gap-x-8 gap-y-6 max-w-lg">
+              <PanelPoint
+                k="Progresso ao vivo"
+                v="Contatos, enviados, entregues e falhas atualizados durante a execução."
+              />
+              <PanelPoint
+                k="Velocidade e ETA"
+                v="Msg/min em tempo real e estimativa de término da campanha."
+              />
+              <PanelPoint
+                k="Retentativa automática"
+                v="Falhas transitórias entram em nova tentativa sem intervenção manual."
+              />
+              <PanelPoint
+                k="Filtro por período"
+                v="Comparação por dia, semana ou mês entre campanhas."
+              />
+            </dl>
           </div>
         </div>
       </div>
@@ -1137,140 +1312,157 @@ function DashboardDemo() {
   );
 }
 
-function StatCard({
-  label,
-  value,
-  accent,
-  muted,
-}: {
-  label: string;
-  value: string;
-  accent?: boolean;
-  muted?: boolean;
-}) {
+function PanelPoint({ k, v }: { k: string; v: string }) {
   return (
-    <div
-      className={`rounded-2xl p-4 border ${
-        accent
-          ? "bg-emerald-500/10 border-emerald-500/20"
-          : "bg-white/[0.02] border-white/5"
-      }`}
-    >
-      <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">
-        {label}
-      </div>
-      <div
-        className={`text-lg md:text-xl font-bold ${
-          muted ? "text-gray-400" : accent ? "text-emerald-400" : "text-white"
-        }`}
-      >
-        {value}
-      </div>
+    <div>
+      <dt className="text-[14px] font-medium text-white">{k}</dt>
+      <dd className="mt-1 text-[13px] text-neutral-400 leading-relaxed">{v}</dd>
     </div>
   );
 }
 
-// ============ RESULTS ============
-function Results() {
-  const cases = [
+// ============ USE CASES (editorial rows) ============
+function UseCases() {
+  const rows = [
     {
       seg: "Serviços financeiros",
-      items: [
-        "18.000 contatos processados",
-        "16.560 mensagens entregues",
-        "92% de taxa de entrega",
+      title: "Reativação de base inativa",
+      metrics: [
+        { k: "Contatos", v: "18.240" },
+        { k: "Entregues", v: "16.560" },
+        { k: "Entrega", v: "90,8%" },
       ],
+      note: "Campanha segmentada por DDD com template aprovado.",
     },
     {
       seg: "Varejo",
-      items: [
-        "50.000 contatos processados",
-        "Campanha segmentada por região",
-        "Relatório completo em tempo real",
+      title: "Comunicado de oferta regional",
+      metrics: [
+        { k: "Contatos", v: "52.100" },
+        { k: "Entregues", v: "48.973" },
+        { k: "Entrega", v: "94,0%" },
       ],
+      note: "Envio dividido em janelas por região.",
+    },
+    {
+      seg: "Infoprodutos",
+      title: "Lançamento com aviso prévio",
+      metrics: [
+        { k: "Contatos", v: "132.480" },
+        { k: "Entregues", v: "125.106" },
+        { k: "Entrega", v: "94,4%" },
+      ],
+      note: "Duas ondas para checar deliverability antes do volume total.",
     },
   ];
   return (
-    <section id="resultados" className="py-24 md:py-32">
-      <div className="max-w-7xl mx-auto px-5">
-        <SectionTitle
-          eyebrow="Resultados"
-          title="Resultados que você consegue acompanhar"
+    <section
+      id="casos"
+      className="border-y border-white/5 bg-white/[0.015] py-20 sm:py-28"
+    >
+      <div className={container}>
+        <SectionHead
+          eyebrow="Operações"
+          title="Volumes reais operados por segmento"
+          lead="Exemplos de execuções anonimizadas. Resultados variam conforme base, mensagem e configuração."
         />
-        <div className="grid md:grid-cols-2 gap-5 mt-14">
-          {cases.map((c) => (
-            <div
-              key={c.seg}
-              className="rounded-3xl bg-[#0f1114] border border-white/10 p-8"
+        <div className="mt-12 divide-y divide-white/5 border-y border-white/5">
+          {rows.map((r) => (
+            <article
+              key={r.title}
+              className="grid grid-cols-1 md:grid-cols-12 gap-6 py-8 items-start"
             >
-              <div className="text-xs font-bold text-emerald-500 uppercase tracking-widest mb-4">
-                {c.seg}
+              <div className="md:col-span-4">
+                <div className="text-[11px] uppercase tracking-widest text-neutral-500">
+                  {r.seg}
+                </div>
+                <h3 className="mt-1 text-[19px] font-medium text-white">
+                  {r.title}
+                </h3>
+                <p className="mt-2 text-[13px] text-neutral-400">{r.note}</p>
               </div>
-              <ul className="space-y-3">
-                {c.items.map((i) => (
-                  <li key={i} className="flex items-start gap-3">
-                    <div className="w-6 h-6 rounded-full bg-emerald-500/15 grid place-items-center shrink-0 mt-0.5">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              <div className="md:col-span-8 grid grid-cols-3 gap-3">
+                {r.metrics.map((m) => (
+                  <div
+                    key={m.k}
+                    className="rounded-lg border border-white/6 bg-[#101216] p-4"
+                  >
+                    <div className="text-[10px] uppercase tracking-widest text-neutral-500">
+                      {m.k}
                     </div>
-                    <span className="text-gray-200">{i}</span>
-                  </li>
+                    <div className="mt-1 text-[18px] font-semibold text-white tabular-nums">
+                      {m.v}
+                    </div>
+                  </div>
                 ))}
-              </ul>
-            </div>
+              </div>
+            </article>
           ))}
         </div>
-        <p className="text-xs text-gray-500 mt-6 text-center max-w-2xl mx-auto">
-          Os resultados podem variar conforme a qualidade da base, o conteúdo
-          utilizado e as condições da campanha.
+        <p className="mt-6 text-[12px] text-neutral-500 inline-flex items-center gap-2">
+          <Circle className="h-2 w-2 fill-neutral-600 text-neutral-600" />
+          Dados de operações anonimizadas. Demonstração da plataforma.
         </p>
       </div>
     </section>
   );
 }
 
-// ============ FOR WHO ============
-function ForWho() {
-  const list = [
-    { i: Users, t: "Empresas com bases próprias de clientes" },
-    { i: Target, t: "Operações com mais de 10 mil contatos" },
-    { i: Zap, t: "Campanhas promocionais" },
-    { i: Send, t: "Comunicados e atualizações" },
-    { i: Sparkles, t: "Lançamentos e ofertas" },
-    { i: Clock, t: "Recuperação e reativação de clientes" },
-    { i: MapPin, t: "Campanhas segmentadas por região" },
+// ============ COMPARE ============
+function Compare() {
+  const rows = [
+    ["Estrutura", "WhatsApp Business API Oficial", "Contas comuns"],
+    ["Volume por dia", "Escalável conforme aprovação", "Limitado"],
+    ["Templates aprovados", "Sim", "Não se aplica"],
+    ["Relatório em tempo real", "Sim", "Não"],
+    ["Risco de banimento", "Reduzido", "Elevado"],
+    ["Suporte durante a campanha", "Especialista dedicado", "Você por conta"],
   ];
   return (
-    <section className="py-24 md:py-32 bg-white/[0.015] border-y border-white/5">
-      <div className="max-w-7xl mx-auto px-5 grid lg:grid-cols-2 gap-12 items-start">
-        <div>
-          <SectionTitle
-            eyebrow="Para quem é"
-            title="Para empresas que precisam alcançar sua base em escala"
-            align="left"
-          />
-          <ul className="mt-10 grid sm:grid-cols-2 gap-3">
-            {list.map((l) => (
-              <li
-                key={l.t}
-                className="flex items-center gap-3 p-4 rounded-2xl bg-[#0f1114] border border-white/10"
-              >
-                <div className="w-9 h-9 rounded-lg bg-emerald-500/10 grid place-items-center shrink-0">
-                  <l.i className="w-4 h-4 text-emerald-500" />
-                </div>
-                <span className="text-sm font-medium">{l.t}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="rounded-3xl bg-gradient-to-br from-yellow-500/10 to-transparent border border-yellow-500/20 p-8 lg:mt-24">
-          <div className="flex items-center gap-3 mb-3">
-            <AlertTriangle className="w-6 h-6 text-yellow-500" />
-            <div className="text-lg font-bold">Importante</div>
+    <section className="py-20 sm:py-28">
+      <div className={container}>
+        <div className="grid lg:grid-cols-12 gap-10 items-start">
+          <div className="lg:col-span-4">
+            <SectionHead
+              eyebrow="Diferença"
+              title={
+                <>
+                  Por que usar
+                  <br />
+                  a API Oficial.
+                </>
+              }
+              lead="Envios estáveis, com histórico auditável e sem improviso."
+            />
+            <div className="mt-8 rounded-xl border border-white/8 bg-[#111317] p-4 flex items-start gap-3">
+              <ShieldCheck className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+              <p className="text-[13px] text-neutral-400 leading-relaxed">
+                Operação alinhada às políticas do WhatsApp Business Platform.
+                Sem contas laranja, sem chip caseiro.
+              </p>
+            </div>
           </div>
-          <p className="text-gray-300 leading-relaxed">
-            A base deve ser própria e composta por pessoas que esperam ou
-            autorizaram receber comunicações da empresa.
-          </p>
+          <div className="lg:col-span-8">
+            <div className="rounded-2xl border border-white/8 overflow-hidden">
+              <div className="grid grid-cols-3 bg-white/[0.03] text-[11px] uppercase tracking-widest text-neutral-500">
+                <div className="px-4 py-3">Critério</div>
+                <div className="px-4 py-3 text-emerald-400">Disparos FR</div>
+                <div className="px-4 py-3">Envio comum</div>
+              </div>
+              {rows.map(([k, a, b], i) => (
+                <div
+                  key={k}
+                  className={`grid grid-cols-3 text-[13px] ${
+                    i > 0 ? "border-t border-white/5" : ""
+                  }`}
+                >
+                  <div className="px-4 py-3.5 text-neutral-300">{k}</div>
+                  <div className="px-4 py-3.5 text-white font-medium">{a}</div>
+                  <div className="px-4 py-3.5 text-neutral-500">{b}</div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -1279,55 +1471,68 @@ function ForWho() {
 
 // ============ FAQ ============
 function FAQ() {
-  const items = [
+  const items: [string, string][] = [
     [
-      "A campanha utiliza a API Oficial do WhatsApp?",
-      "Sim. A operação utiliza uma estrutura compatível com o WhatsApp Business, respeitando as condições necessárias para cada campanha.",
+      "Existe valor mínimo de campanha?",
+      "Trabalhamos com operações a partir de 10 mil contatos. Volumes menores podem ser avaliados sob consulta.",
     ],
     [
-      "Posso enviar para qualquer lista de contatos?",
-      "Não. A base deve ser própria e composta por pessoas que possuem relação com a empresa ou autorizaram receber comunicações.",
+      "O preço de R$ 0,13 vale para qualquer volume?",
+      "Não. Essa condição é aplicada a bases acima de 250 mil contatos. Volumes menores usam faixas comerciais diferentes.",
     ],
     [
-      "Vocês ajudam com a mensagem da campanha?",
-      "Sim. A equipe auxilia na estruturação e adaptação da mensagem e do template.",
+      "É realmente API Oficial do WhatsApp?",
+      "Sim. Operamos pela WhatsApp Business Platform, com templates aprovados e histórico auditável.",
     ],
     [
       "Consigo acompanhar os envios?",
-      "Sim. O cliente recebe informações de enviados, entregues, falhas e progresso da campanha.",
+      "Sim. Você recebe acesso a um painel com enviados, entregues, falhas, velocidade e progresso em tempo real.",
     ],
     [
-      "Qual é o volume mínimo?",
-      "A solução é indicada principalmente para campanhas acima de 10 mil contatos.",
+      "Vocês ajudam com a mensagem?",
+      "Sim. A equipe apoia na definição do template, personalização e adequação às políticas do WhatsApp.",
     ],
     [
-      "O preço de R$ 0,13 vale para qualquer campanha?",
-      "O valor de R$ 0,13 é destinado a campanhas acima de 250 mil contatos. Volumes menores possuem condições diferentes.",
+      "Quanto tempo leva para começar?",
+      "Depende da aprovação do template e da preparação da base. Em muitos casos a primeira leva sai em poucos dias úteis.",
     ],
     [
-      "Quanto tempo demora para iniciar?",
-      "O prazo depende da análise da campanha, da base, do template e da estrutura necessária.",
+      "Preciso ter base própria?",
+      "Sim. A base deve ser própria e composta por contatos que aceitaram receber comunicações da empresa.",
+    ],
+    [
+      "Como recebo a proposta?",
+      "Após a simulação, você é direcionado para um especialista pelo WhatsApp com os dados já preenchidos.",
     ],
   ];
   return (
-    <section id="faq" className="py-24 md:py-32">
-      <div className="max-w-3xl mx-auto px-5">
-        <SectionTitle eyebrow="Dúvidas" title="Perguntas frequentes" />
-        <div className="mt-12 space-y-2">
-          {items.map(([q, a]) => (
-            <details
-              key={q}
-              className="group border border-white/10 rounded-2xl bg-[#0f1114] px-5 open:border-emerald-500/30"
-            >
-              <summary className="flex items-center justify-between py-5 cursor-pointer list-none">
-                <span className="text-base font-semibold pr-4">{q}</span>
-                <Plus className="w-5 h-5 shrink-0 text-emerald-500 transition-transform group-open:rotate-45" />
-              </summary>
-              <p className="pb-5 pt-0 text-gray-400 leading-relaxed text-sm">
-                {a}
-              </p>
-            </details>
-          ))}
+    <section id="faq" className="border-y border-white/5 bg-[#0d0e11] py-20 sm:py-28">
+      <div className={container}>
+        <div className="grid lg:grid-cols-12 gap-10">
+          <div className="lg:col-span-4">
+            <SectionHead
+              eyebrow="Dúvidas"
+              title="Perguntas frequentes"
+              lead="Respostas objetivas para as dúvidas mais comuns sobre a operação."
+            />
+          </div>
+          <div className="lg:col-span-8 divide-y divide-white/6 border-y border-white/6">
+            {items.map(([q, a]) => (
+              <details key={q} className="group py-5">
+                <summary className="flex items-start justify-between gap-6 cursor-pointer list-none">
+                  <span className="text-[15px] font-medium text-white pr-2">
+                    {q}
+                  </span>
+                  <span className="mt-1 shrink-0 h-6 w-6 rounded-full border border-white/10 grid place-items-center text-neutral-400 transition-transform group-open:rotate-45">
+                    <Plus className="h-3.5 w-3.5" />
+                  </span>
+                </summary>
+                <p className="mt-3 text-[14px] text-neutral-400 leading-relaxed pr-10">
+                  {a}
+                </p>
+              </details>
+            ))}
+          </div>
         </div>
       </div>
     </section>
@@ -1337,26 +1542,29 @@ function FAQ() {
 // ============ FINAL CTA ============
 function FinalCTA() {
   return (
-    <section className="py-24 md:py-32">
-      <div className="max-w-7xl mx-auto px-5">
-        <div className="relative rounded-[2.5rem] bg-gradient-to-br from-emerald-500/15 via-[#0f1114] to-[#0f1114] border border-emerald-500/20 p-10 md:p-16 text-center overflow-hidden">
-          <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-emerald-500/10 blur-[120px] rounded-full pointer-events-none" />
-          <div className="relative">
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight mb-5">
-              Pronto para alcançar sua base de clientes?
-            </h2>
-            <p className="text-gray-300 text-lg mb-10 max-w-xl mx-auto">
-              Faça uma simulação gratuita e receba uma análise da sua campanha.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+    <section className="py-20 sm:py-28">
+      <div className={container}>
+        <div className="rounded-2xl border border-white/8 bg-[#111317] p-8 sm:p-12">
+          <div className="grid lg:grid-cols-12 gap-8 items-center">
+            <div className="lg:col-span-8">
+              <h2 className="text-2xl sm:text-[32px] font-semibold text-white tracking-tight leading-tight max-w-xl">
+                Pronto para alcançar sua base pelo WhatsApp Oficial?
+              </h2>
+              <p className="mt-3 text-[15px] text-neutral-400 max-w-lg">
+                Simule o volume e receba a proposta em minutos, direto no
+                WhatsApp comercial.
+              </p>
+            </div>
+            <div className="lg:col-span-4 flex flex-col sm:flex-row lg:flex-col gap-3 lg:items-stretch">
               <button
                 onClick={() => {
                   trackPixel("ClickPrimaryCTA", { source: "final" });
                   scrollToId("simulador");
                 }}
-                className="px-8 py-4 bg-emerald-500 text-black rounded-2xl font-bold hover:bg-emerald-400 transition-all shadow-[0_10px_30px_-10px_rgba(34,197,94,0.6)]"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3.5 text-[15px] font-medium text-neutral-950 hover:bg-emerald-400 transition-colors"
               >
-                Simular minha campanha
+                Calcular minha campanha
+                <ArrowRight className="h-4 w-4" />
               </button>
               <button
                 onClick={() =>
@@ -1364,10 +1572,10 @@ function FinalCTA() {
                     "Olá! Vim do site da Disparos FR e gostaria de mais informações."
                   )
                 }
-                className="px-8 py-4 bg-white/5 border border-white/10 rounded-2xl font-semibold hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-5 py-3.5 text-[15px] font-medium text-neutral-100 hover:bg-white/[0.05] transition-colors"
               >
-                <MessageCircle className="w-5 h-5 text-emerald-500" />
-                Chamar no WhatsApp
+                <MessageCircle className="h-4 w-4 text-emerald-500" />
+                Falar com especialista
               </button>
             </div>
           </div>
@@ -1380,99 +1588,94 @@ function FinalCTA() {
 // ============ FOOTER ============
 function Footer() {
   return (
-    <footer className="border-t border-white/5 py-14 bg-[#08090b]">
-      <div className="max-w-7xl mx-auto px-5">
-        <div className="grid md:grid-cols-4 gap-10 mb-10">
-          <div className="md:col-span-2">
-            <div className="mb-3">
-              <img
-                src={logoAsset.url}
-                alt="Disparos FR"
-                className="h-10 w-auto"
-              />
-            </div>
-            <p className="text-sm text-gray-400 max-w-sm leading-relaxed">
-              Campanhas de WhatsApp pela API Oficial com relatórios em tempo
-              real e suporte especializado para operações em escala.
+    <footer className="border-t border-white/5 bg-[#0a0b0d] pt-14 pb-10">
+      <div className={container}>
+        <div className="grid md:grid-cols-12 gap-10">
+          <div className="md:col-span-5">
+            <img
+              src={logoAsset.url}
+              alt="Disparos FR"
+              className="h-8 w-auto"
+            />
+            <p className="mt-4 text-[13px] text-neutral-400 leading-relaxed max-w-sm">
+              Campanhas de WhatsApp pela API Oficial para empresas com base
+              autorizada.
             </p>
           </div>
-          <div>
-            <div className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">
+          <div className="md:col-span-3">
+            <div className="text-[11px] font-medium uppercase tracking-widest text-neutral-500">
               Navegação
             </div>
-            <ul className="space-y-2 text-sm text-gray-400">
+            <ul className="mt-4 space-y-2.5 text-[13px] text-neutral-400">
               <li>
-                <button
-                  onClick={() => scrollToId("como-funciona")}
-                  className="hover:text-white"
-                >
+                <button onClick={() => scrollToId("como-funciona")} className="hover:text-white">
                   Como funciona
                 </button>
               </li>
               <li>
-                <button
-                  onClick={() => scrollToId("diferenciais")}
-                  className="hover:text-white"
-                >
-                  Diferenciais
+                <button onClick={() => scrollToId("simulador")} className="hover:text-white">
+                  Simulador
                 </button>
               </li>
               <li>
-                <button
-                  onClick={() => scrollToId("resultados")}
-                  className="hover:text-white"
-                >
-                  Resultados
+                <button onClick={() => scrollToId("painel")} className="hover:text-white">
+                  Painel
                 </button>
               </li>
               <li>
-                <button
-                  onClick={() => scrollToId("faq")}
-                  className="hover:text-white"
-                >
+                <button onClick={() => scrollToId("faq")} className="hover:text-white">
                   Dúvidas
                 </button>
               </li>
             </ul>
           </div>
-          <div>
-            <div className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">
-              Institucional
+          <div className="md:col-span-4">
+            <div className="text-[11px] font-medium uppercase tracking-widest text-neutral-500">
+              Contato
             </div>
-            <ul className="space-y-2 text-sm text-gray-400">
+            <ul className="mt-4 space-y-2.5 text-[13px] text-neutral-400">
               <li>
-                <a
-                  href="/politica-de-privacidade"
-                  className="hover:text-white"
+                <button
+                  onClick={() => openWhatsApp()}
+                  className="hover:text-white inline-flex items-center gap-2"
                 >
+                  <MessageCircle className="h-3.5 w-3.5 text-emerald-500" />
+                  WhatsApp comercial
+                </button>
+              </li>
+              <li>
+                <a href="mailto:contato@disparosfr.com" className="hover:text-white">
+                  contato@disparosfr.com
+                </a>
+              </li>
+              <li>
+                <a href="/politica-de-privacidade" className="hover:text-white">
                   Política de Privacidade
                 </a>
               </li>
               <li>
-                <a
-                  href="/politica-de-privacidade"
-                  className="hover:text-white"
-                >
+                <a href="/politica-de-privacidade" className="hover:text-white">
                   Termos de Uso
                 </a>
-              </li>
-              <li>
-                <button
-                  onClick={() => openWhatsApp()}
-                  className="hover:text-white"
-                >
-                  Canal de atendimento
-                </button>
               </li>
             </ul>
           </div>
         </div>
-        <div className="border-t border-white/5 pt-6 flex flex-col md:flex-row md:justify-between gap-4 text-xs text-gray-500">
-          <p>© {new Date().getFullYear()} Disparos FR. Todos os direitos reservados.</p>
-          <p className="max-w-2xl md:text-right">
-            A Disparos FR não realiza campanhas para bases adquiridas sem
-            autorização ou para conteúdos que violem as políticas do WhatsApp
-            Business.
+
+        <div className="mt-12 pt-6 border-t border-white/5 flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-[12px] text-neutral-500">
+          <div>
+            <div>
+              © {new Date().getFullYear()} Disparos FR ·{" "}
+              <span className="text-neutral-600">Razão Social a definir</span> ·{" "}
+              <span className="text-neutral-600">CNPJ 00.000.000/0001-00</span>
+            </div>
+            <div className="mt-1 text-neutral-600">
+              Operação exclusiva para bases próprias e autorizadas.
+            </div>
+          </div>
+          <p className="max-w-sm md:text-right">
+            WhatsApp é marca registrada da Meta. Disparos FR não possui vínculo
+            institucional com a Meta.
           </p>
         </div>
       </div>
@@ -1480,51 +1683,41 @@ function Footer() {
   );
 }
 
-// ============ FLOATING WHATSAPP ============
-function FloatingWhatsApp() {
+// ============ MOBILE STICKY CTA ============
+function MobileStickyCTA() {
+  const [visible, setVisible] = useState(false);
+  const raf = useRef<number | null>(null);
+  useEffect(() => {
+    function check() {
+      const form = document.getElementById("formulario");
+      const inForm =
+        form && form.getBoundingClientRect().top < window.innerHeight * 0.9;
+      setVisible(window.scrollY > 400 && !inForm);
+    }
+    function onScroll() {
+      if (raf.current) return;
+      raf.current = window.requestAnimationFrame(() => {
+        raf.current = null;
+        check();
+      });
+    }
+    check();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  if (!visible) return null;
   return (
-    <button
-      onClick={() => openWhatsApp("Olá! Vim do site da Disparos FR.")}
-      className="fixed bottom-5 right-5 z-40 w-14 h-14 rounded-full bg-emerald-500 text-black shadow-[0_10px_30px_-5px_rgba(34,197,94,0.6)] grid place-items-center hover:scale-110 active:scale-95 transition-transform"
-      aria-label="Falar no WhatsApp"
-    >
-      <MessageCircle className="w-6 h-6" />
-    </button>
-  );
-}
-
-// ============ SHARED ============
-function SectionTitle({
-  eyebrow,
-  title,
-  subtitle,
-  align = "center",
-}: {
-  eyebrow?: string;
-  title: string;
-  subtitle?: string;
-  align?: "center" | "left";
-}) {
-  return (
-    <div className={align === "center" ? "text-center max-w-3xl mx-auto" : ""}>
-      {eyebrow && (
-        <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full mb-4">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-          <span className="text-[11px] font-bold uppercase tracking-widest text-emerald-400">
-            {eyebrow}
-          </span>
-        </div>
-      )}
-      <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-tight">
-        {title}
-      </h2>
-      {subtitle && (
-        <p className="text-gray-400 mt-4 text-base md:text-lg">{subtitle}</p>
-      )}
+    <div className="md:hidden fixed inset-x-0 bottom-0 z-40 border-t border-white/8 bg-[#0b0c0e]/95 backdrop-blur px-4 py-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
+      <button
+        onClick={() => {
+          trackPixel("ClickPrimaryCTA", { source: "sticky-mobile" });
+          scrollToId("simulador");
+        }}
+        className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3.5 text-[15px] font-medium text-neutral-950"
+      >
+        Simular campanha
+        <ArrowRight className="h-4 w-4" />
+      </button>
     </div>
   );
 }
-
-// unused export to silence tree-shake noise
-export const __brand = BRAND;
-export const __formatN = formatNumber;
