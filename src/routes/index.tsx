@@ -1597,8 +1597,8 @@ function Footer() {
               className="h-8 w-auto"
             />
             <p className="mt-4 text-[13px] text-neutral-400 leading-relaxed max-w-sm">
-              Campanhas de WhatsApp pela API Oficial para empresas com base
-              autorizada.
+              Campanhas realizadas por meio da API Oficial do WhatsApp
+              Business, para empresas com base própria e autorizada.
             </p>
           </div>
           <div className="md:col-span-3">
