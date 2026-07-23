@@ -1562,19 +1562,19 @@ function FinalCTA() {
                 }}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3.5 text-[15px] font-medium text-neutral-950 hover:bg-emerald-400 transition-colors"
               >
-                Calcular minha campanha
+                Simular minha campanha
                 <ArrowRight className="h-4 w-4" />
               </button>
               <button
                 onClick={() =>
                   openWhatsApp(
-                    "Olá! Vim do site da Disparos FR e gostaria de mais informações."
+                    "Olá! Vim do site da Disparos FR e gostaria de falar com um especialista."
                   )
                 }
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-5 py-3.5 text-[15px] font-medium text-neutral-100 hover:bg-white/[0.05] transition-colors"
               >
                 <MessageCircle className="h-4 w-4 text-emerald-500" />
-                Falar com especialista
+                Falar com um especialista
               </button>
             </div>
           </div>
