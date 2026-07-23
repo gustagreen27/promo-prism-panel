@@ -756,7 +756,7 @@ function SimulatorSection() {
             "radial-gradient(60% 40% at 20% 0%, rgba(16,185,129,0.18), transparent 60%), radial-gradient(50% 40% at 100% 100%, rgba(6,95,70,0.5), transparent 60%)",
         }}
       />
-      <div className={container}>
+      <div className={`${container} relative`}>
         <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-start">
           <div className="lg:col-span-5">
             <SectionHead
