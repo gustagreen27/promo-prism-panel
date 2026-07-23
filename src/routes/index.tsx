@@ -69,7 +69,7 @@ const START_OPTIONS = [
   "Apenas pesquisando",
 ];
 
-const BASE_OPTIONS = ["Sim", "Parcialmente", "Ainda preciso verificar"];
+
 
 function formatBRL(v: number) {
   return v.toLocaleString("pt-BR", {
