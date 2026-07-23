@@ -1104,28 +1104,6 @@ Gostaria de receber a proposta.`;
               </div>
               {errors.start && <ErrorMsg text={errors.start} />}
             </div>
-            <div className="mt-5">
-              <div className="text-[13px] font-medium text-neutral-300 mb-2">
-                Sua base autorizou receber comunicações da empresa?
-              </div>
-              <div className="grid sm:grid-cols-3 gap-2">
-                {BASE_OPTIONS.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => update("optin", s)}
-                    className={`min-h-12 rounded-lg border px-3 py-3 text-[14px] transition-colors text-left ${
-                      data.optin === s
-                        ? "bg-emerald-500/10 border-emerald-500/50 text-white"
-                        : "bg-white/[0.02] border-white/8 text-neutral-300 hover:bg-white/[0.05]"
-                    }`}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-              {errors.optin && <ErrorMsg text={errors.optin} />}
-            </div>
           </StepShell>
         )}
 
