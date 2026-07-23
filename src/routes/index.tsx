@@ -1065,12 +1065,13 @@ Gostaria de receber a proposta.`;
                 error={errors.whatsapp}
               />
               <Field
-                label="E-mail"
-                value={data.email}
-                onChange={(v) => update("email", v)}
-                placeholder="voce@empresa.com"
-                type="email"
-                error={errors.email}
+                label="Quantidade de contatos"
+                value={formatInt(data.volume)}
+                onChange={(v) => {
+                  const n = Number(v.replace(/\D/g, ""));
+                  if (!Number.isNaN(n)) update("volume", n);
+                }}
+                inputMode="tel"
               />
             </div>
             <p className="mt-3 text-[12px] text-neutral-500">
