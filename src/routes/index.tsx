@@ -658,36 +658,44 @@ function HowItWorks() {
     },
   ];
   return (
-    <section id="como-funciona" className="py-20 sm:py-28">
+    <section
+      id="como-funciona"
+      className="relative bg-[#f5f3ee] text-neutral-900 py-20 sm:py-28"
+    >
+      <div
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent"
+      />
       <div className={container}>
         <div className="grid lg:grid-cols-12 gap-10">
           <div className="lg:col-span-5">
-            <SectionHead
-              eyebrow="Como funciona"
-              title={
-                <>
-                  Uma operação
-                  <br />
-                  em quatro passos.
-                </>
-              }
-              lead="Você envia a base. A equipe configura a campanha. E você acompanha a execução."
-            />
+            <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-500">
+              <span className="h-px w-6 bg-neutral-400" />
+              Como funciona
+            </div>
+            <h2 className="mt-4 text-3xl sm:text-4xl font-semibold tracking-tight text-neutral-950 leading-[1.1]">
+              Uma operação
+              <br />
+              em quatro passos.
+            </h2>
+            <p className="mt-4 text-[15px] leading-relaxed text-neutral-600 max-w-md">
+              Você envia a base. A equipe configura a campanha. E você acompanha a execução.
+            </p>
           </div>
-          <ol className="lg:col-span-7 divide-y divide-white/5 border-y border-white/5">
+          <ol className="lg:col-span-7 space-y-4">
             {steps.map((s) => (
               <li
                 key={s.n}
-                className="grid grid-cols-[64px_1fr] gap-4 py-6 items-start"
+                className="group grid grid-cols-[56px_1fr] gap-4 items-start rounded-2xl border border-neutral-200 bg-white p-5 sm:p-6 shadow-[0_1px_0_rgba(0,0,0,0.02)] hover:border-emerald-500/40 hover:shadow-[0_20px_40px_-24px_rgba(16,185,129,0.35)] transition-all"
               >
-                <div className="text-[13px] font-mono text-neutral-500 pt-1">
-                  {s.n}
+                <div className="h-11 w-11 rounded-xl bg-emerald-500 text-white grid place-items-center text-[15px] font-semibold shadow-[0_10px_24px_-10px_rgba(16,185,129,0.6)]">
+                  {s.n.replace("0", "")}
                 </div>
                 <div>
-                  <div className="text-[17px] font-medium text-white">
+                  <div className="text-[17px] font-semibold text-neutral-950">
                     {s.t}
                   </div>
-                  <p className="mt-1.5 text-[14px] leading-relaxed text-neutral-400">
+                  <p className="mt-1.5 text-[14px] leading-relaxed text-neutral-600">
                     {s.d}
                   </p>
                 </div>
@@ -696,6 +704,10 @@ function HowItWorks() {
           </ol>
         </div>
       </div>
+      <div
+        aria-hidden
+        className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent"
+      />
     </section>
   );
 }
