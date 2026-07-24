@@ -322,6 +322,11 @@ function ChatPanel(props: {
   const [listRows, setListRows] = useState<Array<{ id: string; title: string; description: string }>>([
     { id: "row_1", title: "", description: "" },
   ]);
+  const [ctaBody, setCtaBody] = useState("");
+  const [ctaHeader, setCtaHeader] = useState("");
+  const [ctaFooter, setCtaFooter] = useState("");
+  const [ctaDisplayText, setCtaDisplayText] = useState("");
+  const [ctaUrl, setCtaUrl] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
 
