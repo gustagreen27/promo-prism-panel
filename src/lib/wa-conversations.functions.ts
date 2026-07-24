@@ -307,6 +307,7 @@ export const sendConversationMessage = createServerFn({ method: "POST" })
     let templateName: string | null = null;
     let payload: any = {};
 
+    let interactiveType: string | null = null;
     if (data.kind === "text") {
       bodyText = data.body;
       payload = { kind: "text", body: data.body, context_wamid: data.context_wamid ?? null };
@@ -322,6 +323,31 @@ export const sendConversationMessage = createServerFn({ method: "POST" })
         link: data.link,
         caption: data.caption,
         filename: data.filename,
+        context_wamid: data.context_wamid ?? null,
+      };
+    } else if (data.kind === "interactive_buttons") {
+      messageType = "interactive";
+      interactiveType = "button";
+      bodyText = data.body;
+      payload = {
+        kind: "interactive_buttons",
+        body: data.body,
+        header: data.header ?? null,
+        footer: data.footer ?? null,
+        buttons: data.buttons,
+        context_wamid: data.context_wamid ?? null,
+      };
+    } else if (data.kind === "interactive_list") {
+      messageType = "interactive";
+      interactiveType = "list";
+      bodyText = data.body;
+      payload = {
+        kind: "interactive_list",
+        body: data.body,
+        header: data.header ?? null,
+        footer: data.footer ?? null,
+        button: data.button,
+        sections: data.sections,
         context_wamid: data.context_wamid ?? null,
       };
     } else {
@@ -346,6 +372,7 @@ export const sendConversationMessage = createServerFn({ method: "POST" })
         button_url_param: data.button_url_param ?? null,
       };
     }
+
 
     const { data: msg, error: msgErr } = await context.supabase
       .from("wa_conversation_messages")
