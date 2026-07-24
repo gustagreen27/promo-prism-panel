@@ -213,7 +213,6 @@ function LandingPage() {
       <Header menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
       <main>
         <Hero />
-        <Metrics />
         <HowItWorks />
         <CampaignInAction />
         <SimulatorSection />
