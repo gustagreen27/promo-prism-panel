@@ -1829,9 +1829,11 @@ function CaseStudy() {
           <div className="lg:col-span-7">
             <ScreenshotFrame
               src={SCREENSHOTS.caseStudy}
+              srcMobile={SCREENSHOTS.caseStudyMobile}
               alt={`Painel do estudo de caso — ${CASE_STUDY.title}`}
               label="Painel do estudo de caso"
               aspect="16/10"
+              aspectMobile="9/10"
             />
           </div>
           <div className="lg:col-span-5 lg:pt-2">
