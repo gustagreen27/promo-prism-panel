@@ -950,7 +950,7 @@ async function applyResponseFlow(
     .update({
       last_outbound_at: nowIso,
       last_message_at: nowIso,
-      last_message_preview: text.slice(0, 500),
+      last_message_preview: (body || text || "").slice(0, 500),
       metadata: { ...meta, last_auto_reply_at: nowIso },
     })
     .eq("id", conversationId);
