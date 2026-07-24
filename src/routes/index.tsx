@@ -371,7 +371,7 @@ function Hero() {
         }}
       />
       <div className={`${container} relative grid lg:grid-cols-12 gap-10 lg:gap-14 items-start`}>
-        <div className="lg:col-span-6 lg:pt-6">
+        <div className="lg:col-span-5 lg:pt-6">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-neutral-300">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
             Para empresas com bases a partir de 2 mil contatos
