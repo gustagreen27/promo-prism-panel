@@ -403,9 +403,9 @@ function PainelRealCard({ variant = "live" }: { variant?: PainelVariant }) {
     <div className="relative rounded-[22px] border border-white/[0.08] bg-[#101216] p-5 sm:p-6 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)]">
       <div className="flex items-center justify-between gap-3">
         <div className="inline-flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/25 bg-emerald-500/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-emerald-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            Painel real
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-neutral-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            Exemplo de visualização
           </span>
         </div>
         <span
