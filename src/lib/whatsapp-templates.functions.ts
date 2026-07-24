@@ -154,111 +154,113 @@ export const syncTemplates = createServerFn({ method: "POST" })
  * Updates every template (including `language`) and links them to `waba_ref_id`
  * plus the first active connection of that WABA (so the campaign wizard filter picks them up).
  */
+async function _syncWabaTemplates(supabase: any, waba_ref_id: string) {
+  const { data: waba, error: wErr } = await supabase
+    .from("whatsapp_wabas")
+    .select("id,waba_id,access_token")
+    .eq("id", waba_ref_id)
+    .single();
+  if (wErr) throw wErr;
+  if (!waba?.waba_id) throw new Error("WABA sem waba_id configurado.");
+
+  let accessToken: string | null = waba.access_token ?? null;
+  let graphVersion = "v21.0";
+  const { data: conn } = await supabase
+    .from("whatsapp_connections")
+    .select("id,access_token,graph_api_version")
+    .eq("waba_ref_id", waba_ref_id)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (!accessToken) accessToken = conn?.access_token ?? null;
+  if (conn?.graph_api_version) graphVersion = conn.graph_api_version;
+  if (!accessToken) accessToken = process.env.WHATSAPP_ACCESS_TOKEN ?? null;
+  if (!accessToken) {
+    throw new Error(
+      "Nenhum Access Token disponível para esta WABA. Conclua o Embedded Signup ou cadastre um token na WABA/número.",
+    );
+  }
+
+  const { syncTemplatesFromMeta } = await import("@/lib/wa-send.server");
+  let list: any[];
+  try {
+    list = await syncTemplatesFromMeta({ wabaId: waba.waba_id, accessToken, graphVersion });
+  } catch (e: any) {
+    const msg = e?.message ?? "Falha ao consultar templates na Meta";
+    await supabase
+      .from("whatsapp_wabas")
+      .update({ last_sync_error: msg, last_synced_at: new Date().toISOString() })
+      .eq("id", waba_ref_id);
+    return { total: 0, synced: 0, error: msg } as any;
+  }
+
+  const statusMap: Record<string, string> = {
+    APPROVED: "approved", PENDING: "pending", REJECTED: "rejected",
+    PAUSED: "paused", DISABLED: "disabled",
+  };
+
+  let upserted = 0;
+  for (const t of list) {
+    const comps = (t.components ?? []) as any[];
+    const body = comps.find((c) => c.type === "BODY");
+    const header = comps.find((c) => c.type === "HEADER");
+    const footer = comps.find((c) => c.type === "FOOTER");
+    const buttons = comps.find((c) => c.type === "BUTTONS");
+    const variables =
+      body?.text?.match(/\{\{\d+\}\}/g)?.map((v: string) => v.replace(/[{}]/g, "")) ?? [];
+
+    const { data: existing } = await supabase
+      .from("whatsapp_templates")
+      .select("id")
+      .eq("name", t.name)
+      .eq("language", t.language)
+      .maybeSingle();
+
+    const payload = {
+      waba_ref_id,
+      connection_id: conn?.id ?? null,
+      meta_template_id: t.id ?? null,
+      name: t.name,
+      language: t.language,
+      category: t.category ?? null,
+      status: (statusMap[t.status] || "pending") as
+        | "approved" | "pending" | "rejected" | "paused" | "disabled",
+      header_type: header?.format ? String(header.format).toLowerCase() : null,
+      header_text: header?.text ?? null,
+      body: body?.text ?? "",
+      footer: footer?.text ?? null,
+      variables,
+      buttons: buttons?.buttons ?? [],
+      raw: t,
+      last_synced_at: new Date().toISOString(),
+    };
+
+    const { error } = existing?.id
+      ? await supabase.from("whatsapp_templates").update(payload).eq("id", existing.id)
+      : await supabase.from("whatsapp_templates").insert(payload);
+    if (!error) upserted++;
+  }
+
+  await supabase
+    .from("whatsapp_wabas")
+    .update({ last_sync_error: null, last_synced_at: new Date().toISOString() })
+    .eq("id", waba_ref_id);
+
+  return { synced: upserted, total: list.length };
+}
+
 export const syncTemplatesByWaba = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ waba_ref_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { data: waba, error: wErr } = await context.supabase
-      .from("whatsapp_wabas")
-      .select("id,waba_id,access_token")
-      .eq("id", data.waba_ref_id)
-      .single();
-    if (wErr) throw wErr;
-    if (!waba?.waba_id) throw new Error("WABA sem waba_id configurado.");
-
-    // Prefer an access_token on the WABA; fall back to any linked connection.
-    let accessToken: string | null = waba.access_token ?? null;
-    let graphVersion = "v21.0";
-    const { data: conn } = await context.supabase
-      .from("whatsapp_connections")
-      .select("id,access_token,graph_api_version")
-      .eq("waba_ref_id", data.waba_ref_id)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    if (!accessToken) accessToken = conn?.access_token ?? null;
-    if (conn?.graph_api_version) graphVersion = conn.graph_api_version;
-    if (!accessToken) accessToken = process.env.WHATSAPP_ACCESS_TOKEN ?? null;
-    if (!accessToken) {
-      throw new Error(
-        "Nenhum Access Token disponível para esta WABA. Conclua o Embedded Signup ou cadastre um token na WABA/número.",
-      );
-    }
-
-    const { syncTemplatesFromMeta } = await import("@/lib/wa-send.server");
-    let list: any[];
-    try {
-      list = await syncTemplatesFromMeta({
-        wabaId: waba.waba_id,
-        accessToken,
-        graphVersion,
-      });
-    } catch (e: any) {
-      const msg = e?.message ?? "Falha ao consultar templates na Meta";
-      await context.supabase
-        .from("whatsapp_wabas")
-        .update({ last_sync_error: msg, last_synced_at: new Date().toISOString() })
-        .eq("id", data.waba_ref_id);
-      return { total: 0, synced: 0, error: msg } as any;
-    }
-
-    const statusMap: Record<string, string> = {
-      APPROVED: "approved",
-      PENDING: "pending",
-      REJECTED: "rejected",
-      PAUSED: "paused",
-      DISABLED: "disabled",
-    };
-
-    let upserted = 0;
-    for (const t of list) {
-      const comps = (t.components ?? []) as any[];
-      const body = comps.find((c) => c.type === "BODY");
-      const header = comps.find((c) => c.type === "HEADER");
-      const footer = comps.find((c) => c.type === "FOOTER");
-      const buttons = comps.find((c) => c.type === "BUTTONS");
-      const variables =
-        body?.text?.match(/\{\{\d+\}\}/g)?.map((v: string) => v.replace(/[{}]/g, "")) ?? [];
-
-      // Try to update existing row (by name); otherwise insert
-      const { data: existing } = await context.supabase
-        .from("whatsapp_templates")
-        .select("id")
-        .eq("name", t.name)
-        .eq("language", t.language)
-        .maybeSingle();
-
-      const payload = {
-        waba_ref_id: data.waba_ref_id,
-        connection_id: conn?.id ?? null,
-        meta_template_id: t.id ?? null,
-        name: t.name,
-        language: t.language,
-        category: t.category ?? null,
-        status: (statusMap[t.status] || "pending") as
-          | "approved" | "pending" | "rejected" | "paused" | "disabled",
-        header_type: header?.format ? String(header.format).toLowerCase() : null,
-        header_text: header?.text ?? null,
-        body: body?.text ?? "",
-        footer: footer?.text ?? null,
-        variables,
-        buttons: buttons?.buttons ?? [],
-        raw: t,
-        last_synced_at: new Date().toISOString(),
-      };
-
-      const { error } = existing?.id
-        ? await context.supabase.from("whatsapp_templates").update(payload).eq("id", existing.id)
-        : await context.supabase.from("whatsapp_templates").insert(payload);
-      if (!error) upserted++;
-    }
-    return { synced: upserted, total: list.length };
+    return await _syncWabaTemplates(context.supabase, data.waba_ref_id);
   });
 
 /**
  * Sincroniza templates de TODAS as WABAs ativas.
- * Reaproveita syncTemplatesByWaba (mesma lógica do cron `wa-templates-sync-15min`).
+ * Executado automaticamente a cada 15 min pelo cron `wa-templates-sync-15min`
+ * e também disponível como ação manual via botão "Sincronizar todos".
  */
 export const syncAllTemplates = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -282,7 +284,7 @@ export const syncAllTemplates = createServerFn({ method: "POST" })
 
     for (const w of active) {
       try {
-        const r: any = await (syncTemplatesByWaba as any)({ data: { waba_ref_id: w.id } });
+        const r: any = await _syncWabaTemplates(context.supabase, w.id);
         totalSynced += r?.synced ?? 0;
         totalFound += r?.total ?? 0;
         if (r?.error) { wabasErr++; errors.push(r.error); } else { wabasOk++; }
@@ -293,3 +295,4 @@ export const syncAllTemplates = createServerFn({ method: "POST" })
     }
     return { wabas: active.length, wabasOk, wabasErr, synced: totalSynced, total: totalFound, errors };
   });
+
