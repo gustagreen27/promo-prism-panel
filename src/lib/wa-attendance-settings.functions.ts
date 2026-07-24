@@ -10,35 +10,40 @@ const KeywordRuleSchema = z.object({
   assign_to: z.string().uuid().nullish(),
 });
 
-async function assertWsMember(supabase: any, userId: string, wsId: string) {
-  const { data, error } = await supabase
+async function primaryWorkspace(supabase: any, userId: string) {
+  const { data } = await supabase
     .from("workspace_members")
-    .select("workspace_id, role")
-    .eq("workspace_id", wsId)
+    .select("workspace_id, role, workspaces:workspaces(created_at)")
     .eq("user_id", userId)
+    .order("workspaces(created_at)", { ascending: true })
+    .limit(1)
     .maybeSingle();
-  if (error || !data) throw new Error("Workspace inválido ou sem permissão");
-  return data;
+  const ws = (data as any)?.workspace_id;
+  if (!ws) throw new Error("Sem workspace vinculado");
+  return { workspace_id: ws as string, role: (data as any)?.role as string };
 }
 
 export const getAttendanceSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { workspace_id: string }) =>
-    z.object({ workspace_id: z.string().uuid() }).parse(d),
+  .inputValidator((d: unknown) =>
+    z.object({ workspace_id: z.string().uuid().optional() }).parse(d ?? {}),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any;
-    await assertWsMember(supabase, userId, data.workspace_id);
+    const { workspace_id: wsId, role } = data.workspace_id
+      ? { workspace_id: data.workspace_id, role: "" as string }
+      : await primaryWorkspace(supabase, userId);
+
     const { data: row } = await supabase
       .from("wa_attendance_settings")
       .select("*")
-      .eq("workspace_id", data.workspace_id)
+      .eq("workspace_id", wsId)
       .maybeSingle();
 
     const { data: members } = await supabase
       .from("workspace_members")
       .select("user_id, role")
-      .eq("workspace_id", data.workspace_id);
+      .eq("workspace_id", wsId);
 
     const memberIds = (members ?? []).map((m: any) => m.user_id);
     let profiles: any[] = [];
@@ -60,9 +65,11 @@ export const getAttendanceSettings = createServerFn({ method: "POST" })
     });
 
     return {
+      workspace_id: wsId,
+      can_edit: role === "owner" || role === "admin",
       settings:
         row ?? {
-          workspace_id: data.workspace_id,
+          workspace_id: wsId,
           round_robin_enabled: false,
           agent_roles: ["owner", "admin", "operator"],
           sla_first_response_minutes: 15,
@@ -79,7 +86,7 @@ export const updateAttendanceSettings = createServerFn({ method: "POST" })
   .inputValidator((d: any) =>
     z
       .object({
-        workspace_id: z.string().uuid(),
+        workspace_id: z.string().uuid().optional(),
         round_robin_enabled: z.boolean(),
         agent_roles: z.array(RoleEnum).min(1),
         sla_first_response_minutes: z.number().int().min(1).max(1440),
@@ -91,15 +98,28 @@ export const updateAttendanceSettings = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any;
-    const m = await assertWsMember(supabase, userId, data.workspace_id);
-    if (!["owner", "admin"].includes(m.role)) {
+    const { workspace_id: wsId, role } = data.workspace_id
+      ? await (async () => {
+          const { data: m } = await supabase
+            .from("workspace_members")
+            .select("role")
+            .eq("workspace_id", data.workspace_id!)
+            .eq("user_id", userId)
+            .maybeSingle();
+          if (!m) throw new Error("Sem permissão");
+          return { workspace_id: data.workspace_id!, role: (m as any).role as string };
+        })()
+      : await primaryWorkspace(supabase, userId);
+
+    if (role !== "owner" && role !== "admin") {
       throw new Error("Somente owner/admin podem editar configurações de atendimento.");
     }
+
     const { data: row, error } = await supabase
       .from("wa_attendance_settings")
       .upsert(
         {
-          workspace_id: data.workspace_id,
+          workspace_id: wsId,
           round_robin_enabled: data.round_robin_enabled,
           agent_roles: data.agent_roles,
           sla_first_response_minutes: data.sla_first_response_minutes,
