@@ -64,7 +64,7 @@ async function runTick() {
       const { data: conn } = await supabaseAdmin
         .from("whatsapp_connections")
         .select("access_token, graph_api_version")
-        .eq("id", row.connection_id)
+        .eq("id", row.connection_id ?? "")
         .maybeSingle();
       const token = (conn as any)?.access_token || process.env.WHATSAPP_ACCESS_TOKEN;
       const version = (conn as any)?.graph_api_version || process.env.META_GRAPH_API_VERSION || "v21.0";
