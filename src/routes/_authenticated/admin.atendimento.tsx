@@ -689,7 +689,7 @@ function ChatPanel(props: {
               </PopoverTrigger>
               <PopoverContent align="start" side="top" className="w-[380px] p-3">
                 <Tabs value={attachTab} onValueChange={(v) => setAttachTab(v as any)}>
-                  <TabsList className="grid grid-cols-3">
+                  <TabsList className="grid grid-cols-4">
                     <TabsTrigger value="media" className="text-xs">
                       <ImageIcon className="mr-1 h-3 w-3" /> Mídia
                     </TabsTrigger>
@@ -698,6 +698,9 @@ function ChatPanel(props: {
                     </TabsTrigger>
                     <TabsTrigger value="list" className="text-xs">
                       <ListChecks className="mr-1 h-3 w-3" /> Lista
+                    </TabsTrigger>
+                    <TabsTrigger value="cta" className="text-xs">
+                      <Link2 className="mr-1 h-3 w-3" /> URL
                     </TabsTrigger>
                   </TabsList>
 
