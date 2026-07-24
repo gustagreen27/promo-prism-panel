@@ -404,7 +404,9 @@ function Hero() {
             <button
               onClick={() => {
                 trackPixel("ClickPrimaryCTA", { source: "hero" });
-                scrollToId("simulador");
+                openWhatsApp(
+                  "Olá! Quero simular uma campanha de WhatsApp pela Disparos FR."
+                );
               }}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-6 py-3.5 text-[15px] font-medium text-neutral-950 hover:bg-emerald-400 transition-colors"
             >
