@@ -429,7 +429,7 @@ function Hero() {
           </ul>
         </div>
 
-        <div className="lg:col-span-6 relative">
+        <div className="lg:col-span-7 relative">
           <div
             aria-hidden
             className="absolute -inset-6 -z-10 rounded-[32px] blur-3xl opacity-40"
@@ -438,8 +438,16 @@ function Hero() {
                 "radial-gradient(60% 50% at 70% 30%, rgba(16,185,129,0.35), transparent 70%)",
             }}
           />
-          <DashboardMock compact />
+          <ScreenshotFrame
+            src={SCREENSHOTS.heroPanel}
+            alt="Painel de acompanhamento em tempo real da plataforma Disparos FR"
+            label="Painel principal (hero)"
+            caption="Captura real do painel de acompanhamento da Disparos FR."
+            aspect="16/10"
+            priority
+          />
         </div>
+
       </div>
     </section>
   );
