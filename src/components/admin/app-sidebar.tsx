@@ -11,6 +11,7 @@ import {
   Building2,
   FileText,
   Inbox,
+  MessageSquare,
   Webhook,
   ShieldCheck,
   BarChart3,
