@@ -39,13 +39,14 @@ function trackPixel(event: PixelEvent, data?: Record<string, unknown>) {
 // ============ PRICING ============
 // Faixas comerciais reais — o preço de R$0,13 é exclusivo para 250k+ contatos.
 const TIERS = [
+  { min: 2_000, max: 9_999, price: 0.32, label: "2 mil a 10 mil" },
   { min: 10_000, max: 49_999, price: 0.27, label: "10 mil a 50 mil" },
   { min: 50_000, max: 99_999, price: 0.22, label: "50 mil a 100 mil" },
   { min: 100_000, max: 249_999, price: 0.19, label: "100 mil a 250 mil" },
   { min: 250_000, max: Infinity, price: 0.13, label: "Acima de 250 mil" },
 ] as const;
 
-const PRESETS = [10_000, 25_000, 50_000, 100_000, 250_000, 500_000];
+const PRESETS = [2_000, 10_000, 50_000, 100_000, 250_000, 500_000];
 
 function priceFor(volume: number) {
   const tier = TIERS.find((t) => volume >= t.min && volume <= t.max) ?? TIERS[0];
