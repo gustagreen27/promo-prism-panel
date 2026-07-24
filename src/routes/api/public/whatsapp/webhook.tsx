@@ -824,7 +824,9 @@ async function applyResponseFlow(
   const text = (cfg.auto_reply_text ?? "").trim();
   if (!text || !cooldownOk || !connectionId || !phoneNumberId) return;
 
-  const idem = `flow:${conversationId}:${Math.floor(now / cooldownMs || 1)}`;
+  const idem = inboundWamid
+    ? `flow:${conversationId}:${inboundWamid}`
+    : `flow:${conversationId}:${Math.floor(now / (cooldownMs || 1))}`;
   const { data: msg } = await supabaseAdmin
     .from("wa_conversation_messages")
     .insert({
