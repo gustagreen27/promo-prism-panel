@@ -15,7 +15,16 @@ import {
   ZoomIn,
   Play,
   ImageIcon,
+  Users,
+  Send,
+  CheckCircle2,
+  XCircle,
+  MousePointerClick,
+  Globe2,
+  MapPin,
+  HeadphonesIcon,
 } from "lucide-react";
+
 import logoAsset from "@/assets/disparos-fr-logo-new.png.asset.json";
 
 // ============ CONFIG ============
