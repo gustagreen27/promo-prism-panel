@@ -563,11 +563,30 @@ async function upsertConversationFromInbound(
   },
 ) {
   const { workspaceId, connectionId, phoneNumberId, wabaId, from, body, message, wamid } = args;
+
+  // Timestamp OFICIAL da Meta (segundos epoch em string). Fallback: agora.
+  const metaTsSec = Number(message?.timestamp);
+  const messageDate =
+    Number.isFinite(metaTsSec) && metaTsSec > 0 ? new Date(metaTsSec * 1000) : new Date();
+  const messageIso = messageDate.toISOString();
+  const expiresIso = new Date(messageDate.getTime() + 24 * 60 * 60 * 1000).toISOString();
   const nowIso = new Date().toISOString();
-  const expiresIso = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
   const type = String(message?.type ?? "text");
 
-  // Preview textual.
+  // ── (1) DEDUP ANTES DE QUALQUER SIDE EFFECT ────────────────────────
+  // Se a mensagem já foi registrada (mesmo workspace + wamid), aborta sem
+  // tocar em conversa, janela, unread, automação, notificação, etc.
+  if (wamid) {
+    const { data: dup } = await supabaseAdmin
+      .from("wa_conversation_messages")
+      .select("id")
+      .eq("workspace_id", workspaceId)
+      .eq("wamid", wamid)
+      .maybeSingle();
+    if (dup?.id) return;
+  }
+
+  // Preview textual (usado só quando a mensagem realmente for gravada).
   let preview: string = body;
   if (!preview) {
     if (type === "interactive") {
@@ -584,12 +603,11 @@ async function upsertConversationFromInbound(
     else preview = `[${type}]`;
   }
 
-  // Nome do contato do payload.
   const profileName: string | null = message?.profile?.name
     ? String(message.profile.name)
     : null;
 
-  // Localiza contato existente e a última campanha associada ao número.
+  // Lookups read-only (contato e última campanha vinculada ao número).
   let contactId: string | null = null;
   {
     const { data: c } = await supabaseAdmin
@@ -617,12 +635,19 @@ async function upsertConversationFromInbound(
     }
   }
 
-  // Upsert por (workspace_id, connection_id, contact_phone).
+  // ── (2) SHELL DA CONVERSA ──────────────────────────────────────────
+  // Precisamos de um conversation_id para gravar a mensagem. Criamos/lemos
+  // sem tocar em last_inbound_at nem service_window_* — esses campos só
+  // são atualizados DEPOIS que o INSERT da mensagem confirmar novidade.
   let conversationId: string | null = null;
+  let existingLastInboundMs = 0;
+  let existingUnread = 0;
   if (connectionId) {
     const { data: existing } = await supabaseAdmin
       .from("wa_conversations")
-      .select("id, unread_count, contact_id, contact_name, campaign_id, campaign_recipient_id")
+      .select(
+        "id, unread_count, contact_id, contact_name, campaign_id, campaign_recipient_id, last_inbound_at",
+      )
       .eq("workspace_id", workspaceId)
       .eq("connection_id", connectionId)
       .eq("contact_phone", from)
@@ -630,23 +655,22 @@ async function upsertConversationFromInbound(
 
     if (existing?.id) {
       conversationId = existing.id;
-      const patch: Record<string, any> = {
-        last_inbound_at: nowIso,
-        last_message_at: nowIso,
-        last_message_preview: preview.slice(0, 500),
-        unread_count: (existing.unread_count ?? 0) + 1,
-        service_window_opened_at: nowIso,
-        service_window_expires_at: expiresIso,
-        service_window_status: "open",
-      };
-      if (!existing.contact_id && contactId) patch.contact_id = contactId;
-      if (!existing.contact_name && profileName) patch.contact_name = profileName;
-      if (!existing.campaign_id && campaignId) patch.campaign_id = campaignId;
+      existingUnread = existing.unread_count ?? 0;
+      existingLastInboundMs = existing.last_inbound_at
+        ? new Date(existing.last_inbound_at as string).getTime()
+        : 0;
+      // Só preenche campos ausentes; NÃO mexe em janela nem contadores aqui.
+      const shellPatch: Record<string, any> = {};
+      if (!existing.contact_id && contactId) shellPatch.contact_id = contactId;
+      if (!existing.contact_name && profileName) shellPatch.contact_name = profileName;
+      if (!existing.campaign_id && campaignId) shellPatch.campaign_id = campaignId;
       if (!existing.campaign_recipient_id && campaignRecipientId)
-        patch.campaign_recipient_id = campaignRecipientId;
-      await supabaseAdmin.from("wa_conversations").update(patch).eq("id", existing.id);
+        shellPatch.campaign_recipient_id = campaignRecipientId;
+      if (Object.keys(shellPatch).length > 0) {
+        await supabaseAdmin.from("wa_conversations").update(shellPatch).eq("id", existing.id);
+      }
     } else {
-      const { data: inserted } = await supabaseAdmin
+      const { data: inserted, error: insErr } = await supabaseAdmin
         .from("wa_conversations")
         .insert({
           workspace_id: workspaceId,
@@ -659,34 +683,38 @@ async function upsertConversationFromInbound(
           wa_id: from,
           campaign_id: campaignId,
           campaign_recipient_id: campaignRecipientId,
-          last_inbound_at: nowIso,
-          last_message_at: nowIso,
-          last_message_preview: preview.slice(0, 500),
-          unread_count: 1,
-          service_window_opened_at: nowIso,
-          service_window_expires_at: expiresIso,
-          service_window_status: "open",
+          unread_count: 0,
           conversation_status: "open",
+          // janela e last_inbound_at ficam nulos aqui — abrimos só após
+          // gravar a mensagem com sucesso (evita reabrir por duplicado).
         })
         .select("id")
         .single();
-      conversationId = inserted?.id ?? null;
+      if (insErr && (insErr as any).code === "23505") {
+        // Race: outro webhook criou a conversa. Relê.
+        const { data: reread } = await supabaseAdmin
+          .from("wa_conversations")
+          .select("id, unread_count, last_inbound_at")
+          .eq("workspace_id", workspaceId)
+          .eq("connection_id", connectionId)
+          .eq("contact_phone", from)
+          .maybeSingle();
+        conversationId = reread?.id ?? null;
+        existingUnread = reread?.unread_count ?? 0;
+        existingLastInboundMs = reread?.last_inbound_at
+          ? new Date(reread.last_inbound_at as string).getTime()
+          : 0;
+      } else {
+        conversationId = inserted?.id ?? null;
+      }
     }
   }
 
   if (!conversationId) return;
 
-  // Dedup inbound por wamid: se já existe, NÃO reprocessa side effects (auto-reply, etc).
-  if (wamid) {
-    const { data: dup } = await supabaseAdmin
-      .from("wa_conversation_messages")
-      .select("id")
-      .eq("workspace_id", workspaceId)
-      .eq("wamid", wamid)
-      .maybeSingle();
-    if (dup?.id) return;
-  }
-
+  // ── (3) INSERT ATÔMICO DA MENSAGEM (ON CONFLICT DO NOTHING) ────────
+  // A unique parcial em (workspace_id, wamid) garante idempotência
+  // mesmo com dois webhooks concorrentes.
   const msgRow: Record<string, any> = {
     workspace_id: workspaceId,
     conversation_id: conversationId,
@@ -697,6 +725,7 @@ async function upsertConversationFromInbound(
     body: body || null,
     status: "received",
     received_at: nowIso,
+    sent_at: messageIso, // timestamp oficial da Meta
     payload: message,
     campaign_id: campaignId,
     campaign_recipient_id: campaignRecipientId,
@@ -712,10 +741,15 @@ async function upsertConversationFromInbound(
       msgRow.interactive_type = "list_reply";
       msgRow.interactive_list_id = lr.id ?? null;
       msgRow.interactive_list_title = lr.title ?? null;
-      // Preserva descrição em body para exibição/auditoria (coluna dedicada não existe).
       if (lr.description && !msgRow.body) msgRow.body = String(lr.description).slice(0, 500);
     }
-  } else if (type === "image" || type === "video" || type === "audio" || type === "document" || type === "sticker") {
+  } else if (
+    type === "image" ||
+    type === "video" ||
+    type === "audio" ||
+    type === "document" ||
+    type === "sticker"
+  ) {
     const media = message?.[type] ?? {};
     msgRow.media_id = media?.id ?? null;
     msgRow.media_mime = media?.mime_type ?? null;
@@ -724,11 +758,15 @@ async function upsertConversationFromInbound(
   }
   if (message?.context?.id) msgRow.context_wamid = String(message.context.id);
 
-  const { error: insertErr } = await supabaseAdmin
+  const { data: insertedMsg, error: insertErr } = await supabaseAdmin
     .from("wa_conversation_messages")
-    .insert(msgRow);
-  // 23505 = unique_violation (race entre dois webhooks do mesmo wamid): silenciar.
-  if (insertErr && (insertErr as any).code !== "23505") {
+    .insert(msgRow)
+    .select("id")
+    .maybeSingle();
+
+  // Duplicado (race entre dois webhooks do mesmo wamid) → aborta sem side effects.
+  if (insertErr && (insertErr as any).code === "23505") return;
+  if (insertErr) {
     await supabaseAdmin.from("whatsapp_webhook_logs").insert({
       connection_id: connectionId,
       event_type: "conversation_msg_insert_error",
@@ -738,10 +776,28 @@ async function upsertConversationFromInbound(
     });
     return;
   }
-  if (insertErr) return; // duplicate — não roda side effects
+  if (!insertedMsg?.id) return; // defensivo: sem linha inserida = sem efeitos
 
-  // ── Fluxo de resposta configurado na campanha (auto-reply na janela 24h) ──
-  if (campaignId) {
+  // ── (4) SIDE EFFECTS — SOMENTE SE A MENSAGEM FOI REALMENTE INSERIDA ─
+  // GREATEST(last_inbound_at, incoming): mensagem antiga entra no
+  // histórico mas NÃO renova/reduz a janela.
+  const isNewest = messageDate.getTime() > existingLastInboundMs;
+  const convPatch: Record<string, any> = {
+    unread_count: existingUnread + 1,
+    last_message_at: isNewest ? messageIso : nowIso,
+    last_message_preview: preview.slice(0, 500),
+  };
+  if (isNewest) {
+    convPatch.last_inbound_at = messageIso;
+    convPatch.service_window_opened_at = messageIso;
+    convPatch.service_window_expires_at = expiresIso;
+    convPatch.service_window_status = "open";
+  }
+  await supabaseAdmin.from("wa_conversations").update(convPatch).eq("id", conversationId);
+
+  // Fluxo de resposta automática: só dispara para a mensagem mais nova
+  // (mensagens fora de ordem não devem re-executar automação).
+  if (campaignId && isNewest) {
     try {
       await applyResponseFlow(supabaseAdmin, {
         workspaceId,
