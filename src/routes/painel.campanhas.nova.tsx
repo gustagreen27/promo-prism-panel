@@ -1947,7 +1947,11 @@ function ResponseFlowCard({
             )}
           </div>
 
+          {/* Pré-visualização estilo WhatsApp */}
+          <WhatsAppFlowPreview value={value} />
+
         </div>
+
       ) : (
         <div className="p-3 text-xs text-muted-foreground">
           Ative para responder automaticamente ao primeiro retorno do contato e marcar a conversa no módulo de Atendimento.
