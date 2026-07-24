@@ -792,7 +792,7 @@ function SimulatorSection() {
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() =>
-                        onPickPreset(Math.max(10_000, volume - 10_000))
+                        onPickPreset(Math.max(2_000, volume - (volume > 10_000 ? 10_000 : 1_000)))
                       }
                       className="h-9 w-9 grid place-items-center rounded-md border border-white/8 bg-white/[0.02] text-neutral-300 hover:bg-white/[0.06]"
                       aria-label="Diminuir"
@@ -801,7 +801,7 @@ function SimulatorSection() {
                     </button>
                     <button
                       onClick={() =>
-                        onPickPreset(Math.min(1_000_000, volume + 10_000))
+                        onPickPreset(Math.min(1_000_000, volume + (volume >= 10_000 ? 10_000 : 1_000)))
                       }
                       className="h-9 w-9 grid place-items-center rounded-md border border-white/8 bg-white/[0.02] text-neutral-300 hover:bg-white/[0.06]"
                       aria-label="Aumentar"
@@ -813,16 +813,16 @@ function SimulatorSection() {
 
                 <input
                   type="range"
-                  min={10_000}
+                  min={2_000}
                   max={1_000_000}
-                  step={5_000}
+                  step={1_000}
                   value={volume}
                   onChange={(e) => onPickPreset(Number(e.target.value))}
                   className="mt-5 w-full accent-emerald-500"
                   aria-label="Volume de contatos"
                 />
                 <div className="mt-1 flex justify-between text-[11px] text-neutral-500">
-                  <span>10k</span>
+                  <span>2k</span>
                   <span>250k</span>
                   <span>1M</span>
                 </div>
