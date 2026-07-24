@@ -616,16 +616,13 @@ function Metrics() {
   ];
   return (
     <section className="border-y border-white/5 bg-white/[0.015]">
-      <div className={`${container} grid grid-cols-2 md:grid-cols-4 py-8`}>
-        {items.map((i, idx) => (
-          <div
-            key={i.t}
-            className={`px-2 ${idx > 0 ? "md:border-l md:border-white/5" : ""}`}
-          >
-            <div className="text-[19px] sm:text-[22px] font-semibold text-white tracking-tight">
+      <div className={`${container} grid grid-cols-2 md:grid-cols-4 divide-y divide-x divide-white/5 md:divide-y-0 -mx-px`}>
+        {items.map((i) => (
+          <div key={i.t} className="px-5 py-6 sm:px-6 sm:py-7">
+            <div className="text-[18px] sm:text-[22px] font-semibold text-white tracking-tight">
               {i.n}
             </div>
-            <div className="mt-1 text-[12px] text-neutral-500">{i.t}</div>
+            <div className="mt-1.5 text-[12px] text-neutral-500 leading-relaxed">{i.t}</div>
           </div>
         ))}
       </div>
