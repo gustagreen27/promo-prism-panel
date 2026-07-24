@@ -83,15 +83,12 @@ function Page() {
     <>
       <PageHeader
         title="Templates"
-        description="Templates aprovados na Meta usados nas campanhas."
+        description="Sincronização automática a cada 15 min com todos os números cadastrados. Use o botão ao lado para forçar uma sincronização imediata."
         actions={
           <div className="flex gap-2">
-            <Select value={syncConn} onValueChange={setSyncConn}>
-              <SelectTrigger className="w-[220px]"><SelectValue placeholder="Sincronizar com número…" /></SelectTrigger>
-              <SelectContent>{numbers.map((n: any) => <SelectItem key={n.id} value={n.id}>{n.name}</SelectItem>)}</SelectContent>
-            </Select>
-            <Button variant="outline" disabled={!syncConn || syncMut.isPending} onClick={() => syncMut.mutate(syncConn)}>
-              <RefreshCw className="mr-2 h-4 w-4" />Sincronizar
+            <Button variant="outline" disabled={syncMut.isPending} onClick={() => syncMut.mutate()}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${syncMut.isPending ? "animate-spin" : ""}`} />
+              {syncMut.isPending ? "Sincronizando…" : "Sincronizar todos agora"}
             </Button>
             <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
               <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Novo</Button></DialogTrigger>
