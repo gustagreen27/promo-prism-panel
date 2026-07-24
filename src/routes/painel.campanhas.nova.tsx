@@ -1006,6 +1006,10 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
 
                 {/* Config — Rate limiter (Passo 02) */}
                 <DispatchConfigCard value={dispatch} onChange={setDispatch} />
+
+                {/* Fluxo de resposta — aplica-se ao webhook quando o contato responde na janela 24h */}
+                <ResponseFlowCard value={responseFlow} onChange={setResponseFlow} />
+
               </div>
 
               <div>
