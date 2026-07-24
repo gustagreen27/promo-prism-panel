@@ -1482,7 +1482,7 @@ function Row({
 
 // ============ PANEL (dashboard) section ============
 // ============ SCREENSHOT PRIMITIVES ============
-type AspectStr = "16/10" | "16/9" | "4/3" | "3/2" | "1/1" | "9/16";
+type AspectStr = "16/10" | "16/9" | "4/3" | "3/2" | "1/1" | "9/16" | "9/10" | "4/5";
 
 function ScreenshotFrame({
   src,
