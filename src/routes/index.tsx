@@ -1484,71 +1484,89 @@ type AspectStr = "16/10" | "16/9" | "4/3" | "3/2" | "1/1" | "9/16";
 
 function ScreenshotFrame({
   src,
+  srcMobile,
   alt,
   label,
   caption,
   aspect = "16/10",
+  aspectMobile,
   priority = false,
 }: {
   src: string;
+  srcMobile?: string;
   alt: string;
   label: string;
   caption?: string;
   aspect?: AspectStr;
+  aspectMobile?: AspectStr;
   priority?: boolean;
 }) {
   const [zoom, setZoom] = useState(false);
   const hasImage = Boolean(src && src.trim().length > 0);
+  const hasMobile = Boolean(srcMobile && srcMobile.trim().length > 0);
+  const mobileAspect = aspectMobile ?? aspect;
+  const zoomSrc = hasMobile && typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches ? (srcMobile as string) : src;
+
+  const renderFrame = (imageSrc: string, ratio: AspectStr, visibility: string) => (
+    <div
+      className={`relative w-full overflow-hidden rounded-2xl border border-white/10 bg-[#0f1114] shadow-[0_30px_80px_-40px_rgba(0,0,0,0.7)] ${visibility}`}
+      style={{ aspectRatio: ratio.replace("/", " / ") }}
+    >
+      {hasImage ? (
+        <>
+          <img
+            src={imageSrc}
+            alt={alt}
+            loading={priority ? "eager" : "lazy"}
+            decoding="async"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <button
+            type="button"
+            onClick={() => setZoom(true)}
+            className="absolute inset-0 grid place-items-end p-3 opacity-0 group-hover:opacity-100 transition-opacity"
+            aria-label="Ampliar imagem"
+          >
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-1.5 text-[12px] font-medium text-white backdrop-blur">
+              <ZoomIn className="h-3.5 w-3.5" /> Ampliar
+            </span>
+          </button>
+        </>
+      ) : (
+        <div className="absolute inset-0 grid place-items-center p-6 text-center">
+          <div>
+            <div className="mx-auto grid h-12 w-12 place-items-center rounded-full border border-white/10 bg-white/[0.03] text-neutral-400">
+              <ImageIcon className="h-5 w-5" />
+            </div>
+            <div className="mt-4 text-[13px] font-medium text-neutral-200">
+              Espaço reservado para captura real
+            </div>
+            <div className="mt-1 text-[12px] text-neutral-500">
+              Substituir por: <span className="text-neutral-300">{label}</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <figure className="group w-full">
-      <div
-        className="relative w-full overflow-hidden rounded-2xl border border-white/10 bg-[#0f1114] shadow-[0_30px_80px_-40px_rgba(0,0,0,0.7)]"
-        style={{ aspectRatio: aspect.replace("/", " / ") }}
-      >
-        {hasImage ? (
-          <>
-            <img
-              src={src}
-              alt={alt}
-              loading={priority ? "eager" : "lazy"}
-              decoding="async"
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-            <button
-              type="button"
-              onClick={() => setZoom(true)}
-              className="absolute inset-0 grid place-items-end p-3 opacity-0 group-hover:opacity-100 transition-opacity"
-              aria-label="Ampliar imagem"
-            >
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-1.5 text-[12px] font-medium text-white backdrop-blur">
-                <ZoomIn className="h-3.5 w-3.5" /> Ampliar
-              </span>
-            </button>
-          </>
-        ) : (
-          <div className="absolute inset-0 grid place-items-center p-6 text-center">
-            <div>
-              <div className="mx-auto grid h-12 w-12 place-items-center rounded-full border border-white/10 bg-white/[0.03] text-neutral-400">
-                <ImageIcon className="h-5 w-5" />
-              </div>
-              <div className="mt-4 text-[13px] font-medium text-neutral-200">
-                Espaço reservado para captura real
-              </div>
-              <div className="mt-1 text-[12px] text-neutral-500">
-                Substituir por: <span className="text-neutral-300">{label}</span>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      {hasMobile ? (
+        <>
+          {renderFrame(srcMobile as string, mobileAspect, "block sm:hidden")}
+          {renderFrame(src, aspect, "hidden sm:block")}
+        </>
+      ) : (
+        renderFrame(src, aspect, "block")
+      )}
       {caption && (
         <figcaption className="mt-3 text-[12px] text-neutral-500 text-center">
           {caption}
         </figcaption>
       )}
       {zoom && hasImage && (
-        <ImageLightbox src={src} alt={alt} onClose={() => setZoom(false)} />
+        <ImageLightbox src={zoomSrc} alt={alt} onClose={() => setZoom(false)} />
       )}
     </figure>
   );
