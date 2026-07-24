@@ -748,35 +748,32 @@ function SimulatorSection() {
         }}
       />
       <div className={`${container} relative`}>
-        <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-          <div className="lg:col-span-5">
+        <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-end">
+          <div className="lg:col-span-7">
             <SectionHead
               eyebrow="Simulador"
-              title={
-                <>
-                  Calcule sua campanha em segundos.
-                </>
-              }
+              title={<>Calcule sua campanha em segundos.</>}
               lead="Escolha o volume da base e veja a faixa comercial aplicada. Depois você recebe a proposta detalhada pelo WhatsApp."
             />
-            <ul className="mt-8 space-y-3 text-[14px] text-neutral-300">
-              <li className="flex gap-3">
-                <Check className="mt-0.5 h-4 w-4 text-emerald-500 shrink-0" />
-                Valor por envio varia conforme o volume selecionado.
-              </li>
-              <li className="flex gap-3">
-                <Check className="mt-0.5 h-4 w-4 text-emerald-500 shrink-0" />
-                Preço de R$ 0,13 aplicável para bases acima de 250 mil.
-              </li>
-              <li className="flex gap-3">
-                <Check className="mt-0.5 h-4 w-4 text-emerald-500 shrink-0" />
-                Proposta final considera template, segmentação e estrutura.
-              </li>
-            </ul>
           </div>
+          <ul className="lg:col-span-5 grid sm:grid-cols-1 gap-2.5 text-[13.5px] text-neutral-300">
+            <li className="flex gap-3">
+              <Check className="mt-0.5 h-4 w-4 text-emerald-500 shrink-0" />
+              Valor por envio varia conforme o volume selecionado.
+            </li>
+            <li className="flex gap-3">
+              <Check className="mt-0.5 h-4 w-4 text-emerald-500 shrink-0" />
+              Preço de R$ 0,13 aplicável para bases acima de 250 mil.
+            </li>
+            <li className="flex gap-3">
+              <Check className="mt-0.5 h-4 w-4 text-emerald-500 shrink-0" />
+              Proposta final considera template, segmentação e estrutura.
+            </li>
+          </ul>
+        </div>
 
-          <div className="lg:col-span-7">
-            <div className="grid md:grid-cols-5 gap-4">
+        <div className="mt-12 grid md:grid-cols-5 gap-4">
+
               {/* Controls */}
               <div className="md:col-span-3 rounded-2xl border border-white/8 bg-[#111317] p-5 sm:p-6">
                 <div className="text-[11px] uppercase tracking-widest text-neutral-500">
