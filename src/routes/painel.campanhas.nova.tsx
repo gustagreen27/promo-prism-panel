@@ -264,6 +264,7 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
       if (d.templateId) setTemplateId(d.templateId);
       if (d.contactSel) setContactSel(d.contactSel);
       if (d.dispatch && typeof d.dispatch === "object") setDispatch({ ...defaultDispatch(), ...d.dispatch });
+      if (d.responseFlow && typeof d.responseFlow === "object") setResponseFlow({ ...defaultResponseFlow(), ...d.responseFlow });
       if (d.mode) setMode(d.mode);
       if (d.scheduledAt) setScheduledAt(d.scheduledAt);
       if (d.timezone) setTimezone(d.timezone);
