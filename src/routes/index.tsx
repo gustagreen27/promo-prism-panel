@@ -23,15 +23,19 @@ const WHATSAPP_NUMBER = "5562933003970"; // editar aqui
 
 // ============ REAL SCREENSHOTS ============
 import painelLoteriaJb from "@/assets/painel-loteriajb.png.asset.json";
+import painelLoteriaJbMobile from "@/assets/painel-loteriajb-mobile.png.asset.json";
 // Substitua os valores abaixo pelas URLs das capturas reais do painel Disparos FR.
 // Enquanto vazios, a interface mostra placeholders identificados.
 const SCREENSHOTS = {
   heroPanel: painelLoteriaJb.url, // Painel principal — dobra do hero (grande destaque)
+  heroPanelMobile: painelLoteriaJbMobile.url,
   msgConfig: "", // Aba 1 — Mensagem configurada (editor da campanha)
   msgReceived: "", // Aba 2 — Mensagem recebida (print do WhatsApp do contato)
   campaignRunning: "", // Aba 3 — Campanha em execução (progresso ao vivo)
   finalReport: painelLoteriaJb.url, // Relatório final ao encerrar a campanha
+  finalReportMobile: painelLoteriaJbMobile.url,
   caseStudy: painelLoteriaJb.url, // Estudo de caso — captura do painel do caso real
+  caseStudyMobile: painelLoteriaJbMobile.url,
 };
 
 // Vídeo/gravação de tela opcional. Deixe src vazio para ocultar o player.
@@ -448,10 +452,12 @@ function Hero() {
           />
           <ScreenshotFrame
             src={SCREENSHOTS.heroPanel}
+            srcMobile={SCREENSHOTS.heroPanelMobile}
             alt="Painel de acompanhamento em tempo real da plataforma Disparos FR"
             label="Painel principal (hero)"
             caption="Captura real do painel de acompanhamento da Disparos FR."
             aspect="16/10"
+            aspectMobile="9/10"
             priority
           />
         </div>
@@ -1476,75 +1482,93 @@ function Row({
 
 // ============ PANEL (dashboard) section ============
 // ============ SCREENSHOT PRIMITIVES ============
-type AspectStr = "16/10" | "16/9" | "4/3" | "3/2" | "1/1" | "9/16";
+type AspectStr = "16/10" | "16/9" | "4/3" | "3/2" | "1/1" | "9/16" | "9/10" | "4/5";
 
 function ScreenshotFrame({
   src,
+  srcMobile,
   alt,
   label,
   caption,
   aspect = "16/10",
+  aspectMobile,
   priority = false,
 }: {
   src: string;
+  srcMobile?: string;
   alt: string;
   label: string;
   caption?: string;
   aspect?: AspectStr;
+  aspectMobile?: AspectStr;
   priority?: boolean;
 }) {
   const [zoom, setZoom] = useState(false);
   const hasImage = Boolean(src && src.trim().length > 0);
+  const hasMobile = Boolean(srcMobile && srcMobile.trim().length > 0);
+  const mobileAspect = aspectMobile ?? aspect;
+  const zoomSrc = hasMobile && typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches ? (srcMobile as string) : src;
+
+  const renderFrame = (imageSrc: string, ratio: AspectStr, visibility: string) => (
+    <div
+      className={`relative w-full overflow-hidden rounded-2xl border border-white/10 bg-[#0f1114] shadow-[0_30px_80px_-40px_rgba(0,0,0,0.7)] ${visibility}`}
+      style={{ aspectRatio: ratio.replace("/", " / ") }}
+    >
+      {hasImage ? (
+        <>
+          <img
+            src={imageSrc}
+            alt={alt}
+            loading={priority ? "eager" : "lazy"}
+            decoding="async"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <button
+            type="button"
+            onClick={() => setZoom(true)}
+            className="absolute inset-0 grid place-items-end p-3 opacity-0 group-hover:opacity-100 transition-opacity"
+            aria-label="Ampliar imagem"
+          >
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-1.5 text-[12px] font-medium text-white backdrop-blur">
+              <ZoomIn className="h-3.5 w-3.5" /> Ampliar
+            </span>
+          </button>
+        </>
+      ) : (
+        <div className="absolute inset-0 grid place-items-center p-6 text-center">
+          <div>
+            <div className="mx-auto grid h-12 w-12 place-items-center rounded-full border border-white/10 bg-white/[0.03] text-neutral-400">
+              <ImageIcon className="h-5 w-5" />
+            </div>
+            <div className="mt-4 text-[13px] font-medium text-neutral-200">
+              Espaço reservado para captura real
+            </div>
+            <div className="mt-1 text-[12px] text-neutral-500">
+              Substituir por: <span className="text-neutral-300">{label}</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <figure className="group w-full">
-      <div
-        className="relative w-full overflow-hidden rounded-2xl border border-white/10 bg-[#0f1114] shadow-[0_30px_80px_-40px_rgba(0,0,0,0.7)]"
-        style={{ aspectRatio: aspect.replace("/", " / ") }}
-      >
-        {hasImage ? (
-          <>
-            <img
-              src={src}
-              alt={alt}
-              loading={priority ? "eager" : "lazy"}
-              decoding="async"
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-            <button
-              type="button"
-              onClick={() => setZoom(true)}
-              className="absolute inset-0 grid place-items-end p-3 opacity-0 group-hover:opacity-100 transition-opacity"
-              aria-label="Ampliar imagem"
-            >
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-1.5 text-[12px] font-medium text-white backdrop-blur">
-                <ZoomIn className="h-3.5 w-3.5" /> Ampliar
-              </span>
-            </button>
-          </>
-        ) : (
-          <div className="absolute inset-0 grid place-items-center p-6 text-center">
-            <div>
-              <div className="mx-auto grid h-12 w-12 place-items-center rounded-full border border-white/10 bg-white/[0.03] text-neutral-400">
-                <ImageIcon className="h-5 w-5" />
-              </div>
-              <div className="mt-4 text-[13px] font-medium text-neutral-200">
-                Espaço reservado para captura real
-              </div>
-              <div className="mt-1 text-[12px] text-neutral-500">
-                Substituir por: <span className="text-neutral-300">{label}</span>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      {hasMobile ? (
+        <>
+          {renderFrame(srcMobile as string, mobileAspect, "block sm:hidden")}
+          {renderFrame(src, aspect, "hidden sm:block")}
+        </>
+      ) : (
+        renderFrame(src, aspect, "block")
+      )}
       {caption && (
         <figcaption className="mt-3 text-[12px] text-neutral-500 text-center">
           {caption}
         </figcaption>
       )}
       {zoom && hasImage && (
-        <ImageLightbox src={src} alt={alt} onClose={() => setZoom(false)} />
+        <ImageLightbox src={zoomSrc} alt={alt} onClose={() => setZoom(false)} />
       )}
     </figure>
   );
@@ -1742,10 +1766,12 @@ function FinalReport() {
           <div className="lg:col-span-7 order-2 lg:order-1">
             <ScreenshotFrame
               src={SCREENSHOTS.finalReport}
+              srcMobile={SCREENSHOTS.finalReportMobile}
               alt="Relatório final da campanha no painel Disparos FR"
               label="Relatório final da campanha"
               caption="Captura real do relatório final gerado pelo painel Disparos FR."
               aspect="16/10"
+              aspectMobile="9/10"
             />
           </div>
           <div className="lg:col-span-5 order-1 lg:order-2 lg:pl-4">
@@ -1803,9 +1829,11 @@ function CaseStudy() {
           <div className="lg:col-span-7">
             <ScreenshotFrame
               src={SCREENSHOTS.caseStudy}
+              srcMobile={SCREENSHOTS.caseStudyMobile}
               alt={`Painel do estudo de caso — ${CASE_STUDY.title}`}
               label="Painel do estudo de caso"
               aspect="16/10"
+              aspectMobile="9/10"
             />
           </div>
           <div className="lg:col-span-5 lg:pt-2">
