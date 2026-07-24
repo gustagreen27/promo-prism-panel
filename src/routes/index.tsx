@@ -36,6 +36,7 @@ import painelLoteriaJb from "@/assets/painel-loteriajb.png.asset.json";
 import painelLoteriaJbMobile from "@/assets/painel-loteriajb-mobile.png.asset.json";
 import editorMensagem from "@/assets/editor-mensagem-painel.png.asset.json";
 import mensagemWhatsapp from "@/assets/mensagem-whatsapp-recebida.png.asset.json";
+import painelCampanhaAoVivo from "@/assets/painel-campanha-ao-vivo.png.asset.json";
 // Substitua os valores abaixo pelas URLs das capturas reais do painel Disparos FR.
 // Enquanto vazios, a interface mostra placeholders identificados.
 const SCREENSHOTS = {
@@ -43,7 +44,7 @@ const SCREENSHOTS = {
   heroPanelMobile: painelLoteriaJbMobile.url,
   msgConfig: editorMensagem.url, // Aba 1 — Mensagem configurada (editor da campanha)
   msgReceived: mensagemWhatsapp.url, // Aba 2 — Mensagem recebida (print do WhatsApp do contato)
-  campaignRunning: "", // Aba 3 — Campanha em execução (progresso ao vivo)
+  campaignRunning: painelCampanhaAoVivo.url, // Aba 3 — Campanha em execução (progresso ao vivo)
   finalReport: painelLoteriaJb.url, // Relatório final ao encerrar a campanha
   finalReportMobile: painelLoteriaJbMobile.url,
   caseStudy: painelLoteriaJb.url, // Estudo de caso — captura do painel do caso real
