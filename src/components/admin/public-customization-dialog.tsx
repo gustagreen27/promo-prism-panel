@@ -218,19 +218,40 @@ function HeaderActions({
   return (
     <div
       className={
-        "flex flex-wrap items-center gap-3 rounded-md border bg-muted/30 p-3 " +
-        (attention ? "border-amber-500 ring-2 ring-amber-500/40" : "")
+        "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl border bg-card p-4 shadow-sm sm:flex sm:flex-wrap " +
+        (attention
+          ? "border-amber-500/60 ring-2 ring-amber-500/30"
+          : enabled
+            ? "border-emerald-500/30 bg-emerald-500/[0.03]"
+            : "")
       }
     >
-      <div className="flex items-center gap-2">
-        <Switch checked={enabled} onCheckedChange={(v) => toggle.mutate(v)} />
-        <span className="text-sm font-medium flex items-center gap-1">
-          {attention && <AlertTriangle className="h-4 w-4 text-amber-500" />}
-          {enabled ? "Personalização ativa" : "Personalização desativada"}
-        </span>
+      <div className="flex min-w-0 items-center gap-3">
+        <Switch
+          checked={enabled}
+          onCheckedChange={(v) => toggle.mutate(v)}
+          className="data-[state=checked]:bg-emerald-500"
+        />
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 text-sm font-semibold">
+            {attention && <AlertTriangle className="h-4 w-4 text-amber-500" />}
+            <span
+              className={
+                "h-2 w-2 rounded-full " +
+                (enabled ? "bg-emerald-500 shadow-[0_0_0_3px] shadow-emerald-500/20" : "bg-muted-foreground/40")
+              }
+            />
+            {enabled ? "Personalização ativa" : "Personalização desativada"}
+          </div>
+          <p className="truncate text-[11px] text-muted-foreground">
+            {enabled
+              ? "A página pública está exibindo os valores personalizados."
+              : "A página pública está exibindo apenas dados reais."}
+          </p>
+        </div>
       </div>
 
-      <div className="ml-auto flex items-center gap-2">
+      <div className="col-span-full flex flex-wrap items-center gap-2 sm:col-auto sm:ml-auto">
         {slug && (
           <Button variant="outline" size="sm" asChild>
             <a href={`/campaigns/${campaignId}`} target="_blank" rel="noreferrer">
@@ -239,8 +260,9 @@ function HeaderActions({
           </Button>
         )}
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
+          className="text-muted-foreground hover:text-destructive"
           onClick={() => {
             if (confirm("Remover TODAS as personalizações desta campanha?")) clear.mutate();
           }}
