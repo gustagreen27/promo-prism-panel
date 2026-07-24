@@ -346,9 +346,17 @@ function ChatPanel(props: {
 
   const sendText = useMutation({
     mutationFn: () =>
-      sendFn({ data: { kind: "text", conversation_id: conversationId, body: text.trim() } }),
+      sendFn({
+        data: {
+          kind: "text",
+          conversation_id: conversationId,
+          body: text.trim(),
+          context_wamid: replyTo?.wamid ?? null,
+        },
+      }),
     onSuccess: () => {
       setText("");
+      setReplyTo(null);
       qc.invalidateQueries({ queryKey: ["atd", "messages", conversationId] });
       qc.invalidateQueries({ queryKey: ["atd", "conversations"] });
       // Dispara worker best-effort
@@ -356,6 +364,108 @@ function ChatPanel(props: {
     },
     onError: (e: any) => toast.error(e?.message ?? "Falha ao enviar"),
   });
+
+  const bumpWorker = () => {
+    fetch("/api/public/whatsapp/service-tick", { method: "POST" }).catch(() => {});
+  };
+  const invalidateAfterSend = () => {
+    qc.invalidateQueries({ queryKey: ["atd", "messages", conversationId] });
+    qc.invalidateQueries({ queryKey: ["atd", "conversations"] });
+    bumpWorker();
+  };
+
+  const sendMedia = useMutation({
+    mutationFn: () =>
+      sendFn({
+        data: {
+          kind: "media",
+          conversation_id: conversationId,
+          media_type: mediaType,
+          link: mediaLink.trim(),
+          caption: mediaCaption.trim() || undefined,
+          filename: mediaType === "document" && mediaFilename.trim() ? mediaFilename.trim() : undefined,
+          context_wamid: replyTo?.wamid ?? null,
+        },
+      }),
+    onSuccess: () => {
+      setMediaLink("");
+      setMediaCaption("");
+      setMediaFilename("");
+      setAttachOpen(false);
+      setReplyTo(null);
+      invalidateAfterSend();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao enviar mídia"),
+  });
+
+  const sendButtons = useMutation({
+    mutationFn: () => {
+      const cleaned = buttons
+        .map((b, i) => ({
+          id: (b.id || `opt_${i + 1}`).trim(),
+          title: b.title.trim(),
+        }))
+        .filter((b) => b.title.length > 0);
+      if (cleaned.length === 0) throw new Error("Adicione ao menos 1 botão");
+      return sendFn({
+        data: {
+          kind: "interactive_buttons",
+          conversation_id: conversationId,
+          body: btnBody.trim(),
+          header: btnHeader.trim() || undefined,
+          footer: btnFooter.trim() || undefined,
+          buttons: cleaned,
+          context_wamid: replyTo?.wamid ?? null,
+        },
+      });
+    },
+    onSuccess: () => {
+      setBtnBody("");
+      setBtnHeader("");
+      setBtnFooter("");
+      setButtons([{ id: "opt_1", title: "" }]);
+      setAttachOpen(false);
+      setReplyTo(null);
+      invalidateAfterSend();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao enviar botões"),
+  });
+
+  const sendList = useMutation({
+    mutationFn: () => {
+      const cleanedRows = listRows
+        .map((r, i) => ({
+          id: (r.id || `row_${i + 1}`).trim(),
+          title: r.title.trim(),
+          description: r.description.trim() || undefined,
+        }))
+        .filter((r) => r.title.length > 0);
+      if (cleanedRows.length === 0) throw new Error("Adicione ao menos 1 item");
+      return sendFn({
+        data: {
+          kind: "interactive_list",
+          conversation_id: conversationId,
+          body: listBody.trim(),
+          header: listHeader.trim() || undefined,
+          footer: listFooter.trim() || undefined,
+          button: (listButton.trim() || "Ver opções").slice(0, 20),
+          sections: [{ title: undefined, rows: cleanedRows }],
+          context_wamid: replyTo?.wamid ?? null,
+        },
+      });
+    },
+    onSuccess: () => {
+      setListBody("");
+      setListHeader("");
+      setListFooter("");
+      setListRows([{ id: "row_1", title: "", description: "" }]);
+      setAttachOpen(false);
+      setReplyTo(null);
+      invalidateAfterSend();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao enviar lista"),
+  });
+
 
   const sendTpl = useMutation({
     mutationFn: () =>
