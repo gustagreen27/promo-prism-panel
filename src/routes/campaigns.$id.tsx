@@ -675,13 +675,14 @@ function PublicCampaignReport() {
                 );
                 const dispatchMap =
                   customEnabled && dispatchOv?.enabled
-                    ? (dispatchOv?.status_map as Record<string, string | null> | undefined)
+                    ? (dispatchOv?.status_map as Record<string, StatusMapValue> | undefined)
                     : undefined;
                 const globalMap = customEnabled
-                  ? (publicSettings?.status_map as Record<string, string | null> | undefined)
+                  ? (publicSettings?.status_map as Record<string, StatusMapValue> | undefined)
                   : undefined;
-                const remap = (s: string | null) =>
-                  applyStatusMap(s, dispatchMap, globalMap);
+                const remap = (s: string | null, key: string) =>
+                  applyStatusMap(s, dispatchMap, globalMap, key);
+
                 return (
                   <div key={d.id} className="space-y-2">
                     <div className="flex items-center justify-between">
@@ -706,7 +707,7 @@ function PublicCampaignReport() {
                             {recs.map((r, i) => (
                               <tr key={i} className="border-t">
                                 <td className="px-3 py-1.5 font-mono text-xs">{r.phone}</td>
-                                <td className="px-3 py-1.5 text-xs">{recipientStatusLabel(remap(r.status))}</td>
+                                <td className="px-3 py-1.5 text-xs">{recipientStatusLabel(remap(r.status, r.phone ?? String(i)))}</td>
                                 <td className="px-3 py-1.5 text-xs text-muted-foreground">
                                   {r.sent_at ? new Date(r.sent_at).toLocaleString("pt-BR") : "—"}
                                 </td>
@@ -799,19 +800,58 @@ function recipientStatusLabel(status: string | null): string {
 }
 
 // Aplica mapeamento de status somente na apresentação pública.
+// Valores do mapa podem ser:
+//   - string: remap 1:1 fixo
+//   - string[]: distribui deterministicamente entre as opções (por hash do pickKey)
+//   - { distribution: Array<string | { status: string; weight?: number }> }: distribuição ponderada
 // Prioridade: dispatch → campanha → status real.
+type StatusMapValue =
+  | string
+  | null
+  | string[]
+  | { distribution: Array<string | { status: string; weight?: number }> };
+
+function hashKey(key: string): number {
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+function pickFromMap(value: StatusMapValue | undefined, pickKey: string, fallback: string): string {
+  if (value === undefined) return fallback;
+  if (value === null) return fallback;
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) {
+    if (value.length === 0) return fallback;
+    return value[hashKey(pickKey) % value.length];
+  }
+  const dist = value.distribution ?? [];
+  if (!dist.length) return fallback;
+  const expanded: string[] = [];
+  for (const item of dist) {
+    if (typeof item === "string") { expanded.push(item); continue; }
+    const w = Math.max(1, Math.round(item.weight ?? 1));
+    for (let i = 0; i < w; i++) expanded.push(item.status);
+  }
+  return expanded[hashKey(pickKey) % expanded.length] ?? fallback;
+}
+
 function applyStatusMap(
   original: string | null,
-  perDispatch?: Record<string, string | null>,
-  perCampaign?: Record<string, string | null>,
+  perDispatch?: Record<string, StatusMapValue>,
+  perCampaign?: Record<string, StatusMapValue>,
+  pickKey: string = "",
 ): string | null {
   if (!original) return original;
-  const dv = perDispatch?.[original];
-  if (dv !== undefined) return dv ?? original;
-  const cv = perCampaign?.[original];
-  if (cv !== undefined) return cv ?? original;
+  if (perDispatch && original in perDispatch) {
+    return pickFromMap(perDispatch[original], pickKey, original);
+  }
+  if (perCampaign && original in perCampaign) {
+    return pickFromMap(perCampaign[original], pickKey, original);
+  }
   return original;
 }
+
 
 
 
