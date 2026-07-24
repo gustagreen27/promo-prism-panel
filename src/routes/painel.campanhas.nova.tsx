@@ -1947,7 +1947,11 @@ function ResponseFlowCard({
             )}
           </div>
 
+          {/* Pré-visualização estilo WhatsApp */}
+          <WhatsAppFlowPreview value={value} />
+
         </div>
+
       ) : (
         <div className="p-3 text-xs text-muted-foreground">
           Ative para responder automaticamente ao primeiro retorno do contato e marcar a conversa no módulo de Atendimento.
@@ -1956,3 +1960,83 @@ function ResponseFlowCard({
     </div>
   );
 }
+
+// Pré-visualização estilo WhatsApp da mensagem do fluxo de resposta
+function WhatsAppFlowPreview({ value }: { value: ResponseFlowConfig }) {
+  const text = (value.auto_reply_text ?? "").trim();
+  const ctaOn = !!(value.cta_enabled && (value.cta_button_text ?? "").trim() && (value.cta_url ?? "").trim());
+  const header = (value.cta_header ?? "").trim();
+  const footer = (value.cta_footer ?? "").trim();
+  const body = text || (ctaOn ? (value.cta_button_text ?? "").trim() : "");
+  const btn = (value.cta_button_text ?? "").trim() || "Abrir link";
+  let host = "";
+  try { host = new URL(value.cta_url).host.replace(/^www\./, ""); } catch {}
+  const time = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+  if (!body && !ctaOn) {
+    return (
+      <div className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
+        Preencha a mensagem ou ative o botão CTA para ver a pré-visualização.
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-md border bg-muted/30 p-3">
+      <div className="mb-2 text-xs font-semibold">Pré-visualização no WhatsApp</div>
+      <div
+        className="rounded-lg p-4"
+        style={{
+          background: "#0b141a",
+          backgroundImage:
+            "radial-gradient(circle at 20% 20%, rgba(255,255,255,0.03) 0, transparent 40%), radial-gradient(circle at 80% 60%, rgba(255,255,255,0.03) 0, transparent 40%)",
+        }}
+      >
+        <div className="flex justify-start">
+          <div
+            className="relative max-w-[85%] overflow-hidden rounded-lg shadow-sm"
+            style={{ background: "#202c33", color: "#e9edef" }}
+          >
+            {header && (
+              <div className="px-3 pt-2 text-sm font-semibold" style={{ color: "#e9edef" }}>
+                {header}
+              </div>
+            )}
+            {body && (
+              <div className="whitespace-pre-wrap break-words px-3 py-2 text-sm leading-snug">
+                {body}
+              </div>
+            )}
+            {footer && (
+              <div className="px-3 pb-1 text-[11px]" style={{ color: "#8696a0" }}>
+                {footer}
+              </div>
+            )}
+            <div className="flex items-center justify-end gap-1 px-3 pb-1 text-[10px]" style={{ color: "#8696a0" }}>
+              <span>{time}</span>
+              <svg viewBox="0 0 16 15" width="14" height="14" fill="#53bdeb"><path d="M10.91 3.316l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 8.42a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.148.148.393.128.516-.044l6.687-8.505a.363.363 0 0 0-.51-.693zm3.35 0l-.478-.372a.365.365 0 0 0-.51.063L7.94 9.879a.32.32 0 0 1-.484.033l-.15-.144-.53.67 1.4 1.365c.148.148.393.128.516-.044l6.687-8.505a.363.363 0 0 0-.51-.693z"/></svg>
+            </div>
+            {ctaOn && (
+              <a
+                href={value.cta_url}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-center gap-2 border-t px-3 py-2 text-sm font-medium transition-colors"
+                style={{ borderColor: "#2a3942", color: "#53bdeb", background: "#202c33" }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                {btn}
+              </a>
+            )}
+          </div>
+        </div>
+        {ctaOn && host && (
+          <div className="mt-2 pl-1 text-[10px]" style={{ color: "#8696a0" }}>
+            Abre em {host}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
