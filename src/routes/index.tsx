@@ -12,11 +12,56 @@ import {
   Plus,
   Minus,
   Circle,
+  ZoomIn,
+  Play,
+  ImageIcon,
 } from "lucide-react";
 import logoAsset from "@/assets/disparos-fr-logo-new.png.asset.json";
 
 // ============ CONFIG ============
 const WHATSAPP_NUMBER = "5562933003970"; // editar aqui
+
+// ============ REAL SCREENSHOTS ============
+// Substitua os valores abaixo pelas URLs das capturas reais do painel Disparos FR.
+// Enquanto vazios, a interface mostra placeholders identificados.
+const SCREENSHOTS = {
+  heroPanel: "", // Painel principal — dobra do hero (grande destaque)
+  msgConfig: "", // Aba 1 — Mensagem configurada (editor da campanha)
+  msgReceived: "", // Aba 2 — Mensagem recebida (print do WhatsApp do contato)
+  campaignRunning: "", // Aba 3 — Campanha em execução (progresso ao vivo)
+  finalReport: "", // Relatório final ao encerrar a campanha
+  caseStudy: "", // Estudo de caso — captura do painel do caso real
+};
+
+// Vídeo/gravação de tela opcional. Deixe src vazio para ocultar o player.
+const CAMPAIGN_VIDEO: { src: string; poster: string; caption: string } = {
+  src: "", // ex: "/videos/campanha-execucao.mp4"
+  poster: "", // ex: "/covers/campanha-execucao.jpg"
+  caption: "Gravação real de uma campanha em execução no painel Disparos FR.",
+};
+
+// Indicadores editáveis do relatório final. Substitua pelos números reais quando disponíveis.
+const FINAL_REPORT_METRICS: { k: string; v: string }[] = [
+  { k: "Contatos processados", v: "—" },
+  { k: "Mensagens enviadas", v: "—" },
+  { k: "Mensagens entregues", v: "—" },
+  { k: "Falhas", v: "—" },
+  { k: "Taxa de entrega", v: "—" },
+];
+
+// Estudo de caso real — preencha com dados comprováveis.
+const CASE_STUDY = {
+  segment: "Segmento do cliente",
+  title: "Título do caso real",
+  context:
+    "Descreva brevemente o contexto: objetivo da campanha, base utilizada e período de execução.",
+  metrics: [
+    { k: "Contatos", v: "—" },
+    { k: "Entregues", v: "—" },
+    { k: "Taxa de entrega", v: "—" },
+  ],
+};
+
 
 // ============ META PIXEL ============
 type PixelEvent =
@@ -151,13 +196,15 @@ function LandingPage() {
         <Hero />
         <Metrics />
         <HowItWorks />
+        <CampaignInAction />
         <SimulatorSection />
-        <PanelSection />
-        <UseCases />
+        <FinalReport />
+        <CaseStudy />
         <Compare />
         <FAQ />
         <FinalCTA />
       </main>
+
       <Footer />
       <MobileStickyCTA />
     </div>
@@ -324,7 +371,7 @@ function Hero() {
         }}
       />
       <div className={`${container} relative grid lg:grid-cols-12 gap-10 lg:gap-14 items-start`}>
-        <div className="lg:col-span-6 lg:pt-6">
+        <div className="lg:col-span-5 lg:pt-6">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-neutral-300">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
             Para empresas com bases a partir de 2 mil contatos
@@ -382,7 +429,7 @@ function Hero() {
           </ul>
         </div>
 
-        <div className="lg:col-span-6 relative">
+        <div className="lg:col-span-7 relative">
           <div
             aria-hidden
             className="absolute -inset-6 -z-10 rounded-[32px] blur-3xl opacity-40"
@@ -391,8 +438,16 @@ function Hero() {
                 "radial-gradient(60% 50% at 70% 30%, rgba(16,185,129,0.35), transparent 70%)",
             }}
           />
-          <DashboardMock compact />
+          <ScreenshotFrame
+            src={SCREENSHOTS.heroPanel}
+            alt="Painel de acompanhamento em tempo real da plataforma Disparos FR"
+            label="Painel principal (hero)"
+            caption="Captura real do painel de acompanhamento da Disparos FR."
+            aspect="16/10"
+            priority
+          />
         </div>
+
       </div>
     </section>
   );
@@ -1407,145 +1462,375 @@ function Row({
 }
 
 // ============ PANEL (dashboard) section ============
-function PanelSection() {
+// ============ SCREENSHOT PRIMITIVES ============
+type AspectStr = "16/10" | "16/9" | "4/3" | "3/2" | "1/1" | "9/16";
+
+function ScreenshotFrame({
+  src,
+  alt,
+  label,
+  caption,
+  aspect = "16/10",
+  priority = false,
+}: {
+  src: string;
+  alt: string;
+  label: string;
+  caption?: string;
+  aspect?: AspectStr;
+  priority?: boolean;
+}) {
+  const [zoom, setZoom] = useState(false);
+  const hasImage = Boolean(src && src.trim().length > 0);
+
   return (
-    <section id="painel" className="py-20 sm:py-28">
-      <div className={container}>
-        <div className="grid lg:grid-cols-12 gap-10 items-center">
-          <div className="lg:col-span-5 order-2 lg:order-1">
-            <DashboardMock />
-          </div>
-          <div className="lg:col-span-7 order-1 lg:order-2 lg:pl-6">
-            <SectionHead
-              eyebrow="Painel"
-              title={
-                <>
-                  Saiba quantas mensagens foram enviadas, entregues ou
-                  apresentaram falha.
-                </>
-              }
-              lead="Cada campanha tem seu próprio painel com progresso, velocidade e detalhamento por número."
+    <figure className="group w-full">
+      <div
+        className="relative w-full overflow-hidden rounded-2xl border border-white/10 bg-[#0f1114] shadow-[0_30px_80px_-40px_rgba(0,0,0,0.7)]"
+        style={{ aspectRatio: aspect.replace("/", " / ") }}
+      >
+        {hasImage ? (
+          <>
+            <img
+              src={src}
+              alt={alt}
+              loading={priority ? "eager" : "lazy"}
+              decoding="async"
+              className="absolute inset-0 h-full w-full object-cover"
             />
-            <dl className="mt-8 grid sm:grid-cols-2 gap-x-8 gap-y-6 max-w-lg">
-              <PanelPoint
-                k="Progresso ao vivo"
-                v="Contatos, enviados, entregues e falhas atualizados durante a execução."
-              />
-              <PanelPoint
-                k="Velocidade e ETA"
-                v="Msg/min em tempo real e estimativa de término da campanha."
-              />
-              <PanelPoint
-                k="Retentativa automática"
-                v="Falhas transitórias entram em nova tentativa sem intervenção manual."
-              />
-              <PanelPoint
-                k="Filtro por período"
-                v="Comparação por dia, semana ou mês entre campanhas."
-              />
-            </dl>
+            <button
+              type="button"
+              onClick={() => setZoom(true)}
+              className="absolute inset-0 grid place-items-end p-3 opacity-0 group-hover:opacity-100 transition-opacity"
+              aria-label="Ampliar imagem"
+            >
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-1.5 text-[12px] font-medium text-white backdrop-blur">
+                <ZoomIn className="h-3.5 w-3.5" /> Ampliar
+              </span>
+            </button>
+          </>
+        ) : (
+          <div className="absolute inset-0 grid place-items-center p-6 text-center">
+            <div>
+              <div className="mx-auto grid h-12 w-12 place-items-center rounded-full border border-white/10 bg-white/[0.03] text-neutral-400">
+                <ImageIcon className="h-5 w-5" />
+              </div>
+              <div className="mt-4 text-[13px] font-medium text-neutral-200">
+                Espaço reservado para captura real
+              </div>
+              <div className="mt-1 text-[12px] text-neutral-500">
+                Substituir por: <span className="text-neutral-300">{label}</span>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
-    </section>
+      {caption && (
+        <figcaption className="mt-3 text-[12px] text-neutral-500 text-center">
+          {caption}
+        </figcaption>
+      )}
+      {zoom && hasImage && (
+        <ImageLightbox src={src} alt={alt} onClose={() => setZoom(false)} />
+      )}
+    </figure>
   );
 }
 
-function PanelPoint({ k, v }: { k: string; v: string }) {
+function ImageLightbox({
+  src,
+  alt,
+  onClose,
+}: {
+  src: string;
+  alt: string;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
   return (
-    <div>
-      <dt className="text-[14px] font-medium text-white">{k}</dt>
-      <dd className="mt-1 text-[13px] text-neutral-400 leading-relaxed">{v}</dd>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Visualização ampliada"
+      className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm p-4 sm:p-8 grid place-items-center"
+      onClick={onClose}
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute top-4 right-4 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+        aria-label="Fechar"
+      >
+        <X className="h-5 w-5" />
+      </button>
+      <img
+        src={src}
+        alt={alt}
+        className="max-h-[90vh] max-w-[95vw] rounded-xl shadow-2xl object-contain"
+        onClick={(e) => e.stopPropagation()}
+      />
     </div>
   );
 }
 
-// ============ USE CASES (editorial rows) ============
-function UseCases() {
-  const rows = [
+function CampaignVideo({
+  src,
+  poster,
+  caption,
+}: {
+  src: string;
+  poster: string;
+  caption?: string;
+}) {
+  const [playing, setPlaying] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  if (!src) return null;
+  return (
+    <figure className="w-full">
+      <div className="relative w-full overflow-hidden rounded-2xl border border-white/10 bg-black shadow-[0_30px_80px_-40px_rgba(0,0,0,0.7)] aspect-video">
+        <video
+          ref={videoRef}
+          src={src}
+          poster={poster || undefined}
+          preload="metadata"
+          playsInline
+          controls={playing}
+          muted
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        {!playing && (
+          <button
+            type="button"
+            onClick={() => {
+              setPlaying(true);
+              // Autoplay só após interação — respeita mobile.
+              requestAnimationFrame(() => videoRef.current?.play().catch(() => {}));
+            }}
+            className="absolute inset-0 grid place-items-center bg-black/30 hover:bg-black/40 transition-colors"
+            aria-label="Reproduzir vídeo"
+          >
+            <span className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-neutral-950 shadow-[0_20px_40px_-10px_rgba(16,185,129,0.6)]">
+              <Play className="h-7 w-7 ml-0.5" />
+            </span>
+          </button>
+        )}
+      </div>
+      {caption && (
+        <figcaption className="mt-3 text-[12px] text-neutral-500 text-center">
+          {caption}
+        </figcaption>
+      )}
+    </figure>
+  );
+}
+
+// ============ CAMPAIGN IN ACTION (tabs) ============
+function CampaignInAction() {
+  const tabs = [
     {
-      seg: "Serviços financeiros",
-      title: "Reativação de base inativa",
-      metrics: [
-        { k: "Contatos", v: "18.240" },
-        { k: "Entregues", v: "16.560" },
-        { k: "Entrega", v: "90,8%" },
-      ],
-      note: "Campanha segmentada por DDD com template aprovado.",
+      id: "config",
+      title: "Mensagem configurada",
+      desc: "Veja como o texto, a imagem, a personalização e o botão são preparados antes do envio.",
+      src: SCREENSHOTS.msgConfig,
+      label: "Editor da mensagem no painel",
+      alt: "Editor de mensagem com texto, imagem, personalização e botão configurados",
     },
     {
-      seg: "Varejo",
-      title: "Comunicado de oferta regional",
-      metrics: [
-        { k: "Contatos", v: "52.100" },
-        { k: "Entregues", v: "48.973" },
-        { k: "Entrega", v: "94,0%" },
-      ],
-      note: "Envio dividido em janelas por região.",
+      id: "received",
+      title: "Mensagem recebida",
+      desc: "Confira como a comunicação aparece diretamente no WhatsApp do contato.",
+      src: SCREENSHOTS.msgReceived,
+      label: "Print da mensagem recebida no WhatsApp",
+      alt: "Print real da mensagem entregue no WhatsApp do contato",
     },
     {
-      seg: "Infoprodutos",
-      title: "Lançamento com aviso prévio",
-      metrics: [
-        { k: "Contatos", v: "132.480" },
-        { k: "Entregues", v: "125.106" },
-        { k: "Entrega", v: "94,4%" },
-      ],
-      note: "Duas ondas para checar deliverability antes do volume total.",
+      id: "running",
+      title: "Campanha em execução",
+      desc: "Acompanhe enviados, entregues, falhas e progresso enquanto a campanha acontece.",
+      src: SCREENSHOTS.campaignRunning,
+      label: "Painel com campanha rodando ao vivo",
+      alt: "Painel do Disparos FR com enviados, entregues, falhas e progresso em tempo real",
     },
   ];
+  const [active, setActive] = useState(tabs[0].id);
+  const current = tabs.find((t) => t.id === active) ?? tabs[0];
   return (
-    <section
-      id="casos"
-      className="border-y border-white/5 bg-white/[0.015] py-20 sm:py-28"
-    >
+    <section id="pratica" className="border-y border-white/5 bg-white/[0.015] py-20 sm:py-28">
       <div className={container}>
         <SectionHead
-          eyebrow="Operações"
-          title="Volumes reais operados por segmento"
-          lead="Exemplos de execuções anonimizadas. Resultados variam conforme base, mensagem e configuração."
+          eyebrow="Na prática"
+          title="Veja uma campanha acontecendo na prática"
+          lead="Da configuração da mensagem ao relatório final, sua equipe acompanha toda a execução."
         />
-        <div className="mt-12 divide-y divide-white/5 border-y border-white/5">
-          {rows.map((r) => (
-            <article
-              key={r.title}
-              className="grid grid-cols-1 md:grid-cols-12 gap-6 py-8 items-start"
-            >
-              <div className="md:col-span-4">
-                <div className="text-[11px] uppercase tracking-widest text-neutral-500">
-                  {r.seg}
-                </div>
-                <h3 className="mt-1 text-[19px] font-medium text-white">
-                  {r.title}
-                </h3>
-                <p className="mt-2 text-[13px] text-neutral-400">{r.note}</p>
-              </div>
-              <div className="md:col-span-8 grid grid-cols-3 gap-3">
-                {r.metrics.map((m) => (
-                  <div
-                    key={m.k}
-                    className="rounded-lg border border-white/6 bg-[#101216] p-4"
-                  >
-                    <div className="text-[10px] uppercase tracking-widest text-neutral-500">
-                      {m.k}
-                    </div>
-                    <div className="mt-1 text-[18px] font-semibold text-white tabular-nums">
-                      {m.v}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </article>
-          ))}
+        <div className="mt-10 flex flex-wrap gap-2" role="tablist" aria-label="Etapas da campanha">
+          {tabs.map((t) => {
+            const isActive = t.id === active;
+            return (
+              <button
+                key={t.id}
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setActive(t.id)}
+                className={`rounded-full px-4 py-2 text-[13px] font-medium transition-colors border ${
+                  isActive
+                    ? "bg-emerald-500 text-neutral-950 border-emerald-500"
+                    : "bg-white/[0.03] text-neutral-300 border-white/10 hover:bg-white/[0.06]"
+                }`}
+              >
+                {t.title}
+              </button>
+            );
+          })}
         </div>
-        <p className="mt-6 text-[12px] text-neutral-500 inline-flex items-center gap-2">
-          <Circle className="h-2 w-2 fill-neutral-600 text-neutral-600" />
-          Dados de operações anonimizadas. Demonstração da plataforma.
-        </p>
+        <div className="mt-8 grid lg:grid-cols-12 gap-8 items-start">
+          <div className="lg:col-span-8">
+            <ScreenshotFrame
+              key={current.id}
+              src={current.src}
+              alt={current.alt}
+              label={current.label}
+              aspect={current.id === "received" ? "9/16" : "16/10"}
+            />
+          </div>
+          <div className="lg:col-span-4 lg:pt-2">
+            <div className="text-[11px] uppercase tracking-widest text-neutral-500">
+              Etapa
+            </div>
+            <h3 className="mt-2 text-[22px] font-semibold text-white leading-snug">
+              {current.title}
+            </h3>
+            <p className="mt-3 text-[14px] text-neutral-400 leading-relaxed">
+              {current.desc}
+            </p>
+          </div>
+        </div>
       </div>
     </section>
   );
 }
+
+// ============ FINAL REPORT ============
+function FinalReport() {
+  return (
+    <section id="relatorio" className="py-20 sm:py-28">
+      <div className={container}>
+        <div className="grid lg:grid-cols-12 gap-10 items-center">
+          <div className="lg:col-span-7 order-2 lg:order-1">
+            <ScreenshotFrame
+              src={SCREENSHOTS.finalReport}
+              alt="Relatório final da campanha no painel Disparos FR"
+              label="Relatório final da campanha"
+              caption="Captura real do relatório final gerado pelo painel Disparos FR."
+              aspect="16/10"
+            />
+          </div>
+          <div className="lg:col-span-5 order-1 lg:order-2 lg:pl-4">
+            <SectionHead
+              eyebrow="Relatório"
+              title="No final, você sabe exatamente o que aconteceu"
+              lead="Ao encerrar a campanha, você recebe um resumo claro com os números da operação."
+            />
+            <dl className="mt-8 divide-y divide-white/5 border-y border-white/5">
+              {FINAL_REPORT_METRICS.map((m) => (
+                <div
+                  key={m.k}
+                  className="flex items-baseline justify-between gap-4 py-3.5"
+                >
+                  <dt className="text-[13px] text-neutral-400">{m.k}</dt>
+                  <dd className="text-[16px] font-semibold text-white tabular-nums">
+                    {m.v}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+            <p className="mt-4 text-[12px] text-neutral-500">
+              Valores editáveis — preenchidos com os números reais de cada operação.
+            </p>
+          </div>
+        </div>
+        {CAMPAIGN_VIDEO.src && (
+          <div className="mt-14 max-w-3xl mx-auto">
+            <CampaignVideo
+              src={CAMPAIGN_VIDEO.src}
+              poster={CAMPAIGN_VIDEO.poster}
+              caption={CAMPAIGN_VIDEO.caption}
+            />
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// ============ CASE STUDY (real) ============
+function CaseStudy() {
+  return (
+    <section
+      id="caso"
+      className="border-y border-white/5 bg-white/[0.015] py-20 sm:py-28"
+    >
+      <div className={container}>
+        <SectionHead
+          eyebrow="Estudo de caso"
+          title="Uma operação real, do início ao fim"
+          lead="Contexto, execução e resultados comprováveis de uma campanha realizada pela Disparos FR."
+        />
+        <div className="mt-12 grid lg:grid-cols-12 gap-10 items-start">
+          <div className="lg:col-span-7">
+            <ScreenshotFrame
+              src={SCREENSHOTS.caseStudy}
+              alt={`Painel do estudo de caso — ${CASE_STUDY.title}`}
+              label="Painel do estudo de caso"
+              aspect="16/10"
+            />
+          </div>
+          <div className="lg:col-span-5 lg:pt-2">
+            <div className="text-[11px] uppercase tracking-widest text-neutral-500">
+              {CASE_STUDY.segment}
+            </div>
+            <h3 className="mt-2 text-[22px] font-semibold text-white leading-snug">
+              {CASE_STUDY.title}
+            </h3>
+            <p className="mt-3 text-[14px] text-neutral-400 leading-relaxed">
+              {CASE_STUDY.context}
+            </p>
+            <div className="mt-6 grid grid-cols-3 gap-3">
+              {CASE_STUDY.metrics.map((m) => (
+                <div
+                  key={m.k}
+                  className="rounded-lg border border-white/6 bg-[#101216] p-4"
+                >
+                  <div className="text-[10px] uppercase tracking-widest text-neutral-500">
+                    {m.k}
+                  </div>
+                  <div className="mt-1 text-[18px] font-semibold text-white tabular-nums">
+                    {m.v}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="mt-6 text-[12px] text-neutral-500">
+              Dados a serem preenchidos com métricas reais e autorizadas do cliente.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+
 
 // ============ COMPARE ============
 function Compare() {
