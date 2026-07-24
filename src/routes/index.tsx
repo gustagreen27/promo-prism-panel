@@ -452,10 +452,12 @@ function Hero() {
           />
           <ScreenshotFrame
             src={SCREENSHOTS.heroPanel}
+            srcMobile={SCREENSHOTS.heroPanelMobile}
             alt="Painel de acompanhamento em tempo real da plataforma Disparos FR"
             label="Painel principal (hero)"
             caption="Captura real do painel de acompanhamento da Disparos FR."
             aspect="16/10"
+            aspectMobile="9/10"
             priority
           />
         </div>
