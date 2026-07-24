@@ -1556,7 +1556,9 @@ function ScreenshotFrame({
     <figure className="group w-full">
       {hasMobile ? (
         <>
-          {renderFrame(srcMobile as string, mobileAspect, "block sm:hidden")}
+          <div className="mx-auto w-full max-w-[300px] sm:hidden">
+            {renderFrame(srcMobile as string, mobileAspect, "block")}
+          </div>
           {renderFrame(src, aspect, "hidden sm:block")}
         </>
       ) : (
