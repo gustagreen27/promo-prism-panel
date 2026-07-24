@@ -488,11 +488,11 @@ function PainelRealCard({ variant = "live" }: { variant?: PainelVariant }) {
 
       <button
         onClick={() =>
-          openWhatsApp("Olá! Quero ver o relatório completo de uma campanha real.")
+          openWhatsApp("Olá! Quero ver um relatório de uma campanha real da Disparos FR.")
         }
         className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-[13px] font-medium text-neutral-100 hover:bg-white/[0.06] transition-colors"
       >
-        Ver relatório completo
+        Falar com um especialista
         <ArrowRight className="h-3.5 w-3.5" />
       </button>
     </div>
