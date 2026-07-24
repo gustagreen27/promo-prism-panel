@@ -819,38 +819,64 @@ function Metrics() {
 
 // ============ HOW IT WORKS ============
 function HowItWorks() {
-  const steps = [
+  const steps: {
+    t: string;
+    d: string;
+    Visual: React.FC<{ active: boolean }>;
+  }[] = [
     {
-      n: "01",
       t: "Envie sua base ou escolha seus leads",
       d: "Você pode utilizar sua própria lista de contatos ou solicitar leads segmentados por cidade com nossa equipe.",
+      Visual: VizUpload,
     },
     {
-      n: "02",
       t: "Defina o objetivo e o destino da campanha",
       d: "Você escolhe para onde deseja direcionar o público: seu site, WhatsApp, landing page, página de vendas, checkout ou outro link.",
+      Visual: VizTarget,
     },
     {
-      n: "03",
       t: "Montamos sua campanha",
       d: "Configuramos o número de envio, a identidade comercial, a mensagem, o botão e a segmentação por cidade ou DDD.",
+      Visual: VizBuild,
     },
     {
-      n: "04",
       t: "Você aprova antes de começar",
       d: "Apresentamos o texto, o criativo, o botão e o destino da campanha para sua validação antes do envio para aprovação da Meta.",
+      Visual: VizApprove,
     },
     {
-      n: "05",
       t: "Iniciamos os disparos",
       d: "Após a aprovação, os envios começam pela API Oficial do WhatsApp, com controle de velocidade e novas tentativas automáticas em caso de falha.",
+      Visual: VizDispatch,
     },
     {
-      n: "06",
       t: "Acompanhe os resultados em tempo real",
       d: "Você visualiza no painel os envios, entregas, falhas e cliques, acompanhando o desempenho da campanha em tempo real.",
+      Visual: VizMonitor,
     },
   ];
+
+  const [activeIdx, setActiveIdx] = useState<number>(0);
+  const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
+
+  useEffect(() => {
+    const observers: IntersectionObserver[] = [];
+    itemRefs.current.forEach((el, i) => {
+      if (!el) return;
+      const io = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((e) => {
+            if (e.isIntersecting) setActiveIdx(i);
+          });
+        },
+        { threshold: 0.55, rootMargin: "-20% 0px -30% 0px" }
+      );
+      io.observe(el);
+      observers.push(io);
+    });
+    return () => observers.forEach((o) => o.disconnect());
+  }, []);
+
   return (
     <section
       id="como-funciona"
@@ -867,27 +893,60 @@ function HowItWorks() {
             Da base ao resultado, em seis etapas claras.
           </h2>
           <p className="mt-4 text-[15px] leading-relaxed text-neutral-400 max-w-xl">
-            Uma operação transparente: você envia a base, aprova a mensagem e
-            acompanha a campanha em tempo real.
+            Passe o olho pelas animações — quem já entende avança rápido, quem
+            tem dúvida vê o processo antes de continuar.
           </p>
         </div>
 
-        <ol className="mt-12 relative max-w-2xl mx-auto">
+        <ol className="mt-12 relative max-w-3xl mx-auto">
           <div
             aria-hidden
             className="absolute left-[19px] top-2 bottom-2 w-px bg-gradient-to-b from-emerald-500/40 via-white/10 to-transparent"
           />
-          {steps.map((s, i) => (
-            <li key={s.n} className="relative pl-14 pb-8 last:pb-0">
-              <div className="absolute left-0 top-0 grid h-10 w-10 place-items-center rounded-full bg-emerald-500 text-neutral-950 text-[14px] font-semibold shadow-[0_10px_24px_-10px_rgba(16,185,129,0.6)] ring-4 ring-[#0b0c0e]">
-                {i + 1}
-              </div>
-              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 hover:border-emerald-500/25 transition-colors">
-                <div className="text-[15px] font-semibold text-white">{s.t}</div>
-                <p className="mt-1.5 text-[13.5px] leading-relaxed text-neutral-400">{s.d}</p>
-              </div>
-            </li>
-          ))}
+          {steps.map((s, i) => {
+            const active = activeIdx === i;
+            const Visual = s.Visual;
+            return (
+              <li
+                key={i}
+                ref={(el) => {
+                  itemRefs.current[i] = el;
+                }}
+                className="relative pl-14 pb-8 last:pb-0"
+              >
+                <div
+                  className={cn(
+                    "absolute left-0 top-0 grid h-10 w-10 place-items-center rounded-full text-[14px] font-semibold ring-4 ring-[#0b0c0e] transition-all duration-500",
+                    active
+                      ? "bg-emerald-500 text-neutral-950 shadow-[0_10px_24px_-6px_rgba(16,185,129,0.7)] scale-110"
+                      : "bg-white/[0.06] text-neutral-400"
+                  )}
+                >
+                  {i + 1}
+                </div>
+                <div
+                  className={cn(
+                    "rounded-xl border bg-white/[0.02] p-5 transition-colors",
+                    active
+                      ? "border-emerald-500/30"
+                      : "border-white/[0.06] hover:border-emerald-500/20"
+                  )}
+                >
+                  <div className="grid gap-5 sm:grid-cols-[1fr_180px] sm:items-center">
+                    <div>
+                      <div className="text-[15px] font-semibold text-white">{s.t}</div>
+                      <p className="mt-1.5 text-[13.5px] leading-relaxed text-neutral-400">
+                        {s.d}
+                      </p>
+                    </div>
+                    <div className="h-[112px] rounded-lg border border-white/[0.05] bg-[#0f1114] overflow-hidden relative">
+                      <Visual active={active} />
+                    </div>
+                  </div>
+                </div>
+              </li>
+            );
+          })}
         </ol>
 
         <div className="mt-12 grid md:grid-cols-2 gap-4 max-w-3xl mx-auto">
@@ -924,6 +983,191 @@ function HowItWorks() {
         className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent"
       />
     </section>
+  );
+}
+
+// ============ How-it-works micro-animations ============
+function VizUpload({ active }: { active: boolean }) {
+  return (
+    <div className="absolute inset-0 grid place-items-center">
+      <div className="relative w-[140px] h-[80px]">
+        <div className="absolute inset-x-0 bottom-0 h-10 rounded-md border border-dashed border-emerald-500/40 bg-emerald-500/[0.04]" />
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            className="absolute left-1/2 -translate-x-1/2 h-6 w-16 rounded-sm bg-white/[0.06] border border-white/10 flex items-center gap-1.5 px-2"
+            style={{
+              animation: active ? `viz-fall 2.4s ${i * 0.5}s ease-in infinite` : "none",
+              top: 0,
+              opacity: 0,
+            }}
+          >
+            <div className="h-1 w-1 rounded-full bg-emerald-400" />
+            <div className="h-1 flex-1 rounded bg-white/15" />
+          </div>
+        ))}
+      </div>
+      <style>{`@keyframes viz-fall{0%{transform:translate(-50%,-10px);opacity:0}20%{opacity:1}70%{transform:translate(-50%,44px);opacity:1}100%{transform:translate(-50%,44px);opacity:0}}`}</style>
+    </div>
+  );
+}
+
+function VizTarget({ active }: { active: boolean }) {
+  const links = ["Site", "WhatsApp", "Checkout", "Landing"];
+  return (
+    <div className="absolute inset-0 grid place-items-center">
+      <div className="relative w-[150px] h-[90px]">
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-10 w-10 rounded-full border-2 border-emerald-500 grid place-items-center text-[10px] font-semibold text-emerald-400">
+          <span
+            className="absolute inset-0 rounded-full border-2 border-emerald-500/40"
+            style={{ animation: active ? "viz-ping 1.8s ease-out infinite" : "none" }}
+          />
+          alvo
+        </div>
+        {links.map((l, i) => {
+          const positions = [
+            "top-0 left-0",
+            "top-0 right-0",
+            "bottom-0 left-0",
+            "bottom-0 right-0",
+          ];
+          return (
+            <div
+              key={l}
+              className={cn(
+                "absolute text-[10px] px-1.5 py-0.5 rounded bg-white/[0.05] border border-white/10 text-neutral-300 transition-all duration-500",
+                positions[i],
+                active ? "opacity-100" : "opacity-40"
+              )}
+              style={{ transitionDelay: `${i * 120}ms` }}
+            >
+              {l}
+            </div>
+          );
+        })}
+      </div>
+      <style>{`@keyframes viz-ping{0%{transform:scale(1);opacity:.7}80%,100%{transform:scale(2.2);opacity:0}}`}</style>
+    </div>
+  );
+}
+
+function VizBuild({ active }: { active: boolean }) {
+  return (
+    <div className="absolute inset-0 p-3 flex flex-col justify-center gap-1.5">
+      {[
+        { w: "80%", d: 0 },
+        { w: "60%", d: 0.2 },
+        { w: "90%", d: 0.4 },
+      ].map((r, i) => (
+        <div key={i} className="h-2 rounded bg-white/[0.05] overflow-hidden">
+          <div
+            className="h-full bg-emerald-500/70"
+            style={{
+              width: active ? r.w : "0%",
+              transition: `width 0.9s ${r.d}s cubic-bezier(.2,.7,.2,1)`,
+            }}
+          />
+        </div>
+      ))}
+      <div
+        className="mt-1 self-start h-6 px-2 rounded bg-emerald-500 text-neutral-950 text-[10px] font-semibold grid place-items-center transition-all duration-500"
+        style={{
+          opacity: active ? 1 : 0,
+          transform: active ? "translateY(0)" : "translateY(6px)",
+          transitionDelay: "0.9s",
+        }}
+      >
+        Saiba mais
+      </div>
+    </div>
+  );
+}
+
+function VizApprove({ active }: { active: boolean }) {
+  return (
+    <div className="absolute inset-0 grid place-items-center">
+      <div className="relative">
+        <div className="h-14 w-14 rounded-full border-2 border-emerald-500/60 grid place-items-center">
+          <svg viewBox="0 0 24 24" className="h-7 w-7 text-emerald-400 fill-none stroke-current" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <path
+              d="M5 12.5l4.5 4.5L19 7"
+              style={{
+                strokeDasharray: 30,
+                strokeDashoffset: active ? 0 : 30,
+                transition: "stroke-dashoffset 0.7s ease-out 0.2s",
+              }}
+            />
+          </svg>
+        </div>
+        <div
+          className="absolute -right-2 -top-2 h-5 px-1.5 rounded-full bg-emerald-500 text-[9px] font-semibold text-neutral-950 grid place-items-center"
+          style={{
+            opacity: active ? 1 : 0,
+            transform: active ? "scale(1)" : "scale(0.5)",
+            transition: "all 0.4s 0.9s cubic-bezier(.3,1.5,.5,1)",
+          }}
+        >
+          OK
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VizDispatch({ active }: { active: boolean }) {
+  return (
+    <div className="absolute inset-0 overflow-hidden">
+      <div className="absolute left-3 top-1/2 -translate-y-1/2 h-8 w-8 rounded-md bg-emerald-500/15 border border-emerald-500/40 grid place-items-center">
+        <div className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+      </div>
+      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-1">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="h-2 w-8 rounded-sm bg-white/[0.06] border border-white/10" />
+        ))}
+      </div>
+      {[0, 1, 2, 3].map((i) => (
+        <div
+          key={i}
+          className="absolute top-1/2 h-1.5 w-4 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.6)]"
+          style={{
+            left: 42,
+            animation: active ? `viz-fly 1.4s ${i * 0.25}s linear infinite` : "none",
+            opacity: 0,
+          }}
+        />
+      ))}
+      <style>{`@keyframes viz-fly{0%{transform:translate(0,-50%);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translate(90px,-50%);opacity:0}}`}</style>
+    </div>
+  );
+}
+
+function VizMonitor({ active }: { active: boolean }) {
+  return (
+    <div className="absolute inset-0 p-3">
+      <div className="flex items-end justify-between h-full gap-1.5">
+        {[35, 55, 42, 68, 58, 80, 72].map((h, i) => (
+          <div key={i} className="flex-1 rounded-t bg-emerald-500/70 relative overflow-hidden">
+            <div
+              className="absolute inset-x-0 bottom-0 bg-emerald-400"
+              style={{
+                height: active ? `${h}%` : "0%",
+                transition: `height 0.8s ${i * 0.08}s cubic-bezier(.2,.7,.2,1)`,
+              }}
+            />
+          </div>
+        ))}
+      </div>
+      <div
+        className="absolute top-2 right-2 flex items-center gap-1 text-[9px] font-medium text-emerald-400"
+        style={{
+          opacity: active ? 1 : 0,
+          transition: "opacity 0.5s 0.6s",
+        }}
+      >
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+        ao vivo
+      </div>
+    </div>
   );
 }
 
