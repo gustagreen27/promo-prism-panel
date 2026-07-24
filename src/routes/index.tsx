@@ -377,7 +377,125 @@ function Header({
 }
 
 // ============ HERO ============
-function Hero() {
+// ============ PAINEL REAL CARD ============
+type PainelVariant = "live" | "finished";
+function PainelRealCard({ variant = "live" }: { variant?: PainelVariant }) {
+  const finished = variant === "finished";
+  const total = 300000;
+  const sent = 285417;
+  const delivered = 274119;
+  const failed = 14583;
+  const clicks = 19688;
+  const percent = (sent / total) * 100;
+
+  const metrics = [
+    { k: "Contatos", v: formatInt(total), Icon: Users, tone: "text-neutral-300" },
+    { k: "Enviados", v: formatInt(sent), Icon: Send, tone: "text-emerald-400" },
+    { k: "Entregues", v: formatInt(delivered), Icon: CheckCircle2, tone: "text-emerald-400" },
+    { k: "Falhas", v: formatInt(failed), Icon: XCircle, tone: "text-rose-400" },
+  ];
+
+  return (
+    <div className="relative rounded-[22px] border border-white/[0.08] bg-[#101216] p-5 sm:p-6 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)]">
+      <div className="flex items-center justify-between gap-3">
+        <div className="inline-flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/25 bg-emerald-500/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-emerald-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            Painel real
+          </span>
+        </div>
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium ${
+            finished
+              ? "border border-emerald-500/25 bg-emerald-500/[0.08] text-emerald-400"
+              : "border border-white/10 bg-white/[0.04] text-neutral-300"
+          }`}
+        >
+          {finished ? (
+            <>
+              <CheckCircle2 className="h-3 w-3" /> Concluída
+            </>
+          ) : (
+            <>
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Em execução
+            </>
+          )}
+        </span>
+      </div>
+
+      <div className="mt-4 flex items-baseline justify-between gap-3">
+        <h3 className="text-[20px] font-semibold text-white tracking-tight">Campanha Julho</h3>
+      </div>
+      <div className="text-[12px] text-neutral-500">
+        {finished ? "Finalizada em 23/07/2026 22:16" : "Atualizado há 22 segundos"}
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-2.5">
+        {metrics.map(({ k, v, Icon, tone }) => (
+          <div
+            key={k}
+            className="rounded-xl border border-white/[0.06] bg-[#0b0d10] p-3.5"
+          >
+            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-neutral-500">
+              <Icon className={`h-3 w-3 ${tone}`} />
+              {k}
+            </div>
+            <div className="mt-1.5 text-[20px] font-semibold text-white tabular-nums">
+              {v}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-5">
+        <div className="flex items-center justify-between text-[11px] text-neutral-400">
+          <span>Progresso</span>
+          <span className="tabular-nums text-emerald-400 font-semibold">
+            {percent.toFixed(2)}%
+          </span>
+        </div>
+        <div className="mt-2 h-2 rounded-full bg-white/[0.06] overflow-hidden">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400"
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="mt-5 grid grid-cols-3 gap-2">
+        {[
+          { k: "Cliques totais", v: formatInt(clicks), Icon: MousePointerClick },
+          { k: "Países", v: "5", Icon: Globe2 },
+          { k: "Cidades", v: "20", Icon: MapPin },
+        ].map(({ k, v, Icon }) => (
+          <div
+            key={k}
+            className="rounded-lg border border-white/[0.05] bg-[#0b0d10] p-3"
+          >
+            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-neutral-500">
+              <Icon className="h-3 w-3" />
+              {k}
+            </div>
+            <div className="mt-1 text-[15px] font-semibold text-white tabular-nums">{v}</div>
+          </div>
+        ))}
+      </div>
+
+      <button
+        onClick={() =>
+          openWhatsApp("Olá! Quero ver o relatório completo de uma campanha real.")
+        }
+        className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-[13px] font-medium text-neutral-100 hover:bg-white/[0.06] transition-colors"
+      >
+        Ver relatório completo
+        <ArrowRight className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
+
   return (
     <section id="top" className="relative pt-28 sm:pt-32 pb-16 sm:pb-24">
       <div
