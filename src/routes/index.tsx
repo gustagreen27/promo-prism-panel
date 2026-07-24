@@ -22,7 +22,7 @@ import {
   MousePointerClick,
   Globe2,
   MapPin,
-  HeadphonesIcon,
+  Headphones,
 } from "lucide-react";
 
 import logoAsset from "@/assets/disparos-fr-logo-new.png.asset.json";
