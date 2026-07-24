@@ -214,6 +214,22 @@ function buildMetaBody(to: string, payload: any): Record<string, any> {
     if (payload.footer) interactive.footer = { text: String(payload.footer).slice(0, 60) };
     return { ...base, type: "interactive", interactive };
   }
+  if (payload?.kind === "interactive_cta_url") {
+    const interactive: any = {
+      type: "cta_url",
+      body: { text: payload.body },
+      action: {
+        name: "cta_url",
+        parameters: {
+          display_text: String(payload.display_text ?? "Abrir").slice(0, 20),
+          url: String(payload.url ?? ""),
+        },
+      },
+    };
+    if (payload.header) interactive.header = { type: "text", text: String(payload.header).slice(0, 60) };
+    if (payload.footer) interactive.footer = { text: String(payload.footer).slice(0, 60) };
+    return { ...base, type: "interactive", interactive };
+  }
 
   if (payload?.kind === "template") {
     return {

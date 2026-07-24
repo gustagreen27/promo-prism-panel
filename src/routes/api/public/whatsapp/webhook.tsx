@@ -676,7 +676,17 @@ async function upsertConversationFromInbound(
 
   if (!conversationId) return;
 
-  // Insere mensagem inbound (dedup por wamid via unique index parcial).
+  // Dedup inbound por wamid: se já existe, NÃO reprocessa side effects (auto-reply, etc).
+  if (wamid) {
+    const { data: dup } = await supabaseAdmin
+      .from("wa_conversation_messages")
+      .select("id")
+      .eq("workspace_id", workspaceId)
+      .eq("wamid", wamid)
+      .maybeSingle();
+    if (dup?.id) return;
+  }
+
   const msgRow: Record<string, any> = {
     workspace_id: workspaceId,
     conversation_id: conversationId,
@@ -702,6 +712,8 @@ async function upsertConversationFromInbound(
       msgRow.interactive_type = "list_reply";
       msgRow.interactive_list_id = lr.id ?? null;
       msgRow.interactive_list_title = lr.title ?? null;
+      // Preserva descrição em body para exibição/auditoria (coluna dedicada não existe).
+      if (lr.description && !msgRow.body) msgRow.body = String(lr.description).slice(0, 500);
     }
   } else if (type === "image" || type === "video" || type === "audio" || type === "document" || type === "sticker") {
     const media = message?.[type] ?? {};
@@ -712,7 +724,21 @@ async function upsertConversationFromInbound(
   }
   if (message?.context?.id) msgRow.context_wamid = String(message.context.id);
 
-  await supabaseAdmin.from("wa_conversation_messages").insert(msgRow).select("id").maybeSingle();
+  const { error: insertErr } = await supabaseAdmin
+    .from("wa_conversation_messages")
+    .insert(msgRow);
+  // 23505 = unique_violation (race entre dois webhooks do mesmo wamid): silenciar.
+  if (insertErr && (insertErr as any).code !== "23505") {
+    await supabaseAdmin.from("whatsapp_webhook_logs").insert({
+      connection_id: connectionId,
+      event_type: "conversation_msg_insert_error",
+      processed: false,
+      error: (insertErr as any).message ?? "insert failed",
+      payload: { wamid },
+    });
+    return;
+  }
+  if (insertErr) return; // duplicate — não roda side effects
 
   // ── Fluxo de resposta configurado na campanha (auto-reply na janela 24h) ──
   if (campaignId) {
@@ -724,6 +750,7 @@ async function upsertConversationFromInbound(
         phoneNumberId,
         from,
         campaignId,
+        inboundWamid: wamid,
       });
     } catch (e: any) {
       await supabaseAdmin.from("whatsapp_webhook_logs").insert({
@@ -751,9 +778,10 @@ async function applyResponseFlow(
     phoneNumberId: string | null;
     from: string;
     campaignId: string;
+    inboundWamid?: string | null;
   },
 ) {
-  const { workspaceId, conversationId, connectionId, phoneNumberId, from, campaignId } = args;
+  const { workspaceId, conversationId, connectionId, phoneNumberId, from, campaignId, inboundWamid } = args;
 
   const { data: camp } = await supabaseAdmin
     .from("wa_campaigns")
@@ -796,7 +824,9 @@ async function applyResponseFlow(
   const text = (cfg.auto_reply_text ?? "").trim();
   if (!text || !cooldownOk || !connectionId || !phoneNumberId) return;
 
-  const idem = `flow:${conversationId}:${Math.floor(now / cooldownMs || 1)}`;
+  const idem = inboundWamid
+    ? `flow:${conversationId}:${inboundWamid}`
+    : `flow:${conversationId}:${Math.floor(now / (cooldownMs || 1))}`;
   const { data: msg } = await supabaseAdmin
     .from("wa_conversation_messages")
     .insert({

@@ -258,6 +258,16 @@ const OutboundSchema = z.discriminatedUnion("kind", [
     context_wamid: z.string().optional().nullable(),
   }),
   z.object({
+    kind: z.literal("interactive_cta_url"),
+    conversation_id: z.string().uuid(),
+    body: z.string().min(1).max(1024),
+    header: z.string().max(60).optional(),
+    footer: z.string().max(60).optional(),
+    display_text: z.string().min(1).max(20),
+    url: z.string().url(),
+    context_wamid: z.string().optional().nullable(),
+  }),
+  z.object({
     kind: z.literal("template"),
     conversation_id: z.string().uuid(),
     template_id: z.string().uuid(),
@@ -350,7 +360,20 @@ export const sendConversationMessage = createServerFn({ method: "POST" })
         sections: data.sections,
         context_wamid: data.context_wamid ?? null,
       };
-    } else {
+    } else if (data.kind === "interactive_cta_url") {
+      messageType = "interactive";
+      interactiveType = "cta_url";
+      bodyText = data.body;
+      payload = {
+        kind: "interactive_cta_url",
+        body: data.body,
+        header: data.header ?? null,
+        footer: data.footer ?? null,
+        display_text: data.display_text,
+        url: data.url,
+        context_wamid: data.context_wamid ?? null,
+      };
+    } else if (data.kind === "template") {
       messageType = "template";
       // Buscar template
       const { data: tpl } = await context.supabase
