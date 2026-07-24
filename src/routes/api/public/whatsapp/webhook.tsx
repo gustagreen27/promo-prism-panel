@@ -884,11 +884,35 @@ async function applyResponseFlow(
   }
 
   const text = (cfg.auto_reply_text ?? "").trim();
-  if (!text || !cooldownOk || !connectionId || !phoneNumberId) return;
+  const ctaEnabled = !!(cfg.cta_enabled && (cfg.cta_button_text ?? "").trim() && (cfg.cta_url ?? "").trim());
+  const hasContent = ctaEnabled || !!text;
+  if (!hasContent || !cooldownOk || !connectionId || !phoneNumberId) return;
 
   const idem = inboundWamid
     ? `flow:${conversationId}:${inboundWamid}`
     : `flow:${conversationId}:${Math.floor(now / (cooldownMs || 1))}`;
+
+  let messageType: string;
+  let body: string;
+  let payload: Record<string, any>;
+  if (ctaEnabled) {
+    messageType = "interactive";
+    body = text || (cfg.cta_header ?? "").trim() || (cfg.cta_button_text ?? "").trim();
+    payload = {
+      kind: "interactive_cta_url",
+      body: text || (cfg.cta_button_text ?? "").trim(),
+      display_text: (cfg.cta_button_text ?? "").trim(),
+      url: (cfg.cta_url ?? "").trim(),
+      header: (cfg.cta_header ?? "").trim() || undefined,
+      footer: (cfg.cta_footer ?? "").trim() || undefined,
+      source: "response_flow",
+    };
+  } else {
+    messageType = "text";
+    body = text;
+    payload = { kind: "text", body: text, source: "response_flow" };
+  }
+
   const { data: msg } = await supabaseAdmin
     .from("wa_conversation_messages")
     .insert({
@@ -896,10 +920,10 @@ async function applyResponseFlow(
       conversation_id: conversationId,
       direction: "outbound",
       origin: "auto_flow",
-      message_type: "text",
-      body: text,
+      message_type: messageType,
+      body,
       status: "queued",
-      payload: { kind: "text", body: text, source: "response_flow" },
+      payload,
     })
     .select("id")
     .single();
@@ -912,13 +936,14 @@ async function applyResponseFlow(
     phone_number_id: phoneNumberId,
     contact_phone: from,
     message_id: msg?.id ?? null,
-    payload: { kind: "text", body: text, source: "response_flow" },
+    payload,
     idempotency_key: idem,
     priority: 2,
     origin: "auto_flow",
     scheduled_at: nowIso,
     next_attempt_at: nowIso,
   });
+
 
   await supabaseAdmin
     .from("wa_conversations")
