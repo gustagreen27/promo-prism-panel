@@ -255,3 +255,41 @@ export const syncTemplatesByWaba = createServerFn({ method: "POST" })
     }
     return { synced: upserted, total: list.length };
   });
+
+/**
+ * Sincroniza templates de TODAS as WABAs ativas.
+ * Reaproveita syncTemplatesByWaba (mesma lógica do cron `wa-templates-sync-15min`).
+ */
+export const syncAllTemplates = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { data: wabas, error } = await context.supabase
+      .from("whatsapp_wabas")
+      .select("id,waba_id,status")
+      .not("waba_id", "is", null);
+    if (error) throw error;
+
+    const active = (wabas ?? []).filter(
+      (w: any) => !w.status || !["suspended", "disconnected", "removed"].includes(String(w.status).toLowerCase()),
+    );
+
+    let totalSynced = 0;
+    let totalFound = 0;
+    let wabasOk = 0;
+    let wabasErr = 0;
+    const errors: string[] = [];
+
+    for (const w of active) {
+      try {
+        const r: any = await (syncTemplatesByWaba as any)({ data: { waba_ref_id: w.id } });
+        totalSynced += r?.synced ?? 0;
+        totalFound += r?.total ?? 0;
+        if (r?.error) { wabasErr++; errors.push(r.error); } else { wabasOk++; }
+      } catch (e: any) {
+        wabasErr++;
+        errors.push(e?.message ?? "erro");
+      }
+    }
+    return { wabas: active.length, wabasOk, wabasErr, synced: totalSynced, total: totalFound, errors };
+  });
