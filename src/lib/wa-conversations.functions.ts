@@ -360,7 +360,20 @@ export const sendConversationMessage = createServerFn({ method: "POST" })
         sections: data.sections,
         context_wamid: data.context_wamid ?? null,
       };
-    } else {
+    } else if (data.kind === "interactive_cta_url") {
+      messageType = "interactive";
+      interactiveType = "cta_url";
+      bodyText = data.body;
+      payload = {
+        kind: "interactive_cta_url",
+        body: data.body,
+        header: data.header ?? null,
+        footer: data.footer ?? null,
+        display_text: data.display_text,
+        url: data.url,
+        context_wamid: data.context_wamid ?? null,
+      };
+    } else if (data.kind === "template") {
       messageType = "template";
       // Buscar template
       const { data: tpl } = await context.supabase
