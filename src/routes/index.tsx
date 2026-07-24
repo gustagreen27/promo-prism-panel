@@ -1084,8 +1084,13 @@ function SimulatorSection() {
                 <button
                   onClick={() => {
                     trackPixel("StartForm");
-                    setShowForm(true);
-                    setTimeout(() => scrollToId("formulario"), 60);
+                    const sourceLabel =
+                      leadsSource === "provided"
+                        ? "vocês fornecem a base"
+                        : "base própria";
+                    openWhatsApp(
+                      `Olá! Quero simular uma campanha na Disparos FR.\n\n• Volume: ${volume.toLocaleString("pt-BR")} disparos\n• Base: ${sourceLabel}\n• Investimento estimado: ${formatBRL(grandTotal)}\n\nPode me passar os próximos passos?`
+                    );
                   }}
                   className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-[14px] font-medium text-neutral-950 hover:bg-emerald-400 transition-colors"
                 >
