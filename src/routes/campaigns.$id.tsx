@@ -544,7 +544,7 @@ function PublicCampaignReport() {
             </div>
             <div className="space-y-4">
               {dispatches.map((d, i) => {
-                const perDispatchOverride = publicDispatches.find((x) => x.wa_campaign_id === d.id) ?? null;
+                const perDispatchOverride = resolveOverride(d.id);
                 const perDispatchSim = publicSimulations.find((x) => x.wa_campaign_id === d.id) ?? null;
                 const perSnap: Snapshot | null =
                   customEnabled && perDispatchOverride?.enabled
