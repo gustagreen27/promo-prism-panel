@@ -616,16 +616,13 @@ function Metrics() {
   ];
   return (
     <section className="border-y border-white/5 bg-white/[0.015]">
-      <div className={`${container} grid grid-cols-2 md:grid-cols-4 py-8`}>
-        {items.map((i, idx) => (
-          <div
-            key={i.t}
-            className={`px-2 ${idx > 0 ? "md:border-l md:border-white/5" : ""}`}
-          >
-            <div className="text-[19px] sm:text-[22px] font-semibold text-white tracking-tight">
+      <div className={`${container} grid grid-cols-2 md:grid-cols-4 divide-y divide-x divide-white/5 md:divide-y-0 -mx-px`}>
+        {items.map((i) => (
+          <div key={i.t} className="px-5 py-6 sm:px-6 sm:py-7">
+            <div className="text-[18px] sm:text-[22px] font-semibold text-white tracking-tight">
               {i.n}
             </div>
-            <div className="mt-1 text-[12px] text-neutral-500">{i.t}</div>
+            <div className="mt-1.5 text-[12px] text-neutral-500 leading-relaxed">{i.t}</div>
           </div>
         ))}
       </div>
@@ -667,42 +664,36 @@ function HowItWorks() {
         className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent"
       />
       <div className={container}>
-        <div className="grid lg:grid-cols-12 gap-10">
-          <div className="lg:col-span-5">
-            <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-500">
-              <span className="h-px w-6 bg-neutral-400" />
-              Como funciona
-            </div>
-            <h2 className="mt-4 text-3xl sm:text-4xl font-semibold tracking-tight text-neutral-950 leading-[1.1]">
-              Uma operação
-              <br />
-              em quatro passos.
-            </h2>
-            <p className="mt-4 text-[15px] leading-relaxed text-neutral-600 max-w-md">
-              Você envia a base. A equipe configura a campanha. E você acompanha a execução.
-            </p>
+        <div className="max-w-2xl">
+          <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-500">
+            <span className="h-px w-6 bg-neutral-400" />
+            Como funciona
           </div>
-          <ol className="lg:col-span-7 space-y-4">
-            {steps.map((s) => (
-              <li
-                key={s.n}
-                className="group grid grid-cols-[56px_1fr] gap-4 items-start rounded-2xl border border-neutral-200 bg-white p-5 sm:p-6 shadow-[0_1px_0_rgba(0,0,0,0.02)] hover:border-emerald-500/40 hover:shadow-[0_20px_40px_-24px_rgba(16,185,129,0.35)] transition-all"
-              >
-                <div className="h-11 w-11 rounded-xl bg-emerald-500 text-white grid place-items-center text-[15px] font-semibold shadow-[0_10px_24px_-10px_rgba(16,185,129,0.6)]">
-                  {s.n.replace("0", "")}
-                </div>
-                <div>
-                  <div className="text-[17px] font-semibold text-neutral-950">
-                    {s.t}
-                  </div>
-                  <p className="mt-1.5 text-[14px] leading-relaxed text-neutral-600">
-                    {s.d}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ol>
+          <h2 className="mt-4 text-3xl sm:text-4xl font-semibold tracking-tight text-neutral-950 leading-[1.1]">
+            Uma operação em quatro passos.
+          </h2>
+          <p className="mt-4 text-[15px] leading-relaxed text-neutral-600 max-w-xl">
+            Você envia a base. A equipe configura a campanha. E você acompanha a execução em tempo real.
+          </p>
         </div>
+        <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {steps.map((s) => (
+            <li
+              key={s.n}
+              className="group relative rounded-2xl border border-neutral-200 bg-white p-6 shadow-[0_1px_0_rgba(0,0,0,0.02)] hover:border-emerald-500/40 hover:shadow-[0_20px_40px_-24px_rgba(16,185,129,0.35)] transition-all"
+            >
+              <div className="h-10 w-10 rounded-xl bg-emerald-500 text-white grid place-items-center text-[14px] font-semibold shadow-[0_10px_24px_-10px_rgba(16,185,129,0.6)]">
+                {s.n.replace("0", "")}
+              </div>
+              <div className="mt-5 text-[16px] font-semibold text-neutral-950">
+                {s.t}
+              </div>
+              <p className="mt-2 text-[14px] leading-relaxed text-neutral-600">
+                {s.d}
+              </p>
+            </li>
+          ))}
+        </ol>
       </div>
       <div
         aria-hidden
@@ -757,35 +748,32 @@ function SimulatorSection() {
         }}
       />
       <div className={`${container} relative`}>
-        <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-          <div className="lg:col-span-5">
+        <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-end">
+          <div className="lg:col-span-7">
             <SectionHead
               eyebrow="Simulador"
-              title={
-                <>
-                  Calcule sua campanha em segundos.
-                </>
-              }
+              title={<>Calcule sua campanha em segundos.</>}
               lead="Escolha o volume da base e veja a faixa comercial aplicada. Depois você recebe a proposta detalhada pelo WhatsApp."
             />
-            <ul className="mt-8 space-y-3 text-[14px] text-neutral-300">
-              <li className="flex gap-3">
-                <Check className="mt-0.5 h-4 w-4 text-emerald-500 shrink-0" />
-                Valor por envio varia conforme o volume selecionado.
-              </li>
-              <li className="flex gap-3">
-                <Check className="mt-0.5 h-4 w-4 text-emerald-500 shrink-0" />
-                Preço de R$ 0,13 aplicável para bases acima de 250 mil.
-              </li>
-              <li className="flex gap-3">
-                <Check className="mt-0.5 h-4 w-4 text-emerald-500 shrink-0" />
-                Proposta final considera template, segmentação e estrutura.
-              </li>
-            </ul>
           </div>
+          <ul className="lg:col-span-5 grid sm:grid-cols-1 gap-2.5 text-[13.5px] text-neutral-300">
+            <li className="flex gap-3">
+              <Check className="mt-0.5 h-4 w-4 text-emerald-500 shrink-0" />
+              Valor por envio varia conforme o volume selecionado.
+            </li>
+            <li className="flex gap-3">
+              <Check className="mt-0.5 h-4 w-4 text-emerald-500 shrink-0" />
+              Preço de R$ 0,13 aplicável para bases acima de 250 mil.
+            </li>
+            <li className="flex gap-3">
+              <Check className="mt-0.5 h-4 w-4 text-emerald-500 shrink-0" />
+              Proposta final considera template, segmentação e estrutura.
+            </li>
+          </ul>
+        </div>
 
-          <div className="lg:col-span-7">
-            <div className="grid md:grid-cols-5 gap-4">
+        <div className="mt-12 grid md:grid-cols-5 gap-4">
+
               {/* Controls */}
               <div className="md:col-span-3 rounded-2xl border border-white/8 bg-[#111317] p-5 sm:p-6">
                 <div className="text-[11px] uppercase tracking-widest text-neutral-500">
@@ -917,10 +905,8 @@ function SimulatorSection() {
               <div id="formulario" className="mt-8">
                 <QualifyForm initialVolume={volume} total={total} />
               </div>
-            )}
-          </div>
+          )}
         </div>
-      </div>
     </section>
   );
 }
