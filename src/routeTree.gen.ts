@@ -50,6 +50,7 @@ import { Route as AuthenticatedAdminConfiguracoesRouteImport } from './routes/_a
 import { Route as AuthenticatedAdminClientesRouteImport } from './routes/_authenticated/admin.clientes'
 import { Route as AuthenticatedAdminCampanhasAprovacaoRouteImport } from './routes/_authenticated/admin.campanhas-aprovacao'
 import { Route as AuthenticatedAdminCampanhasRouteImport } from './routes/_authenticated/admin.campanhas'
+import { Route as AuthenticatedAdminAtendimentoRouteImport } from './routes/_authenticated/admin.atendimento'
 import { Route as AuthenticatedAdminAgendaRouteImport } from './routes/_authenticated/admin.agenda'
 import { Route as AuthenticatedAdminRelatoriosIndexRouteImport } from './routes/_authenticated/admin.relatorios.index'
 import { Route as AuthenticatedAdminDisparosIndexRouteImport } from './routes/_authenticated/admin.disparos.index'
@@ -309,6 +310,12 @@ const AuthenticatedAdminCampanhasRoute =
     path: '/admin/campanhas',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAdminAtendimentoRoute =
+  AuthenticatedAdminAtendimentoRouteImport.update({
+    id: '/admin/atendimento',
+    path: '/admin/atendimento',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAdminAgendaRoute =
   AuthenticatedAdminAgendaRouteImport.update({
     id: '/admin/agenda',
@@ -560,6 +567,7 @@ export interface FileRoutesByFullPath {
   '/painel/whatsapp': typeof PainelWhatsappRoute
   '/painel/': typeof PainelIndexRoute
   '/admin/agenda': typeof AuthenticatedAdminAgendaRoute
+  '/admin/atendimento': typeof AuthenticatedAdminAtendimentoRoute
   '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
   '/admin/campanhas-aprovacao': typeof AuthenticatedAdminCampanhasAprovacaoRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
@@ -639,6 +647,7 @@ export interface FileRoutesByTo {
   '/painel/whatsapp': typeof PainelWhatsappRoute
   '/painel': typeof PainelIndexRoute
   '/admin/agenda': typeof AuthenticatedAdminAgendaRoute
+  '/admin/atendimento': typeof AuthenticatedAdminAtendimentoRoute
   '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
   '/admin/campanhas-aprovacao': typeof AuthenticatedAdminCampanhasAprovacaoRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
@@ -720,6 +729,7 @@ export interface FileRoutesById {
   '/painel/whatsapp': typeof PainelWhatsappRoute
   '/painel/': typeof PainelIndexRoute
   '/_authenticated/admin/agenda': typeof AuthenticatedAdminAgendaRoute
+  '/_authenticated/admin/atendimento': typeof AuthenticatedAdminAtendimentoRoute
   '/_authenticated/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
   '/_authenticated/admin/campanhas-aprovacao': typeof AuthenticatedAdminCampanhasAprovacaoRoute
   '/_authenticated/admin/clientes': typeof AuthenticatedAdminClientesRoute
@@ -802,6 +812,7 @@ export interface FileRouteTypes {
     | '/painel/whatsapp'
     | '/painel/'
     | '/admin/agenda'
+    | '/admin/atendimento'
     | '/admin/campanhas'
     | '/admin/campanhas-aprovacao'
     | '/admin/clientes'
@@ -881,6 +892,7 @@ export interface FileRouteTypes {
     | '/painel/whatsapp'
     | '/painel'
     | '/admin/agenda'
+    | '/admin/atendimento'
     | '/admin/campanhas'
     | '/admin/campanhas-aprovacao'
     | '/admin/clientes'
@@ -961,6 +973,7 @@ export interface FileRouteTypes {
     | '/painel/whatsapp'
     | '/painel/'
     | '/_authenticated/admin/agenda'
+    | '/_authenticated/admin/atendimento'
     | '/_authenticated/admin/campanhas'
     | '/_authenticated/admin/campanhas-aprovacao'
     | '/_authenticated/admin/clientes'
@@ -1333,6 +1346,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminCampanhasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin/atendimento': {
+      id: '/_authenticated/admin/atendimento'
+      path: '/admin/atendimento'
+      fullPath: '/admin/atendimento'
+      preLoaderRoute: typeof AuthenticatedAdminAtendimentoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/admin/agenda': {
       id: '/_authenticated/admin/agenda'
       path: '/admin/agenda'
@@ -1692,6 +1712,7 @@ const AuthenticatedAdminCampaignsIdRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminAgendaRoute: typeof AuthenticatedAdminAgendaRoute
+  AuthenticatedAdminAtendimentoRoute: typeof AuthenticatedAdminAtendimentoRoute
   AuthenticatedAdminCampanhasRoute: typeof AuthenticatedAdminCampanhasRoute
   AuthenticatedAdminCampanhasAprovacaoRoute: typeof AuthenticatedAdminCampanhasAprovacaoRoute
   AuthenticatedAdminClientesRoute: typeof AuthenticatedAdminClientesRoute
@@ -1721,6 +1742,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminAgendaRoute: AuthenticatedAdminAgendaRoute,
+  AuthenticatedAdminAtendimentoRoute: AuthenticatedAdminAtendimentoRoute,
   AuthenticatedAdminCampanhasRoute: AuthenticatedAdminCampanhasRoute,
   AuthenticatedAdminCampanhasAprovacaoRoute:
     AuthenticatedAdminCampanhasAprovacaoRoute,
