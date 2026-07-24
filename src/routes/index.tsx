@@ -636,28 +636,33 @@ function HowItWorks() {
   const steps = [
     {
       n: "01",
-      t: "Envio da base",
-      d: "Você envia sua base de contatos ou solicita o fornecimento pela nossa equipe.",
+      t: "Envie sua base ou escolha seus leads",
+      d: "Você pode utilizar sua própria lista de contatos ou solicitar leads segmentados por cidade com nossa equipe.",
     },
     {
       n: "02",
-      t: "Configuração da campanha",
-      d: "Definimos número, template, identidade comercial e segmentação por DDD.",
+      t: "Defina o objetivo e o destino da campanha",
+      d: "Você escolhe para onde deseja direcionar o público: seu site, WhatsApp, landing page, página de vendas, checkout ou outro link.",
     },
     {
       n: "03",
-      t: "Aprovação da mensagem",
-      d: "Você valida o texto, botão e criativo antes do template ir para homologação Meta.",
+      t: "Montamos sua campanha",
+      d: "Configuramos o número de envio, a identidade comercial, a mensagem, o botão e a segmentação por cidade ou DDD.",
     },
     {
       n: "04",
-      t: "Início dos envios",
-      d: "Disparos rodam pela API Oficial com controle de velocidade e retentativa automática.",
+      t: "Você aprova antes de começar",
+      d: "Apresentamos o texto, o criativo, o botão e o destino da campanha para sua validação antes do envio para aprovação da Meta.",
     },
     {
       n: "05",
-      t: "Acompanhamento dos resultados",
-      d: "Enviados, entregues, falhas e cliques atualizados no painel em tempo real.",
+      t: "Iniciamos os disparos",
+      d: "Após a aprovação, os envios começam pela API Oficial do WhatsApp, com controle de velocidade e novas tentativas automáticas em caso de falha.",
+    },
+    {
+      n: "06",
+      t: "Acompanhe os resultados em tempo real",
+      d: "Você visualiza no painel os envios, entregas, falhas e cliques, acompanhando o desempenho da campanha em tempo real.",
     },
   ];
   return (
@@ -676,14 +681,15 @@ function HowItWorks() {
             Como funciona
           </div>
           <h2 className="mt-4 text-3xl sm:text-4xl font-semibold tracking-tight text-neutral-950 leading-[1.1]">
-            Do envio da base ao resultado, em cinco etapas.
+            Da base ao resultado, em seis etapas claras.
           </h2>
           <p className="mt-4 text-[15px] leading-relaxed text-neutral-600 max-w-xl">
             Uma operação transparente: você envia a base, aprova a mensagem e
             acompanha a campanha em tempo real.
           </p>
         </div>
-        <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+
           {steps.map((s) => (
             <li
               key={s.n}
