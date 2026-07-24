@@ -327,7 +327,7 @@ function Hero() {
         <div className="lg:col-span-6 lg:pt-6">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-neutral-300">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Para empresas com bases acima de 10 mil contatos
+            Para empresas com bases a partir de 2 mil contatos
           </div>
           <h1 className="mt-5 text-[34px] sm:text-5xl lg:text-[56px] font-semibold tracking-tight leading-[1.05] text-white">
             Alcance sua base de clientes pelo{" "}
@@ -1460,7 +1460,7 @@ function FAQ() {
   const items: [string, string][] = [
     [
       "Existe valor mínimo de campanha?",
-      "Trabalhamos com operações a partir de 10 mil contatos. Volumes menores podem ser avaliados sob consulta.",
+      "Trabalhamos com operações a partir de 2 mil contatos. Bases menores podem ser avaliadas sob consulta.",
     ],
     [
       "O preço de R$ 0,13 vale para qualquer volume?",
