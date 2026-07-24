@@ -987,32 +987,123 @@ function HowItWorks() {
           })}
         </ol>
 
-        <div className="mt-12 grid md:grid-cols-2 gap-4 max-w-3xl mx-auto">
-          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
-            <div className="text-[11px] uppercase tracking-widest text-neutral-500">
-              Base própria
+        <div className="mt-14 max-w-4xl mx-auto">
+          <div className="text-center mb-6">
+            <div className="text-[11px] uppercase tracking-widest text-emerald-400/80">
+              Preços transparentes
             </div>
-            <div className="mt-2 text-[16px] font-semibold text-white">
-              Você já tem os contatos
-            </div>
-            <p className="mt-2 text-[14px] leading-relaxed text-neutral-400">
-              Envie sua base própria com contatos que autorizaram receber
-              comunicações. Sem custo adicional por lead.
+            <h3 className="mt-2 text-[22px] sm:text-[26px] font-semibold text-white">
+              Dois custos separados. Sem surpresa.
+            </h3>
+            <p className="mt-2 text-[13.5px] text-neutral-400">
+              O <span className="text-white">disparo</span> é cobrado por mensagem enviada.
+              Os <span className="text-white">leads</span> só entram se você não tiver base própria.
             </p>
           </div>
-          <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.05] p-6">
-            <div className="text-[11px] uppercase tracking-widest text-emerald-400">
-              Fornecemos a base
+
+          <div className="grid md:grid-cols-2 gap-4">
+            {/* Preço do disparo */}
+            <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6 flex flex-col">
+              <div className="flex items-center justify-between">
+                <div className="text-[11px] uppercase tracking-widest text-emerald-400">
+                  Preço do disparo
+                </div>
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded-full px-2 py-0.5">
+                  Obrigatório
+                </span>
+              </div>
+              <div className="mt-3 text-[16px] font-semibold text-white">
+                Por mensagem enviada
+              </div>
+              <p className="mt-1 text-[13px] text-neutral-400 leading-relaxed">
+                Valor por envio conforme o volume da campanha.
+              </p>
+
+              <ul className="mt-4 divide-y divide-white/5 border-t border-white/5">
+                {TIERS.map((t) => (
+                  <li
+                    key={t.label}
+                    className="flex items-center justify-between py-2 text-[13px]"
+                  >
+                    <span className="text-neutral-300">{t.label}</span>
+                    <span className="font-semibold text-white tabular-nums">
+                      {formatBRL(t.price)}
+                      <span className="text-neutral-500 font-normal"> /envio</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div className="mt-2 text-[16px] font-semibold text-white">
-              Precisa dos leads? Cuidamos disso.
+
+            {/* Preço dos leads */}
+            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 flex flex-col">
+              <div className="flex items-center justify-between">
+                <div className="text-[11px] uppercase tracking-widest text-neutral-500">
+                  Preço dos leads
+                </div>
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 bg-white/[0.04] border border-white/10 rounded-full px-2 py-0.5">
+                  Opcional
+                </span>
+              </div>
+              <div className="mt-3 text-[16px] font-semibold text-white">
+                Só se você não tiver base
+              </div>
+              <p className="mt-1 text-[13px] text-neutral-400 leading-relaxed">
+                Fornecemos contatos segmentados por cidade e segmento.
+              </p>
+
+              <div className="mt-4 rounded-xl border border-white/[0.06] bg-black/20 p-4">
+                <div className="text-[12px] text-neutral-500">Contato segmentado</div>
+                <div className="mt-1 text-[26px] font-semibold text-white tabular-nums leading-none">
+                  {formatBRL(LEADS_PRICE)}
+                  <span className="text-[13px] text-neutral-500 font-normal"> /contato</span>
+                </div>
+                <div className="mt-3 text-[12px] text-neutral-400 leading-relaxed">
+                  Somado ao preço do disparo. Sujeito à análise de segmentação e disponibilidade.
+                </div>
+              </div>
+
+              <div className="mt-4 text-[12.5px] text-neutral-400">
+                Já tem base própria?{" "}
+                <span className="text-emerald-400 font-medium">R$ 0,00 em leads.</span>
+              </div>
             </div>
-            <p className="mt-2 text-[14px] leading-relaxed text-neutral-300">
-              Fornecimento de leads segmentados por{" "}
-              <span className="font-semibold text-white">R$ 0,09 por contato</span>{" "}
-              adicionais ao valor do disparo. Disponibilidade e segmentação
-              sujeitas à análise.
-            </p>
+          </div>
+
+          {/* Resumo comparativo */}
+          <div className="mt-5 rounded-2xl border border-white/[0.08] bg-[#111317] overflow-hidden">
+            <div className="px-5 py-3 border-b border-white/5 text-[11px] uppercase tracking-widest text-neutral-500">
+              Comparativo — 50.000 contatos
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-white/5">
+              <div className="p-5">
+                <div className="text-[12px] text-neutral-500">Com base própria</div>
+                <div className="mt-1 text-[20px] font-semibold text-white tabular-nums">
+                  {formatBRL(50_000 * 0.22)}
+                </div>
+                <div className="mt-1 text-[11.5px] text-neutral-500">
+                  50k × R$ 0,22 (disparo) + R$ 0,00 (leads)
+                </div>
+              </div>
+              <div className="p-5">
+                <div className="text-[12px] text-neutral-500">Com leads fornecidos</div>
+                <div className="mt-1 text-[20px] font-semibold text-white tabular-nums">
+                  {formatBRL(50_000 * (0.22 + LEADS_PRICE))}
+                </div>
+                <div className="mt-1 text-[11.5px] text-neutral-500">
+                  50k × R$ 0,22 + 50k × R$ 0,09
+                </div>
+              </div>
+              <div className="p-5 bg-emerald-500/[0.04]">
+                <div className="text-[12px] text-emerald-400/80">Diferença</div>
+                <div className="mt-1 text-[20px] font-semibold text-emerald-400 tabular-nums">
+                  + {formatBRL(50_000 * LEADS_PRICE)}
+                </div>
+                <div className="mt-1 text-[11.5px] text-neutral-500">
+                  Custo adicional apenas dos leads
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
