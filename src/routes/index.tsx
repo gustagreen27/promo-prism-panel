@@ -314,7 +314,9 @@ function Header({
           <button
             onClick={() => {
               trackPixel("ClickPrimaryCTA", { source: "header" });
-              scrollToId("simulador");
+              openWhatsApp(
+                "Olá! Quero simular uma campanha de WhatsApp pela Disparos FR."
+              );
             }}
             className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400 transition-colors"
           >
@@ -347,7 +349,9 @@ function Header({
             onClick={() => {
               setMenuOpen(false);
               trackPixel("ClickPrimaryCTA", { source: "mobile-menu" });
-              setTimeout(() => scrollToId("simulador"), 50);
+              openWhatsApp(
+                "Olá! Quero simular uma campanha de WhatsApp pela Disparos FR."
+              );
             }}
             className="mt-2 block w-full rounded-full bg-emerald-500 px-4 py-3 text-sm font-medium text-neutral-950"
           >
@@ -400,7 +404,9 @@ function Hero() {
             <button
               onClick={() => {
                 trackPixel("ClickPrimaryCTA", { source: "hero" });
-                scrollToId("simulador");
+                openWhatsApp(
+                  "Olá! Quero simular uma campanha de WhatsApp pela Disparos FR."
+                );
               }}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-6 py-3.5 text-[15px] font-medium text-neutral-950 hover:bg-emerald-400 transition-colors"
             >
@@ -1078,8 +1084,13 @@ function SimulatorSection() {
                 <button
                   onClick={() => {
                     trackPixel("StartForm");
-                    setShowForm(true);
-                    setTimeout(() => scrollToId("formulario"), 60);
+                    const sourceLabel =
+                      leadsSource === "provided"
+                        ? "vocês fornecem a base"
+                        : "base própria";
+                    openWhatsApp(
+                      `Olá! Quero simular uma campanha na Disparos FR.\n\n• Volume: ${volume.toLocaleString("pt-BR")} disparos\n• Base: ${sourceLabel}\n• Investimento estimado: ${formatBRL(grandTotal)}\n\nPode me passar os próximos passos?`
+                    );
                   }}
                   className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-[14px] font-medium text-neutral-950 hover:bg-emerald-400 transition-colors"
                 >
@@ -1998,7 +2009,9 @@ function FinalCTA() {
               <button
                 onClick={() => {
                   trackPixel("ClickPrimaryCTA", { source: "final" });
-                  scrollToId("simulador");
+                  openWhatsApp(
+                    "Olá! Quero simular uma campanha de WhatsApp pela Disparos FR."
+                  );
                 }}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-4 text-[15px] font-semibold text-[#052e28] hover:bg-emerald-50 shadow-[0_10px_30px_-10px_rgba(255,255,255,0.4)] transition-all"
               >
@@ -2150,7 +2163,9 @@ function MobileStickyCTA() {
       <button
         onClick={() => {
           trackPixel("ClickPrimaryCTA", { source: "sticky-mobile" });
-          scrollToId("simulador");
+          openWhatsApp(
+            "Olá! Quero simular uma campanha de WhatsApp pela Disparos FR."
+          );
         }}
         className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3.5 text-[15px] font-medium text-neutral-950"
       >
