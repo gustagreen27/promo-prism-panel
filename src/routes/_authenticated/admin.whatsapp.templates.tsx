@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { listTemplates, createTemplate, updateTemplate, deleteTemplate, syncTemplates } from "@/lib/whatsapp-templates.functions";
+import { listTemplates, createTemplate, updateTemplate, deleteTemplate, syncAllTemplates } from "@/lib/whatsapp-templates.functions";
 import { submitTemplateForApproval, refreshTemplateStatus } from "@/lib/wa-meta.functions";
 import { duplicateTemplate } from "@/lib/wa-meta-api.functions";
 import { listNumbers } from "@/lib/whatsapp-numbers.functions";
@@ -32,7 +32,7 @@ function Page() {
   const create = useServerFn(createTemplate);
   const update = useServerFn(updateTemplate);
   const remove = useServerFn(deleteTemplate);
-  const sync = useServerFn(syncTemplates);
+  const syncAll = useServerFn(syncAllTemplates);
   const submitFn = useServerFn(submitTemplateForApproval);
   const refreshStatusFn = useServerFn(refreshTemplateStatus);
   const dupFn = useServerFn(duplicateTemplate);
@@ -46,7 +46,6 @@ function Page() {
   const wabas = wabasQuery.data ?? [];
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [syncConn, setSyncConn] = useState<string>("");
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["wa-templates"] });
   const save = useMutation({
@@ -56,8 +55,12 @@ function Page() {
   });
   const del = useMutation({ mutationFn: (id: string) => remove({ data: { id } }), onSuccess: () => { toast.success("Removido"); refresh(); } });
   const syncMut = useMutation({
-    mutationFn: (id: string) => sync({ data: { connection_id: id } }),
-    onSuccess: (r: any) => { toast.success(`${r.synced}/${r.total} templates sincronizados`); refresh(); },
+    mutationFn: () => syncAll(),
+    onSuccess: (r: any) => {
+      const errPart = r?.wabasErr ? ` — ${r.wabasErr} com erro` : "";
+      toast.success(`${r?.synced ?? 0}/${r?.total ?? 0} templates sincronizados em ${r?.wabas ?? 0} números${errPart}`);
+      refresh();
+    },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao sincronizar"),
   });
   const submitMut = useMutation({
@@ -80,15 +83,12 @@ function Page() {
     <>
       <PageHeader
         title="Templates"
-        description="Templates aprovados na Meta usados nas campanhas."
+        description="Sincronização automática a cada 15 min com todos os números cadastrados. Use o botão ao lado para forçar uma sincronização imediata."
         actions={
           <div className="flex gap-2">
-            <Select value={syncConn} onValueChange={setSyncConn}>
-              <SelectTrigger className="w-[220px]"><SelectValue placeholder="Sincronizar com número…" /></SelectTrigger>
-              <SelectContent>{numbers.map((n: any) => <SelectItem key={n.id} value={n.id}>{n.name}</SelectItem>)}</SelectContent>
-            </Select>
-            <Button variant="outline" disabled={!syncConn || syncMut.isPending} onClick={() => syncMut.mutate(syncConn)}>
-              <RefreshCw className="mr-2 h-4 w-4" />Sincronizar
+            <Button variant="outline" disabled={syncMut.isPending} onClick={() => syncMut.mutate()}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${syncMut.isPending ? "animate-spin" : ""}`} />
+              {syncMut.isPending ? "Sincronizando…" : "Sincronizar todos agora"}
             </Button>
             <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
               <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Novo</Button></DialogTrigger>
