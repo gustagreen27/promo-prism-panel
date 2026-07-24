@@ -500,64 +500,84 @@ function PainelRealCard({ variant = "live" }: { variant?: PainelVariant }) {
 
 function Hero() {
   return (
-
-    <section id="top" className="relative pt-28 sm:pt-32 pb-16 sm:pb-24">
+    <section id="top" className="relative pt-32 sm:pt-36 pb-20 sm:pb-28 overflow-hidden">
       <div
         aria-hidden
-        className="absolute inset-x-0 top-0 h-[420px] pointer-events-none"
+        className="absolute inset-x-0 top-0 h-[560px] pointer-events-none"
         style={{
           background:
-            "radial-gradient(60% 60% at 70% 0%, rgba(255,255,255,0.04), transparent 70%)",
+            "radial-gradient(65% 55% at 75% 5%, rgba(16,185,129,0.14), transparent 65%), radial-gradient(50% 40% at 15% 10%, rgba(255,255,255,0.05), transparent 70%)",
         }}
       />
-      <div className={`${container} relative grid lg:grid-cols-12 gap-10 lg:gap-14 items-start`}>
-        <div className="lg:col-span-5 lg:pt-6">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-neutral-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+      <div
+        aria-hidden
+        className="absolute inset-x-0 top-24 h-px pointer-events-none opacity-60"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)",
+        }}
+      />
+
+      <div className={`${container} relative grid lg:grid-cols-12 gap-14 sm:gap-16 lg:gap-14 items-start`}>
+        <div className="lg:col-span-5 lg:pt-8">
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/[0.06] px-3.5 py-1.5 text-[11px] font-medium tracking-wide text-emerald-300 shadow-[0_0_0_1px_rgba(16,185,129,0.05),0_8px_24px_-12px_rgba(16,185,129,0.4)]">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-70 animate-ping" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            </span>
             Para bases a partir de 2 mil contatos
           </div>
-          <h1 className="mt-5 text-[34px] sm:text-5xl lg:text-[56px] font-semibold tracking-tight leading-[1.05] text-white">
+
+          <h1 className="mt-7 text-[36px] sm:text-5xl lg:text-[56px] font-semibold tracking-tight leading-[1.05] text-white">
             Envie campanhas para sua base via{" "}
-            <span className="text-emerald-400">API Oficial do WhatsApp</span>
+            <span className="relative inline-block text-emerald-400">
+              API Oficial do WhatsApp
+              <span
+                aria-hidden
+                className="absolute -bottom-1 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-400/50 to-transparent"
+              />
+            </span>
           </h1>
-          <p className="mt-5 text-[15px] leading-relaxed text-neutral-300 max-w-lg">
-            Atendemos campanhas a partir de <span className="font-semibold text-white">2 mil contatos</span>.
-            Valores de <span className="font-semibold text-emerald-400">R$ 0,13 por envio</span> para volumes acima de 250 mil contatos.
+
+          <p className="mt-7 text-[15px] sm:text-[16px] leading-relaxed text-neutral-300 max-w-lg">
+            Atendemos campanhas a partir de{" "}
+            <span className="font-semibold text-white">2 mil contatos</span>. Valores de{" "}
+            <span className="font-semibold text-emerald-400">R$ 0,13 por envio</span> para
+            volumes acima de 250 mil contatos.
           </p>
-          <p className="mt-3 text-[14px] leading-relaxed text-neutral-400 max-w-lg">
-            Você envia a base ou solicita os leads. Nossa equipe configura, você aprova e acompanha tudo pelo painel.
+          <p className="mt-4 text-[14px] leading-relaxed text-neutral-400 max-w-lg">
+            Você envia a base ou solicita os leads. Nossa equipe configura, você aprova e
+            acompanha tudo pelo painel.
           </p>
 
-          <div className="mt-7 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="mt-9 flex flex-col sm:flex-row sm:items-center gap-3.5">
             <button
               onClick={() => {
                 trackPixel("ClickPrimaryCTA", { source: "hero" });
-                openWhatsApp(
-                  "Olá! Quero simular uma campanha de WhatsApp pela Disparos FR."
-                );
+                openWhatsApp("Olá! Quero simular uma campanha de WhatsApp pela Disparos FR.");
               }}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-6 py-3.5 text-[15px] font-medium text-neutral-950 hover:bg-emerald-400 transition-colors"
+              className="group relative inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-6 py-4 text-[15px] font-semibold text-neutral-950 hover:bg-emerald-400 transition-all shadow-[0_10px_30px_-10px_rgba(16,185,129,0.6),inset_0_1px_0_rgba(255,255,255,0.25)] hover:shadow-[0_18px_40px_-12px_rgba(16,185,129,0.7),inset_0_1px_0_rgba(255,255,255,0.3)] hover:-translate-y-0.5"
             >
               Simular minha campanha
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </button>
             <button
               onClick={() => scrollToId("como-funciona")}
-              className="inline-flex items-center gap-1.5 text-[14px] font-medium text-neutral-300 hover:text-white transition-colors sm:px-2"
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.02] px-5 py-4 text-[14px] font-medium text-neutral-200 hover:bg-white/[0.05] hover:text-white transition-colors sm:border-0 sm:bg-transparent sm:px-2 sm:py-2"
             >
               Ver como funciona
               <ArrowRight className="h-3.5 w-3.5" />
             </button>
           </div>
 
-          <ul className="mt-8 grid grid-cols-3 gap-3 max-w-md">
+          <ul className="mt-10 grid grid-cols-3 gap-3 sm:gap-4 max-w-md">
             {[
               { Icon: ShieldCheck, label: "Simulação gratuita" },
               { Icon: CheckCircle2, label: "Sem compromisso" },
               { Icon: Headphones, label: "Atendimento humano" },
             ].map(({ Icon, label }) => (
-              <li key={label} className="flex flex-col items-start gap-2">
-                <span className="grid h-9 w-9 place-items-center rounded-lg border border-emerald-500/25 bg-emerald-500/[0.06] text-emerald-400">
+              <li key={label} className="flex flex-col items-start gap-2.5">
+                <span className="grid h-10 w-10 place-items-center rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] text-emerald-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
                   <Icon className="h-4 w-4" />
                 </span>
                 <span className="text-[12px] leading-tight text-neutral-300">{label}</span>
@@ -566,18 +586,17 @@ function Hero() {
           </ul>
         </div>
 
-        <div className="lg:col-span-7 relative">
+        <div className="lg:col-span-7 relative lg:mt-2">
           <div
             aria-hidden
-            className="absolute -inset-6 -z-10 rounded-[32px] blur-3xl opacity-40"
+            className="absolute -inset-8 -z-10 rounded-[40px] blur-3xl opacity-50"
             style={{
               background:
-                "radial-gradient(60% 50% at 70% 30%, rgba(16,185,129,0.35), transparent 70%)",
+                "radial-gradient(55% 45% at 70% 30%, rgba(16,185,129,0.35), transparent 70%)",
             }}
           />
           <PainelRealCard variant="live" />
         </div>
-
       </div>
     </section>
   );
