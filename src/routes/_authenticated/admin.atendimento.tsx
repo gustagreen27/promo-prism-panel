@@ -28,6 +28,8 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
 import {
   Loader2,
   Search,
@@ -40,7 +42,19 @@ import {
   User,
   StickyNote,
   FileText,
+  Paperclip,
+  Image as ImageIcon,
+  Video,
+  Music,
+  File as FileIcon,
+  ListChecks,
+  MousePointerClick,
+  Reply,
+  Plus,
+  Trash2,
+  CornerUpLeft,
 } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/admin/atendimento")({
   head: () => ({
