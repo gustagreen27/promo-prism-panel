@@ -636,23 +636,28 @@ function HowItWorks() {
   const steps = [
     {
       n: "01",
-      t: "Você envia a base",
-      d: "Recebemos os contatos, o objetivo da campanha e a mensagem que você quer transmitir.",
+      t: "Envio da base",
+      d: "Você envia sua base de contatos ou solicita o fornecimento pela nossa equipe.",
     },
     {
       n: "02",
-      t: "A equipe configura",
-      d: "Preparamos número, template, identidade comercial e segmentação por DDD.",
+      t: "Configuração da campanha",
+      d: "Definimos número, template, identidade comercial e segmentação por DDD.",
     },
     {
       n: "03",
-      t: "A campanha executa",
-      d: "Os envios rodam pela API Oficial com controle de velocidade e retentativa.",
+      t: "Aprovação da mensagem",
+      d: "Você valida o texto, botão e criativo antes do template ir para homologação Meta.",
     },
     {
       n: "04",
-      t: "Você acompanha",
-      d: "Enviados, entregues, falhas e progresso atualizados no painel em tempo real.",
+      t: "Início dos envios",
+      d: "Disparos rodam pela API Oficial com controle de velocidade e retentativa automática.",
+    },
+    {
+      n: "05",
+      t: "Acompanhamento dos resultados",
+      d: "Enviados, entregues, falhas e cliques atualizados no painel em tempo real.",
     },
   ];
   return (
@@ -671,13 +676,14 @@ function HowItWorks() {
             Como funciona
           </div>
           <h2 className="mt-4 text-3xl sm:text-4xl font-semibold tracking-tight text-neutral-950 leading-[1.1]">
-            Uma operação em quatro passos.
+            Do envio da base ao resultado, em cinco etapas.
           </h2>
           <p className="mt-4 text-[15px] leading-relaxed text-neutral-600 max-w-xl">
-            Você envia a base. A equipe configura a campanha. E você acompanha a execução em tempo real.
+            Uma operação transparente: você envia a base, aprova a mensagem e
+            acompanha a campanha em tempo real.
           </p>
         </div>
-        <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {steps.map((s) => (
             <li
               key={s.n}
@@ -695,6 +701,37 @@ function HowItWorks() {
             </li>
           ))}
         </ol>
+
+        <div className="mt-10 grid md:grid-cols-2 gap-4">
+          <div className="rounded-2xl border border-neutral-200 bg-white p-6">
+            <div className="text-[11px] uppercase tracking-widest text-neutral-500">
+              Base própria
+            </div>
+            <div className="mt-2 text-[16px] font-semibold text-neutral-950">
+              Você já tem os contatos
+            </div>
+            <p className="mt-2 text-[14px] leading-relaxed text-neutral-600">
+              Envie sua base própria com contatos que autorizaram receber
+              comunicações. Sem custo adicional por lead.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.04] p-6">
+            <div className="text-[11px] uppercase tracking-widest text-emerald-700">
+              Fornecemos a base
+            </div>
+            <div className="mt-2 text-[16px] font-semibold text-neutral-950">
+              Precisa dos leads? Cuidamos disso.
+            </div>
+            <p className="mt-2 text-[14px] leading-relaxed text-neutral-700">
+              Fornecimento de leads segmentados por{" "}
+              <span className="font-semibold text-neutral-950">
+                R$ 0,09 por contato
+              </span>{" "}
+              adicionais ao valor do disparo. Disponibilidade e segmentação
+              sujeitas à análise.
+            </p>
+          </div>
+        </div>
       </div>
       <div
         aria-hidden
@@ -703,6 +740,7 @@ function HowItWorks() {
     </section>
   );
 }
+
 
 // ============ SIMULATOR ============
 type FormData = {
