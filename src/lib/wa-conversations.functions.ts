@@ -387,6 +387,8 @@ export const sendConversationMessage = createServerFn({ method: "POST" })
         media_caption: mediaCaption,
         media_filename: mediaFilename,
         template_name: templateName,
+        interactive_type: interactiveType,
+
         status: "queued",
         sent_by_user_id: context.userId,
         payload,
