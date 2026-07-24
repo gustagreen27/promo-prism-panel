@@ -71,7 +71,7 @@ async function runTick() {
       if (!token) throw new Error("Sem access_token na conexão");
 
       const payload = row.payload ?? {};
-      const body = buildMetaBody(row.contact_phone, payload);
+      const body = buildMetaBody(String(row.contact_phone ?? ""), payload);
       const url = `https://graph.facebook.com/${version}/${row.phone_number_id}/messages`;
 
       const res = await fetchWithTimeout(url, {
