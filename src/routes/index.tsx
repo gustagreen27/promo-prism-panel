@@ -854,7 +854,7 @@ function HowItWorks() {
   return (
     <section
       id="como-funciona"
-      className="relative bg-[#f5f3ee] text-neutral-900 py-20 sm:py-28"
+      className="relative bg-[#0b0c0e] text-neutral-100 py-20 sm:py-28 border-y border-white/[0.05]"
     >
       <div
         aria-hidden
@@ -862,63 +862,57 @@ function HowItWorks() {
       />
       <div className={container}>
         <div className="max-w-2xl">
-          <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-500">
-            <span className="h-px w-6 bg-neutral-400" />
-            Como funciona
-          </div>
-          <h2 className="mt-4 text-3xl sm:text-4xl font-semibold tracking-tight text-neutral-950 leading-[1.1]">
+          <Eyebrow>Como funciona</Eyebrow>
+          <h2 className="mt-4 text-3xl sm:text-4xl font-semibold tracking-tight text-white leading-[1.1]">
             Da base ao resultado, em seis etapas claras.
           </h2>
-          <p className="mt-4 text-[15px] leading-relaxed text-neutral-600 max-w-xl">
+          <p className="mt-4 text-[15px] leading-relaxed text-neutral-400 max-w-xl">
             Uma operação transparente: você envia a base, aprova a mensagem e
             acompanha a campanha em tempo real.
           </p>
         </div>
-        <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 
-          {steps.map((s) => (
-            <li
-              key={s.n}
-              className="group relative rounded-2xl border border-neutral-200 bg-white p-6 shadow-[0_1px_0_rgba(0,0,0,0.02)] hover:border-emerald-500/40 hover:shadow-[0_20px_40px_-24px_rgba(16,185,129,0.35)] transition-all"
-            >
-              <div className="h-10 w-10 rounded-xl bg-emerald-500 text-white grid place-items-center text-[14px] font-semibold shadow-[0_10px_24px_-10px_rgba(16,185,129,0.6)]">
-                {s.n.replace("0", "")}
+        <ol className="mt-12 relative max-w-2xl mx-auto">
+          <div
+            aria-hidden
+            className="absolute left-[19px] top-2 bottom-2 w-px bg-gradient-to-b from-emerald-500/40 via-white/10 to-transparent"
+          />
+          {steps.map((s, i) => (
+            <li key={s.n} className="relative pl-14 pb-8 last:pb-0">
+              <div className="absolute left-0 top-0 grid h-10 w-10 place-items-center rounded-full bg-emerald-500 text-neutral-950 text-[14px] font-semibold shadow-[0_10px_24px_-10px_rgba(16,185,129,0.6)] ring-4 ring-[#0b0c0e]">
+                {i + 1}
               </div>
-              <div className="mt-5 text-[16px] font-semibold text-neutral-950">
-                {s.t}
+              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 hover:border-emerald-500/25 transition-colors">
+                <div className="text-[15px] font-semibold text-white">{s.t}</div>
+                <p className="mt-1.5 text-[13.5px] leading-relaxed text-neutral-400">{s.d}</p>
               </div>
-              <p className="mt-2 text-[14px] leading-relaxed text-neutral-600">
-                {s.d}
-              </p>
             </li>
           ))}
         </ol>
 
-        <div className="mt-10 grid md:grid-cols-2 gap-4">
-          <div className="rounded-2xl border border-neutral-200 bg-white p-6">
+        <div className="mt-12 grid md:grid-cols-2 gap-4 max-w-3xl mx-auto">
+          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
             <div className="text-[11px] uppercase tracking-widest text-neutral-500">
               Base própria
             </div>
-            <div className="mt-2 text-[16px] font-semibold text-neutral-950">
+            <div className="mt-2 text-[16px] font-semibold text-white">
               Você já tem os contatos
             </div>
-            <p className="mt-2 text-[14px] leading-relaxed text-neutral-600">
+            <p className="mt-2 text-[14px] leading-relaxed text-neutral-400">
               Envie sua base própria com contatos que autorizaram receber
               comunicações. Sem custo adicional por lead.
             </p>
           </div>
-          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.04] p-6">
-            <div className="text-[11px] uppercase tracking-widest text-emerald-700">
+          <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.05] p-6">
+            <div className="text-[11px] uppercase tracking-widest text-emerald-400">
               Fornecemos a base
             </div>
-            <div className="mt-2 text-[16px] font-semibold text-neutral-950">
+            <div className="mt-2 text-[16px] font-semibold text-white">
               Precisa dos leads? Cuidamos disso.
             </div>
-            <p className="mt-2 text-[14px] leading-relaxed text-neutral-700">
+            <p className="mt-2 text-[14px] leading-relaxed text-neutral-300">
               Fornecimento de leads segmentados por{" "}
-              <span className="font-semibold text-neutral-950">
-                R$ 0,09 por contato
-              </span>{" "}
+              <span className="font-semibold text-white">R$ 0,09 por contato</span>{" "}
               adicionais ao valor do disparo. Disponibilidade e segmentação
               sujeitas à análise.
             </p>
@@ -932,6 +926,7 @@ function HowItWorks() {
     </section>
   );
 }
+
 
 
 // ============ SIMULATOR ============
