@@ -820,11 +820,7 @@ function Metrics() {
 
 // ============ HOW IT WORKS ============
 function HowItWorks() {
-  const steps: {
-    t: string;
-    d: string;
-    Visual: React.FC<{ active: boolean }>;
-  }[] = [
+  const steps: { t: string; d: string; Visual: React.FC }[] = [
     {
       t: "Envie sua base ou escolha seus leads",
       d: "Você pode utilizar sua própria lista de contatos ou solicitar leads segmentados por cidade com nossa equipe.",
@@ -857,25 +853,26 @@ function HowItWorks() {
     },
   ];
 
-  const [activeIdx, setActiveIdx] = useState<number>(0);
+  // Imperative activation via data-active attr — zero re-renders on scroll.
   const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
 
   useEffect(() => {
-    const observers: IntersectionObserver[] = [];
-    itemRefs.current.forEach((el, i) => {
-      if (!el) return;
-      const io = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((e) => {
-            if (e.isIntersecting) setActiveIdx(i);
-          });
-        },
-        { threshold: 0.55, rootMargin: "-20% 0px -30% 0px" }
-      );
-      io.observe(el);
-      observers.push(io);
-    });
-    return () => observers.forEach((o) => o.disconnect());
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // With reduced motion, mark all as active once and skip the observer.
+    if (reduce) {
+      itemRefs.current.forEach((el) => el?.setAttribute("data-active", "true"));
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          (e.target as HTMLElement).dataset.active = e.isIntersecting ? "true" : "false";
+        }
+      },
+      { threshold: 0.45, rootMargin: "-15% 0px -25% 0px" }
+    );
+    itemRefs.current.forEach((el) => el && io.observe(el));
+    return () => io.disconnect();
   }, []);
 
   return (
@@ -899,13 +896,12 @@ function HowItWorks() {
           </p>
         </div>
 
-        <ol className="mt-12 relative max-w-3xl mx-auto">
+        <ol className="hiw mt-12 relative max-w-3xl mx-auto">
           <div
             aria-hidden
             className="absolute left-[19px] top-2 bottom-2 w-px bg-gradient-to-b from-emerald-500/40 via-white/10 to-transparent"
           />
           {steps.map((s, i) => {
-            const active = activeIdx === i;
             const Visual = s.Visual;
             return (
               <li
@@ -913,26 +909,14 @@ function HowItWorks() {
                 ref={(el) => {
                   itemRefs.current[i] = el;
                 }}
-                className="relative pl-14 pb-8 last:pb-0"
+                data-active="false"
+                className="hiw-item group/step relative pl-14 pb-8 last:pb-0"
+                style={{ contentVisibility: "auto", containIntrinsicSize: "1px 200px" }}
               >
-                <div
-                  className={cn(
-                    "absolute left-0 top-0 grid h-10 w-10 place-items-center rounded-full text-[14px] font-semibold ring-4 ring-[#0b0c0e] transition-all duration-500",
-                    active
-                      ? "bg-emerald-500 text-neutral-950 shadow-[0_10px_24px_-6px_rgba(16,185,129,0.7)] scale-110"
-                      : "bg-white/[0.06] text-neutral-400"
-                  )}
-                >
+                <div className="hiw-badge absolute left-0 top-0 grid h-10 w-10 place-items-center rounded-full text-[14px] font-semibold ring-4 ring-[#0b0c0e]">
                   {i + 1}
                 </div>
-                <div
-                  className={cn(
-                    "rounded-xl border bg-white/[0.02] p-5 transition-colors",
-                    active
-                      ? "border-emerald-500/30"
-                      : "border-white/[0.06] hover:border-emerald-500/20"
-                  )}
-                >
+                <div className="hiw-card rounded-xl border bg-white/[0.02] p-5">
                   <div className="grid gap-5 sm:grid-cols-[1fr_180px] sm:items-center">
                     <div>
                       <div className="text-[15px] font-semibold text-white">{s.t}</div>
@@ -940,8 +924,8 @@ function HowItWorks() {
                         {s.d}
                       </p>
                     </div>
-                    <div className="h-[112px] rounded-lg border border-white/[0.05] bg-[#0f1114] overflow-hidden relative">
-                      <Visual active={active} />
+                    <div className="hiw-viz h-[112px] rounded-lg border border-white/[0.05] bg-[#0f1114] overflow-hidden relative">
+                      <Visual />
                     </div>
                   </div>
                 </div>
@@ -983,131 +967,150 @@ function HowItWorks() {
         aria-hidden
         className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent"
       />
+      <HowItWorksStyles />
     </section>
   );
 }
 
-// ============ How-it-works micro-animations ============
-function VizUpload({ active }: { active: boolean }) {
+// One shared stylesheet: all animations use transform/opacity only (GPU-friendly).
+// Play state is toggled via [data-active="true"] so offscreen items don't paint.
+function HowItWorksStyles() {
+  return (
+    <style>{`
+.hiw-badge{background:rgba(255,255,255,.06);color:#a3a3a3;transition:transform .5s cubic-bezier(.2,.7,.2,1),background-color .5s,color .5s,box-shadow .5s;will-change:transform}
+.hiw-card{border-color:rgba(255,255,255,.06);transition:border-color .4s}
+.hiw-card:hover{border-color:rgba(16,185,129,.2)}
+.hiw-item[data-active="true"] .hiw-badge{background:#10b981;color:#0a0a0a;transform:scale(1.1);box-shadow:0 10px 24px -6px rgba(16,185,129,.7)}
+.hiw-item[data-active="true"] .hiw-card{border-color:rgba(16,185,129,.3)}
+.hiw-viz *{backface-visibility:hidden}
+/* animations paused offscreen — no compositor work when hidden */
+.hiw-item[data-active="false"] .hiw-viz *{animation-play-state:paused!important}
+
+/* Upload */
+.viz-drop{position:absolute;inset-inline:0;bottom:0;height:2.5rem;border:1px dashed rgba(16,185,129,.4);border-radius:.375rem;background:rgba(16,185,129,.04)}
+.viz-pkt{position:absolute;left:50%;top:0;width:4rem;height:1.5rem;border-radius:.125rem;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:.375rem;padding:0 .5rem;opacity:0;will-change:transform,opacity;transform:translate3d(-50%,-10px,0)}
+.hiw-item[data-active="true"] .viz-pkt{animation:viz-fall 2.4s ease-in infinite}
+.viz-pkt:nth-child(3){animation-delay:.5s}
+.viz-pkt:nth-child(4){animation-delay:1s}
+@keyframes viz-fall{0%{transform:translate3d(-50%,-10px,0);opacity:0}20%{opacity:1}70%{transform:translate3d(-50%,44px,0);opacity:1}100%{transform:translate3d(-50%,44px,0);opacity:0}}
+
+/* Target */
+.viz-tgt-ring{position:absolute;inset:0;border-radius:9999px;border:2px solid rgba(16,185,129,.4);will-change:transform,opacity;transform:scale(1);opacity:.7}
+.hiw-item[data-active="true"] .viz-tgt-ring{animation:viz-ping 1.8s ease-out infinite}
+@keyframes viz-ping{0%{transform:scale(1);opacity:.7}80%,100%{transform:scale(2.2);opacity:0}}
+.viz-tgt-tag{transition:opacity .5s;opacity:.4}
+.hiw-item[data-active="true"] .viz-tgt-tag{opacity:1}
+.hiw-item[data-active="true"] .viz-tgt-tag:nth-child(2){transition-delay:.12s}
+.hiw-item[data-active="true"] .viz-tgt-tag:nth-child(3){transition-delay:.24s}
+.hiw-item[data-active="true"] .viz-tgt-tag:nth-child(4){transition-delay:.36s}
+
+/* Build */
+.viz-bar{transform:scaleX(0);transform-origin:left center;will-change:transform;transition:transform .9s cubic-bezier(.2,.7,.2,1)}
+.hiw-item[data-active="true"] .viz-bar{transform:scaleX(var(--w,1))}
+.hiw-item[data-active="true"] .viz-bar:nth-of-type(2){transition-delay:.2s}
+.hiw-item[data-active="true"] .viz-bar:nth-of-type(3){transition-delay:.4s}
+.viz-btn{opacity:0;transform:translate3d(0,6px,0);transition:opacity .5s,transform .5s}
+.hiw-item[data-active="true"] .viz-btn{opacity:1;transform:translate3d(0,0,0);transition-delay:.9s}
+
+/* Approve */
+.viz-check path{stroke-dasharray:30;stroke-dashoffset:30;transition:stroke-dashoffset .7s ease-out}
+.hiw-item[data-active="true"] .viz-check path{stroke-dashoffset:0;transition-delay:.2s}
+.viz-ok{opacity:0;transform:scale(.5);transition:opacity .4s cubic-bezier(.3,1.5,.5,1),transform .4s cubic-bezier(.3,1.5,.5,1)}
+.hiw-item[data-active="true"] .viz-ok{opacity:1;transform:scale(1);transition-delay:.9s}
+
+/* Dispatch */
+.viz-fly{position:absolute;top:50%;left:42px;height:.375rem;width:1rem;border-radius:9999px;background:#34d399;box-shadow:0 0 8px rgba(16,185,129,.6);opacity:0;will-change:transform,opacity;transform:translate3d(0,-50%,0)}
+.hiw-item[data-active="true"] .viz-fly{animation:viz-fly 1.4s linear infinite}
+.viz-fly:nth-child(4){animation-delay:.25s}
+.viz-fly:nth-child(5){animation-delay:.5s}
+.viz-fly:nth-child(6){animation-delay:.75s}
+@keyframes viz-fly{0%{transform:translate3d(0,-50%,0);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translate3d(90px,-50%,0);opacity:0}}
+
+/* Monitor */
+.viz-col{transform:scaleY(0);transform-origin:bottom center;will-change:transform;transition:transform .8s cubic-bezier(.2,.7,.2,1)}
+.hiw-item[data-active="true"] .viz-col{transform:scaleY(var(--h,1))}
+.hiw-item[data-active="true"] .viz-col:nth-child(2){transition-delay:.08s}
+.hiw-item[data-active="true"] .viz-col:nth-child(3){transition-delay:.16s}
+.hiw-item[data-active="true"] .viz-col:nth-child(4){transition-delay:.24s}
+.hiw-item[data-active="true"] .viz-col:nth-child(5){transition-delay:.32s}
+.hiw-item[data-active="true"] .viz-col:nth-child(6){transition-delay:.4s}
+.hiw-item[data-active="true"] .viz-col:nth-child(7){transition-delay:.48s}
+.viz-live{opacity:0;transition:opacity .5s .6s}
+.hiw-item[data-active="true"] .viz-live{opacity:1}
+
+@media (prefers-reduced-motion: reduce){
+  .hiw-viz *,.hiw-badge,.hiw-card{animation:none!important;transition:none!important}
+}
+`}</style>
+  );
+}
+
+// ============ How-it-works micro-animations (pure CSS, no re-renders) ============
+function VizUpload() {
   return (
     <div className="absolute inset-0 grid place-items-center">
       <div className="relative w-[140px] h-[80px]">
-        <div className="absolute inset-x-0 bottom-0 h-10 rounded-md border border-dashed border-emerald-500/40 bg-emerald-500/[0.04]" />
-        {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            className="absolute left-1/2 -translate-x-1/2 h-6 w-16 rounded-sm bg-white/[0.06] border border-white/10 flex items-center gap-1.5 px-2"
-            style={{
-              animation: active ? `viz-fall 2.4s ${i * 0.5}s ease-in infinite` : "none",
-              top: 0,
-              opacity: 0,
-            }}
-          >
-            <div className="h-1 w-1 rounded-full bg-emerald-400" />
-            <div className="h-1 flex-1 rounded bg-white/15" />
-          </div>
-        ))}
+        <div className="viz-drop" />
+        <div className="viz-pkt"><span className="h-1 w-1 rounded-full bg-emerald-400" /><span className="h-1 flex-1 rounded bg-white/15" /></div>
+        <div className="viz-pkt"><span className="h-1 w-1 rounded-full bg-emerald-400" /><span className="h-1 flex-1 rounded bg-white/15" /></div>
+        <div className="viz-pkt"><span className="h-1 w-1 rounded-full bg-emerald-400" /><span className="h-1 flex-1 rounded bg-white/15" /></div>
       </div>
-      <style>{`@keyframes viz-fall{0%{transform:translate(-50%,-10px);opacity:0}20%{opacity:1}70%{transform:translate(-50%,44px);opacity:1}100%{transform:translate(-50%,44px);opacity:0}}`}</style>
     </div>
   );
 }
 
-function VizTarget({ active }: { active: boolean }) {
+function VizTarget() {
   const links = ["Site", "WhatsApp", "Checkout", "Landing"];
+  const pos = ["top-0 left-0", "top-0 right-0", "bottom-0 left-0", "bottom-0 right-0"];
   return (
     <div className="absolute inset-0 grid place-items-center">
       <div className="relative w-[150px] h-[90px]">
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-10 w-10 rounded-full border-2 border-emerald-500 grid place-items-center text-[10px] font-semibold text-emerald-400">
-          <span
-            className="absolute inset-0 rounded-full border-2 border-emerald-500/40"
-            style={{ animation: active ? "viz-ping 1.8s ease-out infinite" : "none" }}
-          />
+          <span className="viz-tgt-ring" />
           alvo
         </div>
-        {links.map((l, i) => {
-          const positions = [
-            "top-0 left-0",
-            "top-0 right-0",
-            "bottom-0 left-0",
-            "bottom-0 right-0",
-          ];
-          return (
-            <div
-              key={l}
-              className={cn(
-                "absolute text-[10px] px-1.5 py-0.5 rounded bg-white/[0.05] border border-white/10 text-neutral-300 transition-all duration-500",
-                positions[i],
-                active ? "opacity-100" : "opacity-40"
-              )}
-              style={{ transitionDelay: `${i * 120}ms` }}
-            >
-              {l}
-            </div>
-          );
-        })}
+        {links.map((l, i) => (
+          <div
+            key={l}
+            className={cn(
+              "viz-tgt-tag absolute text-[10px] px-1.5 py-0.5 rounded bg-white/[0.05] border border-white/10 text-neutral-300",
+              pos[i]
+            )}
+          >
+            {l}
+          </div>
+        ))}
       </div>
-      <style>{`@keyframes viz-ping{0%{transform:scale(1);opacity:.7}80%,100%{transform:scale(2.2);opacity:0}}`}</style>
     </div>
   );
 }
 
-function VizBuild({ active }: { active: boolean }) {
+function VizBuild() {
+  const widths = [0.8, 0.6, 0.9];
   return (
     <div className="absolute inset-0 p-3 flex flex-col justify-center gap-1.5">
-      {[
-        { w: "80%", d: 0 },
-        { w: "60%", d: 0.2 },
-        { w: "90%", d: 0.4 },
-      ].map((r, i) => (
+      {widths.map((w, i) => (
         <div key={i} className="h-2 rounded bg-white/[0.05] overflow-hidden">
-          <div
-            className="h-full bg-emerald-500/70"
-            style={{
-              width: active ? r.w : "0%",
-              transition: `width 0.9s ${r.d}s cubic-bezier(.2,.7,.2,1)`,
-            }}
-          />
+          <div className="viz-bar h-full bg-emerald-500/70" style={{ ["--w" as string]: w }} />
         </div>
       ))}
-      <div
-        className="mt-1 self-start h-6 px-2 rounded bg-emerald-500 text-neutral-950 text-[10px] font-semibold grid place-items-center transition-all duration-500"
-        style={{
-          opacity: active ? 1 : 0,
-          transform: active ? "translateY(0)" : "translateY(6px)",
-          transitionDelay: "0.9s",
-        }}
-      >
+      <div className="viz-btn mt-1 self-start h-6 px-2 rounded bg-emerald-500 text-neutral-950 text-[10px] font-semibold grid place-items-center">
         Saiba mais
       </div>
     </div>
   );
 }
 
-function VizApprove({ active }: { active: boolean }) {
+function VizApprove() {
   return (
     <div className="absolute inset-0 grid place-items-center">
       <div className="relative">
         <div className="h-14 w-14 rounded-full border-2 border-emerald-500/60 grid place-items-center">
-          <svg viewBox="0 0 24 24" className="h-7 w-7 text-emerald-400 fill-none stroke-current" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-            <path
-              d="M5 12.5l4.5 4.5L19 7"
-              style={{
-                strokeDasharray: 30,
-                strokeDashoffset: active ? 0 : 30,
-                transition: "stroke-dashoffset 0.7s ease-out 0.2s",
-              }}
-            />
+          <svg viewBox="0 0 24 24" className="viz-check h-7 w-7 text-emerald-400 fill-none stroke-current" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12.5l4.5 4.5L19 7" />
           </svg>
         </div>
-        <div
-          className="absolute -right-2 -top-2 h-5 px-1.5 rounded-full bg-emerald-500 text-[9px] font-semibold text-neutral-950 grid place-items-center"
-          style={{
-            opacity: active ? 1 : 0,
-            transform: active ? "scale(1)" : "scale(0.5)",
-            transition: "all 0.4s 0.9s cubic-bezier(.3,1.5,.5,1)",
-          }}
-        >
+        <div className="viz-ok absolute -right-2 -top-2 h-5 px-1.5 rounded-full bg-emerald-500 text-[9px] font-semibold text-neutral-950 grid place-items-center">
           OK
         </div>
       </div>
@@ -1115,56 +1118,39 @@ function VizApprove({ active }: { active: boolean }) {
   );
 }
 
-function VizDispatch({ active }: { active: boolean }) {
+function VizDispatch() {
   return (
     <div className="absolute inset-0 overflow-hidden">
       <div className="absolute left-3 top-1/2 -translate-y-1/2 h-8 w-8 rounded-md bg-emerald-500/15 border border-emerald-500/40 grid place-items-center">
         <div className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
       </div>
       <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-1">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="h-2 w-8 rounded-sm bg-white/[0.06] border border-white/10" />
-        ))}
+        <div className="h-2 w-8 rounded-sm bg-white/[0.06] border border-white/10" />
+        <div className="h-2 w-8 rounded-sm bg-white/[0.06] border border-white/10" />
+        <div className="h-2 w-8 rounded-sm bg-white/[0.06] border border-white/10" />
       </div>
-      {[0, 1, 2, 3].map((i) => (
-        <div
-          key={i}
-          className="absolute top-1/2 h-1.5 w-4 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.6)]"
-          style={{
-            left: 42,
-            animation: active ? `viz-fly 1.4s ${i * 0.25}s linear infinite` : "none",
-            opacity: 0,
-          }}
-        />
-      ))}
-      <style>{`@keyframes viz-fly{0%{transform:translate(0,-50%);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translate(90px,-50%);opacity:0}}`}</style>
+      <div className="viz-fly" />
+      <div className="viz-fly" />
+      <div className="viz-fly" />
+      <div className="viz-fly" />
     </div>
   );
 }
 
-function VizMonitor({ active }: { active: boolean }) {
+function VizMonitor() {
+  const heights = [0.35, 0.55, 0.42, 0.68, 0.58, 0.8, 0.72];
   return (
     <div className="absolute inset-0 p-3">
       <div className="flex items-end justify-between h-full gap-1.5">
-        {[35, 55, 42, 68, 58, 80, 72].map((h, i) => (
-          <div key={i} className="flex-1 rounded-t bg-emerald-500/70 relative overflow-hidden">
-            <div
-              className="absolute inset-x-0 bottom-0 bg-emerald-400"
-              style={{
-                height: active ? `${h}%` : "0%",
-                transition: `height 0.8s ${i * 0.08}s cubic-bezier(.2,.7,.2,1)`,
-              }}
-            />
-          </div>
+        {heights.map((h, i) => (
+          <div
+            key={i}
+            className="viz-col flex-1 rounded-t bg-emerald-400"
+            style={{ height: "100%", ["--h" as string]: h }}
+          />
         ))}
       </div>
-      <div
-        className="absolute top-2 right-2 flex items-center gap-1 text-[9px] font-medium text-emerald-400"
-        style={{
-          opacity: active ? 1 : 0,
-          transition: "opacity 0.5s 0.6s",
-        }}
-      >
+      <div className="viz-live absolute top-2 right-2 flex items-center gap-1 text-[9px] font-medium text-emerald-400">
         <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
         ao vivo
       </div>
