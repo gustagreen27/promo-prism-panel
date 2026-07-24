@@ -379,15 +379,13 @@ export const sendConversationMessage = createServerFn({ method: "POST" })
 export const listApprovedTemplates = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
-    z
-      .object({ connection_id: z.string().uuid().optional() })
-      .default({}),
+    z.object({ connection_id: z.string().uuid().optional() }).parse(d ?? {}),
   )
   .handler(async ({ data, context }) => {
     const wsId = await primaryWorkspaceId(context.supabase, context.userId);
     let q = context.supabase
       .from("whatsapp_templates")
-      .select("id, name, language, status, category, waba_id")
+      .select("id, name, language, status, category, waba_ref_id, connection_id")
       .eq("workspace_id", wsId)
       .eq("status", "approved")
       .order("name", { ascending: true })
@@ -398,7 +396,15 @@ export const listApprovedTemplates = createServerFn({ method: "GET" })
         .select("waba_id")
         .eq("id", data.connection_id)
         .maybeSingle();
-      if ((conn as any)?.waba_id) q = q.eq("waba_id", (conn as any).waba_id);
+      const wabaMetaId = (conn as any)?.waba_id;
+      if (wabaMetaId) {
+        const { data: waba } = await context.supabase
+          .from("whatsapp_wabas")
+          .select("id")
+          .eq("waba_id", wabaMetaId)
+          .maybeSingle();
+        if ((waba as any)?.id) q = q.eq("waba_ref_id", (waba as any).id);
+      }
     }
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
