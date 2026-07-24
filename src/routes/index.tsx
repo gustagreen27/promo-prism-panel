@@ -113,7 +113,7 @@ export const Route = createFileRoute("/")({
     meta: [
       {
         title:
-          "Disparos FR — Campanhas de WhatsApp pela API Oficial para bases 10k+",
+          "Disparos FR — Campanhas de WhatsApp pela API Oficial para bases 2k+",
       },
       {
         name: "description",
