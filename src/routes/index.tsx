@@ -907,7 +907,6 @@ function SimulatorSection() {
               </div>
           )}
         </div>
-      </div>
     </section>
   );
 }
