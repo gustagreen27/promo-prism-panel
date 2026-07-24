@@ -258,6 +258,16 @@ const OutboundSchema = z.discriminatedUnion("kind", [
     context_wamid: z.string().optional().nullable(),
   }),
   z.object({
+    kind: z.literal("interactive_cta_url"),
+    conversation_id: z.string().uuid(),
+    body: z.string().min(1).max(1024),
+    header: z.string().max(60).optional(),
+    footer: z.string().max(60).optional(),
+    display_text: z.string().min(1).max(20),
+    url: z.string().url(),
+    context_wamid: z.string().optional().nullable(),
+  }),
+  z.object({
     kind: z.literal("template"),
     conversation_id: z.string().uuid(),
     template_id: z.string().uuid(),
