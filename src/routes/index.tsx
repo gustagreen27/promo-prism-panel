@@ -636,23 +636,28 @@ function HowItWorks() {
   const steps = [
     {
       n: "01",
-      t: "Você envia a base",
-      d: "Recebemos os contatos, o objetivo da campanha e a mensagem que você quer transmitir.",
+      t: "Envio da base",
+      d: "Você envia sua base de contatos ou solicita o fornecimento pela nossa equipe.",
     },
     {
       n: "02",
-      t: "A equipe configura",
-      d: "Preparamos número, template, identidade comercial e segmentação por DDD.",
+      t: "Configuração da campanha",
+      d: "Definimos número, template, identidade comercial e segmentação por DDD.",
     },
     {
       n: "03",
-      t: "A campanha executa",
-      d: "Os envios rodam pela API Oficial com controle de velocidade e retentativa.",
+      t: "Aprovação da mensagem",
+      d: "Você valida o texto, botão e criativo antes do template ir para homologação Meta.",
     },
     {
       n: "04",
-      t: "Você acompanha",
-      d: "Enviados, entregues, falhas e progresso atualizados no painel em tempo real.",
+      t: "Início dos envios",
+      d: "Disparos rodam pela API Oficial com controle de velocidade e retentativa automática.",
+    },
+    {
+      n: "05",
+      t: "Acompanhamento dos resultados",
+      d: "Enviados, entregues, falhas e cliques atualizados no painel em tempo real.",
     },
   ];
   return (
@@ -671,13 +676,14 @@ function HowItWorks() {
             Como funciona
           </div>
           <h2 className="mt-4 text-3xl sm:text-4xl font-semibold tracking-tight text-neutral-950 leading-[1.1]">
-            Uma operação em quatro passos.
+            Do envio da base ao resultado, em cinco etapas.
           </h2>
           <p className="mt-4 text-[15px] leading-relaxed text-neutral-600 max-w-xl">
-            Você envia a base. A equipe configura a campanha. E você acompanha a execução em tempo real.
+            Uma operação transparente: você envia a base, aprova a mensagem e
+            acompanha a campanha em tempo real.
           </p>
         </div>
-        <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {steps.map((s) => (
             <li
               key={s.n}
@@ -695,6 +701,37 @@ function HowItWorks() {
             </li>
           ))}
         </ol>
+
+        <div className="mt-10 grid md:grid-cols-2 gap-4">
+          <div className="rounded-2xl border border-neutral-200 bg-white p-6">
+            <div className="text-[11px] uppercase tracking-widest text-neutral-500">
+              Base própria
+            </div>
+            <div className="mt-2 text-[16px] font-semibold text-neutral-950">
+              Você já tem os contatos
+            </div>
+            <p className="mt-2 text-[14px] leading-relaxed text-neutral-600">
+              Envie sua base própria com contatos que autorizaram receber
+              comunicações. Sem custo adicional por lead.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.04] p-6">
+            <div className="text-[11px] uppercase tracking-widest text-emerald-700">
+              Fornecemos a base
+            </div>
+            <div className="mt-2 text-[16px] font-semibold text-neutral-950">
+              Precisa dos leads? Cuidamos disso.
+            </div>
+            <p className="mt-2 text-[14px] leading-relaxed text-neutral-700">
+              Fornecimento de leads segmentados por{" "}
+              <span className="font-semibold text-neutral-950">
+                R$ 0,09 por contato
+              </span>{" "}
+              adicionais ao valor do disparo. Disponibilidade e segmentação
+              sujeitas à análise.
+            </p>
+          </div>
+        </div>
       </div>
       <div
         aria-hidden
@@ -703,6 +740,7 @@ function HowItWorks() {
     </section>
   );
 }
+
 
 // ============ SIMULATOR ============
 type FormData = {
@@ -716,12 +754,18 @@ type FormData = {
 
 const STORAGE_KEY = "disparosfr:form";
 
+const LEADS_PRICE = 0.09;
+type LeadsSource = "own" | "provided";
+
 function SimulatorSection() {
   const [volume, setVolume] = useState<number>(100_000);
+  const [leadsSource, setLeadsSource] = useState<LeadsSource>("own");
   const [showForm, setShowForm] = useState(false);
   const [started, setStarted] = useState(false);
   const { price, tier } = useMemo(() => priceFor(volume), [volume]);
-  const total = volume * price;
+  const dispatchTotal = volume * price;
+  const leadsTotal = leadsSource === "provided" ? volume * LEADS_PRICE : 0;
+  const grandTotal = dispatchTotal + leadsTotal;
 
   useEffect(() => {
     trackPixel("SelectVolume", { volume });
@@ -754,7 +798,7 @@ function SimulatorSection() {
             <SectionHead
               eyebrow="Simulador"
               title={<>Calcule sua campanha em segundos.</>}
-              lead="Escolha o volume da base e veja a faixa comercial aplicada. Depois você recebe a proposta detalhada pelo WhatsApp."
+              lead="Escolha o volume da base, informe se usará contatos próprios ou fornecidos por nós, e receba a proposta detalhada pelo WhatsApp."
             />
           </div>
           <ul className="lg:col-span-5 grid sm:grid-cols-1 gap-2.5 text-[13.5px] text-neutral-300">
@@ -764,7 +808,7 @@ function SimulatorSection() {
             </li>
             <li className="flex gap-3">
               <Check className="mt-0.5 h-4 w-4 text-emerald-500 shrink-0" />
-              Preço de R$ 0,13 aplicável para bases acima de 250 mil.
+              Fornecimento de leads por R$ 0,09 por contato (opcional).
             </li>
             <li className="flex gap-3">
               <Check className="mt-0.5 h-4 w-4 text-emerald-500 shrink-0" />
@@ -774,7 +818,6 @@ function SimulatorSection() {
         </div>
 
         <div className="mt-12 grid md:grid-cols-5 gap-4">
-
               {/* Controls */}
               <div className="md:col-span-3 rounded-2xl border border-white/8 bg-[#111317] p-5 sm:p-6">
                 <div className="text-[11px] uppercase tracking-widest text-neutral-500">
@@ -853,9 +896,69 @@ function SimulatorSection() {
                   </div>
                 </div>
 
+                <div className="mt-6">
+                  <div className="text-[11px] uppercase tracking-widest text-neutral-500 mb-2">
+                    Base de contatos
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    {[
+                      {
+                        id: "own" as LeadsSource,
+                        t: "Já tenho minha base",
+                        d: "Sem custo adicional",
+                      },
+                      {
+                        id: "provided" as LeadsSource,
+                        t: "Preciso adquirir leads",
+                        d: "+ R$ 0,09 por contato",
+                      },
+                    ].map((opt) => {
+                      const active = leadsSource === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          onClick={() => setLeadsSource(opt.id)}
+                          className={`text-left rounded-xl px-4 py-3 border transition-colors ${
+                            active
+                              ? "border-emerald-500 bg-emerald-500/10"
+                              : "border-white/8 bg-white/[0.02] hover:bg-white/[0.06]"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`h-4 w-4 rounded-full border grid place-items-center ${
+                                active
+                                  ? "border-emerald-400 bg-emerald-500"
+                                  : "border-white/30"
+                              }`}
+                            >
+                              {active && (
+                                <span className="h-1.5 w-1.5 rounded-full bg-neutral-950" />
+                              )}
+                            </span>
+                            <span className="text-[13.5px] font-medium text-white">
+                              {opt.t}
+                            </span>
+                          </div>
+                          <div className="mt-1 pl-6 text-[11.5px] text-neutral-400">
+                            {opt.d}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {leadsSource === "provided" && (
+                    <p className="mt-2 text-[11px] leading-relaxed text-emerald-300/80">
+                      Disponibilidade e segmentação dos leads sujeitas à
+                      análise.
+                    </p>
+                  )}
+                </div>
+
                 <div className="mt-5 rounded-xl border border-white/6 bg-white/[0.02] p-4 text-[12px] text-neutral-400 leading-relaxed">
-                  Sua base deve ser própria e composta por contatos que
-                  esperam ou autorizaram receber comunicações.
+                  {leadsSource === "own"
+                    ? "Sua base deve ser própria e composta por contatos que esperam ou autorizaram receber comunicações."
+                    : "Fornecemos leads segmentados conforme seu público-alvo. A entrega da base depende de análise prévia."}
                 </div>
               </div>
 
@@ -872,18 +975,43 @@ function SimulatorSection() {
                   <div className="text-[12px] text-neutral-500">
                     Valor por envio
                   </div>
-                  <div className="text-[26px] font-semibold text-emerald-400 tabular-nums leading-none mt-1">
+                  <div className="text-[22px] font-semibold text-emerald-400 tabular-nums leading-none mt-1">
                     {formatBRL(price)}
                   </div>
                 </div>
-                <div className="mt-5 pt-5 border-t border-white/5">
-                  <div className="text-[12px] text-neutral-500">
-                    Total estimado
+
+                <div className="mt-5 pt-5 border-t border-white/5 space-y-2.5">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-[12px] text-neutral-400">
+                      Disparos
+                    </span>
+                    <span className="text-[14px] text-white tabular-nums">
+                      {formatBRL(dispatchTotal)}
+                    </span>
                   </div>
-                  <div className="text-[24px] font-semibold text-white tabular-nums leading-none mt-1">
-                    {formatBRL(total)}
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-[12px] text-neutral-400">
+                      Leads {leadsSource === "provided" ? "(fornecidos)" : ""}
+                    </span>
+                    <span
+                      className={`text-[14px] tabular-nums ${leadsSource === "provided" ? "text-white" : "text-neutral-500"}`}
+                    >
+                      {leadsSource === "provided"
+                        ? formatBRL(leadsTotal)
+                        : "Inclusos"}
+                    </span>
                   </div>
                 </div>
+
+                <div className="mt-4 pt-4 border-t border-white/10">
+                  <div className="text-[12px] text-neutral-500">
+                    Investimento total estimado
+                  </div>
+                  <div className="text-[26px] font-semibold text-white tabular-nums leading-none mt-1">
+                    {formatBRL(grandTotal)}
+                  </div>
+                </div>
+
                 <button
                   onClick={() => {
                     trackPixel("StartForm");
@@ -904,7 +1032,13 @@ function SimulatorSection() {
 
             {showForm && (
               <div id="formulario" className="mt-8">
-                <QualifyForm initialVolume={volume} total={total} />
+                <QualifyForm
+                  initialVolume={volume}
+                  total={grandTotal}
+                  leadsSource={leadsSource}
+                  dispatchTotal={dispatchTotal}
+                  leadsTotal={leadsTotal}
+                />
               </div>
           )}
         </div>
@@ -912,13 +1046,20 @@ function SimulatorSection() {
   );
 }
 
+
 // ============ FORM ============
 function QualifyForm({
   initialVolume,
   total: _total,
+  leadsSource = "own",
+  dispatchTotal,
+  leadsTotal,
 }: {
   initialVolume: number;
   total: number;
+  leadsSource?: LeadsSource;
+  dispatchTotal: number;
+  leadsTotal: number;
 }) {
   const [step, setStep] = useState(1);
   const [done, setDone] = useState(false);
@@ -983,13 +1124,19 @@ function QualifyForm({
     setDone(true);
     trackPixel("CompleteForm", { volume: data.volume, segment: data.segment });
     setTimeout(() => {
+      const leadsLine =
+        leadsSource === "provided"
+          ? `Base: fornecida pela Disparos FR (${formatBRL(leadsTotal)})`
+          : `Base: própria do cliente`;
       const msg = `Olá! Fiz uma simulação no site da Disparos FR.
 
 Nome: ${data.name}
 Empresa: ${data.company}
 Segmento: ${data.segment}
 Volume: ${formatInt(data.volume)} contatos (${tier.label})
-Valor estimado: ${formatBRL(estimated)}
+${leadsLine}
+Disparos: ${formatBRL(dispatchTotal)}
+Investimento total estimado: ${formatBRL(dispatchTotal + leadsTotal)}
 Previsão de início: ${data.start}
 
 Gostaria de receber a proposta.`;
