@@ -153,6 +153,11 @@ export type ResponseFlowConfig = {
   assign_status: "open" | "waiting" | "in_progress" | "resolved" | "archived" | "none";
   tags: string[];
   cooldown_minutes: number;
+  cta_enabled: boolean;
+  cta_button_text: string;
+  cta_url: string;
+  cta_header: string;
+  cta_footer: string;
 };
 
 function defaultResponseFlow(): ResponseFlowConfig {
@@ -162,8 +167,14 @@ function defaultResponseFlow(): ResponseFlowConfig {
     assign_status: "in_progress",
     tags: [],
     cooldown_minutes: 60,
+    cta_enabled: false,
+    cta_button_text: "",
+    cta_url: "",
+    cta_header: "",
+    cta_footer: "",
   };
 }
+
 
 export interface CampaignWizardProps {
   workspaceId: string;
