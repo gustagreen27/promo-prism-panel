@@ -495,8 +495,9 @@ function PainelRealCard({ variant = "live" }: { variant?: PainelVariant }) {
   );
 }
 
-
+function Hero() {
   return (
+
     <section id="top" className="relative pt-28 sm:pt-32 pb-16 sm:pb-24">
       <div
         aria-hidden
