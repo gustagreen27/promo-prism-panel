@@ -16,7 +16,7 @@ import {
 import logoAsset from "@/assets/disparos-fr-logo-new.png.asset.json";
 
 // ============ CONFIG ============
-const WHATSAPP_NUMBER = "5511999999999"; // editar aqui
+const WHATSAPP_NUMBER = "5562933003970"; // editar aqui
 
 // ============ META PIXEL ============
 type PixelEvent =
