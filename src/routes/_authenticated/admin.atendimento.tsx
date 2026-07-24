@@ -912,30 +912,118 @@ function ChatPanel(props: {
   );
 }
 
-function MessageBubble({ msg }: { msg: any }) {
+function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void }) {
   const out = msg.direction === "outbound";
   const bubble = out
     ? "ml-auto bg-emerald-600 text-white"
     : "mr-auto bg-white dark:bg-neutral-800 text-foreground";
+  const payload = msg.payload ?? {};
+  const isMedia =
+    msg.message_type === "image" ||
+    msg.message_type === "video" ||
+    msg.message_type === "audio" ||
+    msg.message_type === "document" ||
+    msg.message_type === "sticker";
+  const isInteractive = msg.message_type === "interactive";
+  const buttons: Array<{ id: string; title: string }> = isInteractive && payload?.kind === "interactive_buttons" ? (payload.buttons ?? []) : [];
+  const listSections: Array<{ title?: string; rows: Array<{ id: string; title: string; description?: string }> }> =
+    isInteractive && payload?.kind === "interactive_list" ? (payload.sections ?? []) : [];
+  const header = isInteractive ? payload?.header : null;
+  const footer = isInteractive ? payload?.footer : null;
+
   return (
-    <div className={`max-w-[75%] rounded-lg px-3 py-2 shadow-sm ${bubble}`}>
+    <div className={`group max-w-[75%] rounded-lg px-3 py-2 shadow-sm ${bubble}`}>
       {msg.template_name && (
         <div className={`mb-1 text-[10px] font-medium ${out ? "text-emerald-100" : "text-muted-foreground"}`}>
           Template · {msg.template_name}
         </div>
       )}
-      {msg.body && <div className="whitespace-pre-wrap break-words text-sm">{msg.body}</div>}
-      {msg.message_type && msg.message_type !== "text" && !msg.body && (
+
+      {header && <div className="mb-1 text-xs font-semibold opacity-90">{String(header)}</div>}
+
+      {isMedia && msg.media_url && (msg.message_type === "image") && (
+        <a href={msg.media_url} target="_blank" rel="noreferrer">
+          <img
+            src={msg.media_url}
+            alt={msg.media_caption ?? "imagem"}
+            className="mb-1 max-h-56 rounded object-cover"
+            loading="lazy"
+          />
+        </a>
+      )}
+      {isMedia && msg.media_url && msg.message_type === "video" && (
+        <video src={msg.media_url} controls className="mb-1 max-h-56 rounded" />
+      )}
+      {isMedia && msg.media_url && msg.message_type === "audio" && (
+        <audio src={msg.media_url} controls className="mb-1 w-full" />
+      )}
+      {isMedia && msg.media_url && msg.message_type === "document" && (
+        <a
+          href={msg.media_url}
+          target="_blank"
+          rel="noreferrer"
+          className={`mb-1 flex items-center gap-2 rounded border px-2 py-1 text-xs ${out ? "border-emerald-400/40 bg-emerald-700/40" : "border-border bg-muted/50"}`}
+        >
+          <FileIcon className="h-4 w-4" />
+          <span className="truncate">{msg.media_filename ?? "Documento"}</span>
+        </a>
+      )}
+      {isMedia && !msg.media_url && (
         <div className="text-xs italic opacity-80">[{msg.message_type}]</div>
       )}
+
+      {msg.body && <div className="whitespace-pre-wrap break-words text-sm">{msg.body}</div>}
+
+      {buttons.length > 0 && (
+        <div className={`mt-2 space-y-1 border-t pt-2 ${out ? "border-emerald-400/40" : "border-border/60"}`}>
+          {buttons.map((b) => (
+            <div
+              key={b.id}
+              className={`rounded px-2 py-1 text-center text-xs ${out ? "bg-emerald-700/40" : "bg-muted"}`}
+            >
+              {b.title}
+            </div>
+          ))}
+        </div>
+      )}
+      {listSections.length > 0 && (
+        <div className={`mt-2 space-y-1 border-t pt-2 ${out ? "border-emerald-400/40" : "border-border/60"}`}>
+          {listSections.flatMap((s) => s.rows).map((r) => (
+            <div key={r.id} className={`rounded px-2 py-1 text-xs ${out ? "bg-emerald-700/40" : "bg-muted"}`}>
+              <div className="font-medium">{r.title}</div>
+              {r.description && <div className="opacity-80">{r.description}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {footer && <div className="mt-1 text-[10px] opacity-70">{String(footer)}</div>}
+
+      {msg.interactive_button_title && !out && (
+        <div className="mt-1 text-[10px] opacity-70">Selecionado: {msg.interactive_button_title}</div>
+      )}
+      {msg.interactive_list_title && !out && (
+        <div className="mt-1 text-[10px] opacity-70">Selecionado: {msg.interactive_list_title}</div>
+      )}
+
       <div className={`mt-1 flex items-center gap-1 text-[10px] ${out ? "text-emerald-100/90" : "text-muted-foreground"}`}>
         <span>{formatTime(msg.created_at)}</span>
         {out && <StatusTick status={msg.status} />}
         {msg.error_message && <span className="text-red-200">· {msg.error_message}</span>}
+        {onReply && (
+          <button
+            className={`ml-auto opacity-0 transition group-hover:opacity-100 ${out ? "text-emerald-100" : "text-muted-foreground"}`}
+            onClick={() => onReply(msg)}
+            title="Responder"
+          >
+            <Reply className="h-3 w-3" />
+          </button>
+        )}
       </div>
     </div>
   );
 }
+
 
 function StatusTick({ status }: { status: string }) {
   if (status === "queued") return <Clock className="h-3 w-3" />;
