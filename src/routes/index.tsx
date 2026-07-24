@@ -987,32 +987,123 @@ function HowItWorks() {
           })}
         </ol>
 
-        <div className="mt-12 grid md:grid-cols-2 gap-4 max-w-3xl mx-auto">
-          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
-            <div className="text-[11px] uppercase tracking-widest text-neutral-500">
-              Base própria
+        <div className="mt-14 max-w-4xl mx-auto">
+          <div className="text-center mb-6">
+            <div className="text-[11px] uppercase tracking-widest text-emerald-400/80">
+              Preços transparentes
             </div>
-            <div className="mt-2 text-[16px] font-semibold text-white">
-              Você já tem os contatos
-            </div>
-            <p className="mt-2 text-[14px] leading-relaxed text-neutral-400">
-              Envie sua base própria com contatos que autorizaram receber
-              comunicações. Sem custo adicional por lead.
+            <h3 className="mt-2 text-[22px] sm:text-[26px] font-semibold text-white">
+              Dois custos separados. Sem surpresa.
+            </h3>
+            <p className="mt-2 text-[13.5px] text-neutral-400">
+              O <span className="text-white">disparo</span> é cobrado por mensagem enviada.
+              Os <span className="text-white">leads</span> só entram se você não tiver base própria.
             </p>
           </div>
-          <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.05] p-6">
-            <div className="text-[11px] uppercase tracking-widest text-emerald-400">
-              Fornecemos a base
+
+          <div className="grid md:grid-cols-2 gap-4">
+            {/* Preço do disparo */}
+            <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6 flex flex-col">
+              <div className="flex items-center justify-between">
+                <div className="text-[11px] uppercase tracking-widest text-emerald-400">
+                  Preço do disparo
+                </div>
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded-full px-2 py-0.5">
+                  Obrigatório
+                </span>
+              </div>
+              <div className="mt-3 text-[16px] font-semibold text-white">
+                Por mensagem enviada
+              </div>
+              <p className="mt-1 text-[13px] text-neutral-400 leading-relaxed">
+                Valor por envio conforme o volume da campanha.
+              </p>
+
+              <ul className="mt-4 divide-y divide-white/5 border-t border-white/5">
+                {TIERS.map((t) => (
+                  <li
+                    key={t.label}
+                    className="flex items-center justify-between py-2 text-[13px]"
+                  >
+                    <span className="text-neutral-300">{t.label}</span>
+                    <span className="font-semibold text-white tabular-nums">
+                      {formatBRL(t.price)}
+                      <span className="text-neutral-500 font-normal"> /envio</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div className="mt-2 text-[16px] font-semibold text-white">
-              Precisa dos leads? Cuidamos disso.
+
+            {/* Preço dos leads */}
+            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 flex flex-col">
+              <div className="flex items-center justify-between">
+                <div className="text-[11px] uppercase tracking-widest text-neutral-500">
+                  Preço dos leads
+                </div>
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 bg-white/[0.04] border border-white/10 rounded-full px-2 py-0.5">
+                  Opcional
+                </span>
+              </div>
+              <div className="mt-3 text-[16px] font-semibold text-white">
+                Só se você não tiver base
+              </div>
+              <p className="mt-1 text-[13px] text-neutral-400 leading-relaxed">
+                Fornecemos contatos segmentados por cidade e segmento.
+              </p>
+
+              <div className="mt-4 rounded-xl border border-white/[0.06] bg-black/20 p-4">
+                <div className="text-[12px] text-neutral-500">Contato segmentado</div>
+                <div className="mt-1 text-[26px] font-semibold text-white tabular-nums leading-none">
+                  {formatBRL(LEADS_PRICE)}
+                  <span className="text-[13px] text-neutral-500 font-normal"> /contato</span>
+                </div>
+                <div className="mt-3 text-[12px] text-neutral-400 leading-relaxed">
+                  Somado ao preço do disparo. Sujeito à análise de segmentação e disponibilidade.
+                </div>
+              </div>
+
+              <div className="mt-4 text-[12.5px] text-neutral-400">
+                Já tem base própria?{" "}
+                <span className="text-emerald-400 font-medium">R$ 0,00 em leads.</span>
+              </div>
             </div>
-            <p className="mt-2 text-[14px] leading-relaxed text-neutral-300">
-              Fornecimento de leads segmentados por{" "}
-              <span className="font-semibold text-white">R$ 0,09 por contato</span>{" "}
-              adicionais ao valor do disparo. Disponibilidade e segmentação
-              sujeitas à análise.
-            </p>
+          </div>
+
+          {/* Resumo comparativo */}
+          <div className="mt-5 rounded-2xl border border-white/[0.08] bg-[#111317] overflow-hidden">
+            <div className="px-5 py-3 border-b border-white/5 text-[11px] uppercase tracking-widest text-neutral-500">
+              Comparativo — 50.000 contatos
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-white/5">
+              <div className="p-5">
+                <div className="text-[12px] text-neutral-500">Com base própria</div>
+                <div className="mt-1 text-[20px] font-semibold text-white tabular-nums">
+                  {formatBRL(50_000 * 0.22)}
+                </div>
+                <div className="mt-1 text-[11.5px] text-neutral-500">
+                  50k × R$ 0,22 (disparo) + R$ 0,00 (leads)
+                </div>
+              </div>
+              <div className="p-5">
+                <div className="text-[12px] text-neutral-500">Com leads fornecidos</div>
+                <div className="mt-1 text-[20px] font-semibold text-white tabular-nums">
+                  {formatBRL(50_000 * (0.22 + LEADS_PRICE))}
+                </div>
+                <div className="mt-1 text-[11.5px] text-neutral-500">
+                  50k × R$ 0,22 + 50k × R$ 0,09
+                </div>
+              </div>
+              <div className="p-5 bg-emerald-500/[0.04]">
+                <div className="text-[12px] text-emerald-400/80">Diferença</div>
+                <div className="mt-1 text-[20px] font-semibold text-emerald-400 tabular-nums">
+                  + {formatBRL(50_000 * LEADS_PRICE)}
+                </div>
+                <div className="mt-1 text-[11.5px] text-neutral-500">
+                  Custo adicional apenas dos leads
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1288,203 +1379,192 @@ function SimulatorSection() {
           </ul>
         </div>
 
-        <div className="mt-12 grid md:grid-cols-5 gap-4">
-              {/* Controls */}
-              <div className="md:col-span-3 rounded-2xl border border-white/8 bg-[#111317] p-5 sm:p-6">
-                <div className="text-[11px] uppercase tracking-widest text-neutral-500">
-                  Volume da base
-                </div>
-                <div className="mt-2 flex items-end justify-between gap-3">
-                  <div>
-                    <div className="text-[28px] sm:text-[32px] font-semibold text-white tabular-nums leading-none">
-                      {formatInt(volume)}
-                    </div>
-                    <div className="text-[12px] text-neutral-500 mt-1">
-                      contatos
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() =>
-                        onPickPreset(Math.max(2_000, volume - (volume > 10_000 ? 10_000 : 1_000)))
-                      }
-                      className="h-9 w-9 grid place-items-center rounded-md border border-white/8 bg-white/[0.02] text-neutral-300 hover:bg-white/[0.06]"
-                      aria-label="Diminuir"
-                    >
-                      <Minus className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() =>
-                        onPickPreset(Math.min(1_000_000, volume + (volume >= 10_000 ? 10_000 : 1_000)))
-                      }
-                      className="h-9 w-9 grid place-items-center rounded-md border border-white/8 bg-white/[0.02] text-neutral-300 hover:bg-white/[0.06]"
-                      aria-label="Aumentar"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
+        <div className="mt-12 max-w-3xl mx-auto">
+          <div className="rounded-2xl border border-white/8 bg-[#111317] p-5 sm:p-7">
+            {/* Passo 1 — Volume */}
+            <div className="flex items-center justify-between gap-3">
+              <label
+                htmlFor="sim-volume"
+                className="text-[11px] uppercase tracking-widest text-neutral-500"
+              >
+                1. Volume da campanha
+              </label>
+              <span className="text-[11px] text-neutral-500">
+                Mínimo 2.000 · Máximo 1.000.000
+              </span>
+            </div>
 
+            <div className="mt-2 flex items-stretch gap-2">
+              <div className="relative flex-1">
                 <input
-                  type="range"
-                  min={2_000}
-                  max={1_000_000}
-                  step={1_000}
-                  value={volume}
-                  onChange={(e) => onPickPreset(Number(e.target.value))}
-                  className="mt-5 w-full accent-emerald-500"
-                  aria-label="Volume de contatos"
+                  id="sim-volume"
+                  type="text"
+                  inputMode="numeric"
+                  value={formatInt(volume)}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, "");
+                    const n = digits ? Number(digits) : 0;
+                    onPickPreset(Math.min(1_000_000, n));
+                  }}
+                  onBlur={() => {
+                    if (volume < 2_000) onPickPreset(2_000);
+                  }}
+                  className={`w-full rounded-xl bg-black/30 border px-4 py-3 text-[24px] sm:text-[28px] font-semibold text-white tabular-nums outline-none transition-colors ${
+                    volume < 2_000
+                      ? "border-amber-500/50 focus:border-amber-400"
+                      : "border-white/10 focus:border-emerald-500/60"
+                  }`}
+                  aria-invalid={volume < 2_000}
                 />
-                <div className="mt-1 flex justify-between text-[11px] text-neutral-500">
-                  <span>2k</span>
-                  <span>250k</span>
-                  <span>1M</span>
-                </div>
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-neutral-500">
+                  contatos
+                </span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <button
+                  onClick={() =>
+                    onPickPreset(
+                      Math.max(2_000, volume - (volume > 10_000 ? 10_000 : 1_000))
+                    )
+                  }
+                  className="h-1/2 w-10 grid place-items-center rounded-md border border-white/10 bg-white/[0.02] text-neutral-300 hover:bg-white/[0.06]"
+                  aria-label="Diminuir"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() =>
+                    onPickPreset(
+                      Math.min(1_000_000, volume + (volume >= 10_000 ? 10_000 : 1_000))
+                    )
+                  }
+                  className="h-1/2 w-10 grid place-items-center rounded-md border border-white/10 bg-white/[0.02] text-neutral-300 hover:bg-white/[0.06]"
+                  aria-label="Aumentar"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
 
-                <div className="mt-5">
-                  <div className="text-[11px] uppercase tracking-widest text-neutral-500 mb-2">
-                    Atalhos
+            {volume < 2_000 && (
+              <p className="mt-2 text-[12px] text-amber-400">
+                Volume mínimo para simulação é 2.000 contatos.
+              </p>
+            )}
+
+            <input
+              type="range"
+              min={2_000}
+              max={1_000_000}
+              step={1_000}
+              value={Math.max(2_000, volume)}
+              onChange={(e) => onPickPreset(Number(e.target.value))}
+              className="mt-4 w-full accent-emerald-500"
+              aria-label="Volume de contatos"
+            />
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {PRESETS.map((p) => {
+                const active = p === volume;
+                return (
+                  <button
+                    key={p}
+                    onClick={() => onPickPreset(p)}
+                    className={`rounded-full px-3 py-1 text-[12px] font-medium transition-colors border ${
+                      active
+                        ? "bg-emerald-500 text-neutral-950 border-emerald-500"
+                        : "bg-white/[0.02] text-neutral-300 border-white/10 hover:bg-white/[0.06]"
+                    }`}
+                  >
+                    {p >= 1_000_000 ? `${p / 1_000_000}M` : `${p / 1_000}k`}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Passo 2 — Base */}
+            <div className="mt-7">
+              <div className="text-[11px] uppercase tracking-widest text-neutral-500 mb-2">
+                2. Você tem a base?
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: "own" as LeadsSource, t: "Sim, é minha", d: "Sem custo de leads" },
+                  { id: "provided" as LeadsSource, t: "Não, forneçam", d: `+ ${formatBRL(LEADS_PRICE)} /contato` },
+                ].map((opt) => {
+                  const active = leadsSource === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={() => setLeadsSource(opt.id)}
+                      className={`text-left rounded-xl px-3 py-2.5 border transition-colors ${
+                        active
+                          ? "border-emerald-500 bg-emerald-500/10"
+                          : "border-white/10 bg-white/[0.02] hover:bg-white/[0.06]"
+                      }`}
+                    >
+                      <div className="text-[13px] font-semibold text-white">{opt.t}</div>
+                      <div className="text-[11.5px] text-neutral-400">{opt.d}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Resumo final */}
+            <div className="mt-7 pt-6 border-t border-white/8">
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="rounded-xl border border-white/8 bg-black/20 p-4">
+                  <div className="text-[11px] uppercase tracking-widest text-neutral-500">
+                    Disparo
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {PRESETS.map((p) => {
-                      const active = p === volume;
-                      return (
-                        <button
-                          key={p}
-                          onClick={() => onPickPreset(p)}
-                          className={`rounded-md px-2 py-2 text-[13px] font-medium transition-colors border ${
-                            active
-                              ? "bg-emerald-500 text-neutral-950 border-emerald-500"
-                              : "bg-white/[0.02] text-neutral-300 border-white/8 hover:bg-white/[0.06]"
-                          }`}
-                        >
-                          {p >= 1_000_000
-                            ? `${p / 1_000_000}M`
-                            : `${p / 1_000}k`}
-                        </button>
-                      );
-                    })}
+                  <div className="mt-1 text-[18px] font-semibold text-white tabular-nums">
+                    {formatBRL(dispatchTotal)}
+                  </div>
+                  <div className="mt-0.5 text-[11.5px] text-neutral-500 tabular-nums">
+                    {formatInt(Math.max(2_000, volume))} × {formatBRL(price)}
                   </div>
                 </div>
-
-                <div className="mt-6">
-                  <div className="text-[11px] uppercase tracking-widest text-neutral-500 mb-2">
-                    Base de contatos
+                <div
+                  className={`rounded-xl border p-4 ${
+                    leadsSource === "provided"
+                      ? "border-white/8 bg-black/20"
+                      : "border-dashed border-white/8 bg-transparent"
+                  }`}
+                >
+                  <div className="text-[11px] uppercase tracking-widest text-neutral-500">
+                    Leads
                   </div>
-                  <div className="grid sm:grid-cols-2 gap-2">
-                    {[
-                      {
-                        id: "own" as LeadsSource,
-                        t: "Já tenho minha base",
-                        d: "Sem custo adicional",
-                      },
-                      {
-                        id: "provided" as LeadsSource,
-                        t: "Preciso adquirir leads",
-                        d: "+ R$ 0,09 por contato",
-                      },
-                    ].map((opt) => {
-                      const active = leadsSource === opt.id;
-                      return (
-                        <button
-                          key={opt.id}
-                          onClick={() => setLeadsSource(opt.id)}
-                          className={`text-left rounded-xl px-4 py-3 border transition-colors ${
-                            active
-                              ? "border-emerald-500 bg-emerald-500/10"
-                              : "border-white/8 bg-white/[0.02] hover:bg-white/[0.06]"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`h-4 w-4 rounded-full border grid place-items-center ${
-                                active
-                                  ? "border-emerald-400 bg-emerald-500"
-                                  : "border-white/30"
-                              }`}
-                            >
-                              {active && (
-                                <span className="h-1.5 w-1.5 rounded-full bg-neutral-950" />
-                              )}
-                            </span>
-                            <span className="text-[13.5px] font-medium text-white">
-                              {opt.t}
-                            </span>
-                          </div>
-                          <div className="mt-1 pl-6 text-[11.5px] text-neutral-400">
-                            {opt.d}
-                          </div>
-                        </button>
-                      );
-                    })}
+                  <div
+                    className={`mt-1 text-[18px] font-semibold tabular-nums ${
+                      leadsSource === "provided" ? "text-white" : "text-neutral-500"
+                    }`}
+                  >
+                    {leadsSource === "provided" ? formatBRL(leadsTotal) : "Não incluso"}
                   </div>
-                  {leadsSource === "provided" && (
-                    <p className="mt-2 text-[11px] leading-relaxed text-emerald-300/80">
-                      Disponibilidade e segmentação dos leads sujeitas à
-                      análise.
-                    </p>
-                  )}
-                </div>
-
-                <div className="mt-5 rounded-xl border border-white/6 bg-white/[0.02] p-4 text-[12px] text-neutral-400 leading-relaxed">
-                  {leadsSource === "own"
-                    ? "Sua base deve ser própria e composta por contatos que esperam ou autorizaram receber comunicações."
-                    : "Fornecemos leads segmentados conforme seu público-alvo. A entrega da base depende de análise prévia."}
+                  <div className="mt-0.5 text-[11.5px] text-neutral-500 tabular-nums">
+                    {leadsSource === "provided"
+                      ? `${formatInt(Math.max(2_000, volume))} × ${formatBRL(LEADS_PRICE)}`
+                      : "Você usa sua base"}
+                  </div>
                 </div>
               </div>
 
-              {/* Summary */}
-              <div className="md:col-span-2 rounded-2xl border border-white/8 bg-[#111317] p-5 sm:p-6 flex flex-col">
-                <div className="text-[11px] uppercase tracking-widest text-neutral-500">
-                  Resumo estimado
-                </div>
-                <div className="mt-3">
-                  <div className="text-[12px] text-neutral-500">Faixa</div>
-                  <div className="text-[14px] text-white">{tier.label}</div>
-                </div>
-                <div className="mt-4">
-                  <div className="text-[12px] text-neutral-500">
-                    Valor por envio
+              <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] p-4 flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-[11px] uppercase tracking-widest text-emerald-400/80">
+                    Investimento estimado
                   </div>
-                  <div className="text-[22px] font-semibold text-emerald-400 tabular-nums leading-none mt-1">
-                    {formatBRL(price)}
-                  </div>
-                </div>
-
-                <div className="mt-5 pt-5 border-t border-white/5 space-y-2.5">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className="text-[12px] text-neutral-400">
-                      Disparos
-                    </span>
-                    <span className="text-[14px] text-white tabular-nums">
-                      {formatBRL(dispatchTotal)}
-                    </span>
-                  </div>
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className="text-[12px] text-neutral-400">
-                      Leads {leadsSource === "provided" ? "(fornecidos)" : ""}
-                    </span>
-                    <span
-                      className={`text-[14px] tabular-nums ${leadsSource === "provided" ? "text-white" : "text-neutral-500"}`}
-                    >
-                      {leadsSource === "provided"
-                        ? formatBRL(leadsTotal)
-                        : "Inclusos"}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-4 pt-4 border-t border-white/10">
-                  <div className="text-[12px] text-neutral-500">
-                    Investimento total estimado
-                  </div>
-                  <div className="text-[26px] font-semibold text-white tabular-nums leading-none mt-1">
+                  <div className="mt-1 text-[28px] sm:text-[32px] font-semibold text-white tabular-nums leading-none">
                     {formatBRL(grandTotal)}
                   </div>
+                  <div className="mt-1 text-[11.5px] text-neutral-400">
+                    Faixa: {tier.label} · {formatBRL(price)} por envio
+                  </div>
                 </div>
-
                 <button
+                  disabled={volume < 2_000}
                   onClick={() => {
+                    if (volume < 2_000) return;
                     trackPixel("StartForm");
                     const sourceLabel =
                       leadsSource === "provided"
@@ -1494,30 +1574,33 @@ function SimulatorSection() {
                       `Olá! Quero simular uma campanha na Disparos FR.\n\n• Volume: ${volume.toLocaleString("pt-BR")} disparos\n• Base: ${sourceLabel}\n• Investimento estimado: ${formatBRL(grandTotal)}\n\nPode me passar os próximos passos?`
                     );
                   }}
-                  className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-[14px] font-medium text-neutral-950 hover:bg-emerald-400 transition-colors"
+                  className="shrink-0 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-[13.5px] font-semibold text-neutral-950 hover:bg-emerald-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  Simular minha campanha
+                  <span className="hidden sm:inline">Falar no WhatsApp</span>
+                  <span className="sm:hidden">WhatsApp</span>
                   <ArrowRight className="h-4 w-4" />
                 </button>
-                <p className="mt-3 text-[11px] leading-relaxed text-neutral-500">
-                  Simulação gratuita e sem compromisso. Nenhum pagamento é
-                  solicitado agora.
-                </p>
               </div>
-            </div>
 
-            {showForm && (
-              <div id="formulario" className="mt-8">
-                <QualifyForm
-                  initialVolume={volume}
-                  total={grandTotal}
-                  leadsSource={leadsSource}
-                  dispatchTotal={dispatchTotal}
-                  leadsTotal={leadsTotal}
-                />
-              </div>
+              <p className="mt-3 text-[11px] leading-relaxed text-neutral-500">
+                Simulação gratuita, sem compromisso. Proposta final considera template, segmentação e estrutura.
+              </p>
+            </div>
+          </div>
+
+          {showForm && (
+            <div id="formulario" className="mt-8">
+              <QualifyForm
+                initialVolume={volume}
+                total={grandTotal}
+                leadsSource={leadsSource}
+                dispatchTotal={dispatchTotal}
+                leadsTotal={leadsTotal}
+              />
+            </div>
           )}
         </div>
+      </div>
     </section>
   );
 }
