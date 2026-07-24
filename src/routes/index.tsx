@@ -518,22 +518,18 @@ function Hero() {
             Para bases a partir de 2 mil contatos
           </div>
           <h1 className="mt-5 text-[34px] sm:text-5xl lg:text-[56px] font-semibold tracking-tight leading-[1.05] text-white">
-            Envie campanhas para sua base pelo{" "}
-            <span className="whitespace-nowrap">WhatsApp Oficial</span>
+            Envie campanhas para sua base via{" "}
+            <span className="text-emerald-400">API Oficial do WhatsApp</span>
           </h1>
-          <p className="mt-4 text-lg">
-            <span className="font-semibold text-emerald-400">
-              A partir de R$ 0,13 por envio
-            </span>
+          <p className="mt-5 text-[15px] leading-relaxed text-neutral-300 max-w-lg">
+            Atendemos campanhas a partir de <span className="font-semibold text-white">2 mil contatos</span>.
+            Valores de <span className="font-semibold text-emerald-400">R$ 0,13 por envio</span> para volumes acima de 250 mil contatos.
           </p>
-          <p className="mt-1 text-[13px] text-neutral-500">
-            Para volumes acima de 250 mil contatos.
-          </p>
-          <p className="mt-4 text-[15px] leading-relaxed text-neutral-300 max-w-lg">
-            Você envia a base. Nós configuramos a campanha e você acompanha tudo em tempo real.
+          <p className="mt-3 text-[14px] leading-relaxed text-neutral-400 max-w-lg">
+            Você envia a base ou solicita os leads. Nossa equipe configura, você aprova e acompanha tudo pelo painel.
           </p>
 
-          <div className="mt-7 flex flex-col sm:flex-row gap-3">
+          <div className="mt-7 flex flex-col sm:flex-row sm:items-center gap-3">
             <button
               onClick={() => {
                 trackPixel("ClickPrimaryCTA", { source: "hero" });
@@ -548,9 +544,10 @@ function Hero() {
             </button>
             <button
               onClick={() => scrollToId("como-funciona")}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-6 py-3.5 text-[15px] font-medium text-neutral-100 hover:bg-white/[0.05] transition-colors"
+              className="inline-flex items-center gap-1.5 text-[14px] font-medium text-neutral-300 hover:text-white transition-colors sm:px-2"
             >
               Ver como funciona
+              <ArrowRight className="h-3.5 w-3.5" />
             </button>
           </div>
 
