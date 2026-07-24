@@ -39,13 +39,14 @@ function trackPixel(event: PixelEvent, data?: Record<string, unknown>) {
 // ============ PRICING ============
 // Faixas comerciais reais — o preço de R$0,13 é exclusivo para 250k+ contatos.
 const TIERS = [
+  { min: 2_000, max: 9_999, price: 0.32, label: "2 mil a 10 mil" },
   { min: 10_000, max: 49_999, price: 0.27, label: "10 mil a 50 mil" },
   { min: 50_000, max: 99_999, price: 0.22, label: "50 mil a 100 mil" },
   { min: 100_000, max: 249_999, price: 0.19, label: "100 mil a 250 mil" },
   { min: 250_000, max: Infinity, price: 0.13, label: "Acima de 250 mil" },
 ] as const;
 
-const PRESETS = [10_000, 25_000, 50_000, 100_000, 250_000, 500_000];
+const PRESETS = [2_000, 10_000, 50_000, 100_000, 250_000, 500_000];
 
 function priceFor(volume: number) {
   const tier = TIERS.find((t) => volume >= t.min && volume <= t.max) ?? TIERS[0];
@@ -112,7 +113,7 @@ export const Route = createFileRoute("/")({
     meta: [
       {
         title:
-          "Disparos FR — Campanhas de WhatsApp pela API Oficial para bases 10k+",
+          "Disparos FR — Campanhas de WhatsApp pela API Oficial para bases 2k+",
       },
       {
         name: "description",
@@ -609,7 +610,7 @@ function MiniRow({
 // ============ METRICS strip ============
 function Metrics() {
   const items = [
-    { n: "10k – 500k+", t: "Contatos por campanha" },
+    { n: "2k – 500k+", t: "Contatos por campanha" },
     { n: "API Oficial", t: "WhatsApp Business Platform" },
     { n: "Tempo real", t: "Acompanhamento de envios" },
     { n: "Atendimento", t: "Especialista dedicado" },
@@ -791,7 +792,7 @@ function SimulatorSection() {
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() =>
-                        onPickPreset(Math.max(10_000, volume - 10_000))
+                        onPickPreset(Math.max(2_000, volume - (volume > 10_000 ? 10_000 : 1_000)))
                       }
                       className="h-9 w-9 grid place-items-center rounded-md border border-white/8 bg-white/[0.02] text-neutral-300 hover:bg-white/[0.06]"
                       aria-label="Diminuir"
@@ -800,7 +801,7 @@ function SimulatorSection() {
                     </button>
                     <button
                       onClick={() =>
-                        onPickPreset(Math.min(1_000_000, volume + 10_000))
+                        onPickPreset(Math.min(1_000_000, volume + (volume >= 10_000 ? 10_000 : 1_000)))
                       }
                       className="h-9 w-9 grid place-items-center rounded-md border border-white/8 bg-white/[0.02] text-neutral-300 hover:bg-white/[0.06]"
                       aria-label="Aumentar"
@@ -812,16 +813,16 @@ function SimulatorSection() {
 
                 <input
                   type="range"
-                  min={10_000}
+                  min={2_000}
                   max={1_000_000}
-                  step={5_000}
+                  step={1_000}
                   value={volume}
                   onChange={(e) => onPickPreset(Number(e.target.value))}
                   className="mt-5 w-full accent-emerald-500"
                   aria-label="Volume de contatos"
                 />
                 <div className="mt-1 flex justify-between text-[11px] text-neutral-500">
-                  <span>10k</span>
+                  <span>2k</span>
                   <span>250k</span>
                   <span>1M</span>
                 </div>
