@@ -1460,7 +1460,7 @@ function FAQ() {
   const items: [string, string][] = [
     [
       "Existe valor mínimo de campanha?",
-      "Trabalhamos com operações a partir de 10 mil contatos. Volumes menores podem ser avaliados sob consulta.",
+      "Trabalhamos com operações a partir de 2 mil contatos. Bases menores podem ser avaliadas sob consulta.",
     ],
     [
       "O preço de R$ 0,13 vale para qualquer volume?",
