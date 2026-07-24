@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import {
   listMyNumbers, listMyTemplates, getMyBalance, createClientCampaign, startClientCampaign,
 } from "@/lib/client-panel.functions";
@@ -142,6 +143,28 @@ function defaultDispatch(preset: DispatchPreset = "economico"): DispatchConfig {
   };
 }
 
+// ─────────────────────────────────────────────────────────────────
+// Fluxo de resposta — configuração salva em wa_campaigns.response_flow_*
+// Aplicado pelo webhook quando o contato responder dentro da janela 24h.
+// ─────────────────────────────────────────────────────────────────
+export type ResponseFlowConfig = {
+  enabled: boolean;
+  auto_reply_text: string;
+  assign_status: "open" | "waiting" | "in_progress" | "resolved" | "archived" | "none";
+  tags: string[];
+  cooldown_minutes: number;
+};
+
+function defaultResponseFlow(): ResponseFlowConfig {
+  return {
+    enabled: false,
+    auto_reply_text: "",
+    assign_status: "in_progress",
+    tags: [],
+    cooldown_minutes: 60,
+  };
+}
+
 export interface CampaignWizardProps {
   workspaceId: string;
   event_id?: string;
@@ -175,6 +198,7 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   const [templateId, setTemplateId] = useState<string>("");
   const [contactSel, setContactSel] = useState<ContactSelValue | null>(null);
   const [dispatch, setDispatch] = useState<DispatchConfig>(defaultDispatch("economico"));
+  const [responseFlow, setResponseFlow] = useState<ResponseFlowConfig>(defaultResponseFlow());
   const [mode, setMode] = useState<Mode>(scheduled_for ? "schedule" : "now");
   const [scheduledAt, setScheduledAt] = useState<string>(toLocal(scheduled_for));
   const [timezone, setTimezone] = useState<string>(Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo");
@@ -240,6 +264,7 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
       if (d.templateId) setTemplateId(d.templateId);
       if (d.contactSel) setContactSel(d.contactSel);
       if (d.dispatch && typeof d.dispatch === "object") setDispatch({ ...defaultDispatch(), ...d.dispatch });
+      if (d.responseFlow && typeof d.responseFlow === "object") setResponseFlow({ ...defaultResponseFlow(), ...d.responseFlow });
       if (d.mode) setMode(d.mode);
       if (d.scheduledAt) setScheduledAt(d.scheduledAt);
       if (d.timezone) setTimezone(d.timezone);
@@ -258,13 +283,13 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
     const t = setTimeout(() => {
       try {
         localStorage.setItem(DRAFT_KEY, JSON.stringify({
-          name, connectionId, templateId, contactSel, dispatch, mode, scheduledAt, timezone, step, maxReached,
+          name, connectionId, templateId, contactSel, dispatch, responseFlow, mode, scheduledAt, timezone, step, maxReached,
           savedAt: Date.now(),
         }));
       } catch { /* ignore */ }
     }, 400);
     return () => clearTimeout(t);
-  }, [name, connectionId, templateId, contactSel, dispatch, mode, scheduledAt, timezone, step, maxReached, campaignId, DRAFT_KEY]);
+  }, [name, connectionId, templateId, contactSel, dispatch, responseFlow, mode, scheduledAt, timezone, step, maxReached, campaignId, DRAFT_KEY]);
 
   // -------- Conflict check --------
   useEffect(() => {
@@ -583,6 +608,13 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
           button_url_mapping: btnVars,
           header_media_url: headerMediaUrl || null,
           scheduled_at: finalMode === "schedule" ? new Date(scheduledAt).toISOString() : null,
+          response_flow_enabled: responseFlow.enabled,
+          response_flow_config: responseFlow.enabled ? {
+            auto_reply_text: responseFlow.auto_reply_text.trim() || null,
+            assign_status: responseFlow.assign_status === "none" ? null : responseFlow.assign_status,
+            tags: responseFlow.tags,
+            cooldown_minutes: responseFlow.cooldown_minutes,
+          } : null,
           ...dispatchPayload,
         },
       });
@@ -974,6 +1006,10 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
 
                 {/* Config — Rate limiter (Passo 02) */}
                 <DispatchConfigCard value={dispatch} onChange={setDispatch} />
+
+                {/* Fluxo de resposta — aplica-se ao webhook quando o contato responde na janela 24h */}
+                <ResponseFlowCard value={responseFlow} onChange={setResponseFlow} />
+
               </div>
 
               <div>
@@ -1730,6 +1766,114 @@ function NumberField({
           onClick={() => onChange(Math.min(max, value + step))}>+</Button>
       </div>
       {hint && <div className="mt-1 text-[11px] text-muted-foreground">{hint}</div>}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ResponseFlowCard — configura a auto-resposta quando o contato
+// responder à campanha (dentro da janela 24h). Persistido em
+// wa_campaigns.response_flow_enabled + response_flow_config (jsonb).
+// Aplicado pelo webhook em src/routes/api/public/whatsapp/webhook.tsx.
+// ─────────────────────────────────────────────────────────────────
+function ResponseFlowCard({
+  value,
+  onChange,
+}: {
+  value: ResponseFlowConfig;
+  onChange: (v: ResponseFlowConfig) => void;
+}) {
+  const [tagsInput, setTagsInput] = useState(value.tags.join(", "));
+  useEffect(() => {
+    setTagsInput(value.tags.join(", "));
+  }, [value.tags]);
+  const patch = (p: Partial<ResponseFlowConfig>) => onChange({ ...value, ...p });
+
+  return (
+    <div className="rounded-lg border bg-card">
+      <div className="flex items-center justify-between border-b px-3 py-2">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <MessageSquareText className="h-4 w-4" />
+          Fluxo de resposta
+          {value.enabled && <Badge variant="secondary" className="text-[10px]">Ativo</Badge>}
+        </div>
+        <Switch checked={value.enabled} onCheckedChange={(v) => patch({ enabled: v })} />
+      </div>
+
+      {value.enabled ? (
+        <div className="space-y-4 p-3">
+          <div>
+            <Label className="mb-1 block text-xs">Mensagem automática ao responder</Label>
+            <Textarea
+              rows={3}
+              maxLength={1024}
+              placeholder="Olá {{nome}}! Recebemos sua mensagem e um atendente responderá em breve."
+              value={value.auto_reply_text}
+              onChange={(e) => patch({ auto_reply_text: e.target.value })}
+            />
+            <div className="mt-1 text-[11px] text-muted-foreground">
+              Enviada uma vez por conversa (respeitando o cooldown). Deixe em branco para não enviar texto.
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label className="mb-1 block text-xs">Status da conversa</Label>
+              <Select
+                value={value.assign_status}
+                onValueChange={(v) => patch({ assign_status: v as ResponseFlowConfig["assign_status"] })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Manter atual</SelectItem>
+                  <SelectItem value="open">Aberto</SelectItem>
+                  <SelectItem value="waiting">Aguardando</SelectItem>
+                  <SelectItem value="in_progress">Em atendimento</SelectItem>
+                  <SelectItem value="resolved">Resolvido</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="mb-1 block text-xs">Cooldown (minutos)</Label>
+              <Input
+                type="number"
+                min={0}
+                max={10080}
+                value={value.cooldown_minutes}
+                onChange={(e) => patch({ cooldown_minutes: Math.max(0, Number(e.target.value) || 0) })}
+              />
+              <div className="mt-1 text-[11px] text-muted-foreground">
+                Tempo mínimo entre auto-respostas na mesma conversa.
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <Label className="mb-1 block text-xs">Tags aplicadas à conversa</Label>
+            <Input
+              placeholder="lead, quente, política"
+              value={tagsInput}
+              onChange={(e) => setTagsInput(e.target.value)}
+              onBlur={() => {
+                const tags = tagsInput
+                  .split(",")
+                  .map((t) => t.trim())
+                  .filter(Boolean)
+                  .slice(0, 10);
+                patch({ tags });
+              }}
+            />
+            <div className="mt-1 text-[11px] text-muted-foreground">
+              Separadas por vírgula. Adicionadas automaticamente na conversa quando o contato responder.
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="p-3 text-xs text-muted-foreground">
+          Ative para responder automaticamente ao primeiro retorno do contato e marcar a conversa no módulo de Atendimento.
+        </div>
+      )}
     </div>
   );
 }

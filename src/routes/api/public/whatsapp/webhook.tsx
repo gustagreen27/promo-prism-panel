@@ -713,4 +713,129 @@ async function upsertConversationFromInbound(
   if (message?.context?.id) msgRow.context_wamid = String(message.context.id);
 
   await supabaseAdmin.from("wa_conversation_messages").insert(msgRow).select("id").maybeSingle();
+
+  // ── Fluxo de resposta configurado na campanha (auto-reply na janela 24h) ──
+  if (campaignId) {
+    try {
+      await applyResponseFlow(supabaseAdmin, {
+        workspaceId,
+        conversationId,
+        connectionId,
+        phoneNumberId,
+        from,
+        campaignId,
+      });
+    } catch (e: any) {
+      await supabaseAdmin.from("whatsapp_webhook_logs").insert({
+        connection_id: connectionId,
+        event_type: "response_flow_error",
+        processed: false,
+        error: e?.message ?? "response flow failed",
+        payload: { conversation_id: conversationId, campaign_id: campaignId },
+      });
+    }
+  }
 }
+
+// ────────────────────────────────────────────────────────────────────
+// applyResponseFlow — lê wa_campaigns.response_flow_* e, se habilitado,
+// enfileira uma auto-resposta em wa_service_queue e aplica status/tags
+// na conversa. Respeita cooldown em metadata.last_auto_reply_at.
+// ────────────────────────────────────────────────────────────────────
+async function applyResponseFlow(
+  supabaseAdmin: any,
+  args: {
+    workspaceId: string;
+    conversationId: string;
+    connectionId: string | null;
+    phoneNumberId: string | null;
+    from: string;
+    campaignId: string;
+  },
+) {
+  const { workspaceId, conversationId, connectionId, phoneNumberId, from, campaignId } = args;
+
+  const { data: camp } = await supabaseAdmin
+    .from("wa_campaigns")
+    .select("id, response_flow_enabled, response_flow_config")
+    .eq("id", campaignId)
+    .maybeSingle();
+  if (!camp?.response_flow_enabled) return;
+  const cfg = (camp.response_flow_config ?? {}) as {
+    auto_reply_text?: string | null;
+    assign_status?: string | null;
+    tags?: string[] | null;
+    cooldown_minutes?: number | null;
+  };
+
+  const { data: conv } = await supabaseAdmin
+    .from("wa_conversations")
+    .select("id, tags, metadata, conversation_status")
+    .eq("id", conversationId)
+    .maybeSingle();
+  if (!conv) return;
+
+  const meta = (conv.metadata ?? {}) as Record<string, any>;
+  const lastAutoAt = meta.last_auto_reply_at ? Date.parse(meta.last_auto_reply_at) : 0;
+  const cooldownMs = Math.max(0, (cfg.cooldown_minutes ?? 60)) * 60 * 1000;
+  const now = Date.now();
+  const cooldownOk = !lastAutoAt || now - lastAutoAt >= cooldownMs;
+
+  // Aplica tags + status independente do cooldown.
+  const patch: Record<string, any> = {};
+  if (cfg.assign_status) patch.conversation_status = cfg.assign_status;
+  if (Array.isArray(cfg.tags) && cfg.tags.length) {
+    const existing = new Set<string>((conv.tags ?? []) as string[]);
+    for (const t of cfg.tags) if (t) existing.add(String(t));
+    patch.tags = Array.from(existing).slice(0, 20);
+  }
+  if (Object.keys(patch).length) {
+    await supabaseAdmin.from("wa_conversations").update(patch).eq("id", conversationId);
+  }
+
+  const text = (cfg.auto_reply_text ?? "").trim();
+  if (!text || !cooldownOk || !connectionId || !phoneNumberId) return;
+
+  const idem = `flow:${conversationId}:${Math.floor(now / cooldownMs || 1)}`;
+  const { data: msg } = await supabaseAdmin
+    .from("wa_conversation_messages")
+    .insert({
+      workspace_id: workspaceId,
+      conversation_id: conversationId,
+      direction: "outbound",
+      origin: "auto_flow",
+      message_type: "text",
+      body: text,
+      status: "queued",
+      payload: { kind: "text", body: text, source: "response_flow" },
+    })
+    .select("id")
+    .single();
+
+  const nowIso = new Date(now).toISOString();
+  await supabaseAdmin.from("wa_service_queue").insert({
+    workspace_id: workspaceId,
+    conversation_id: conversationId,
+    connection_id: connectionId,
+    phone_number_id: phoneNumberId,
+    contact_phone: from,
+    message_id: msg?.id ?? null,
+    payload: { kind: "text", body: text, source: "response_flow" },
+    idempotency_key: idem,
+    priority: 2,
+    origin: "auto_flow",
+    scheduled_at: nowIso,
+    next_attempt_at: nowIso,
+  });
+
+  await supabaseAdmin
+    .from("wa_conversations")
+    .update({
+      last_outbound_at: nowIso,
+      last_message_at: nowIso,
+      last_message_preview: text.slice(0, 500),
+      metadata: { ...meta, last_auto_reply_at: nowIso },
+    })
+    .eq("id", conversationId);
+}
+
