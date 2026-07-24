@@ -2040,7 +2040,7 @@ function CampaignInAction() {
       title: "Campanha em execução",
       desc: "Acompanhe enviados, entregues, falhas e progresso enquanto a campanha acontece.",
       src: SCREENSHOTS.campaignRunning,
-      label: "Painel com campanha rodando ao vivo",
+      label: "Painel Disparos FR durante uma campanha",
       alt: "Painel do Disparos FR com enviados, entregues, falhas e progresso em tempo real",
     },
   ];
