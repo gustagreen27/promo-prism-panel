@@ -693,24 +693,48 @@ function DispatchCard({
     onError: (e) => toast.error((e as Error).message),
   });
 
+  const modeLabel =
+    mode === "auto" ? "Progressão automática" : mode === "fixed" ? "Valores fixos" : "Dados reais";
+  const modeDot =
+    mode === "auto" ? "bg-sky-500" : mode === "fixed" ? "bg-violet-500" : "bg-muted-foreground/50";
+
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle className="text-base">{wa.name || "Sem nome"}</CardTitle>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline">Real: {wa.status}</Badge>
-            <div className="flex items-center gap-1.5">
-              <Switch checked={enabled} onCheckedChange={setEnabled} />
-              <span className="text-xs">Personalizar</span>
+    <Card
+      className={
+        "overflow-hidden border shadow-sm transition-colors " +
+        (enabled ? "border-primary/30 ring-1 ring-primary/10" : "")
+      }
+    >
+      <CardHeader className="border-b bg-muted/30 pb-3">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex sm:flex-wrap sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className={"h-2.5 w-2.5 shrink-0 rounded-full " + modeDot} />
+            <div className="min-w-0">
+              <CardTitle className="truncate text-base">{wa.name || "Sem nome"}</CardTitle>
+              <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                <span className="inline-flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
+                  Real: {wa.status}
+                </span>
+                <span className="text-muted-foreground/40">·</span>
+                <span>{modeLabel}</span>
+              </div>
             </div>
           </div>
+          <label className="flex shrink-0 items-center gap-2 rounded-full border bg-background px-2.5 py-1">
+            <Switch
+              checked={enabled}
+              onCheckedChange={setEnabled}
+              className="data-[state=checked]:bg-primary"
+            />
+            <span className="text-xs font-medium">Personalizar</span>
+          </label>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="grid grid-cols-3 gap-2">
-          <div>
-            <Label className="text-xs">Modo</Label>
+      <CardContent className={"space-y-4 pt-4 " + (enabled ? "" : "opacity-60")}>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div className="space-y-1">
+            <Label className="text-xs font-medium text-muted-foreground">Modo</Label>
             <Select value={mode} onValueChange={setMode}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -720,12 +744,12 @@ function DispatchCard({
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label className="text-xs">Nome público</Label>
+          <div className="space-y-1">
+            <Label className="text-xs font-medium text-muted-foreground">Nome público</Label>
             <Input value={publicName} onChange={(e) => setPublicName(e.target.value)} placeholder={wa.name ?? ""} />
           </div>
-          <div>
-            <Label className="text-xs">Status público</Label>
+          <div className="space-y-1">
+            <Label className="text-xs font-medium text-muted-foreground">Status público</Label>
             <Select value={publicStatus || "__none"} onValueChange={(v) => setPublicStatus(v === "__none" ? "" : v)}>
               <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
               <SelectContent>
@@ -736,7 +760,7 @@ function DispatchCard({
               </SelectContent>
             </Select>
             <Input
-              className="mt-1"
+              className="mt-1 h-8 text-xs"
               placeholder="ou digite personalizado"
               value={publicStatus}
               onChange={(e) => setPublicStatus(e.target.value)}
@@ -745,28 +769,33 @@ function DispatchCard({
         </div>
 
         {mode === "fixed" && (
-          <div className="rounded-md border p-3 space-y-2">
-            <div className="text-xs font-medium text-muted-foreground">Valores fixos</div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <section className="rounded-lg border bg-muted/20 p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Valores fixos
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
               <NumField label="Total" value={fTotal} onChange={setFTotal} />
               <NumField label="Enviados" value={fSent} onChange={setFSent} />
               <NumField label="Entregues" value={fDelivered} onChange={setFDelivered} />
               <NumField label="Falhas" value={fFailed} onChange={setFFailed} />
               <NumField label="Progresso %" value={fPercent} onChange={setFPercent} />
-              <div>
+              <div className="space-y-1">
                 <Label className="text-xs">Início</Label>
                 <Input type="datetime-local" value={fStarted?.slice(0, 16) ?? ""} onChange={(e) => setFStarted(e.target.value ? new Date(e.target.value).toISOString() : "")} />
               </div>
-              <div>
+              <div className="space-y-1">
                 <Label className="text-xs">ETA</Label>
                 <Input type="datetime-local" value={fEta?.slice(0, 16) ?? ""} onChange={(e) => setFEta(e.target.value ? new Date(e.target.value).toISOString() : "")} />
               </div>
-              <div>
+              <div className="space-y-1">
                 <Label className="text-xs">Velocidade (texto)</Label>
                 <Input value={fSpeed} onChange={(e) => setFSpeed(e.target.value)} placeholder="ex: 5k/min" />
               </div>
             </div>
-          </div>
+          </section>
         )}
 
         {mode === "auto" && (
@@ -789,13 +818,13 @@ function DispatchCard({
           />
         )}
 
-        <div className="flex flex-wrap items-center gap-2 border-t pt-3">
+        <div className="-mx-4 flex flex-wrap items-center gap-2 border-t bg-muted/20 px-4 py-3 sm:-mx-6 sm:px-6">
           <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
             <Save className="mr-1 h-4 w-4" /> Salvar disparo
           </Button>
           <div className="ml-auto flex items-center gap-2">
             <Select value={dupTo || "__none"} onValueChange={(v) => setDupTo(v === "__none" ? "" : v)}>
-              <SelectTrigger className="w-56"><SelectValue placeholder="Duplicar config para..." /></SelectTrigger>
+              <SelectTrigger className="w-56 h-9"><SelectValue placeholder="Duplicar config para…" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none">—</SelectItem>
                 {allWa.filter((w) => w.id !== wa.id).map((w) => (
@@ -812,6 +841,7 @@ function DispatchCard({
     </Card>
   );
 }
+
 
 function AutoSimForm({
   wa,
