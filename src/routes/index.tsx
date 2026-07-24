@@ -537,16 +537,18 @@ function Hero() {
             Para bases a partir de 2 mil contatos
           </div>
 
-          <h1 className="mt-5 text-[36px] sm:text-5xl lg:text-[56px] font-semibold tracking-tight leading-[1.05] text-white">
-            Envie campanhas para sua base via{" "}
-            <span className="relative inline-block text-emerald-400">
-              API Oficial do WhatsApp
+          <h1 className="mt-5 text-[36px] sm:text-5xl lg:text-[56px] font-semibold tracking-tight leading-[1.05] text-white max-w-[16ch]">
+            Envie campanhas para sua base pela{" "}
+            <span className="relative inline-block whitespace-nowrap text-emerald-400">
+              API Oficial
               <span
                 aria-hidden
                 className="absolute -bottom-1 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-400/50 to-transparent"
               />
-            </span>
+            </span>{" "}
+            do WhatsApp
           </h1>
+
 
           <p className="mt-6 text-[15px] sm:text-[16px] leading-relaxed text-neutral-200 max-w-lg">
             Atendemos campanhas a partir de{" "}
