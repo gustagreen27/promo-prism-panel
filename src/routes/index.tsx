@@ -2009,7 +2009,9 @@ function FinalCTA() {
               <button
                 onClick={() => {
                   trackPixel("ClickPrimaryCTA", { source: "final" });
-                  scrollToId("simulador");
+                  openWhatsApp(
+                    "Olá! Quero simular uma campanha de WhatsApp pela Disparos FR."
+                  );
                 }}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-4 text-[15px] font-semibold text-[#052e28] hover:bg-emerald-50 shadow-[0_10px_30px_-10px_rgba(255,255,255,0.4)] transition-all"
               >
