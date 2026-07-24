@@ -28,6 +28,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
+import { AttendanceSettingsDialog } from "@/components/admin/attendance-settings-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import {
@@ -151,6 +152,9 @@ function AtendimentoPage() {
         <Badge variant="secondary" className="ml-2">
           {convs.length} conversas
         </Badge>
+        <div className="ml-auto">
+          <AttendanceSettingsDialog />
+        </div>
       </div>
 
       <div className="grid flex-1 grid-cols-1 gap-3 overflow-hidden md:grid-cols-[320px_1fr_320px]">
