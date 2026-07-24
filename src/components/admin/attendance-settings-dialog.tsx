@@ -277,7 +277,7 @@ export function AttendanceSettingsDialog() {
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__none">— ninguém —</SelectItem>
-                          {agentOptions.map((a) => (
+                          {agentOptions.map((a: { value: string; label: string }) => (
                             <SelectItem key={a.value} value={a.value}>
                               {a.label}
                             </SelectItem>
