@@ -107,18 +107,23 @@ export function PublicCustomizationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
+      <DialogContent className="max-w-5xl h-[92vh] flex flex-col gap-0 p-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b bg-gradient-to-b from-muted/40 to-transparent">
+          <DialogTitle className="flex items-center gap-2 text-lg">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+              <Sparkles className="h-4 w-4" />
+            </span>
             Personalização da página pública
             {data?.settings?.enabled && (
-              <Badge variant="secondary" className="ml-2">Ativa</Badge>
+              <Badge className="ml-1 border-emerald-500/30 bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-300">
+                Ativa
+              </Badge>
             )}
           </DialogTitle>
-          <DialogDescription>
-            {campaignName} — camada de apresentação isolada, não afeta disparos reais nem métricas
-            operacionais.
+          <DialogDescription className="mt-1">
+            <span className="font-medium text-foreground">{campaignName}</span>
+            <span className="mx-1.5 text-muted-foreground/60">·</span>
+            Camada de apresentação isolada — não afeta disparos reais nem métricas operacionais.
           </DialogDescription>
         </DialogHeader>
 
@@ -127,7 +132,7 @@ export function PublicCustomizationDialog({
             Carregando...
           </div>
         ) : (
-          <div className="flex-1 min-h-0 flex flex-col gap-3">
+          <div className="flex-1 min-h-0 flex flex-col gap-4 px-6 pt-4">
             <HeaderActions
               campaignId={campaignId}
               slug={campaignSlug}
@@ -141,18 +146,23 @@ export function PublicCustomizationDialog({
             />
 
             <Tabs defaultValue="general" className="flex-1 min-h-0 flex flex-col">
-              <TabsList>
-                <TabsTrigger value="general">Métricas gerais</TabsTrigger>
-                <TabsTrigger value="dispatches">
-                  Disparos ({data.waDispatches.length})
+              <TabsList className="w-full justify-start rounded-lg bg-muted/60 p-1">
+                <TabsTrigger value="general" className="data-[state=active]:shadow-sm">
+                  Métricas gerais
+                </TabsTrigger>
+                <TabsTrigger value="dispatches" className="data-[state=active]:shadow-sm">
+                  Disparos
+                  <span className="ml-2 rounded-full bg-background/80 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    {data.waDispatches.length}
+                  </span>
                 </TabsTrigger>
               </TabsList>
-              <TabsContent value="general" className="flex-1 min-h-0">
+              <TabsContent value="general" className="flex-1 min-h-0 mt-3">
                 <ScrollArea className="h-full pr-3">
                   <GeneralTab data={data} campaignId={campaignId} onChange={invalidate} />
                 </ScrollArea>
               </TabsContent>
-              <TabsContent value="dispatches" className="flex-1 min-h-0">
+              <TabsContent value="dispatches" className="flex-1 min-h-0 mt-3">
                 <ScrollArea className="h-full pr-3">
                   <DispatchesTab data={data} campaignId={campaignId} onChange={invalidate} />
                 </ScrollArea>
@@ -161,7 +171,7 @@ export function PublicCustomizationDialog({
           </div>
         )}
 
-        <DialogFooter>
+        <DialogFooter className="border-t bg-muted/30 px-6 py-3">
           <Button variant="outline" onClick={() => refetch()}>
             <RefreshCw className="mr-1 h-4 w-4" /> Recarregar
           </Button>
@@ -208,19 +218,40 @@ function HeaderActions({
   return (
     <div
       className={
-        "flex flex-wrap items-center gap-3 rounded-md border bg-muted/30 p-3 " +
-        (attention ? "border-amber-500 ring-2 ring-amber-500/40" : "")
+        "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl border bg-card p-4 shadow-sm sm:flex sm:flex-wrap " +
+        (attention
+          ? "border-amber-500/60 ring-2 ring-amber-500/30"
+          : enabled
+            ? "border-emerald-500/30 bg-emerald-500/[0.03]"
+            : "")
       }
     >
-      <div className="flex items-center gap-2">
-        <Switch checked={enabled} onCheckedChange={(v) => toggle.mutate(v)} />
-        <span className="text-sm font-medium flex items-center gap-1">
-          {attention && <AlertTriangle className="h-4 w-4 text-amber-500" />}
-          {enabled ? "Personalização ativa" : "Personalização desativada"}
-        </span>
+      <div className="flex min-w-0 items-center gap-3">
+        <Switch
+          checked={enabled}
+          onCheckedChange={(v) => toggle.mutate(v)}
+          className="data-[state=checked]:bg-emerald-500"
+        />
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 text-sm font-semibold">
+            {attention && <AlertTriangle className="h-4 w-4 text-amber-500" />}
+            <span
+              className={
+                "h-2 w-2 rounded-full " +
+                (enabled ? "bg-emerald-500 shadow-[0_0_0_3px] shadow-emerald-500/20" : "bg-muted-foreground/40")
+              }
+            />
+            {enabled ? "Personalização ativa" : "Personalização desativada"}
+          </div>
+          <p className="truncate text-[11px] text-muted-foreground">
+            {enabled
+              ? "A página pública está exibindo os valores personalizados."
+              : "A página pública está exibindo apenas dados reais."}
+          </p>
+        </div>
       </div>
 
-      <div className="ml-auto flex items-center gap-2">
+      <div className="col-span-full flex flex-wrap items-center gap-2 sm:col-auto sm:ml-auto">
         {slug && (
           <Button variant="outline" size="sm" asChild>
             <a href={`/campaigns/${campaignId}`} target="_blank" rel="noreferrer">
@@ -229,8 +260,9 @@ function HeaderActions({
           </Button>
         )}
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
+          className="text-muted-foreground hover:text-destructive"
           onClick={() => {
             if (confirm("Remover TODAS as personalizações desta campanha?")) clear.mutate();
           }}
@@ -661,24 +693,48 @@ function DispatchCard({
     onError: (e) => toast.error((e as Error).message),
   });
 
+  const modeLabel =
+    mode === "auto" ? "Progressão automática" : mode === "fixed" ? "Valores fixos" : "Dados reais";
+  const modeDot =
+    mode === "auto" ? "bg-sky-500" : mode === "fixed" ? "bg-violet-500" : "bg-muted-foreground/50";
+
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle className="text-base">{wa.name || "Sem nome"}</CardTitle>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline">Real: {wa.status}</Badge>
-            <div className="flex items-center gap-1.5">
-              <Switch checked={enabled} onCheckedChange={setEnabled} />
-              <span className="text-xs">Personalizar</span>
+    <Card
+      className={
+        "overflow-hidden border shadow-sm transition-colors " +
+        (enabled ? "border-primary/30 ring-1 ring-primary/10" : "")
+      }
+    >
+      <CardHeader className="border-b bg-muted/30 pb-3">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex sm:flex-wrap sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className={"h-2.5 w-2.5 shrink-0 rounded-full " + modeDot} />
+            <div className="min-w-0">
+              <CardTitle className="truncate text-base">{wa.name || "Sem nome"}</CardTitle>
+              <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                <span className="inline-flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
+                  Real: {wa.status}
+                </span>
+                <span className="text-muted-foreground/40">·</span>
+                <span>{modeLabel}</span>
+              </div>
             </div>
           </div>
+          <label className="flex shrink-0 items-center gap-2 rounded-full border bg-background px-2.5 py-1">
+            <Switch
+              checked={enabled}
+              onCheckedChange={setEnabled}
+              className="data-[state=checked]:bg-primary"
+            />
+            <span className="text-xs font-medium">Personalizar</span>
+          </label>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="grid grid-cols-3 gap-2">
-          <div>
-            <Label className="text-xs">Modo</Label>
+      <CardContent className={"space-y-4 pt-4 " + (enabled ? "" : "opacity-60")}>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div className="space-y-1">
+            <Label className="text-xs font-medium text-muted-foreground">Modo</Label>
             <Select value={mode} onValueChange={setMode}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -688,12 +744,12 @@ function DispatchCard({
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label className="text-xs">Nome público</Label>
+          <div className="space-y-1">
+            <Label className="text-xs font-medium text-muted-foreground">Nome público</Label>
             <Input value={publicName} onChange={(e) => setPublicName(e.target.value)} placeholder={wa.name ?? ""} />
           </div>
-          <div>
-            <Label className="text-xs">Status público</Label>
+          <div className="space-y-1">
+            <Label className="text-xs font-medium text-muted-foreground">Status público</Label>
             <Select value={publicStatus || "__none"} onValueChange={(v) => setPublicStatus(v === "__none" ? "" : v)}>
               <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
               <SelectContent>
@@ -704,7 +760,7 @@ function DispatchCard({
               </SelectContent>
             </Select>
             <Input
-              className="mt-1"
+              className="mt-1 h-8 text-xs"
               placeholder="ou digite personalizado"
               value={publicStatus}
               onChange={(e) => setPublicStatus(e.target.value)}
@@ -713,28 +769,33 @@ function DispatchCard({
         </div>
 
         {mode === "fixed" && (
-          <div className="rounded-md border p-3 space-y-2">
-            <div className="text-xs font-medium text-muted-foreground">Valores fixos</div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <section className="rounded-lg border bg-muted/20 p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Valores fixos
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
               <NumField label="Total" value={fTotal} onChange={setFTotal} />
               <NumField label="Enviados" value={fSent} onChange={setFSent} />
               <NumField label="Entregues" value={fDelivered} onChange={setFDelivered} />
               <NumField label="Falhas" value={fFailed} onChange={setFFailed} />
               <NumField label="Progresso %" value={fPercent} onChange={setFPercent} />
-              <div>
+              <div className="space-y-1">
                 <Label className="text-xs">Início</Label>
                 <Input type="datetime-local" value={fStarted?.slice(0, 16) ?? ""} onChange={(e) => setFStarted(e.target.value ? new Date(e.target.value).toISOString() : "")} />
               </div>
-              <div>
+              <div className="space-y-1">
                 <Label className="text-xs">ETA</Label>
                 <Input type="datetime-local" value={fEta?.slice(0, 16) ?? ""} onChange={(e) => setFEta(e.target.value ? new Date(e.target.value).toISOString() : "")} />
               </div>
-              <div>
+              <div className="space-y-1">
                 <Label className="text-xs">Velocidade (texto)</Label>
                 <Input value={fSpeed} onChange={(e) => setFSpeed(e.target.value)} placeholder="ex: 5k/min" />
               </div>
             </div>
-          </div>
+          </section>
         )}
 
         {mode === "auto" && (
@@ -757,13 +818,13 @@ function DispatchCard({
           />
         )}
 
-        <div className="flex flex-wrap items-center gap-2 border-t pt-3">
+        <div className="-mx-4 flex flex-wrap items-center gap-2 border-t bg-muted/20 px-4 py-3 sm:-mx-6 sm:px-6">
           <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
             <Save className="mr-1 h-4 w-4" /> Salvar disparo
           </Button>
           <div className="ml-auto flex items-center gap-2">
             <Select value={dupTo || "__none"} onValueChange={(v) => setDupTo(v === "__none" ? "" : v)}>
-              <SelectTrigger className="w-56"><SelectValue placeholder="Duplicar config para..." /></SelectTrigger>
+              <SelectTrigger className="w-56 h-9"><SelectValue placeholder="Duplicar config para…" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none">—</SelectItem>
                 {allWa.filter((w) => w.id !== wa.id).map((w) => (
@@ -780,6 +841,7 @@ function DispatchCard({
     </Card>
   );
 }
+
 
 function AutoSimForm({
   wa,
@@ -809,74 +871,127 @@ function AutoSimForm({
 
   const runtime = s.runtime ?? { active: false };
 
+  const runState = runtime.paused_at ? "paused" : runtime.active ? "running" : "idle";
+  const runBadge =
+    runState === "running"
+      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+      : runState === "paused"
+        ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+        : "border-muted-foreground/20 bg-muted text-muted-foreground";
+  const runDot =
+    runState === "running"
+      ? "bg-emerald-500 animate-pulse"
+      : runState === "paused"
+        ? "bg-amber-500"
+        : "bg-muted-foreground/40";
+
   return (
-    <div className="rounded-md border p-3 space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="text-xs font-medium text-muted-foreground">Progressão automática</div>
-        <Badge variant={runtime.active ? "default" : "outline"}>
-          {runtime.paused_at ? "Pausada" : runtime.active ? "Rodando" : "Parada"}
-        </Badge>
+    <div className="rounded-lg border bg-muted/20 p-4 space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Progressão automática
+          </div>
+        </div>
+        <span
+          className={
+            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium " +
+            runBadge
+          }
+        >
+          <span className={"h-1.5 w-1.5 rounded-full " + runDot} />
+          {runState === "running" ? "Rodando" : runState === "paused" ? "Pausada" : "Parada"}
+        </span>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <div>
-          <Label className="text-xs">Início</Label>
-          <Input type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} />
+      {/* Janela de tempo */}
+      <div>
+        <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70">
+          Janela de tempo
         </div>
-        <div>
-          <Label className="text-xs">Fim</Label>
-          <Input type="datetime-local" value={endAt} onChange={(e) => setEndAt(e.target.value)} />
-        </div>
-        <NumField label="Duração (s)" value={String(durationSec)} onChange={setDurationSec} />
-        <NumField label="Intervalo refresh (s)" value={refresh} onChange={setRefresh} />
-        <NumField label="Enviados início" value={sentStart} onChange={setSentStart} />
-        <NumField label="Enviados fim" value={sentEnd} onChange={setSentEnd} />
-        <div>
-          <Label className="text-xs">Taxa entrega (0–1)</Label>
-          <Input value={dRatio} onChange={(e) => setDRatio(e.target.value)} />
-        </div>
-        <div>
-          <Label className="text-xs">Taxa falha (0–1)</Label>
-          <Input value={fRatio} onChange={(e) => setFRatio(e.target.value)} />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <Label className="text-xs">Curva</Label>
-          <Select value={growth} onValueChange={setGrowth}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="linear">Linear</SelectItem>
-              <SelectItem value="random">Aleatória</SelectItem>
-              <SelectItem value="batches">Em lotes</SelectItem>
-              <SelectItem value="stepped">Por etapas</SelectItem>
-              <SelectItem value="real_plus">Real + offset</SelectItem>
-              <SelectItem value="manual">Manual</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label className="text-xs">Status durante execução</Label>
-          <Input value={statusLabel} onChange={(e) => setStatusLabel(e.target.value)} placeholder="ex: Em execução" />
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="space-y-1">
+            <Label className="text-xs">Início</Label>
+            <Input type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Fim</Label>
+            <Input type="datetime-local" value={endAt} onChange={(e) => setEndAt(e.target.value)} />
+          </div>
+          <NumField label="Duração (s)" value={String(durationSec)} onChange={setDurationSec} />
+          <NumField label="Intervalo refresh (s)" value={refresh} onChange={setRefresh} />
         </div>
       </div>
 
-      <div className="space-y-2">
+      {/* Volume e taxas */}
+      <div>
+        <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70">
+          Volume e taxas
+        </div>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <NumField label="Enviados início" value={sentStart} onChange={setSentStart} />
+          <NumField label="Enviados fim" value={sentEnd} onChange={setSentEnd} />
+          <div className="space-y-1">
+            <Label className="text-xs">Taxa entrega (0–1)</Label>
+            <Input value={dRatio} onChange={(e) => setDRatio(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Taxa falha (0–1)</Label>
+            <Input value={fRatio} onChange={(e) => setFRatio(e.target.value)} />
+          </div>
+        </div>
+      </div>
+
+      {/* Comportamento */}
+      <div>
+        <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70">
+          Comportamento
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="space-y-1">
+            <Label className="text-xs">Curva</Label>
+            <Select value={growth} onValueChange={setGrowth}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="linear">Linear</SelectItem>
+                <SelectItem value="random">Aleatória</SelectItem>
+                <SelectItem value="batches">Em lotes</SelectItem>
+                <SelectItem value="stepped">Por etapas</SelectItem>
+                <SelectItem value="real_plus">Real + offset</SelectItem>
+                <SelectItem value="manual">Manual</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Status durante execução</Label>
+            <Input value={statusLabel} onChange={(e) => setStatusLabel(e.target.value)} placeholder="ex: Em execução" />
+          </div>
+        </div>
+      </div>
+
+      {/* Pausas */}
+      <div className="rounded-md border bg-background p-3 space-y-2">
         <div className="flex items-center justify-between">
-          <Label className="text-xs">Pausas programadas (públicas)</Label>
+          <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">
+            Pausas programadas
+          </Label>
           <Button
             size="sm"
             variant="outline"
+            className="h-7"
             onClick={() =>
               setPauses([...pauses, { after_sent: 0, duration_sec: 60, status_label: "Pausada", recalc_eta: true }])
             }
           >
-            <Plus className="mr-1 h-3 w-3" /> Nova
+            <Plus className="mr-1 h-3 w-3" /> Nova pausa
           </Button>
         </div>
+        {pauses.length === 0 && (
+          <p className="text-[11px] text-muted-foreground">Nenhuma pausa programada.</p>
+        )}
         {pauses.map((p, i) => (
-          <div key={i} className="grid grid-cols-5 gap-2 items-end">
+          <div key={i} className="grid grid-cols-5 gap-2 items-end rounded-md border bg-muted/30 p-2">
             <NumField
               label="Após enviados"
               value={String(p.after_sent)}
@@ -891,7 +1006,7 @@ function AutoSimForm({
                 const c = [...pauses]; c[i] = { ...p, duration_sec: Number(v || 0) }; setPauses(c);
               }}
             />
-            <div className="col-span-2">
+            <div className="col-span-2 space-y-1">
               <Label className="text-xs">Status</Label>
               <Input
                 value={p.status_label ?? ""}
@@ -909,47 +1024,60 @@ function AutoSimForm({
         ))}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-t pt-2">
-        <Button
-          size="sm"
-          onClick={() =>
-            onSave({
-              start_at: startAt ? new Date(startAt).toISOString() : null,
-              end_at: endAt ? new Date(endAt).toISOString() : null,
-              duration_sec: durationSec === "" ? null : Number(durationSec),
-              refresh_interval_sec: Number(refresh || 5),
-              sent_start: Number(sentStart || 0),
-              sent_end: Number(sentEnd || 0),
-              delivered_ratio: Number(dRatio || 0),
-              failed_ratio: Number(fRatio || 0),
-              growth: growth as any,
-              growth_params: {},
-              pauses,
-              status_label: statusLabel || null,
-            })
-          }
-        >
-          <Save className="mr-1 h-4 w-4" /> Salvar simulação
-        </Button>
-        <div className="ml-auto flex items-center gap-1">
-          <Button size="sm" variant="outline" onClick={() => onControl("start")}>
-            <Play className="mr-1 h-3 w-3" /> Iniciar
+      {/* Ações da simulação */}
+      <div className="rounded-md border bg-background p-3 space-y-3">
+        <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70">
+          Controle
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            onClick={() =>
+              onSave({
+                start_at: startAt ? new Date(startAt).toISOString() : null,
+                end_at: endAt ? new Date(endAt).toISOString() : null,
+                duration_sec: durationSec === "" ? null : Number(durationSec),
+                refresh_interval_sec: Number(refresh || 5),
+                sent_start: Number(sentStart || 0),
+                sent_end: Number(sentEnd || 0),
+                delivered_ratio: Number(dRatio || 0),
+                failed_ratio: Number(fRatio || 0),
+                growth: growth as any,
+                growth_params: {},
+                pauses,
+                status_label: statusLabel || null,
+              })
+            }
+          >
+            <Save className="mr-1 h-4 w-4" /> Salvar simulação
           </Button>
-          <Button size="sm" variant="outline" onClick={() => onControl("pause")}>
-            <Pause className="mr-1 h-3 w-3" /> Pausar
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => onControl("resume")}>
-            <Play className="mr-1 h-3 w-3" /> Retomar
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => onControl("restart")}>
-            <RotateCcw className="mr-1 h-3 w-3" /> Reiniciar
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => onControl("sync_real")}>
-            <RefreshCw className="mr-1 h-3 w-3" /> Sincronizar
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => onControl("disable")}>
-            <Trash2 className="mr-1 h-3 w-3" /> Remover
-          </Button>
+
+          <div className="ml-auto inline-flex flex-wrap items-center gap-1 rounded-md border bg-muted/40 p-1">
+            <Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => onControl("start")}>
+              <Play className="h-3 w-3 text-emerald-600" /> Iniciar
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => onControl("pause")}>
+              <Pause className="h-3 w-3 text-amber-600" /> Pausar
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => onControl("resume")}>
+              <Play className="h-3 w-3 text-sky-600" /> Retomar
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => onControl("restart")}>
+              <RotateCcw className="h-3 w-3" /> Reiniciar
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => onControl("sync_real")}>
+              <RefreshCw className="h-3 w-3" /> Sincronizar
+            </Button>
+            <span className="mx-1 h-4 w-px bg-border" />
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 gap-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={() => onControl("disable")}
+            >
+              <Trash2 className="h-3 w-3" /> Remover
+            </Button>
+          </div>
         </div>
       </div>
     </div>
