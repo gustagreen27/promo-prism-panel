@@ -1124,13 +1124,19 @@ function QualifyForm({
     setDone(true);
     trackPixel("CompleteForm", { volume: data.volume, segment: data.segment });
     setTimeout(() => {
+      const leadsLine =
+        leadsSource === "provided"
+          ? `Base: fornecida pela Disparos FR (${formatBRL(leadsTotal)})`
+          : `Base: própria do cliente`;
       const msg = `Olá! Fiz uma simulação no site da Disparos FR.
 
 Nome: ${data.name}
 Empresa: ${data.company}
 Segmento: ${data.segment}
 Volume: ${formatInt(data.volume)} contatos (${tier.label})
-Valor estimado: ${formatBRL(estimated)}
+${leadsLine}
+Disparos: ${formatBRL(dispatchTotal)}
+Investimento total estimado: ${formatBRL(dispatchTotal + leadsTotal)}
 Previsão de início: ${data.start}
 
 Gostaria de receber a proposta.`;
