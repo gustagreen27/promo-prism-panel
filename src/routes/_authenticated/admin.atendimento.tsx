@@ -624,7 +624,7 @@ function ChatPanel(props: {
       <div className="space-y-2 border-t p-3">
         {!windowOpen && !tplOpen && (
           <div className="rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-            Janela de 24h fechada. Envie um <button className="underline" onClick={() => setTplOpen(true)}>template aprovado</button> para reabrir a conversa.
+            Janela de 24h fechada. Envie um <button className="underline" onClick={() => setTplOpen(true)}>template aprovado</button> — a janela só será reaberta quando o contato responder.
           </div>
         )}
 
