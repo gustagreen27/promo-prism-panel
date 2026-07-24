@@ -15,7 +15,16 @@ import {
   ZoomIn,
   Play,
   ImageIcon,
+  Users,
+  Send,
+  CheckCircle2,
+  XCircle,
+  MousePointerClick,
+  Globe2,
+  MapPin,
+  Headphones,
 } from "lucide-react";
+
 import logoAsset from "@/assets/disparos-fr-logo-new.png.asset.json";
 
 // ============ CONFIG ============
@@ -368,10 +377,128 @@ function Header({
 }
 
 // ============ HERO ============
+// ============ PAINEL REAL CARD ============
+type PainelVariant = "live" | "finished";
+function PainelRealCard({ variant = "live" }: { variant?: PainelVariant }) {
+  const finished = variant === "finished";
+  const total = 300000;
+  const sent = 285417;
+  const delivered = 274119;
+  const failed = 14583;
+  const clicks = 19688;
+  const percent = (sent / total) * 100;
+
+  const metrics = [
+    { k: "Contatos", v: formatInt(total), Icon: Users, tone: "text-neutral-300" },
+    { k: "Enviados", v: formatInt(sent), Icon: Send, tone: "text-emerald-400" },
+    { k: "Entregues", v: formatInt(delivered), Icon: CheckCircle2, tone: "text-emerald-400" },
+    { k: "Falhas", v: formatInt(failed), Icon: XCircle, tone: "text-rose-400" },
+  ];
+
+  return (
+    <div className="relative rounded-[22px] border border-white/[0.08] bg-[#101216] p-5 sm:p-6 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)]">
+      <div className="flex items-center justify-between gap-3">
+        <div className="inline-flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/25 bg-emerald-500/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-emerald-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            Painel real
+          </span>
+        </div>
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium ${
+            finished
+              ? "border border-emerald-500/25 bg-emerald-500/[0.08] text-emerald-400"
+              : "border border-white/10 bg-white/[0.04] text-neutral-300"
+          }`}
+        >
+          {finished ? (
+            <>
+              <CheckCircle2 className="h-3 w-3" /> Concluída
+            </>
+          ) : (
+            <>
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Em execução
+            </>
+          )}
+        </span>
+      </div>
+
+      <div className="mt-4 flex items-baseline justify-between gap-3">
+        <h3 className="text-[20px] font-semibold text-white tracking-tight">Campanha Julho</h3>
+      </div>
+      <div className="text-[12px] text-neutral-500">
+        {finished ? "Finalizada em 23/07/2026 22:16" : "Atualizado há 22 segundos"}
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-2.5">
+        {metrics.map(({ k, v, Icon, tone }) => (
+          <div
+            key={k}
+            className="rounded-xl border border-white/[0.06] bg-[#0b0d10] p-3.5"
+          >
+            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-neutral-500">
+              <Icon className={`h-3 w-3 ${tone}`} />
+              {k}
+            </div>
+            <div className="mt-1.5 text-[20px] font-semibold text-white tabular-nums">
+              {v}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-5">
+        <div className="flex items-center justify-between text-[11px] text-neutral-400">
+          <span>Progresso</span>
+          <span className="tabular-nums text-emerald-400 font-semibold">
+            {percent.toFixed(2)}%
+          </span>
+        </div>
+        <div className="mt-2 h-2 rounded-full bg-white/[0.06] overflow-hidden">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400"
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="mt-5 grid grid-cols-3 gap-2">
+        {[
+          { k: "Cliques totais", v: formatInt(clicks), Icon: MousePointerClick },
+          { k: "Países", v: "5", Icon: Globe2 },
+          { k: "Cidades", v: "20", Icon: MapPin },
+        ].map(({ k, v, Icon }) => (
+          <div
+            key={k}
+            className="rounded-lg border border-white/[0.05] bg-[#0b0d10] p-3"
+          >
+            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-neutral-500">
+              <Icon className="h-3 w-3" />
+              {k}
+            </div>
+            <div className="mt-1 text-[15px] font-semibold text-white tabular-nums">{v}</div>
+          </div>
+        ))}
+      </div>
+
+      <button
+        onClick={() =>
+          openWhatsApp("Olá! Quero ver o relatório completo de uma campanha real.")
+        }
+        className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-[13px] font-medium text-neutral-100 hover:bg-white/[0.06] transition-colors"
+      >
+        Ver relatório completo
+        <ArrowRight className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
 function Hero() {
   return (
+
     <section id="top" className="relative pt-28 sm:pt-32 pb-16 sm:pb-24">
-      {/* single subtle atmosphere — sem glow verde exagerado */}
       <div
         aria-hidden
         className="absolute inset-x-0 top-0 h-[420px] pointer-events-none"
@@ -384,24 +511,22 @@ function Hero() {
         <div className="lg:col-span-5 lg:pt-6">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-neutral-300">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Para empresas com bases a partir de 2 mil contatos
+            Para bases a partir de 2 mil contatos
           </div>
           <h1 className="mt-5 text-[34px] sm:text-5xl lg:text-[56px] font-semibold tracking-tight leading-[1.05] text-white">
-            Alcance sua base de clientes pelo{" "}
+            Envie campanhas para sua base pelo{" "}
             <span className="whitespace-nowrap">WhatsApp Oficial</span>
           </h1>
-          <p className="mt-4 text-lg text-neutral-300">
-            Campanhas{" "}
+          <p className="mt-4 text-lg">
             <span className="font-semibold text-emerald-400">
-              a partir de R$ 0,13 por envio
-            </span>
-            <span className="block text-[13px] text-neutral-500 mt-1">
-              Condição disponível para volumes acima de 250 mil contatos.
+              A partir de R$ 0,13 por envio
             </span>
           </p>
+          <p className="mt-1 text-[13px] text-neutral-500">
+            Para volumes acima de 250 mil contatos.
+          </p>
           <p className="mt-4 text-[15px] leading-relaxed text-neutral-300 max-w-lg">
-            Você envia a base. Nossa equipe configura a campanha. E você
-            acompanha enviados, entregues e falhas em tempo real.
+            Você envia a base. Nós configuramos a campanha e você acompanha tudo em tempo real.
           </p>
 
           <div className="mt-7 flex flex-col sm:flex-row gap-3">
@@ -425,19 +550,19 @@ function Hero() {
             </button>
           </div>
 
-          <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-[13px] text-neutral-400">
-            <li className="inline-flex items-center gap-2">
-              <Check className="h-3.5 w-3.5 text-emerald-500" />
-              Simulação gratuita
-            </li>
-            <li className="inline-flex items-center gap-2">
-              <Check className="h-3.5 w-3.5 text-emerald-500" />
-              Sem compromisso
-            </li>
-            <li className="inline-flex items-center gap-2">
-              <Check className="h-3.5 w-3.5 text-emerald-500" />
-              Atendimento humano
-            </li>
+          <ul className="mt-8 grid grid-cols-3 gap-3 max-w-md">
+            {[
+              { Icon: ShieldCheck, label: "Simulação gratuita" },
+              { Icon: CheckCircle2, label: "Sem compromisso" },
+              { Icon: Headphones, label: "Atendimento humano" },
+            ].map(({ Icon, label }) => (
+              <li key={label} className="flex flex-col items-start gap-2">
+                <span className="grid h-9 w-9 place-items-center rounded-lg border border-emerald-500/25 bg-emerald-500/[0.06] text-emerald-400">
+                  <Icon className="h-4 w-4" />
+                </span>
+                <span className="text-[12px] leading-tight text-neutral-300">{label}</span>
+              </li>
+            ))}
           </ul>
         </div>
 
@@ -450,22 +575,14 @@ function Hero() {
                 "radial-gradient(60% 50% at 70% 30%, rgba(16,185,129,0.35), transparent 70%)",
             }}
           />
-          <ScreenshotFrame
-            src={SCREENSHOTS.heroPanel}
-            srcMobile={SCREENSHOTS.heroPanelMobile}
-            alt="Painel de acompanhamento em tempo real da plataforma Disparos FR"
-            label="Painel principal (hero)"
-            caption="Captura real do painel de acompanhamento da Disparos FR."
-            aspect="16/10"
-            aspectMobile="9/10"
-            priority
-          />
+          <PainelRealCard variant="live" />
         </div>
 
       </div>
     </section>
   );
 }
+
 
 // ============ DASHBOARD MOCK (realistic) ============
 function DashboardMock({ compact = false }: { compact?: boolean }) {
@@ -737,7 +854,7 @@ function HowItWorks() {
   return (
     <section
       id="como-funciona"
-      className="relative bg-[#f5f3ee] text-neutral-900 py-20 sm:py-28"
+      className="relative bg-[#0b0c0e] text-neutral-100 py-20 sm:py-28 border-y border-white/[0.05]"
     >
       <div
         aria-hidden
@@ -745,63 +862,57 @@ function HowItWorks() {
       />
       <div className={container}>
         <div className="max-w-2xl">
-          <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-500">
-            <span className="h-px w-6 bg-neutral-400" />
-            Como funciona
-          </div>
-          <h2 className="mt-4 text-3xl sm:text-4xl font-semibold tracking-tight text-neutral-950 leading-[1.1]">
+          <Eyebrow>Como funciona</Eyebrow>
+          <h2 className="mt-4 text-3xl sm:text-4xl font-semibold tracking-tight text-white leading-[1.1]">
             Da base ao resultado, em seis etapas claras.
           </h2>
-          <p className="mt-4 text-[15px] leading-relaxed text-neutral-600 max-w-xl">
+          <p className="mt-4 text-[15px] leading-relaxed text-neutral-400 max-w-xl">
             Uma operação transparente: você envia a base, aprova a mensagem e
             acompanha a campanha em tempo real.
           </p>
         </div>
-        <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 
-          {steps.map((s) => (
-            <li
-              key={s.n}
-              className="group relative rounded-2xl border border-neutral-200 bg-white p-6 shadow-[0_1px_0_rgba(0,0,0,0.02)] hover:border-emerald-500/40 hover:shadow-[0_20px_40px_-24px_rgba(16,185,129,0.35)] transition-all"
-            >
-              <div className="h-10 w-10 rounded-xl bg-emerald-500 text-white grid place-items-center text-[14px] font-semibold shadow-[0_10px_24px_-10px_rgba(16,185,129,0.6)]">
-                {s.n.replace("0", "")}
+        <ol className="mt-12 relative max-w-2xl mx-auto">
+          <div
+            aria-hidden
+            className="absolute left-[19px] top-2 bottom-2 w-px bg-gradient-to-b from-emerald-500/40 via-white/10 to-transparent"
+          />
+          {steps.map((s, i) => (
+            <li key={s.n} className="relative pl-14 pb-8 last:pb-0">
+              <div className="absolute left-0 top-0 grid h-10 w-10 place-items-center rounded-full bg-emerald-500 text-neutral-950 text-[14px] font-semibold shadow-[0_10px_24px_-10px_rgba(16,185,129,0.6)] ring-4 ring-[#0b0c0e]">
+                {i + 1}
               </div>
-              <div className="mt-5 text-[16px] font-semibold text-neutral-950">
-                {s.t}
+              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 hover:border-emerald-500/25 transition-colors">
+                <div className="text-[15px] font-semibold text-white">{s.t}</div>
+                <p className="mt-1.5 text-[13.5px] leading-relaxed text-neutral-400">{s.d}</p>
               </div>
-              <p className="mt-2 text-[14px] leading-relaxed text-neutral-600">
-                {s.d}
-              </p>
             </li>
           ))}
         </ol>
 
-        <div className="mt-10 grid md:grid-cols-2 gap-4">
-          <div className="rounded-2xl border border-neutral-200 bg-white p-6">
+        <div className="mt-12 grid md:grid-cols-2 gap-4 max-w-3xl mx-auto">
+          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
             <div className="text-[11px] uppercase tracking-widest text-neutral-500">
               Base própria
             </div>
-            <div className="mt-2 text-[16px] font-semibold text-neutral-950">
+            <div className="mt-2 text-[16px] font-semibold text-white">
               Você já tem os contatos
             </div>
-            <p className="mt-2 text-[14px] leading-relaxed text-neutral-600">
+            <p className="mt-2 text-[14px] leading-relaxed text-neutral-400">
               Envie sua base própria com contatos que autorizaram receber
               comunicações. Sem custo adicional por lead.
             </p>
           </div>
-          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.04] p-6">
-            <div className="text-[11px] uppercase tracking-widest text-emerald-700">
+          <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.05] p-6">
+            <div className="text-[11px] uppercase tracking-widest text-emerald-400">
               Fornecemos a base
             </div>
-            <div className="mt-2 text-[16px] font-semibold text-neutral-950">
+            <div className="mt-2 text-[16px] font-semibold text-white">
               Precisa dos leads? Cuidamos disso.
             </div>
-            <p className="mt-2 text-[14px] leading-relaxed text-neutral-700">
+            <p className="mt-2 text-[14px] leading-relaxed text-neutral-300">
               Fornecimento de leads segmentados por{" "}
-              <span className="font-semibold text-neutral-950">
-                R$ 0,09 por contato
-              </span>{" "}
+              <span className="font-semibold text-white">R$ 0,09 por contato</span>{" "}
               adicionais ao valor do disparo. Disponibilidade e segmentação
               sujeitas à análise.
             </p>
@@ -815,6 +926,7 @@ function HowItWorks() {
     </section>
   );
 }
+
 
 
 // ============ SIMULATOR ============
@@ -1766,16 +1878,11 @@ function FinalReport() {
       <div className={container}>
         <div className="grid lg:grid-cols-12 gap-10 items-center">
           <div className="lg:col-span-7 order-2 lg:order-1">
-            <ScreenshotFrame
-              src={SCREENSHOTS.finalReport}
-              srcMobile={SCREENSHOTS.finalReportMobile}
-              alt="Relatório final da campanha no painel Disparos FR"
-              label="Relatório final da campanha"
-              caption="Captura real do relatório final gerado pelo painel Disparos FR."
-              aspect="16/10"
-              aspectMobile="9/10"
-            />
+            <div className="max-w-[420px] mx-auto lg:max-w-none">
+              <PainelRealCard variant="finished" />
+            </div>
           </div>
+
           <div className="lg:col-span-5 order-1 lg:order-2 lg:pl-4">
             <SectionHead
               eyebrow="Relatório"
