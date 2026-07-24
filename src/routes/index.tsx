@@ -1051,9 +1051,15 @@ function SimulatorSection() {
 function QualifyForm({
   initialVolume,
   total: _total,
+  leadsSource = "own",
+  dispatchTotal,
+  leadsTotal,
 }: {
   initialVolume: number;
   total: number;
+  leadsSource?: LeadsSource;
+  dispatchTotal: number;
+  leadsTotal: number;
 }) {
   const [step, setStep] = useState(1);
   const [done, setDone] = useState(false);
