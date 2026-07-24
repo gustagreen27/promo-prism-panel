@@ -208,6 +208,20 @@ export const setConversationStatus = createServerFn({ method: "POST" })
 
 // ---------- Send message (enqueue) ----------
 
+const InteractiveButtonSchema = z.object({
+  id: z.string().min(1).max(256),
+  title: z.string().min(1).max(20),
+});
+const InteractiveListRowSchema = z.object({
+  id: z.string().min(1).max(200),
+  title: z.string().min(1).max(24),
+  description: z.string().max(72).optional(),
+});
+const InteractiveListSectionSchema = z.object({
+  title: z.string().max(24).optional(),
+  rows: z.array(InteractiveListRowSchema).min(1).max(10),
+});
+
 const OutboundSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("text"),
@@ -225,6 +239,25 @@ const OutboundSchema = z.discriminatedUnion("kind", [
     context_wamid: z.string().optional().nullable(),
   }),
   z.object({
+    kind: z.literal("interactive_buttons"),
+    conversation_id: z.string().uuid(),
+    body: z.string().min(1).max(1024),
+    header: z.string().max(60).optional(),
+    footer: z.string().max(60).optional(),
+    buttons: z.array(InteractiveButtonSchema).min(1).max(3),
+    context_wamid: z.string().optional().nullable(),
+  }),
+  z.object({
+    kind: z.literal("interactive_list"),
+    conversation_id: z.string().uuid(),
+    body: z.string().min(1).max(1024),
+    header: z.string().max(60).optional(),
+    footer: z.string().max(60).optional(),
+    button: z.string().min(1).max(20),
+    sections: z.array(InteractiveListSectionSchema).min(1).max(10),
+    context_wamid: z.string().optional().nullable(),
+  }),
+  z.object({
     kind: z.literal("template"),
     conversation_id: z.string().uuid(),
     template_id: z.string().uuid(),
@@ -233,6 +266,7 @@ const OutboundSchema = z.discriminatedUnion("kind", [
     button_url_param: z.string().optional(),
   }),
 ]);
+
 
 export const sendConversationMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
