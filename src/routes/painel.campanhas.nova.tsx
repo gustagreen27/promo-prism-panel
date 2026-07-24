@@ -608,6 +608,13 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
           button_url_mapping: btnVars,
           header_media_url: headerMediaUrl || null,
           scheduled_at: finalMode === "schedule" ? new Date(scheduledAt).toISOString() : null,
+          response_flow_enabled: responseFlow.enabled,
+          response_flow_config: responseFlow.enabled ? {
+            auto_reply_text: responseFlow.auto_reply_text.trim() || null,
+            assign_status: responseFlow.assign_status === "none" ? null : responseFlow.assign_status,
+            tags: responseFlow.tags,
+            cooldown_minutes: responseFlow.cooldown_minutes,
+          } : null,
           ...dispatchPayload,
         },
       });
