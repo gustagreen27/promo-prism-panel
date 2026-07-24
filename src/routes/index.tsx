@@ -509,7 +509,7 @@ function PainelRealCard({ variant = "live" }: { variant?: PainelVariant }) {
 
 function Hero() {
   return (
-    <section id="top" className="relative pt-32 sm:pt-36 pb-20 sm:pb-28 overflow-hidden">
+    <section id="top" className="relative pt-24 sm:pt-28 pb-20 sm:pb-28 overflow-hidden">
       <div
         aria-hidden
         className="absolute inset-x-0 top-0 h-[560px] pointer-events-none"
@@ -520,16 +520,16 @@ function Hero() {
       />
       <div
         aria-hidden
-        className="absolute inset-x-0 top-24 h-px pointer-events-none opacity-60"
+        className="absolute inset-x-0 top-20 h-px pointer-events-none opacity-60"
         style={{
           background:
             "linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)",
         }}
       />
 
-      <div className={`${container} relative grid lg:grid-cols-12 gap-14 sm:gap-16 lg:gap-14 items-start`}>
-        <div className="lg:col-span-5 lg:pt-8">
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/[0.06] px-3.5 py-1.5 text-[11px] font-medium tracking-wide text-emerald-300 shadow-[0_0_0_1px_rgba(16,185,129,0.05),0_8px_24px_-12px_rgba(16,185,129,0.4)]">
+      <div className={`${container} relative grid lg:grid-cols-12 gap-10 sm:gap-12 lg:gap-14 items-start`}>
+        <div className="lg:col-span-5 lg:pt-4">
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/[0.08] px-3.5 py-1.5 text-[11px] font-medium tracking-wide text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.05),0_8px_24px_-12px_rgba(16,185,129,0.4)]">
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-70 animate-ping" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
@@ -537,7 +537,7 @@ function Hero() {
             Para bases a partir de 2 mil contatos
           </div>
 
-          <h1 className="mt-7 text-[36px] sm:text-5xl lg:text-[56px] font-semibold tracking-tight leading-[1.05] text-white">
+          <h1 className="mt-5 text-[36px] sm:text-5xl lg:text-[56px] font-semibold tracking-tight leading-[1.05] text-white">
             Envie campanhas para sua base via{" "}
             <span className="relative inline-block text-emerald-400">
               API Oficial do WhatsApp
@@ -548,18 +548,18 @@ function Hero() {
             </span>
           </h1>
 
-          <p className="mt-7 text-[15px] sm:text-[16px] leading-relaxed text-neutral-300 max-w-lg">
+          <p className="mt-6 text-[15px] sm:text-[16px] leading-relaxed text-neutral-200 max-w-lg">
             Atendemos campanhas a partir de{" "}
             <span className="font-semibold text-white">2 mil contatos</span>. Valores de{" "}
             <span className="font-semibold text-emerald-400">R$ 0,13 por envio</span> para
             volumes acima de 250 mil contatos.
           </p>
-          <p className="mt-4 text-[14px] leading-relaxed text-neutral-400 max-w-lg">
+          <p className="mt-3 text-[14px] leading-relaxed text-neutral-300 max-w-lg">
             Você envia a base ou solicita os leads. Nossa equipe configura, você aprova e
             acompanha tudo pelo painel.
           </p>
 
-          <div className="mt-9 flex flex-col sm:flex-row sm:items-center gap-3.5">
+          <div className="mt-7 flex flex-col sm:flex-row sm:items-center gap-3.5">
             <button
               onClick={() => {
                 trackPixel("ClickPrimaryCTA", { source: "hero" });
@@ -572,28 +572,51 @@ function Hero() {
             </button>
             <button
               onClick={() => scrollToId("como-funciona")}
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.02] px-5 py-4 text-[14px] font-medium text-neutral-200 hover:bg-white/[0.05] hover:text-white transition-colors sm:border-0 sm:bg-transparent sm:px-2 sm:py-2"
+              className="group inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.04] px-5 py-4 text-[14px] font-semibold text-white hover:bg-white/[0.08] hover:border-white/25 transition-colors"
             >
-              Ver como funciona
-              <ArrowRight className="h-3.5 w-3.5" />
+              <span className="border-b border-white/40 group-hover:border-white pb-0.5">
+                Ver como funciona
+              </span>
+              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
             </button>
           </div>
 
-          <ul className="mt-10 grid grid-cols-3 gap-3 sm:gap-4 max-w-md">
+          <ul className="mt-8 grid grid-cols-3 gap-3 sm:gap-4 max-w-md">
             {[
-              { Icon: ShieldCheck, label: "Simulação gratuita" },
-              { Icon: CheckCircle2, label: "Sem compromisso" },
-              { Icon: Headphones, label: "Atendimento humano" },
-            ].map(({ Icon, label }) => (
+              {
+                Icon: ShieldCheck,
+                label: "Simulação gratuita",
+                border: "border-emerald-500/30",
+                bg: "bg-emerald-500/[0.08]",
+                text: "text-emerald-300",
+              },
+              {
+                Icon: CheckCircle2,
+                label: "Sem compromisso",
+                border: "border-sky-400/30",
+                bg: "bg-sky-500/[0.08]",
+                text: "text-sky-300",
+              },
+              {
+                Icon: Headphones,
+                label: "Atendimento humano",
+                border: "border-amber-400/30",
+                bg: "bg-amber-500/[0.08]",
+                text: "text-amber-300",
+              },
+            ].map(({ Icon, label, border, bg, text }) => (
               <li key={label} className="flex flex-col items-start gap-2.5">
-                <span className="grid h-10 w-10 place-items-center rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] text-emerald-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                <span
+                  className={`grid h-10 w-10 place-items-center rounded-xl border ${border} ${bg} ${text} shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]`}
+                >
                   <Icon className="h-4 w-4" />
                 </span>
-                <span className="text-[12px] leading-tight text-neutral-300">{label}</span>
+                <span className="text-[12px] leading-tight text-neutral-200">{label}</span>
               </li>
             ))}
           </ul>
         </div>
+
 
         <div className="lg:col-span-7 relative lg:mt-2">
           <div
