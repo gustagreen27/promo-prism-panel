@@ -314,7 +314,9 @@ function Header({
           <button
             onClick={() => {
               trackPixel("ClickPrimaryCTA", { source: "header" });
-              scrollToId("simulador");
+              openWhatsApp(
+                "Olá! Quero simular uma campanha de WhatsApp pela Disparos FR."
+              );
             }}
             className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400 transition-colors"
           >
