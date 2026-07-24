@@ -782,8 +782,11 @@ function PublicCampaignReport() {
   );
 }
 
-function recipientStatusLabel(status: string | null): string {
-  switch (status) {
+function recipientStatusLabel(status: unknown): string {
+  // Defensive: se um objeto (ex.: {distribution:[...]}) escapar por qualquer
+  // caminho, nunca deixamos ele chegar como React child.
+  const s = typeof status === "string" ? status : status == null ? null : "—";
+  switch (s) {
     case "pending": return "Pendente";
     case "processing": return "Processando";
     case "accepted": return "Aceito";
@@ -795,7 +798,7 @@ function recipientStatusLabel(status: string | null): string {
     case "opt_out": return "Opt-out";
     case "cancelled": return "Cancelado";
     case "skipped": return "Ignorado";
-    default: return status ?? "—";
+    default: return s ?? "—";
   }
 }
 
