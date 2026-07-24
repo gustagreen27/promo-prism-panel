@@ -583,29 +583,30 @@ function Hero() {
             </button>
           </div>
 
-          <ul className="mt-8 grid grid-cols-3 gap-3 sm:gap-4 max-w-md">
+          <ul className="mt-10 grid grid-cols-3 gap-3 sm:gap-4 max-w-md">
             {[
               {
                 Icon: ShieldCheck,
                 label: "Simulação gratuita",
                 border: "border-emerald-500/30",
-                bg: "bg-emerald-500/[0.08]",
+                bg: "bg-emerald-500/[0.10]",
                 text: "text-emerald-300",
               },
               {
                 Icon: CheckCircle2,
                 label: "Sem compromisso",
-                border: "border-sky-400/30",
-                bg: "bg-sky-500/[0.08]",
-                text: "text-sky-300",
+                border: "border-emerald-400/20",
+                bg: "bg-emerald-400/[0.06]",
+                text: "text-emerald-200",
               },
               {
                 Icon: Headphones,
                 label: "Atendimento humano",
-                border: "border-amber-400/30",
-                bg: "bg-amber-500/[0.08]",
-                text: "text-amber-300",
+                border: "border-teal-400/25",
+                bg: "bg-teal-400/[0.07]",
+                text: "text-teal-200",
               },
+
             ].map(({ Icon, label, border, bg, text }) => (
               <li key={label} className="flex flex-col items-start gap-2.5">
                 <span
