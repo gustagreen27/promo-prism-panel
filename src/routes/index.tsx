@@ -196,13 +196,15 @@ function LandingPage() {
         <Hero />
         <Metrics />
         <HowItWorks />
+        <CampaignInAction />
         <SimulatorSection />
-        <PanelSection />
-        <UseCases />
+        <FinalReport />
+        <CaseStudy />
         <Compare />
         <FAQ />
         <FinalCTA />
       </main>
+
       <Footer />
       <MobileStickyCTA />
     </div>
