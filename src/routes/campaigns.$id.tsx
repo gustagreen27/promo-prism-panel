@@ -680,8 +680,9 @@ function PublicCampaignReport() {
                 const globalMap = customEnabled
                   ? (publicSettings?.status_map as Record<string, string | null> | undefined)
                   : undefined;
-                const remap = (s: string | null) =>
-                  applyStatusMap(s, dispatchMap, globalMap);
+                const remap = (s: string | null, key: string) =>
+                  applyStatusMap(s, dispatchMap, globalMap, key);
+
                 return (
                   <div key={d.id} className="space-y-2">
                     <div className="flex items-center justify-between">
