@@ -145,6 +145,9 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
       scheduled_pause_enabled: z.boolean().optional(),
       pause_every_messages: z.number().int().min(1).nullish(),
       pause_duration_seconds: z.number().int().min(1).nullish(),
+      // Fluxo de resposta (auto-reply na janela 24h) — aplicado pelo webhook
+      response_flow_enabled: z.boolean().optional(),
+      response_flow_config: z.any().optional().nullable(),
     }).parse(d)
   )
   .handler(async ({ data, context }) => {
