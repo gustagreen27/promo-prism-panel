@@ -22,15 +22,16 @@ import logoAsset from "@/assets/disparos-fr-logo-new.png.asset.json";
 const WHATSAPP_NUMBER = "5562933003970"; // editar aqui
 
 // ============ REAL SCREENSHOTS ============
+import painelLoteriaJb from "@/assets/painel-loteriajb.png.asset.json";
 // Substitua os valores abaixo pelas URLs das capturas reais do painel Disparos FR.
 // Enquanto vazios, a interface mostra placeholders identificados.
 const SCREENSHOTS = {
-  heroPanel: "", // Painel principal — dobra do hero (grande destaque)
+  heroPanel: painelLoteriaJb.url, // Painel principal — dobra do hero (grande destaque)
   msgConfig: "", // Aba 1 — Mensagem configurada (editor da campanha)
   msgReceived: "", // Aba 2 — Mensagem recebida (print do WhatsApp do contato)
   campaignRunning: "", // Aba 3 — Campanha em execução (progresso ao vivo)
-  finalReport: "", // Relatório final ao encerrar a campanha
-  caseStudy: "", // Estudo de caso — captura do painel do caso real
+  finalReport: painelLoteriaJb.url, // Relatório final ao encerrar a campanha
+  caseStudy: painelLoteriaJb.url, // Estudo de caso — captura do painel do caso real
 };
 
 // Vídeo/gravação de tela opcional. Deixe src vazio para ocultar o player.
@@ -42,12 +43,13 @@ const CAMPAIGN_VIDEO: { src: string; poster: string; caption: string } = {
 
 // Indicadores editáveis do relatório final. Substitua pelos números reais quando disponíveis.
 const FINAL_REPORT_METRICS: { k: string; v: string }[] = [
-  { k: "Contatos processados", v: "—" },
-  { k: "Mensagens enviadas", v: "—" },
-  { k: "Mensagens entregues", v: "—" },
-  { k: "Falhas", v: "—" },
-  { k: "Taxa de entrega", v: "—" },
+  { k: "Contatos processados", v: "300.000" },
+  { k: "Mensagens enviadas", v: "285.417" },
+  { k: "Mensagens entregues", v: "274.119" },
+  { k: "Falhas", v: "14.583" },
+  { k: "Cliques totais", v: "19.688" },
 ];
+
 
 // Estudo de caso real — preencha com dados comprováveis.
 const CASE_STUDY = {
