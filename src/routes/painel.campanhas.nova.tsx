@@ -625,7 +625,13 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
             assign_status: responseFlow.assign_status === "none" ? null : responseFlow.assign_status,
             tags: responseFlow.tags,
             cooldown_minutes: responseFlow.cooldown_minutes,
+            cta_enabled: !!(responseFlow.cta_enabled && responseFlow.cta_button_text.trim() && responseFlow.cta_url.trim()),
+            cta_button_text: responseFlow.cta_button_text.trim() || null,
+            cta_url: responseFlow.cta_url.trim() || null,
+            cta_header: responseFlow.cta_header.trim() || null,
+            cta_footer: responseFlow.cta_footer.trim() || null,
           } : null,
+
           ...dispatchPayload,
         },
       });
