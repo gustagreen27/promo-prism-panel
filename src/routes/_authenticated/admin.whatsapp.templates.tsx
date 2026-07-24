@@ -46,7 +46,6 @@ function Page() {
   const wabas = wabasQuery.data ?? [];
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [syncConn, setSyncConn] = useState<string>("");
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["wa-templates"] });
   const save = useMutation({
@@ -56,8 +55,12 @@ function Page() {
   });
   const del = useMutation({ mutationFn: (id: string) => remove({ data: { id } }), onSuccess: () => { toast.success("Removido"); refresh(); } });
   const syncMut = useMutation({
-    mutationFn: (id: string) => sync({ data: { connection_id: id } }),
-    onSuccess: (r: any) => { toast.success(`${r.synced}/${r.total} templates sincronizados`); refresh(); },
+    mutationFn: () => syncAll(),
+    onSuccess: (r: any) => {
+      const errPart = r?.wabasErr ? ` — ${r.wabasErr} com erro` : "";
+      toast.success(`${r?.synced ?? 0}/${r?.total ?? 0} templates sincronizados em ${r?.wabas ?? 0} números${errPart}`);
+      refresh();
+    },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao sincronizar"),
   });
   const submitMut = useMutation({
