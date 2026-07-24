@@ -160,9 +160,9 @@ function scrollToId(id: string) {
 
 function openWhatsApp(message?: string) {
   trackPixel("ClickWhatsApp");
-  const text =
-    message ?? "Olá! Quero simular uma campanha de WhatsApp pela Disparos FR.";
-  const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
+  const url = `https://wa.me/${WHATSAPP_NUMBER}${
+    message ? `?text=${encodeURIComponent(message)}` : ""
+  }`;
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
