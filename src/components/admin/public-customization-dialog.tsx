@@ -107,18 +107,23 @@ export function PublicCustomizationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
+      <DialogContent className="max-w-5xl h-[92vh] flex flex-col gap-0 p-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b bg-gradient-to-b from-muted/40 to-transparent">
+          <DialogTitle className="flex items-center gap-2 text-lg">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+              <Sparkles className="h-4 w-4" />
+            </span>
             Personalização da página pública
             {data?.settings?.enabled && (
-              <Badge variant="secondary" className="ml-2">Ativa</Badge>
+              <Badge className="ml-1 border-emerald-500/30 bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-300">
+                Ativa
+              </Badge>
             )}
           </DialogTitle>
-          <DialogDescription>
-            {campaignName} — camada de apresentação isolada, não afeta disparos reais nem métricas
-            operacionais.
+          <DialogDescription className="mt-1">
+            <span className="font-medium text-foreground">{campaignName}</span>
+            <span className="mx-1.5 text-muted-foreground/60">·</span>
+            Camada de apresentação isolada — não afeta disparos reais nem métricas operacionais.
           </DialogDescription>
         </DialogHeader>
 
@@ -127,7 +132,7 @@ export function PublicCustomizationDialog({
             Carregando...
           </div>
         ) : (
-          <div className="flex-1 min-h-0 flex flex-col gap-3">
+          <div className="flex-1 min-h-0 flex flex-col gap-4 px-6 pt-4">
             <HeaderActions
               campaignId={campaignId}
               slug={campaignSlug}
@@ -141,18 +146,23 @@ export function PublicCustomizationDialog({
             />
 
             <Tabs defaultValue="general" className="flex-1 min-h-0 flex flex-col">
-              <TabsList>
-                <TabsTrigger value="general">Métricas gerais</TabsTrigger>
-                <TabsTrigger value="dispatches">
-                  Disparos ({data.waDispatches.length})
+              <TabsList className="w-full justify-start rounded-lg bg-muted/60 p-1">
+                <TabsTrigger value="general" className="data-[state=active]:shadow-sm">
+                  Métricas gerais
+                </TabsTrigger>
+                <TabsTrigger value="dispatches" className="data-[state=active]:shadow-sm">
+                  Disparos
+                  <span className="ml-2 rounded-full bg-background/80 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    {data.waDispatches.length}
+                  </span>
                 </TabsTrigger>
               </TabsList>
-              <TabsContent value="general" className="flex-1 min-h-0">
+              <TabsContent value="general" className="flex-1 min-h-0 mt-3">
                 <ScrollArea className="h-full pr-3">
                   <GeneralTab data={data} campaignId={campaignId} onChange={invalidate} />
                 </ScrollArea>
               </TabsContent>
-              <TabsContent value="dispatches" className="flex-1 min-h-0">
+              <TabsContent value="dispatches" className="flex-1 min-h-0 mt-3">
                 <ScrollArea className="h-full pr-3">
                   <DispatchesTab data={data} campaignId={campaignId} onChange={invalidate} />
                 </ScrollArea>
@@ -161,7 +171,7 @@ export function PublicCustomizationDialog({
           </div>
         )}
 
-        <DialogFooter>
+        <DialogFooter className="border-t bg-muted/30 px-6 py-3">
           <Button variant="outline" onClick={() => refetch()}>
             <RefreshCw className="mr-1 h-4 w-4" /> Recarregar
           </Button>
