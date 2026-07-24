@@ -778,9 +778,10 @@ async function applyResponseFlow(
     phoneNumberId: string | null;
     from: string;
     campaignId: string;
+    inboundWamid?: string | null;
   },
 ) {
-  const { workspaceId, conversationId, connectionId, phoneNumberId, from, campaignId } = args;
+  const { workspaceId, conversationId, connectionId, phoneNumberId, from, campaignId, inboundWamid } = args;
 
   const { data: camp } = await supabaseAdmin
     .from("wa_campaigns")
