@@ -198,6 +198,7 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   const [templateId, setTemplateId] = useState<string>("");
   const [contactSel, setContactSel] = useState<ContactSelValue | null>(null);
   const [dispatch, setDispatch] = useState<DispatchConfig>(defaultDispatch("economico"));
+  const [responseFlow, setResponseFlow] = useState<ResponseFlowConfig>(defaultResponseFlow());
   const [mode, setMode] = useState<Mode>(scheduled_for ? "schedule" : "now");
   const [scheduledAt, setScheduledAt] = useState<string>(toLocal(scheduled_for));
   const [timezone, setTimezone] = useState<string>(Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo");
