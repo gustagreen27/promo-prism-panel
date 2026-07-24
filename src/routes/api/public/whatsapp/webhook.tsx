@@ -850,7 +850,13 @@ async function applyResponseFlow(
     assign_status?: string | null;
     tags?: string[] | null;
     cooldown_minutes?: number | null;
+    cta_enabled?: boolean | null;
+    cta_button_text?: string | null;
+    cta_url?: string | null;
+    cta_header?: string | null;
+    cta_footer?: string | null;
   };
+
 
   const { data: conv } = await supabaseAdmin
     .from("wa_conversations")
