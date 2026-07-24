@@ -12,11 +12,56 @@ import {
   Plus,
   Minus,
   Circle,
+  ZoomIn,
+  Play,
+  ImageIcon,
 } from "lucide-react";
 import logoAsset from "@/assets/disparos-fr-logo-new.png.asset.json";
 
 // ============ CONFIG ============
 const WHATSAPP_NUMBER = "5562933003970"; // editar aqui
+
+// ============ REAL SCREENSHOTS ============
+// Substitua os valores abaixo pelas URLs das capturas reais do painel Disparos FR.
+// Enquanto vazios, a interface mostra placeholders identificados.
+const SCREENSHOTS = {
+  heroPanel: "", // Painel principal — dobra do hero (grande destaque)
+  msgConfig: "", // Aba 1 — Mensagem configurada (editor da campanha)
+  msgReceived: "", // Aba 2 — Mensagem recebida (print do WhatsApp do contato)
+  campaignRunning: "", // Aba 3 — Campanha em execução (progresso ao vivo)
+  finalReport: "", // Relatório final ao encerrar a campanha
+  caseStudy: "", // Estudo de caso — captura do painel do caso real
+};
+
+// Vídeo/gravação de tela opcional. Deixe src vazio para ocultar o player.
+const CAMPAIGN_VIDEO: { src: string; poster: string; caption: string } = {
+  src: "", // ex: "/videos/campanha-execucao.mp4"
+  poster: "", // ex: "/covers/campanha-execucao.jpg"
+  caption: "Gravação real de uma campanha em execução no painel Disparos FR.",
+};
+
+// Indicadores editáveis do relatório final. Substitua pelos números reais quando disponíveis.
+const FINAL_REPORT_METRICS: { k: string; v: string }[] = [
+  { k: "Contatos processados", v: "—" },
+  { k: "Mensagens enviadas", v: "—" },
+  { k: "Mensagens entregues", v: "—" },
+  { k: "Falhas", v: "—" },
+  { k: "Taxa de entrega", v: "—" },
+];
+
+// Estudo de caso real — preencha com dados comprováveis.
+const CASE_STUDY = {
+  segment: "Segmento do cliente",
+  title: "Título do caso real",
+  context:
+    "Descreva brevemente o contexto: objetivo da campanha, base utilizada e período de execução.",
+  metrics: [
+    { k: "Contatos", v: "—" },
+    { k: "Entregues", v: "—" },
+    { k: "Taxa de entrega", v: "—" },
+  ],
+};
+
 
 // ============ META PIXEL ============
 type PixelEvent =
