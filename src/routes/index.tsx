@@ -349,7 +349,9 @@ function Header({
             onClick={() => {
               setMenuOpen(false);
               trackPixel("ClickPrimaryCTA", { source: "mobile-menu" });
-              setTimeout(() => scrollToId("simulador"), 50);
+              openWhatsApp(
+                "Olá! Quero simular uma campanha de WhatsApp pela Disparos FR."
+              );
             }}
             className="mt-2 block w-full rounded-full bg-emerald-500 px-4 py-3 text-sm font-medium text-neutral-950"
           >
