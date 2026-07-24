@@ -476,6 +476,34 @@ function ChatPanel(props: {
     onError: (e: any) => toast.error(e?.message ?? "Falha ao enviar lista"),
   });
 
+  const sendCta = useMutation({
+    mutationFn: () => {
+      const url = ctaUrl.trim();
+      const display = ctaDisplayText.trim();
+      if (!url || !display) throw new Error("Informe URL e texto do botão");
+      try { new URL(url); } catch { throw new Error("URL inválida"); }
+      return sendFn({
+        data: {
+          kind: "interactive_cta_url",
+          conversation_id: conversationId,
+          body: ctaBody.trim(),
+          header: ctaHeader.trim() || undefined,
+          footer: ctaFooter.trim() || undefined,
+          display_text: display.slice(0, 20),
+          url,
+          context_wamid: replyTo?.wamid ?? null,
+        },
+      });
+    },
+    onSuccess: () => {
+      setCtaBody(""); setCtaHeader(""); setCtaFooter(""); setCtaDisplayText(""); setCtaUrl("");
+      setAttachOpen(false); setReplyTo(null); invalidateAfterSend();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao enviar botão CTA"),
+  });
+
+
+
 
   const sendTpl = useMutation({
     mutationFn: () =>
