@@ -179,12 +179,32 @@ function PublicCampaignReport() {
   const metricsMode = (publicSettings?.metrics_mode ?? "real") as "real" | "replace" | "merge";
   const customTotals = (publicSettings?.custom_totals ?? {}) as Record<string, number | null>;
 
+  // Deriva um override implícito quando existe uma simulação para o disparo
+  // mas o usuário ainda não criou/ativou o registro em campaign_public_dispatches.
+  // Assim, salvar apenas a simulação já reflete direto na página pública.
+  const resolveOverride = (waId: string): DispatchOverrideRow | null => {
+    const ov = publicDispatches.find((x) => x.wa_campaign_id === waId) ?? null;
+    if (ov) return ov as DispatchOverrideRow;
+    if (!customEnabled) return null;
+    const sim = publicSimulations.find((x) => x.wa_campaign_id === waId);
+    if (!sim) return null;
+    return {
+      wa_campaign_id: waId,
+      campaign_id: null,
+      enabled: true,
+      mode: "auto",
+      public_name: null,
+      public_status: null,
+      fixed: null,
+    } as DispatchOverrideRow;
+  };
+
   // Total público de entregues (aplicando overrides por-disparo, se ativos)
   const publicDeliveredTotal = useMemo(() => {
     if (!data) return 0;
     let total = 0;
     for (const d of data.dispatches ?? []) {
-      const ov = publicDispatches.find((x) => x.wa_campaign_id === d.id);
+      const ov = resolveOverride(d.id);
       const sim = publicSimulations.find((x) => x.wa_campaign_id === d.id);
       if (customEnabled && ov?.enabled) {
         const snap = computeDispatchSnapshot(
