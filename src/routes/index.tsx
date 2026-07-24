@@ -1878,16 +1878,11 @@ function FinalReport() {
       <div className={container}>
         <div className="grid lg:grid-cols-12 gap-10 items-center">
           <div className="lg:col-span-7 order-2 lg:order-1">
-            <ScreenshotFrame
-              src={SCREENSHOTS.finalReport}
-              srcMobile={SCREENSHOTS.finalReportMobile}
-              alt="Relatório final da campanha no painel Disparos FR"
-              label="Relatório final da campanha"
-              caption="Captura real do relatório final gerado pelo painel Disparos FR."
-              aspect="16/10"
-              aspectMobile="9/10"
-            />
+            <div className="max-w-[420px] mx-auto lg:max-w-none">
+              <PainelRealCard variant="finished" />
+            </div>
           </div>
+
           <div className="lg:col-span-5 order-1 lg:order-2 lg:pl-4">
             <SectionHead
               eyebrow="Relatório"
