@@ -449,6 +449,26 @@ async function handleChange(supabaseAdmin: any, change: any) {
       logPatch.error_code = err.code;
     }
     await supabaseAdmin.from("message_logs").update(logPatch).eq("meta_message_id", id);
+
+    // Atualiza espelho na tabela de mensagens de conversas (atendimento).
+    if (id && workspaceId) {
+      const convPatch: Record<string, any> = {};
+      if (status === "sent") convPatch.sent_at = tsIso;
+      if (status === "delivered") convPatch.delivered_at = tsIso;
+      if (status === "read") convPatch.read_at = tsIso;
+      if (status === "failed") {
+        convPatch.failed_at = tsIso;
+        const err = extractError(s?.errors?.[0]);
+        convPatch.error_code = err.code;
+        convPatch.error_message = err.reason;
+      }
+      convPatch.status = status;
+      await supabaseAdmin
+        .from("wa_conversation_messages")
+        .update(convPatch)
+        .eq("workspace_id", workspaceId)
+        .eq("wamid", id);
+    }
   }
 
   // ── messages[] (inbound + replies + opt-out) ───────────────────
