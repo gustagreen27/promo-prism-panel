@@ -90,6 +90,7 @@ const GROUPS: NavGroup[] = [
   {
     label: "WhatsApp",
     items: [
+      { title: "Atendimento", to: "/admin/atendimento", icon: MessageSquare },
       { title: "Conexões", to: "/admin/whatsapp/conexoes", icon: Link2 },
       {
         title: "Números",
