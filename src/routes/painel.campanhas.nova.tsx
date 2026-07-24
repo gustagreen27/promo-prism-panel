@@ -153,6 +153,11 @@ export type ResponseFlowConfig = {
   assign_status: "open" | "waiting" | "in_progress" | "resolved" | "archived" | "none";
   tags: string[];
   cooldown_minutes: number;
+  cta_enabled: boolean;
+  cta_button_text: string;
+  cta_url: string;
+  cta_header: string;
+  cta_footer: string;
 };
 
 function defaultResponseFlow(): ResponseFlowConfig {
@@ -162,8 +167,14 @@ function defaultResponseFlow(): ResponseFlowConfig {
     assign_status: "in_progress",
     tags: [],
     cooldown_minutes: 60,
+    cta_enabled: false,
+    cta_button_text: "",
+    cta_url: "",
+    cta_header: "",
+    cta_footer: "",
   };
 }
+
 
 export interface CampaignWizardProps {
   workspaceId: string;
@@ -614,7 +625,13 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
             assign_status: responseFlow.assign_status === "none" ? null : responseFlow.assign_status,
             tags: responseFlow.tags,
             cooldown_minutes: responseFlow.cooldown_minutes,
+            cta_enabled: !!(responseFlow.cta_enabled && responseFlow.cta_button_text.trim() && responseFlow.cta_url.trim()),
+            cta_button_text: responseFlow.cta_button_text.trim() || null,
+            cta_url: responseFlow.cta_url.trim() || null,
+            cta_header: responseFlow.cta_header.trim() || null,
+            cta_footer: responseFlow.cta_footer.trim() || null,
           } : null,
+
           ...dispatchPayload,
         },
       });
@@ -1868,6 +1885,68 @@ function ResponseFlowCard({
               Separadas por vírgula. Adicionadas automaticamente na conversa quando o contato responder.
             </div>
           </div>
+
+          <div className="rounded-md border bg-muted/30 p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <div className="text-xs font-semibold">Botão com link (CTA URL)</div>
+              <Switch
+                checked={value.cta_enabled}
+                onCheckedChange={(v) => patch({ cta_enabled: v })}
+              />
+            </div>
+            {value.cta_enabled ? (
+              <div className="space-y-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <Label className="mb-1 block text-xs">Texto do botão *</Label>
+                    <Input
+                      maxLength={20}
+                      placeholder="Abrir link"
+                      value={value.cta_button_text}
+                      onChange={(e) => patch({ cta_button_text: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label className="mb-1 block text-xs">URL de destino *</Label>
+                    <Input
+                      type="url"
+                      placeholder="https://..."
+                      value={value.cta_url}
+                      onChange={(e) => patch({ cta_url: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <Label className="mb-1 block text-xs">Cabeçalho (opcional)</Label>
+                    <Input
+                      maxLength={60}
+                      placeholder="Título curto"
+                      value={value.cta_header}
+                      onChange={(e) => patch({ cta_header: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label className="mb-1 block text-xs">Rodapé (opcional)</Label>
+                    <Input
+                      maxLength={60}
+                      placeholder="Texto secundário"
+                      value={value.cta_footer}
+                      onChange={(e) => patch({ cta_footer: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  Substitui a mensagem de texto simples por uma mensagem interativa com botão que abre a URL. O texto acima é usado como corpo da mensagem.
+                </div>
+              </div>
+            ) : (
+              <div className="text-[11px] text-muted-foreground">
+                Ative para responder com uma mensagem interativa contendo um botão que leva a uma URL.
+              </div>
+            )}
+          </div>
+
         </div>
       ) : (
         <div className="p-3 text-xs text-muted-foreground">
