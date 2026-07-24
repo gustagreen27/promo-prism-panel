@@ -180,21 +180,41 @@ function buildMetaBody(to: string, payload: any): Record<string, any> {
     return { ...base, type: t, [t]: media };
   }
   if (payload?.kind === "interactive_buttons") {
-    return {
-      ...base,
-      type: "interactive",
-      interactive: {
-        type: "button",
-        body: { text: payload.body },
-        action: {
-          buttons: (payload.buttons ?? []).slice(0, 3).map((b: any) => ({
-            type: "reply",
-            reply: { id: b.id, title: String(b.title).slice(0, 20) },
-          })),
-        },
+    const interactive: any = {
+      type: "button",
+      body: { text: payload.body },
+      action: {
+        buttons: (payload.buttons ?? []).slice(0, 3).map((b: any) => ({
+          type: "reply",
+          reply: { id: String(b.id), title: String(b.title).slice(0, 20) },
+        })),
       },
     };
+    if (payload.header) interactive.header = { type: "text", text: String(payload.header).slice(0, 60) };
+    if (payload.footer) interactive.footer = { text: String(payload.footer).slice(0, 60) };
+    return { ...base, type: "interactive", interactive };
   }
+  if (payload?.kind === "interactive_list") {
+    const interactive: any = {
+      type: "list",
+      body: { text: payload.body },
+      action: {
+        button: String(payload.button ?? "Ver opções").slice(0, 20),
+        sections: (payload.sections ?? []).slice(0, 10).map((s: any) => ({
+          title: s.title ? String(s.title).slice(0, 24) : undefined,
+          rows: (s.rows ?? []).slice(0, 10).map((r: any) => ({
+            id: String(r.id),
+            title: String(r.title).slice(0, 24),
+            description: r.description ? String(r.description).slice(0, 72) : undefined,
+          })),
+        })),
+      },
+    };
+    if (payload.header) interactive.header = { type: "text", text: String(payload.header).slice(0, 60) };
+    if (payload.footer) interactive.footer = { text: String(payload.footer).slice(0, 60) };
+    return { ...base, type: "interactive", interactive };
+  }
+
   if (payload?.kind === "template") {
     return {
       ...base,
