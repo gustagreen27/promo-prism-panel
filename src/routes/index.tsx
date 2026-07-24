@@ -392,17 +392,17 @@ function PainelRealCard({ variant = "live" }: { variant?: PainelVariant }) {
   const percent = (sent / total) * 100;
 
   const metrics = [
-    { k: "Contatos", v: formatInt(total), Icon: Users, tone: "text-neutral-300" },
-    { k: "Enviados", v: formatInt(sent), Icon: Send, tone: "text-emerald-400" },
-    { k: "Entregues", v: formatInt(delivered), Icon: CheckCircle2, tone: "text-emerald-400" },
-    { k: "Falhas", v: formatInt(failed), Icon: XCircle, tone: "text-rose-400" },
+    { k: "Contatos", v: formatInt(total), Icon: Users, tone: "text-neutral-400", primary: false },
+    { k: "Enviados", v: formatInt(sent), Icon: Send, tone: "text-emerald-400", primary: true },
+    { k: "Entregues", v: formatInt(delivered), Icon: CheckCircle2, tone: "text-emerald-400", primary: false },
+    { k: "Falhas", v: formatInt(failed), Icon: XCircle, tone: "text-rose-400", primary: false },
   ];
 
   return (
     <div className="relative rounded-[22px] border border-white/[0.08] bg-[#101216] p-5 sm:p-6 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)]">
       <div className="flex items-center justify-between gap-3">
         <div className="inline-flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-neutral-300">
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-neutral-200">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
             Exemplo de visualização
           </span>
@@ -410,8 +410,8 @@ function PainelRealCard({ variant = "live" }: { variant?: PainelVariant }) {
         <span
           className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium ${
             finished
-              ? "border border-emerald-500/25 bg-emerald-500/[0.08] text-emerald-400"
-              : "border border-white/10 bg-white/[0.04] text-neutral-300"
+              ? "border border-emerald-500/25 bg-emerald-500/[0.08] text-emerald-300"
+              : "border border-white/10 bg-white/[0.04] text-neutral-200"
           }`}
         >
           {finished ? (
@@ -430,26 +430,35 @@ function PainelRealCard({ variant = "live" }: { variant?: PainelVariant }) {
       <div className="mt-4 flex items-baseline justify-between gap-3">
         <h3 className="text-[20px] font-semibold text-white tracking-tight">Campanha Julho</h3>
       </div>
-      <div className="text-[12px] text-neutral-500">
+      <div className="text-[12px] text-neutral-400">
         {finished ? "Finalizada em 23/07/2026 22:16" : "Atualizado há 22 segundos"}
       </div>
 
       <div className="mt-5 grid grid-cols-2 gap-2.5">
-        {metrics.map(({ k, v, Icon, tone }) => (
+        {metrics.map(({ k, v, Icon, tone, primary }) => (
           <div
             key={k}
-            className="rounded-xl border border-white/[0.06] bg-[#0b0d10] p-3.5"
+            className={
+              primary
+                ? "relative rounded-xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/[0.08] to-emerald-500/[0.02] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_0_0_1px_rgba(16,185,129,0.08)]"
+                : "rounded-xl border border-white/[0.06] bg-[#0b0d10] p-3.5"
+            }
           >
-            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-neutral-500">
+            <div className={`flex items-center gap-1.5 text-[10px] uppercase tracking-widest ${primary ? "text-emerald-300/90" : "text-neutral-400"}`}>
               <Icon className={`h-3 w-3 ${tone}`} />
               {k}
             </div>
-            <div className="mt-1.5 text-[20px] font-semibold text-white tabular-nums">
+            <div
+              className={`mt-1.5 font-semibold tabular-nums ${
+                primary ? "text-[24px] text-white" : "text-[20px] text-white"
+              }`}
+            >
               {v}
             </div>
           </div>
         ))}
       </div>
+
 
       <div className="mt-5">
         <div className="flex items-center justify-between text-[11px] text-neutral-400">
