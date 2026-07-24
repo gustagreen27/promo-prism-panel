@@ -151,6 +151,9 @@ function AtendimentoPage() {
         <Badge variant="secondary" className="ml-2">
           {convs.length} conversas
         </Badge>
+        <div className="ml-auto">
+          <AttendanceSettingsDialog />
+        </div>
       </div>
 
       <div className="grid flex-1 grid-cols-1 gap-3 overflow-hidden md:grid-cols-[320px_1fr_320px]">
