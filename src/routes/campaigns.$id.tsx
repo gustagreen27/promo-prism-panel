@@ -675,10 +675,10 @@ function PublicCampaignReport() {
                 );
                 const dispatchMap =
                   customEnabled && dispatchOv?.enabled
-                    ? (dispatchOv?.status_map as Record<string, string | null> | undefined)
+                    ? (dispatchOv?.status_map as Record<string, StatusMapValue> | undefined)
                     : undefined;
                 const globalMap = customEnabled
-                  ? (publicSettings?.status_map as Record<string, string | null> | undefined)
+                  ? (publicSettings?.status_map as Record<string, StatusMapValue> | undefined)
                   : undefined;
                 const remap = (s: string | null, key: string) =>
                   applyStatusMap(s, dispatchMap, globalMap, key);
