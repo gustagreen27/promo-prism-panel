@@ -610,7 +610,7 @@ function MiniRow({
 // ============ METRICS strip ============
 function Metrics() {
   const items = [
-    { n: "10k – 500k+", t: "Contatos por campanha" },
+    { n: "2k – 500k+", t: "Contatos por campanha" },
     { n: "API Oficial", t: "WhatsApp Business Platform" },
     { n: "Tempo real", t: "Acompanhamento de envios" },
     { n: "Atendimento", t: "Especialista dedicado" },
