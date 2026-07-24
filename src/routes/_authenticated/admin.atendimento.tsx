@@ -54,6 +54,7 @@ import {
   Plus,
   Trash2,
   CornerUpLeft,
+  Link2,
 } from "lucide-react";
 
 
