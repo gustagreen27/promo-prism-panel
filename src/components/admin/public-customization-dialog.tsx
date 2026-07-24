@@ -871,74 +871,127 @@ function AutoSimForm({
 
   const runtime = s.runtime ?? { active: false };
 
+  const runState = runtime.paused_at ? "paused" : runtime.active ? "running" : "idle";
+  const runBadge =
+    runState === "running"
+      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+      : runState === "paused"
+        ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+        : "border-muted-foreground/20 bg-muted text-muted-foreground";
+  const runDot =
+    runState === "running"
+      ? "bg-emerald-500 animate-pulse"
+      : runState === "paused"
+        ? "bg-amber-500"
+        : "bg-muted-foreground/40";
+
   return (
-    <div className="rounded-md border p-3 space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="text-xs font-medium text-muted-foreground">Progressão automática</div>
-        <Badge variant={runtime.active ? "default" : "outline"}>
-          {runtime.paused_at ? "Pausada" : runtime.active ? "Rodando" : "Parada"}
-        </Badge>
+    <div className="rounded-lg border bg-muted/20 p-4 space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Progressão automática
+          </div>
+        </div>
+        <span
+          className={
+            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium " +
+            runBadge
+          }
+        >
+          <span className={"h-1.5 w-1.5 rounded-full " + runDot} />
+          {runState === "running" ? "Rodando" : runState === "paused" ? "Pausada" : "Parada"}
+        </span>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <div>
-          <Label className="text-xs">Início</Label>
-          <Input type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} />
+      {/* Janela de tempo */}
+      <div>
+        <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70">
+          Janela de tempo
         </div>
-        <div>
-          <Label className="text-xs">Fim</Label>
-          <Input type="datetime-local" value={endAt} onChange={(e) => setEndAt(e.target.value)} />
-        </div>
-        <NumField label="Duração (s)" value={String(durationSec)} onChange={setDurationSec} />
-        <NumField label="Intervalo refresh (s)" value={refresh} onChange={setRefresh} />
-        <NumField label="Enviados início" value={sentStart} onChange={setSentStart} />
-        <NumField label="Enviados fim" value={sentEnd} onChange={setSentEnd} />
-        <div>
-          <Label className="text-xs">Taxa entrega (0–1)</Label>
-          <Input value={dRatio} onChange={(e) => setDRatio(e.target.value)} />
-        </div>
-        <div>
-          <Label className="text-xs">Taxa falha (0–1)</Label>
-          <Input value={fRatio} onChange={(e) => setFRatio(e.target.value)} />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <Label className="text-xs">Curva</Label>
-          <Select value={growth} onValueChange={setGrowth}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="linear">Linear</SelectItem>
-              <SelectItem value="random">Aleatória</SelectItem>
-              <SelectItem value="batches">Em lotes</SelectItem>
-              <SelectItem value="stepped">Por etapas</SelectItem>
-              <SelectItem value="real_plus">Real + offset</SelectItem>
-              <SelectItem value="manual">Manual</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label className="text-xs">Status durante execução</Label>
-          <Input value={statusLabel} onChange={(e) => setStatusLabel(e.target.value)} placeholder="ex: Em execução" />
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="space-y-1">
+            <Label className="text-xs">Início</Label>
+            <Input type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Fim</Label>
+            <Input type="datetime-local" value={endAt} onChange={(e) => setEndAt(e.target.value)} />
+          </div>
+          <NumField label="Duração (s)" value={String(durationSec)} onChange={setDurationSec} />
+          <NumField label="Intervalo refresh (s)" value={refresh} onChange={setRefresh} />
         </div>
       </div>
 
-      <div className="space-y-2">
+      {/* Volume e taxas */}
+      <div>
+        <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70">
+          Volume e taxas
+        </div>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <NumField label="Enviados início" value={sentStart} onChange={setSentStart} />
+          <NumField label="Enviados fim" value={sentEnd} onChange={setSentEnd} />
+          <div className="space-y-1">
+            <Label className="text-xs">Taxa entrega (0–1)</Label>
+            <Input value={dRatio} onChange={(e) => setDRatio(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Taxa falha (0–1)</Label>
+            <Input value={fRatio} onChange={(e) => setFRatio(e.target.value)} />
+          </div>
+        </div>
+      </div>
+
+      {/* Comportamento */}
+      <div>
+        <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70">
+          Comportamento
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="space-y-1">
+            <Label className="text-xs">Curva</Label>
+            <Select value={growth} onValueChange={setGrowth}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="linear">Linear</SelectItem>
+                <SelectItem value="random">Aleatória</SelectItem>
+                <SelectItem value="batches">Em lotes</SelectItem>
+                <SelectItem value="stepped">Por etapas</SelectItem>
+                <SelectItem value="real_plus">Real + offset</SelectItem>
+                <SelectItem value="manual">Manual</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Status durante execução</Label>
+            <Input value={statusLabel} onChange={(e) => setStatusLabel(e.target.value)} placeholder="ex: Em execução" />
+          </div>
+        </div>
+      </div>
+
+      {/* Pausas */}
+      <div className="rounded-md border bg-background p-3 space-y-2">
         <div className="flex items-center justify-between">
-          <Label className="text-xs">Pausas programadas (públicas)</Label>
+          <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">
+            Pausas programadas
+          </Label>
           <Button
             size="sm"
             variant="outline"
+            className="h-7"
             onClick={() =>
               setPauses([...pauses, { after_sent: 0, duration_sec: 60, status_label: "Pausada", recalc_eta: true }])
             }
           >
-            <Plus className="mr-1 h-3 w-3" /> Nova
+            <Plus className="mr-1 h-3 w-3" /> Nova pausa
           </Button>
         </div>
+        {pauses.length === 0 && (
+          <p className="text-[11px] text-muted-foreground">Nenhuma pausa programada.</p>
+        )}
         {pauses.map((p, i) => (
-          <div key={i} className="grid grid-cols-5 gap-2 items-end">
+          <div key={i} className="grid grid-cols-5 gap-2 items-end rounded-md border bg-muted/30 p-2">
             <NumField
               label="Após enviados"
               value={String(p.after_sent)}
@@ -953,7 +1006,7 @@ function AutoSimForm({
                 const c = [...pauses]; c[i] = { ...p, duration_sec: Number(v || 0) }; setPauses(c);
               }}
             />
-            <div className="col-span-2">
+            <div className="col-span-2 space-y-1">
               <Label className="text-xs">Status</Label>
               <Input
                 value={p.status_label ?? ""}
@@ -971,47 +1024,60 @@ function AutoSimForm({
         ))}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-t pt-2">
-        <Button
-          size="sm"
-          onClick={() =>
-            onSave({
-              start_at: startAt ? new Date(startAt).toISOString() : null,
-              end_at: endAt ? new Date(endAt).toISOString() : null,
-              duration_sec: durationSec === "" ? null : Number(durationSec),
-              refresh_interval_sec: Number(refresh || 5),
-              sent_start: Number(sentStart || 0),
-              sent_end: Number(sentEnd || 0),
-              delivered_ratio: Number(dRatio || 0),
-              failed_ratio: Number(fRatio || 0),
-              growth: growth as any,
-              growth_params: {},
-              pauses,
-              status_label: statusLabel || null,
-            })
-          }
-        >
-          <Save className="mr-1 h-4 w-4" /> Salvar simulação
-        </Button>
-        <div className="ml-auto flex items-center gap-1">
-          <Button size="sm" variant="outline" onClick={() => onControl("start")}>
-            <Play className="mr-1 h-3 w-3" /> Iniciar
+      {/* Ações da simulação */}
+      <div className="rounded-md border bg-background p-3 space-y-3">
+        <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70">
+          Controle
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            onClick={() =>
+              onSave({
+                start_at: startAt ? new Date(startAt).toISOString() : null,
+                end_at: endAt ? new Date(endAt).toISOString() : null,
+                duration_sec: durationSec === "" ? null : Number(durationSec),
+                refresh_interval_sec: Number(refresh || 5),
+                sent_start: Number(sentStart || 0),
+                sent_end: Number(sentEnd || 0),
+                delivered_ratio: Number(dRatio || 0),
+                failed_ratio: Number(fRatio || 0),
+                growth: growth as any,
+                growth_params: {},
+                pauses,
+                status_label: statusLabel || null,
+              })
+            }
+          >
+            <Save className="mr-1 h-4 w-4" /> Salvar simulação
           </Button>
-          <Button size="sm" variant="outline" onClick={() => onControl("pause")}>
-            <Pause className="mr-1 h-3 w-3" /> Pausar
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => onControl("resume")}>
-            <Play className="mr-1 h-3 w-3" /> Retomar
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => onControl("restart")}>
-            <RotateCcw className="mr-1 h-3 w-3" /> Reiniciar
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => onControl("sync_real")}>
-            <RefreshCw className="mr-1 h-3 w-3" /> Sincronizar
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => onControl("disable")}>
-            <Trash2 className="mr-1 h-3 w-3" /> Remover
-          </Button>
+
+          <div className="ml-auto inline-flex flex-wrap items-center gap-1 rounded-md border bg-muted/40 p-1">
+            <Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => onControl("start")}>
+              <Play className="h-3 w-3 text-emerald-600" /> Iniciar
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => onControl("pause")}>
+              <Pause className="h-3 w-3 text-amber-600" /> Pausar
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => onControl("resume")}>
+              <Play className="h-3 w-3 text-sky-600" /> Retomar
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => onControl("restart")}>
+              <RotateCcw className="h-3 w-3" /> Reiniciar
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => onControl("sync_real")}>
+              <RefreshCw className="h-3 w-3" /> Sincronizar
+            </Button>
+            <span className="mx-1 h-4 w-px bg-border" />
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 gap-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={() => onControl("disable")}
+            >
+              <Trash2 className="h-3 w-3" /> Remover
+            </Button>
+          </div>
         </div>
       </div>
     </div>
