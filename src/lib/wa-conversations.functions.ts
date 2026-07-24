@@ -208,6 +208,20 @@ export const setConversationStatus = createServerFn({ method: "POST" })
 
 // ---------- Send message (enqueue) ----------
 
+const InteractiveButtonSchema = z.object({
+  id: z.string().min(1).max(256),
+  title: z.string().min(1).max(20),
+});
+const InteractiveListRowSchema = z.object({
+  id: z.string().min(1).max(200),
+  title: z.string().min(1).max(24),
+  description: z.string().max(72).optional(),
+});
+const InteractiveListSectionSchema = z.object({
+  title: z.string().max(24).optional(),
+  rows: z.array(InteractiveListRowSchema).min(1).max(10),
+});
+
 const OutboundSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("text"),
@@ -225,6 +239,25 @@ const OutboundSchema = z.discriminatedUnion("kind", [
     context_wamid: z.string().optional().nullable(),
   }),
   z.object({
+    kind: z.literal("interactive_buttons"),
+    conversation_id: z.string().uuid(),
+    body: z.string().min(1).max(1024),
+    header: z.string().max(60).optional(),
+    footer: z.string().max(60).optional(),
+    buttons: z.array(InteractiveButtonSchema).min(1).max(3),
+    context_wamid: z.string().optional().nullable(),
+  }),
+  z.object({
+    kind: z.literal("interactive_list"),
+    conversation_id: z.string().uuid(),
+    body: z.string().min(1).max(1024),
+    header: z.string().max(60).optional(),
+    footer: z.string().max(60).optional(),
+    button: z.string().min(1).max(20),
+    sections: z.array(InteractiveListSectionSchema).min(1).max(10),
+    context_wamid: z.string().optional().nullable(),
+  }),
+  z.object({
     kind: z.literal("template"),
     conversation_id: z.string().uuid(),
     template_id: z.string().uuid(),
@@ -233,6 +266,7 @@ const OutboundSchema = z.discriminatedUnion("kind", [
     button_url_param: z.string().optional(),
   }),
 ]);
+
 
 export const sendConversationMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -273,6 +307,7 @@ export const sendConversationMessage = createServerFn({ method: "POST" })
     let templateName: string | null = null;
     let payload: any = {};
 
+    let interactiveType: string | null = null;
     if (data.kind === "text") {
       bodyText = data.body;
       payload = { kind: "text", body: data.body, context_wamid: data.context_wamid ?? null };
@@ -288,6 +323,31 @@ export const sendConversationMessage = createServerFn({ method: "POST" })
         link: data.link,
         caption: data.caption,
         filename: data.filename,
+        context_wamid: data.context_wamid ?? null,
+      };
+    } else if (data.kind === "interactive_buttons") {
+      messageType = "interactive";
+      interactiveType = "button";
+      bodyText = data.body;
+      payload = {
+        kind: "interactive_buttons",
+        body: data.body,
+        header: data.header ?? null,
+        footer: data.footer ?? null,
+        buttons: data.buttons,
+        context_wamid: data.context_wamid ?? null,
+      };
+    } else if (data.kind === "interactive_list") {
+      messageType = "interactive";
+      interactiveType = "list";
+      bodyText = data.body;
+      payload = {
+        kind: "interactive_list",
+        body: data.body,
+        header: data.header ?? null,
+        footer: data.footer ?? null,
+        button: data.button,
+        sections: data.sections,
         context_wamid: data.context_wamid ?? null,
       };
     } else {
@@ -313,6 +373,7 @@ export const sendConversationMessage = createServerFn({ method: "POST" })
       };
     }
 
+
     const { data: msg, error: msgErr } = await context.supabase
       .from("wa_conversation_messages")
       .insert({
@@ -326,6 +387,8 @@ export const sendConversationMessage = createServerFn({ method: "POST" })
         media_caption: mediaCaption,
         media_filename: mediaFilename,
         template_name: templateName,
+        interactive_type: interactiveType,
+
         status: "queued",
         sent_by_user_id: context.userId,
         payload,

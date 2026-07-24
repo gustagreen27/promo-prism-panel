@@ -28,6 +28,8 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
 import {
   Loader2,
   Search,
@@ -40,7 +42,19 @@ import {
   User,
   StickyNote,
   FileText,
+  Paperclip,
+  Image as ImageIcon,
+  Video,
+  Music,
+  File as FileIcon,
+  ListChecks,
+  MousePointerClick,
+  Reply,
+  Plus,
+  Trash2,
+  CornerUpLeft,
 } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/admin/atendimento")({
   head: () => ({
@@ -283,7 +297,28 @@ function ChatPanel(props: {
   const [text, setText] = useState("");
   const [tplOpen, setTplOpen] = useState(false);
   const [tplId, setTplId] = useState<string>("");
+  const [replyTo, setReplyTo] = useState<{ wamid: string; preview: string } | null>(null);
+  const [attachOpen, setAttachOpen] = useState(false);
+  const [attachTab, setAttachTab] = useState<"media" | "buttons" | "list">("media");
+  const [mediaType, setMediaType] = useState<"image" | "video" | "audio" | "document">("image");
+  const [mediaLink, setMediaLink] = useState("");
+  const [mediaCaption, setMediaCaption] = useState("");
+  const [mediaFilename, setMediaFilename] = useState("");
+  const [btnBody, setBtnBody] = useState("");
+  const [btnHeader, setBtnHeader] = useState("");
+  const [btnFooter, setBtnFooter] = useState("");
+  const [buttons, setButtons] = useState<Array<{ id: string; title: string }>>([
+    { id: "opt_1", title: "" },
+  ]);
+  const [listBody, setListBody] = useState("");
+  const [listHeader, setListHeader] = useState("");
+  const [listFooter, setListFooter] = useState("");
+  const [listButton, setListButton] = useState("Ver opções");
+  const [listRows, setListRows] = useState<Array<{ id: string; title: string; description: string }>>([
+    { id: "row_1", title: "", description: "" },
+  ]);
   const scrollRef = useRef<HTMLDivElement>(null);
+
 
   const convQuery = useQuery({
     queryKey: ["atd", "conv", conversationId],
@@ -311,9 +346,17 @@ function ChatPanel(props: {
 
   const sendText = useMutation({
     mutationFn: () =>
-      sendFn({ data: { kind: "text", conversation_id: conversationId, body: text.trim() } }),
+      sendFn({
+        data: {
+          kind: "text",
+          conversation_id: conversationId,
+          body: text.trim(),
+          context_wamid: replyTo?.wamid ?? null,
+        },
+      }),
     onSuccess: () => {
       setText("");
+      setReplyTo(null);
       qc.invalidateQueries({ queryKey: ["atd", "messages", conversationId] });
       qc.invalidateQueries({ queryKey: ["atd", "conversations"] });
       // Dispara worker best-effort
@@ -321,6 +364,108 @@ function ChatPanel(props: {
     },
     onError: (e: any) => toast.error(e?.message ?? "Falha ao enviar"),
   });
+
+  const bumpWorker = () => {
+    fetch("/api/public/whatsapp/service-tick", { method: "POST" }).catch(() => {});
+  };
+  const invalidateAfterSend = () => {
+    qc.invalidateQueries({ queryKey: ["atd", "messages", conversationId] });
+    qc.invalidateQueries({ queryKey: ["atd", "conversations"] });
+    bumpWorker();
+  };
+
+  const sendMedia = useMutation({
+    mutationFn: () =>
+      sendFn({
+        data: {
+          kind: "media",
+          conversation_id: conversationId,
+          media_type: mediaType,
+          link: mediaLink.trim(),
+          caption: mediaCaption.trim() || undefined,
+          filename: mediaType === "document" && mediaFilename.trim() ? mediaFilename.trim() : undefined,
+          context_wamid: replyTo?.wamid ?? null,
+        },
+      }),
+    onSuccess: () => {
+      setMediaLink("");
+      setMediaCaption("");
+      setMediaFilename("");
+      setAttachOpen(false);
+      setReplyTo(null);
+      invalidateAfterSend();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao enviar mídia"),
+  });
+
+  const sendButtons = useMutation({
+    mutationFn: () => {
+      const cleaned = buttons
+        .map((b, i) => ({
+          id: (b.id || `opt_${i + 1}`).trim(),
+          title: b.title.trim(),
+        }))
+        .filter((b) => b.title.length > 0);
+      if (cleaned.length === 0) throw new Error("Adicione ao menos 1 botão");
+      return sendFn({
+        data: {
+          kind: "interactive_buttons",
+          conversation_id: conversationId,
+          body: btnBody.trim(),
+          header: btnHeader.trim() || undefined,
+          footer: btnFooter.trim() || undefined,
+          buttons: cleaned,
+          context_wamid: replyTo?.wamid ?? null,
+        },
+      });
+    },
+    onSuccess: () => {
+      setBtnBody("");
+      setBtnHeader("");
+      setBtnFooter("");
+      setButtons([{ id: "opt_1", title: "" }]);
+      setAttachOpen(false);
+      setReplyTo(null);
+      invalidateAfterSend();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao enviar botões"),
+  });
+
+  const sendList = useMutation({
+    mutationFn: () => {
+      const cleanedRows = listRows
+        .map((r, i) => ({
+          id: (r.id || `row_${i + 1}`).trim(),
+          title: r.title.trim(),
+          description: r.description.trim() || undefined,
+        }))
+        .filter((r) => r.title.length > 0);
+      if (cleanedRows.length === 0) throw new Error("Adicione ao menos 1 item");
+      return sendFn({
+        data: {
+          kind: "interactive_list",
+          conversation_id: conversationId,
+          body: listBody.trim(),
+          header: listHeader.trim() || undefined,
+          footer: listFooter.trim() || undefined,
+          button: (listButton.trim() || "Ver opções").slice(0, 20),
+          sections: [{ title: undefined, rows: cleanedRows }],
+          context_wamid: replyTo?.wamid ?? null,
+        },
+      });
+    },
+    onSuccess: () => {
+      setListBody("");
+      setListHeader("");
+      setListFooter("");
+      setListRows([{ id: "row_1", title: "", description: "" }]);
+      setAttachOpen(false);
+      setReplyTo(null);
+      invalidateAfterSend();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao enviar lista"),
+  });
+
 
   const sendTpl = useMutation({
     mutationFn: () =>
@@ -415,7 +560,21 @@ function ChatPanel(props: {
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-2 bg-muted/30 p-3">
         {(msgsQuery.data as any[] | undefined)?.map((m) => (
-          <MessageBubble key={m.id} msg={m} />
+          <MessageBubble
+            key={m.id}
+            msg={m}
+            onReply={(mm) => {
+              const preview =
+                mm.body ??
+                (mm.message_type ? `[${mm.message_type}]` : "Mensagem");
+              const wamid = mm.wamid || null;
+              if (!wamid) {
+                toast.error("Sem identificador da mensagem para citar.");
+                return;
+              }
+              setReplyTo({ wamid, preview: String(preview).slice(0, 120) });
+            }}
+          />
         )) ?? null}
         {msgsQuery.isLoading && (
           <div className="flex justify-center">
@@ -428,6 +587,19 @@ function ChatPanel(props: {
         {!windowOpen && !tplOpen && (
           <div className="rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
             Janela de 24h fechada. Envie um <button className="underline" onClick={() => setTplOpen(true)}>template aprovado</button> para reabrir a conversa.
+          </div>
+        )}
+
+        {replyTo && (
+          <div className="flex items-start gap-2 rounded-md border-l-4 border-emerald-500 bg-muted/60 px-2 py-1 text-xs">
+            <CornerUpLeft className="mt-0.5 h-3 w-3 text-emerald-600" />
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] font-medium text-emerald-700 dark:text-emerald-300">Respondendo</div>
+              <div className="truncate">{replyTo.preview}</div>
+            </div>
+            <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setReplyTo(null)}>
+              <X className="h-3 w-3" />
+            </Button>
           </div>
         )}
 
@@ -466,6 +638,237 @@ function ChatPanel(props: {
           </div>
         ) : (
           <div className="flex items-end gap-2">
+            <Popover open={attachOpen} onOpenChange={setAttachOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!windowOpen}
+                  title="Anexar mídia, botões ou lista"
+                >
+                  <Paperclip className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" side="top" className="w-[380px] p-3">
+                <Tabs value={attachTab} onValueChange={(v) => setAttachTab(v as any)}>
+                  <TabsList className="grid grid-cols-3">
+                    <TabsTrigger value="media" className="text-xs">
+                      <ImageIcon className="mr-1 h-3 w-3" /> Mídia
+                    </TabsTrigger>
+                    <TabsTrigger value="buttons" className="text-xs">
+                      <MousePointerClick className="mr-1 h-3 w-3" /> Botões
+                    </TabsTrigger>
+                    <TabsTrigger value="list" className="text-xs">
+                      <ListChecks className="mr-1 h-3 w-3" /> Lista
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="media" className="space-y-2 pt-3">
+                    <div className="grid grid-cols-4 gap-1">
+                      {(["image", "video", "audio", "document"] as const).map((t) => (
+                        <Button
+                          key={t}
+                          size="sm"
+                          variant={mediaType === t ? "default" : "outline"}
+                          className="h-8 text-xs"
+                          onClick={() => setMediaType(t)}
+                        >
+                          {t === "image" && <ImageIcon className="mr-1 h-3 w-3" />}
+                          {t === "video" && <Video className="mr-1 h-3 w-3" />}
+                          {t === "audio" && <Music className="mr-1 h-3 w-3" />}
+                          {t === "document" && <FileIcon className="mr-1 h-3 w-3" />}
+                          {t === "image" ? "Imagem" : t === "video" ? "Vídeo" : t === "audio" ? "Áudio" : "Doc"}
+                        </Button>
+                      ))}
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">URL pública (https)</Label>
+                      <Input
+                        value={mediaLink}
+                        onChange={(e) => setMediaLink(e.target.value)}
+                        placeholder="https://…"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    {(mediaType === "image" || mediaType === "video" || mediaType === "document") && (
+                      <div className="space-y-1">
+                        <Label className="text-xs">Legenda (opcional)</Label>
+                        <Textarea
+                          value={mediaCaption}
+                          onChange={(e) => setMediaCaption(e.target.value)}
+                          rows={2}
+                          className="resize-none text-xs"
+                          maxLength={1024}
+                        />
+                      </div>
+                    )}
+                    {mediaType === "document" && (
+                      <div className="space-y-1">
+                        <Label className="text-xs">Nome do arquivo (opcional)</Label>
+                        <Input
+                          value={mediaFilename}
+                          onChange={(e) => setMediaFilename(e.target.value)}
+                          placeholder="documento.pdf"
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                    )}
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      disabled={!mediaLink.trim() || sendMedia.isPending}
+                      onClick={() => sendMedia.mutate()}
+                    >
+                      {sendMedia.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="mr-1 h-3 w-3" /> Enviar mídia</>}
+                    </Button>
+                  </TabsContent>
+
+                  <TabsContent value="buttons" className="space-y-2 pt-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Cabeçalho (opcional, até 60)</Label>
+                      <Input value={btnHeader} onChange={(e) => setBtnHeader(e.target.value)} maxLength={60} className="h-8 text-xs" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Corpo (obrigatório)</Label>
+                      <Textarea value={btnBody} onChange={(e) => setBtnBody(e.target.value)} rows={2} className="resize-none text-xs" maxLength={1024} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Rodapé (opcional)</Label>
+                      <Input value={btnFooter} onChange={(e) => setBtnFooter(e.target.value)} maxLength={60} className="h-8 text-xs" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Botões (máx 3, título até 20)</Label>
+                      {buttons.map((b, i) => (
+                        <div key={i} className="flex items-center gap-1">
+                          <Input
+                            value={b.title}
+                            onChange={(e) => {
+                              const arr = [...buttons];
+                              arr[i] = { ...arr[i], title: e.target.value };
+                              setButtons(arr);
+                            }}
+                            placeholder={`Botão ${i + 1}`}
+                            maxLength={20}
+                            className="h-8 text-xs"
+                          />
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0"
+                            onClick={() => setButtons(buttons.filter((_, j) => j !== i))}
+                            disabled={buttons.length <= 1}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                      {buttons.length < 3 && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 w-full text-xs"
+                          onClick={() =>
+                            setButtons([...buttons, { id: `opt_${buttons.length + 1}`, title: "" }])
+                          }
+                        >
+                          <Plus className="mr-1 h-3 w-3" /> Adicionar botão
+                        </Button>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      disabled={!btnBody.trim() || buttons.every((b) => !b.title.trim()) || sendButtons.isPending}
+                      onClick={() => sendButtons.mutate()}
+                    >
+                      {sendButtons.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="mr-1 h-3 w-3" /> Enviar botões</>}
+                    </Button>
+                  </TabsContent>
+
+                  <TabsContent value="list" className="space-y-2 pt-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Cabeçalho</Label>
+                        <Input value={listHeader} onChange={(e) => setListHeader(e.target.value)} maxLength={60} className="h-8 text-xs" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Texto do botão</Label>
+                        <Input value={listButton} onChange={(e) => setListButton(e.target.value)} maxLength={20} className="h-8 text-xs" />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Corpo</Label>
+                      <Textarea value={listBody} onChange={(e) => setListBody(e.target.value)} rows={2} className="resize-none text-xs" maxLength={1024} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Rodapé</Label>
+                      <Input value={listFooter} onChange={(e) => setListFooter(e.target.value)} maxLength={60} className="h-8 text-xs" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Itens (máx 10, título até 24)</Label>
+                      {listRows.map((r, i) => (
+                        <div key={i} className="space-y-1 rounded border p-1.5">
+                          <div className="flex items-center gap-1">
+                            <Input
+                              value={r.title}
+                              onChange={(e) => {
+                                const arr = [...listRows];
+                                arr[i] = { ...arr[i], title: e.target.value };
+                                setListRows(arr);
+                              }}
+                              placeholder={`Item ${i + 1}`}
+                              maxLength={24}
+                              className="h-7 text-xs"
+                            />
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0"
+                              onClick={() => setListRows(listRows.filter((_, j) => j !== i))}
+                              disabled={listRows.length <= 1}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          <Input
+                            value={r.description}
+                            onChange={(e) => {
+                              const arr = [...listRows];
+                              arr[i] = { ...arr[i], description: e.target.value };
+                              setListRows(arr);
+                            }}
+                            placeholder="Descrição (opcional)"
+                            maxLength={72}
+                            className="h-7 text-xs"
+                          />
+                        </div>
+                      ))}
+                      {listRows.length < 10 && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 w-full text-xs"
+                          onClick={() =>
+                            setListRows([...listRows, { id: `row_${listRows.length + 1}`, title: "", description: "" }])
+                          }
+                        >
+                          <Plus className="mr-1 h-3 w-3" /> Adicionar item
+                        </Button>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      disabled={!listBody.trim() || listRows.every((r) => !r.title.trim()) || sendList.isPending}
+                      onClick={() => sendList.mutate()}
+                    >
+                      {sendList.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="mr-1 h-3 w-3" /> Enviar lista</>}
+                    </Button>
+                  </TabsContent>
+                </Tabs>
+              </PopoverContent>
+            </Popover>
+
             <Textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -504,34 +907,123 @@ function ChatPanel(props: {
           </div>
         )}
       </div>
+
     </>
   );
 }
 
-function MessageBubble({ msg }: { msg: any }) {
+function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void }) {
   const out = msg.direction === "outbound";
   const bubble = out
     ? "ml-auto bg-emerald-600 text-white"
     : "mr-auto bg-white dark:bg-neutral-800 text-foreground";
+  const payload = msg.payload ?? {};
+  const isMedia =
+    msg.message_type === "image" ||
+    msg.message_type === "video" ||
+    msg.message_type === "audio" ||
+    msg.message_type === "document" ||
+    msg.message_type === "sticker";
+  const isInteractive = msg.message_type === "interactive";
+  const buttons: Array<{ id: string; title: string }> = isInteractive && payload?.kind === "interactive_buttons" ? (payload.buttons ?? []) : [];
+  const listSections: Array<{ title?: string; rows: Array<{ id: string; title: string; description?: string }> }> =
+    isInteractive && payload?.kind === "interactive_list" ? (payload.sections ?? []) : [];
+  const header = isInteractive ? payload?.header : null;
+  const footer = isInteractive ? payload?.footer : null;
+
   return (
-    <div className={`max-w-[75%] rounded-lg px-3 py-2 shadow-sm ${bubble}`}>
+    <div className={`group max-w-[75%] rounded-lg px-3 py-2 shadow-sm ${bubble}`}>
       {msg.template_name && (
         <div className={`mb-1 text-[10px] font-medium ${out ? "text-emerald-100" : "text-muted-foreground"}`}>
           Template · {msg.template_name}
         </div>
       )}
-      {msg.body && <div className="whitespace-pre-wrap break-words text-sm">{msg.body}</div>}
-      {msg.message_type && msg.message_type !== "text" && !msg.body && (
+
+      {header && <div className="mb-1 text-xs font-semibold opacity-90">{String(header)}</div>}
+
+      {isMedia && msg.media_url && (msg.message_type === "image") && (
+        <a href={msg.media_url} target="_blank" rel="noreferrer">
+          <img
+            src={msg.media_url}
+            alt={msg.media_caption ?? "imagem"}
+            className="mb-1 max-h-56 rounded object-cover"
+            loading="lazy"
+          />
+        </a>
+      )}
+      {isMedia && msg.media_url && msg.message_type === "video" && (
+        <video src={msg.media_url} controls className="mb-1 max-h-56 rounded" />
+      )}
+      {isMedia && msg.media_url && msg.message_type === "audio" && (
+        <audio src={msg.media_url} controls className="mb-1 w-full" />
+      )}
+      {isMedia && msg.media_url && msg.message_type === "document" && (
+        <a
+          href={msg.media_url}
+          target="_blank"
+          rel="noreferrer"
+          className={`mb-1 flex items-center gap-2 rounded border px-2 py-1 text-xs ${out ? "border-emerald-400/40 bg-emerald-700/40" : "border-border bg-muted/50"}`}
+        >
+          <FileIcon className="h-4 w-4" />
+          <span className="truncate">{msg.media_filename ?? "Documento"}</span>
+        </a>
+      )}
+      {isMedia && !msg.media_url && (
         <div className="text-xs italic opacity-80">[{msg.message_type}]</div>
       )}
+
+      {msg.body && <div className="whitespace-pre-wrap break-words text-sm">{msg.body}</div>}
+
+      {buttons.length > 0 && (
+        <div className={`mt-2 space-y-1 border-t pt-2 ${out ? "border-emerald-400/40" : "border-border/60"}`}>
+          {buttons.map((b) => (
+            <div
+              key={b.id}
+              className={`rounded px-2 py-1 text-center text-xs ${out ? "bg-emerald-700/40" : "bg-muted"}`}
+            >
+              {b.title}
+            </div>
+          ))}
+        </div>
+      )}
+      {listSections.length > 0 && (
+        <div className={`mt-2 space-y-1 border-t pt-2 ${out ? "border-emerald-400/40" : "border-border/60"}`}>
+          {listSections.flatMap((s) => s.rows).map((r) => (
+            <div key={r.id} className={`rounded px-2 py-1 text-xs ${out ? "bg-emerald-700/40" : "bg-muted"}`}>
+              <div className="font-medium">{r.title}</div>
+              {r.description && <div className="opacity-80">{r.description}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {footer && <div className="mt-1 text-[10px] opacity-70">{String(footer)}</div>}
+
+      {msg.interactive_button_title && !out && (
+        <div className="mt-1 text-[10px] opacity-70">Selecionado: {msg.interactive_button_title}</div>
+      )}
+      {msg.interactive_list_title && !out && (
+        <div className="mt-1 text-[10px] opacity-70">Selecionado: {msg.interactive_list_title}</div>
+      )}
+
       <div className={`mt-1 flex items-center gap-1 text-[10px] ${out ? "text-emerald-100/90" : "text-muted-foreground"}`}>
         <span>{formatTime(msg.created_at)}</span>
         {out && <StatusTick status={msg.status} />}
         {msg.error_message && <span className="text-red-200">· {msg.error_message}</span>}
+        {onReply && (
+          <button
+            className={`ml-auto opacity-0 transition group-hover:opacity-100 ${out ? "text-emerald-100" : "text-muted-foreground"}`}
+            onClick={() => onReply(msg)}
+            title="Responder"
+          >
+            <Reply className="h-3 w-3" />
+          </button>
+        )}
       </div>
     </div>
   );
 }
+
 
 function StatusTick({ status }: { status: string }) {
   if (status === "queued") return <Clock className="h-3 w-3" />;
