@@ -906,6 +906,39 @@ function ChatPanel(props: {
                       {sendList.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="mr-1 h-3 w-3" /> Enviar lista</>}
                     </Button>
                   </TabsContent>
+
+                  <TabsContent value="cta" className="space-y-2 pt-3">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Header (opcional)</label>
+                      <Input value={ctaHeader} onChange={(e) => setCtaHeader(e.target.value)} maxLength={60} className="h-8 text-xs" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Mensagem</label>
+                      <Textarea value={ctaBody} onChange={(e) => setCtaBody(e.target.value)} rows={2} className="resize-none text-xs" maxLength={1024} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs text-muted-foreground">Texto do botão</label>
+                        <Input value={ctaDisplayText} onChange={(e) => setCtaDisplayText(e.target.value)} maxLength={20} className="h-8 text-xs" placeholder="Abrir" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">URL destino</label>
+                        <Input value={ctaUrl} onChange={(e) => setCtaUrl(e.target.value)} type="url" className="h-8 text-xs" placeholder="https://…" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Footer (opcional)</label>
+                      <Input value={ctaFooter} onChange={(e) => setCtaFooter(e.target.value)} maxLength={60} className="h-8 text-xs" />
+                    </div>
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      disabled={!ctaBody.trim() || !ctaDisplayText.trim() || !ctaUrl.trim() || sendCta.isPending}
+                      onClick={() => sendCta.mutate()}
+                    >
+                      {sendCta.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="mr-1 h-3 w-3" /> Enviar botão CTA</>}
+                    </Button>
+                  </TabsContent>
                 </Tabs>
               </PopoverContent>
             </Popover>
