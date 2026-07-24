@@ -50,6 +50,7 @@ import { Route as AuthenticatedAdminConfiguracoesRouteImport } from './routes/_a
 import { Route as AuthenticatedAdminClientesRouteImport } from './routes/_authenticated/admin.clientes'
 import { Route as AuthenticatedAdminCampanhasAprovacaoRouteImport } from './routes/_authenticated/admin.campanhas-aprovacao'
 import { Route as AuthenticatedAdminCampanhasRouteImport } from './routes/_authenticated/admin.campanhas'
+import { Route as AuthenticatedAdminAtendimentoRouteImport } from './routes/_authenticated/admin.atendimento'
 import { Route as AuthenticatedAdminAgendaRouteImport } from './routes/_authenticated/admin.agenda'
 import { Route as AuthenticatedAdminRelatoriosIndexRouteImport } from './routes/_authenticated/admin.relatorios.index'
 import { Route as AuthenticatedAdminDisparosIndexRouteImport } from './routes/_authenticated/admin.disparos.index'
@@ -57,6 +58,7 @@ import { Route as AuthenticatedAdminContatosIndexRouteImport } from './routes/_a
 import { Route as ApiPublicWhatsappWebhookHealthRouteImport } from './routes/api/public/whatsapp/webhook-health'
 import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp/webhook'
 import { Route as ApiPublicWhatsappSyncNumbersRouteImport } from './routes/api/public/whatsapp/sync-numbers'
+import { Route as ApiPublicWhatsappServiceTickRouteImport } from './routes/api/public/whatsapp/service-tick'
 import { Route as ApiPublicWhatsappQueueTickRouteImport } from './routes/api/public/whatsapp/queue-tick'
 import { Route as ApiPublicWhatsappHarnessRouteImport } from './routes/api/public/whatsapp/harness'
 import { Route as ApiPublicHooksWaTemplatesSyncRouteImport } from './routes/api/public/hooks/wa-templates-sync'
@@ -308,6 +310,12 @@ const AuthenticatedAdminCampanhasRoute =
     path: '/admin/campanhas',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAdminAtendimentoRoute =
+  AuthenticatedAdminAtendimentoRouteImport.update({
+    id: '/admin/atendimento',
+    path: '/admin/atendimento',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAdminAgendaRoute =
   AuthenticatedAdminAgendaRouteImport.update({
     id: '/admin/agenda',
@@ -348,6 +356,12 @@ const ApiPublicWhatsappSyncNumbersRoute =
   ApiPublicWhatsappSyncNumbersRouteImport.update({
     id: '/api/public/whatsapp/sync-numbers',
     path: '/api/public/whatsapp/sync-numbers',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicWhatsappServiceTickRoute =
+  ApiPublicWhatsappServiceTickRouteImport.update({
+    id: '/api/public/whatsapp/service-tick',
+    path: '/api/public/whatsapp/service-tick',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicWhatsappQueueTickRoute =
@@ -553,6 +567,7 @@ export interface FileRoutesByFullPath {
   '/painel/whatsapp': typeof PainelWhatsappRoute
   '/painel/': typeof PainelIndexRoute
   '/admin/agenda': typeof AuthenticatedAdminAgendaRoute
+  '/admin/atendimento': typeof AuthenticatedAdminAtendimentoRoute
   '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
   '/admin/campanhas-aprovacao': typeof AuthenticatedAdminCampanhasAprovacaoRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
@@ -598,6 +613,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/wa-templates-sync': typeof ApiPublicHooksWaTemplatesSyncRoute
   '/api/public/whatsapp/harness': typeof ApiPublicWhatsappHarnessRoute
   '/api/public/whatsapp/queue-tick': typeof ApiPublicWhatsappQueueTickRoute
+  '/api/public/whatsapp/service-tick': typeof ApiPublicWhatsappServiceTickRoute
   '/api/public/whatsapp/sync-numbers': typeof ApiPublicWhatsappSyncNumbersRoute
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
   '/api/public/whatsapp/webhook-health': typeof ApiPublicWhatsappWebhookHealthRoute
@@ -631,6 +647,7 @@ export interface FileRoutesByTo {
   '/painel/whatsapp': typeof PainelWhatsappRoute
   '/painel': typeof PainelIndexRoute
   '/admin/agenda': typeof AuthenticatedAdminAgendaRoute
+  '/admin/atendimento': typeof AuthenticatedAdminAtendimentoRoute
   '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
   '/admin/campanhas-aprovacao': typeof AuthenticatedAdminCampanhasAprovacaoRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
@@ -675,6 +692,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/wa-templates-sync': typeof ApiPublicHooksWaTemplatesSyncRoute
   '/api/public/whatsapp/harness': typeof ApiPublicWhatsappHarnessRoute
   '/api/public/whatsapp/queue-tick': typeof ApiPublicWhatsappQueueTickRoute
+  '/api/public/whatsapp/service-tick': typeof ApiPublicWhatsappServiceTickRoute
   '/api/public/whatsapp/sync-numbers': typeof ApiPublicWhatsappSyncNumbersRoute
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
   '/api/public/whatsapp/webhook-health': typeof ApiPublicWhatsappWebhookHealthRoute
@@ -711,6 +729,7 @@ export interface FileRoutesById {
   '/painel/whatsapp': typeof PainelWhatsappRoute
   '/painel/': typeof PainelIndexRoute
   '/_authenticated/admin/agenda': typeof AuthenticatedAdminAgendaRoute
+  '/_authenticated/admin/atendimento': typeof AuthenticatedAdminAtendimentoRoute
   '/_authenticated/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
   '/_authenticated/admin/campanhas-aprovacao': typeof AuthenticatedAdminCampanhasAprovacaoRoute
   '/_authenticated/admin/clientes': typeof AuthenticatedAdminClientesRoute
@@ -756,6 +775,7 @@ export interface FileRoutesById {
   '/api/public/hooks/wa-templates-sync': typeof ApiPublicHooksWaTemplatesSyncRoute
   '/api/public/whatsapp/harness': typeof ApiPublicWhatsappHarnessRoute
   '/api/public/whatsapp/queue-tick': typeof ApiPublicWhatsappQueueTickRoute
+  '/api/public/whatsapp/service-tick': typeof ApiPublicWhatsappServiceTickRoute
   '/api/public/whatsapp/sync-numbers': typeof ApiPublicWhatsappSyncNumbersRoute
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
   '/api/public/whatsapp/webhook-health': typeof ApiPublicWhatsappWebhookHealthRoute
@@ -792,6 +812,7 @@ export interface FileRouteTypes {
     | '/painel/whatsapp'
     | '/painel/'
     | '/admin/agenda'
+    | '/admin/atendimento'
     | '/admin/campanhas'
     | '/admin/campanhas-aprovacao'
     | '/admin/clientes'
@@ -837,6 +858,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/wa-templates-sync'
     | '/api/public/whatsapp/harness'
     | '/api/public/whatsapp/queue-tick'
+    | '/api/public/whatsapp/service-tick'
     | '/api/public/whatsapp/sync-numbers'
     | '/api/public/whatsapp/webhook'
     | '/api/public/whatsapp/webhook-health'
@@ -870,6 +892,7 @@ export interface FileRouteTypes {
     | '/painel/whatsapp'
     | '/painel'
     | '/admin/agenda'
+    | '/admin/atendimento'
     | '/admin/campanhas'
     | '/admin/campanhas-aprovacao'
     | '/admin/clientes'
@@ -914,6 +937,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/wa-templates-sync'
     | '/api/public/whatsapp/harness'
     | '/api/public/whatsapp/queue-tick'
+    | '/api/public/whatsapp/service-tick'
     | '/api/public/whatsapp/sync-numbers'
     | '/api/public/whatsapp/webhook'
     | '/api/public/whatsapp/webhook-health'
@@ -949,6 +973,7 @@ export interface FileRouteTypes {
     | '/painel/whatsapp'
     | '/painel/'
     | '/_authenticated/admin/agenda'
+    | '/_authenticated/admin/atendimento'
     | '/_authenticated/admin/campanhas'
     | '/_authenticated/admin/campanhas-aprovacao'
     | '/_authenticated/admin/clientes'
@@ -994,6 +1019,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/wa-templates-sync'
     | '/api/public/whatsapp/harness'
     | '/api/public/whatsapp/queue-tick'
+    | '/api/public/whatsapp/service-tick'
     | '/api/public/whatsapp/sync-numbers'
     | '/api/public/whatsapp/webhook'
     | '/api/public/whatsapp/webhook-health'
@@ -1025,6 +1051,7 @@ export interface RootRouteChildren {
   ApiPublicHooksWaTemplatesSyncRoute: typeof ApiPublicHooksWaTemplatesSyncRoute
   ApiPublicWhatsappHarnessRoute: typeof ApiPublicWhatsappHarnessRoute
   ApiPublicWhatsappQueueTickRoute: typeof ApiPublicWhatsappQueueTickRoute
+  ApiPublicWhatsappServiceTickRoute: typeof ApiPublicWhatsappServiceTickRoute
   ApiPublicWhatsappSyncNumbersRoute: typeof ApiPublicWhatsappSyncNumbersRoute
   ApiPublicWhatsappWebhookRoute: typeof ApiPublicWhatsappWebhookRoute
   ApiPublicWhatsappWebhookHealthRoute: typeof ApiPublicWhatsappWebhookHealthRoute
@@ -1319,6 +1346,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminCampanhasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin/atendimento': {
+      id: '/_authenticated/admin/atendimento'
+      path: '/admin/atendimento'
+      fullPath: '/admin/atendimento'
+      preLoaderRoute: typeof AuthenticatedAdminAtendimentoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/admin/agenda': {
       id: '/_authenticated/admin/agenda'
       path: '/admin/agenda'
@@ -1366,6 +1400,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/whatsapp/sync-numbers'
       fullPath: '/api/public/whatsapp/sync-numbers'
       preLoaderRoute: typeof ApiPublicWhatsappSyncNumbersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/whatsapp/service-tick': {
+      id: '/api/public/whatsapp/service-tick'
+      path: '/api/public/whatsapp/service-tick'
+      fullPath: '/api/public/whatsapp/service-tick'
+      preLoaderRoute: typeof ApiPublicWhatsappServiceTickRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/whatsapp/queue-tick': {
@@ -1671,6 +1712,7 @@ const AuthenticatedAdminCampaignsIdRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminAgendaRoute: typeof AuthenticatedAdminAgendaRoute
+  AuthenticatedAdminAtendimentoRoute: typeof AuthenticatedAdminAtendimentoRoute
   AuthenticatedAdminCampanhasRoute: typeof AuthenticatedAdminCampanhasRoute
   AuthenticatedAdminCampanhasAprovacaoRoute: typeof AuthenticatedAdminCampanhasAprovacaoRoute
   AuthenticatedAdminClientesRoute: typeof AuthenticatedAdminClientesRoute
@@ -1700,6 +1742,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminAgendaRoute: AuthenticatedAdminAgendaRoute,
+  AuthenticatedAdminAtendimentoRoute: AuthenticatedAdminAtendimentoRoute,
   AuthenticatedAdminCampanhasRoute: AuthenticatedAdminCampanhasRoute,
   AuthenticatedAdminCampanhasAprovacaoRoute:
     AuthenticatedAdminCampanhasAprovacaoRoute,
@@ -1798,6 +1841,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksWaTemplatesSyncRoute: ApiPublicHooksWaTemplatesSyncRoute,
   ApiPublicWhatsappHarnessRoute: ApiPublicWhatsappHarnessRoute,
   ApiPublicWhatsappQueueTickRoute: ApiPublicWhatsappQueueTickRoute,
+  ApiPublicWhatsappServiceTickRoute: ApiPublicWhatsappServiceTickRoute,
   ApiPublicWhatsappSyncNumbersRoute: ApiPublicWhatsappSyncNumbersRoute,
   ApiPublicWhatsappWebhookRoute: ApiPublicWhatsappWebhookRoute,
   ApiPublicWhatsappWebhookHealthRoute: ApiPublicWhatsappWebhookHealthRoute,

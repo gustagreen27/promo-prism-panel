@@ -358,13 +358,17 @@ async function handleChange(supabaseAdmin: any, change: any) {
 
   const phoneNumberId = value?.metadata?.phone_number_id ?? null;
   let connectionId: string | null = null;
+  let workspaceId: string | null = null;
+  let wabaId: string | null = null;
   if (phoneNumberId) {
     const { data: conn } = await supabaseAdmin
       .from("whatsapp_connections")
-      .select("id")
+      .select("id, workspace_id, waba_id")
       .eq("phone_number_id", phoneNumberId)
       .maybeSingle();
     connectionId = conn?.id ?? null;
+    workspaceId = conn?.workspace_id ?? null;
+    wabaId = conn?.waba_id ?? null;
   }
 
   // ── statuses[] ─────────────────────────────────────────────────
@@ -445,6 +449,26 @@ async function handleChange(supabaseAdmin: any, change: any) {
       logPatch.error_code = err.code;
     }
     await supabaseAdmin.from("message_logs").update(logPatch).eq("meta_message_id", id);
+
+    // Atualiza espelho na tabela de mensagens de conversas (atendimento).
+    if (id && workspaceId) {
+      const convPatch: Record<string, any> = {};
+      if (status === "sent") convPatch.sent_at = tsIso;
+      if (status === "delivered") convPatch.delivered_at = tsIso;
+      if (status === "read") convPatch.read_at = tsIso;
+      if (status === "failed") {
+        convPatch.failed_at = tsIso;
+        const err = extractError(s?.errors?.[0]);
+        convPatch.error_code = err.code;
+        convPatch.error_message = err.reason;
+      }
+      convPatch.status = status;
+      await supabaseAdmin
+        .from("wa_conversation_messages")
+        .update(convPatch)
+        .eq("workspace_id", workspaceId)
+        .eq("wamid", id);
+    }
   }
 
   // ── messages[] (inbound + replies + opt-out) ───────────────────
@@ -484,6 +508,30 @@ async function handleChange(supabaseAdmin: any, change: any) {
         .from("contacts")
         .update({ last_interaction_at: new Date().toISOString() })
         .eq("phone", from);
+
+      // ── Atendimento: alimenta wa_conversations + wa_conversation_messages ──
+      if (workspaceId) {
+        try {
+          await upsertConversationFromInbound(supabaseAdmin, {
+            workspaceId,
+            connectionId,
+            phoneNumberId,
+            wabaId,
+            from,
+            body,
+            message: m,
+            wamid,
+          });
+        } catch (e: any) {
+          await supabaseAdmin.from("whatsapp_webhook_logs").insert({
+            connection_id: connectionId,
+            event_type: "conversation_upsert_error",
+            processed: false,
+            error: e?.message ?? "upsert failed",
+            payload: { from, wamid },
+          });
+        }
+      }
     }
     if (body && OPT_OUT_REGEX.test(body) && from) {
       await supabaseAdmin
@@ -495,4 +543,174 @@ async function handleChange(supabaseAdmin: any, change: any) {
         .eq("phone", from);
     }
   }
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Atendimento: cria/atualiza wa_conversations e registra a mensagem
+// inbound em wa_conversation_messages, abrindo/estendendo a janela 24h.
+// ────────────────────────────────────────────────────────────────────
+async function upsertConversationFromInbound(
+  supabaseAdmin: any,
+  args: {
+    workspaceId: string;
+    connectionId: string | null;
+    phoneNumberId: string | null;
+    wabaId: string | null;
+    from: string;
+    body: string;
+    message: any;
+    wamid: string | null;
+  },
+) {
+  const { workspaceId, connectionId, phoneNumberId, wabaId, from, body, message, wamid } = args;
+  const nowIso = new Date().toISOString();
+  const expiresIso = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const type = String(message?.type ?? "text");
+
+  // Preview textual.
+  let preview: string = body;
+  if (!preview) {
+    if (type === "interactive") {
+      preview =
+        message?.interactive?.button_reply?.title ??
+        message?.interactive?.list_reply?.title ??
+        "[interativa]";
+    } else if (type === "image") preview = "[imagem]";
+    else if (type === "audio") preview = "[áudio]";
+    else if (type === "video") preview = "[vídeo]";
+    else if (type === "document") preview = "[documento]";
+    else if (type === "sticker") preview = "[sticker]";
+    else if (type === "location") preview = "[localização]";
+    else preview = `[${type}]`;
+  }
+
+  // Nome do contato do payload.
+  const profileName: string | null = message?.profile?.name
+    ? String(message.profile.name)
+    : null;
+
+  // Localiza contato existente e a última campanha associada ao número.
+  let contactId: string | null = null;
+  {
+    const { data: c } = await supabaseAdmin
+      .from("contacts")
+      .select("id, name")
+      .eq("workspace_id", workspaceId)
+      .eq("phone", from)
+      .maybeSingle();
+    if (c?.id) contactId = c.id;
+  }
+  let campaignId: string | null = null;
+  let campaignRecipientId: string | null = null;
+  {
+    const { data: r } = await supabaseAdmin
+      .from("campaign_recipients")
+      .select("id, campaign_id, workspace_id")
+      .eq("workspace_id", workspaceId)
+      .eq("phone", from)
+      .order("last_attempt_at", { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle();
+    if (r?.id) {
+      campaignRecipientId = r.id;
+      campaignId = r.campaign_id ?? null;
+    }
+  }
+
+  // Upsert por (workspace_id, connection_id, contact_phone).
+  let conversationId: string | null = null;
+  if (connectionId) {
+    const { data: existing } = await supabaseAdmin
+      .from("wa_conversations")
+      .select("id, unread_count, contact_id, contact_name, campaign_id, campaign_recipient_id")
+      .eq("workspace_id", workspaceId)
+      .eq("connection_id", connectionId)
+      .eq("contact_phone", from)
+      .maybeSingle();
+
+    if (existing?.id) {
+      conversationId = existing.id;
+      const patch: Record<string, any> = {
+        last_inbound_at: nowIso,
+        last_message_at: nowIso,
+        last_message_preview: preview.slice(0, 500),
+        unread_count: (existing.unread_count ?? 0) + 1,
+        service_window_opened_at: nowIso,
+        service_window_expires_at: expiresIso,
+        service_window_status: "open",
+      };
+      if (!existing.contact_id && contactId) patch.contact_id = contactId;
+      if (!existing.contact_name && profileName) patch.contact_name = profileName;
+      if (!existing.campaign_id && campaignId) patch.campaign_id = campaignId;
+      if (!existing.campaign_recipient_id && campaignRecipientId)
+        patch.campaign_recipient_id = campaignRecipientId;
+      await supabaseAdmin.from("wa_conversations").update(patch).eq("id", existing.id);
+    } else {
+      const { data: inserted } = await supabaseAdmin
+        .from("wa_conversations")
+        .insert({
+          workspace_id: workspaceId,
+          connection_id: connectionId,
+          phone_number_id: phoneNumberId,
+          waba_id: wabaId,
+          contact_id: contactId,
+          contact_phone: from,
+          contact_name: profileName,
+          wa_id: from,
+          campaign_id: campaignId,
+          campaign_recipient_id: campaignRecipientId,
+          last_inbound_at: nowIso,
+          last_message_at: nowIso,
+          last_message_preview: preview.slice(0, 500),
+          unread_count: 1,
+          service_window_opened_at: nowIso,
+          service_window_expires_at: expiresIso,
+          service_window_status: "open",
+          conversation_status: "open",
+        })
+        .select("id")
+        .single();
+      conversationId = inserted?.id ?? null;
+    }
+  }
+
+  if (!conversationId) return;
+
+  // Insere mensagem inbound (dedup por wamid via unique index parcial).
+  const msgRow: Record<string, any> = {
+    workspace_id: workspaceId,
+    conversation_id: conversationId,
+    direction: "inbound",
+    origin: "customer",
+    wamid,
+    message_type: type,
+    body: body || null,
+    status: "received",
+    received_at: nowIso,
+    payload: message,
+    campaign_id: campaignId,
+    campaign_recipient_id: campaignRecipientId,
+  };
+  if (type === "interactive") {
+    const br = message?.interactive?.button_reply;
+    const lr = message?.interactive?.list_reply;
+    if (br) {
+      msgRow.interactive_type = "button_reply";
+      msgRow.interactive_button_id = br.id ?? null;
+      msgRow.interactive_button_title = br.title ?? null;
+    } else if (lr) {
+      msgRow.interactive_type = "list_reply";
+      msgRow.interactive_list_id = lr.id ?? null;
+      msgRow.interactive_list_title = lr.title ?? null;
+    }
+  } else if (type === "image" || type === "video" || type === "audio" || type === "document" || type === "sticker") {
+    const media = message?.[type] ?? {};
+    msgRow.media_id = media?.id ?? null;
+    msgRow.media_mime = media?.mime_type ?? null;
+    msgRow.media_caption = media?.caption ?? null;
+    msgRow.media_filename = media?.filename ?? null;
+  }
+  if (message?.context?.id) msgRow.context_wamid = String(message.context.id);
+
+  await supabaseAdmin.from("wa_conversation_messages").insert(msgRow).select("id").maybeSingle();
 }

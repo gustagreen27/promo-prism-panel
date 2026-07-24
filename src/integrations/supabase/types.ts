@@ -2473,6 +2473,10 @@ export type Database = {
           replied_count: number
           reservation_id: string | null
           responsavel_id: string | null
+          response_flow_config: Json | null
+          response_flow_enabled: boolean
+          response_flow_id: string | null
+          response_flow_version_id: string | null
           resumed_at: string | null
           scheduled_at: string | null
           scheduled_pause_enabled: boolean
@@ -2556,6 +2560,10 @@ export type Database = {
           replied_count?: number
           reservation_id?: string | null
           responsavel_id?: string | null
+          response_flow_config?: Json | null
+          response_flow_enabled?: boolean
+          response_flow_id?: string | null
+          response_flow_version_id?: string | null
           resumed_at?: string | null
           scheduled_at?: string | null
           scheduled_pause_enabled?: boolean
@@ -2639,6 +2647,10 @@ export type Database = {
           replied_count?: number
           reservation_id?: string | null
           responsavel_id?: string | null
+          response_flow_config?: Json | null
+          response_flow_enabled?: boolean
+          response_flow_id?: string | null
+          response_flow_version_id?: string | null
           resumed_at?: string | null
           scheduled_at?: string | null
           scheduled_pause_enabled?: boolean
@@ -2743,6 +2755,404 @@ export type Database = {
           },
         ]
       }
+      wa_conversation_events: {
+        Row: {
+          actor_user_id: string | null
+          conversation_id: string
+          created_at: string
+          data: Json
+          event_type: string
+          id: string
+          workspace_id: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          conversation_id: string
+          created_at?: string
+          data?: Json
+          event_type: string
+          id?: string
+          workspace_id: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          conversation_id?: string
+          created_at?: string
+          data?: Json
+          event_type?: string
+          id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wa_conversation_events_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "wa_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_conversation_events_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wa_conversation_messages: {
+        Row: {
+          body: string | null
+          campaign_id: string | null
+          campaign_recipient_id: string | null
+          context_wamid: string | null
+          conversation_id: string
+          created_at: string
+          delivered_at: string | null
+          direction: string
+          error_code: string | null
+          error_message: string | null
+          failed_at: string | null
+          id: string
+          interactive_button_id: string | null
+          interactive_button_title: string | null
+          interactive_list_id: string | null
+          interactive_list_title: string | null
+          interactive_type: string | null
+          media_caption: string | null
+          media_filename: string | null
+          media_id: string | null
+          media_mime: string | null
+          media_url: string | null
+          message_type: string
+          origin: string
+          payload: Json | null
+          read_at: string | null
+          received_at: string | null
+          sent_at: string | null
+          sent_by_user_id: string | null
+          status: string
+          template_id: string | null
+          template_language: string | null
+          template_name: string | null
+          template_variables: Json | null
+          updated_at: string
+          wamid: string | null
+          workspace_id: string
+        }
+        Insert: {
+          body?: string | null
+          campaign_id?: string | null
+          campaign_recipient_id?: string | null
+          context_wamid?: string | null
+          conversation_id: string
+          created_at?: string
+          delivered_at?: string | null
+          direction: string
+          error_code?: string | null
+          error_message?: string | null
+          failed_at?: string | null
+          id?: string
+          interactive_button_id?: string | null
+          interactive_button_title?: string | null
+          interactive_list_id?: string | null
+          interactive_list_title?: string | null
+          interactive_type?: string | null
+          media_caption?: string | null
+          media_filename?: string | null
+          media_id?: string | null
+          media_mime?: string | null
+          media_url?: string | null
+          message_type?: string
+          origin?: string
+          payload?: Json | null
+          read_at?: string | null
+          received_at?: string | null
+          sent_at?: string | null
+          sent_by_user_id?: string | null
+          status?: string
+          template_id?: string | null
+          template_language?: string | null
+          template_name?: string | null
+          template_variables?: Json | null
+          updated_at?: string
+          wamid?: string | null
+          workspace_id: string
+        }
+        Update: {
+          body?: string | null
+          campaign_id?: string | null
+          campaign_recipient_id?: string | null
+          context_wamid?: string | null
+          conversation_id?: string
+          created_at?: string
+          delivered_at?: string | null
+          direction?: string
+          error_code?: string | null
+          error_message?: string | null
+          failed_at?: string | null
+          id?: string
+          interactive_button_id?: string | null
+          interactive_button_title?: string | null
+          interactive_list_id?: string | null
+          interactive_list_title?: string | null
+          interactive_type?: string | null
+          media_caption?: string | null
+          media_filename?: string | null
+          media_id?: string | null
+          media_mime?: string | null
+          media_url?: string | null
+          message_type?: string
+          origin?: string
+          payload?: Json | null
+          read_at?: string | null
+          received_at?: string | null
+          sent_at?: string | null
+          sent_by_user_id?: string | null
+          status?: string
+          template_id?: string | null
+          template_language?: string | null
+          template_name?: string | null
+          template_variables?: Json | null
+          updated_at?: string
+          wamid?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wa_conversation_messages_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "wa_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_conversation_messages_campaign_recipient_id_fkey"
+            columns: ["campaign_recipient_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_recipients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_conversation_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "wa_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_conversation_messages_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wa_conversations: {
+        Row: {
+          assigned_user_id: string | null
+          campaign_id: string | null
+          campaign_recipient_id: string | null
+          campaign_route_id: string | null
+          connection_id: string | null
+          contact_id: string | null
+          contact_name: string | null
+          contact_phone: string
+          conversation_status: string
+          created_at: string
+          flow_id: string | null
+          flow_version_id: string | null
+          id: string
+          last_inbound_at: string | null
+          last_message_at: string | null
+          last_message_preview: string | null
+          last_outbound_at: string | null
+          locked_route_id: string | null
+          metadata: Json
+          phone_number_id: string | null
+          service_window_expires_at: string | null
+          service_window_opened_at: string | null
+          service_window_status: string
+          tags: string[]
+          template_id: string | null
+          template_name: string | null
+          unread_count: number
+          updated_at: string
+          wa_id: string | null
+          waba_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          assigned_user_id?: string | null
+          campaign_id?: string | null
+          campaign_recipient_id?: string | null
+          campaign_route_id?: string | null
+          connection_id?: string | null
+          contact_id?: string | null
+          contact_name?: string | null
+          contact_phone: string
+          conversation_status?: string
+          created_at?: string
+          flow_id?: string | null
+          flow_version_id?: string | null
+          id?: string
+          last_inbound_at?: string | null
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          last_outbound_at?: string | null
+          locked_route_id?: string | null
+          metadata?: Json
+          phone_number_id?: string | null
+          service_window_expires_at?: string | null
+          service_window_opened_at?: string | null
+          service_window_status?: string
+          tags?: string[]
+          template_id?: string | null
+          template_name?: string | null
+          unread_count?: number
+          updated_at?: string
+          wa_id?: string | null
+          waba_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          assigned_user_id?: string | null
+          campaign_id?: string | null
+          campaign_recipient_id?: string | null
+          campaign_route_id?: string | null
+          connection_id?: string | null
+          contact_id?: string | null
+          contact_name?: string | null
+          contact_phone?: string
+          conversation_status?: string
+          created_at?: string
+          flow_id?: string | null
+          flow_version_id?: string | null
+          id?: string
+          last_inbound_at?: string | null
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          last_outbound_at?: string | null
+          locked_route_id?: string | null
+          metadata?: Json
+          phone_number_id?: string | null
+          service_window_expires_at?: string | null
+          service_window_opened_at?: string | null
+          service_window_status?: string
+          tags?: string[]
+          template_id?: string | null
+          template_name?: string | null
+          unread_count?: number
+          updated_at?: string
+          wa_id?: string | null
+          waba_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wa_conversations_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "wa_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_conversations_campaign_recipient_id_fkey"
+            columns: ["campaign_recipient_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_recipients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_conversations_campaign_route_id_fkey"
+            columns: ["campaign_route_id"]
+            isOneToOne: false
+            referencedRelation: "wa_campaign_routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_conversations_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_numbers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_conversations_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_conversations_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_conversations_locked_route_id_fkey"
+            columns: ["locked_route_id"]
+            isOneToOne: false
+            referencedRelation: "wa_campaign_routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_conversations_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wa_internal_notes: {
+        Row: {
+          author_user_id: string | null
+          body: string
+          conversation_id: string
+          created_at: string
+          id: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          author_user_id?: string | null
+          body: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          author_user_id?: string | null
+          body?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wa_internal_notes_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "wa_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_internal_notes_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wa_queue_tick_logs: {
         Row: {
           created_at: string
@@ -2826,6 +3236,117 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      wa_service_queue: {
+        Row: {
+          attempt: number
+          connection_id: string | null
+          contact_phone: string
+          conversation_id: string
+          created_at: string
+          id: string
+          idempotency_key: string
+          last_attempt_at: string | null
+          last_error: string | null
+          max_attempts: number
+          message_id: string | null
+          next_attempt_at: string
+          origin: string
+          payload: Json
+          phone_number_id: string
+          priority: number
+          requested_by: string | null
+          scheduled_at: string
+          status: string
+          updated_at: string
+          wamid: string | null
+          workspace_id: string
+        }
+        Insert: {
+          attempt?: number
+          connection_id?: string | null
+          contact_phone: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          idempotency_key: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          max_attempts?: number
+          message_id?: string | null
+          next_attempt_at?: string
+          origin?: string
+          payload: Json
+          phone_number_id: string
+          priority?: number
+          requested_by?: string | null
+          scheduled_at?: string
+          status?: string
+          updated_at?: string
+          wamid?: string | null
+          workspace_id: string
+        }
+        Update: {
+          attempt?: number
+          connection_id?: string | null
+          contact_phone?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          idempotency_key?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          max_attempts?: number
+          message_id?: string | null
+          next_attempt_at?: string
+          origin?: string
+          payload?: Json
+          phone_number_id?: string
+          priority?: number
+          requested_by?: string | null
+          scheduled_at?: string
+          status?: string
+          updated_at?: string
+          wamid?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wa_service_queue_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_numbers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_service_queue_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_service_queue_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "wa_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_service_queue_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "wa_conversation_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_service_queue_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       wa_tick_lease: {
         Row: {
@@ -4340,6 +4861,10 @@ export type Database = {
       }
       wa_tick_chain: { Args: { _apikey: string; _url: string }; Returns: Json }
       wa_tick_release_lease: { Args: { _holder: string }; Returns: boolean }
+      wa_touch_service_window: {
+        Args: { _conversation_id: string; _inbound_at?: string }
+        Returns: undefined
+      }
       wa_try_consume_token: {
         Args: {
           _default_conc?: number
