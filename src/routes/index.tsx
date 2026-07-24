@@ -905,8 +905,7 @@ function SimulatorSection() {
               <div id="formulario" className="mt-8">
                 <QualifyForm initialVolume={volume} total={total} />
               </div>
-            )}
-          </div>
+          )}
         </div>
       </div>
     </section>
