@@ -508,6 +508,30 @@ async function handleChange(supabaseAdmin: any, change: any) {
         .from("contacts")
         .update({ last_interaction_at: new Date().toISOString() })
         .eq("phone", from);
+
+      // ── Atendimento: alimenta wa_conversations + wa_conversation_messages ──
+      if (workspaceId) {
+        try {
+          await upsertConversationFromInbound(supabaseAdmin, {
+            workspaceId,
+            connectionId,
+            phoneNumberId,
+            wabaId,
+            from,
+            body,
+            message: m,
+            wamid,
+          });
+        } catch (e: any) {
+          await supabaseAdmin.from("whatsapp_webhook_logs").insert({
+            connection_id: connectionId,
+            event_type: "conversation_upsert_error",
+            processed: false,
+            error: e?.message ?? "upsert failed",
+            payload: { from, wamid },
+          });
+        }
+      }
     }
     if (body && OPT_OUT_REGEX.test(body) && from) {
       await supabaseAdmin
