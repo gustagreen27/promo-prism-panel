@@ -143,6 +143,28 @@ function defaultDispatch(preset: DispatchPreset = "economico"): DispatchConfig {
   };
 }
 
+// ─────────────────────────────────────────────────────────────────
+// Fluxo de resposta — configuração salva em wa_campaigns.response_flow_*
+// Aplicado pelo webhook quando o contato responder dentro da janela 24h.
+// ─────────────────────────────────────────────────────────────────
+export type ResponseFlowConfig = {
+  enabled: boolean;
+  auto_reply_text: string;
+  assign_status: "open" | "waiting" | "in_progress" | "resolved" | "archived" | "none";
+  tags: string[];
+  cooldown_minutes: number;
+};
+
+function defaultResponseFlow(): ResponseFlowConfig {
+  return {
+    enabled: false,
+    auto_reply_text: "",
+    assign_status: "in_progress",
+    tags: [],
+    cooldown_minutes: 60,
+  };
+}
+
 export interface CampaignWizardProps {
   workspaceId: string;
   event_id?: string;
