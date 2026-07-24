@@ -707,7 +707,7 @@ function PublicCampaignReport() {
                             {recs.map((r, i) => (
                               <tr key={i} className="border-t">
                                 <td className="px-3 py-1.5 font-mono text-xs">{r.phone}</td>
-                                <td className="px-3 py-1.5 text-xs">{recipientStatusLabel(remap(r.status))}</td>
+                                <td className="px-3 py-1.5 text-xs">{recipientStatusLabel(remap(r.status, r.phone ?? String(i)))}</td>
                                 <td className="px-3 py-1.5 text-xs text-muted-foreground">
                                   {r.sent_at ? new Date(r.sent_at).toLocaleString("pt-BR") : "—"}
                                 </td>
