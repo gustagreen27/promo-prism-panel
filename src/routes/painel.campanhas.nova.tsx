@@ -1769,3 +1769,111 @@ function NumberField({
     </div>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────
+// ResponseFlowCard — configura a auto-resposta quando o contato
+// responder à campanha (dentro da janela 24h). Persistido em
+// wa_campaigns.response_flow_enabled + response_flow_config (jsonb).
+// Aplicado pelo webhook em src/routes/api/public/whatsapp/webhook.tsx.
+// ─────────────────────────────────────────────────────────────────
+function ResponseFlowCard({
+  value,
+  onChange,
+}: {
+  value: ResponseFlowConfig;
+  onChange: (v: ResponseFlowConfig) => void;
+}) {
+  const [tagsInput, setTagsInput] = useState(value.tags.join(", "));
+  useEffect(() => {
+    setTagsInput(value.tags.join(", "));
+  }, [value.tags]);
+  const patch = (p: Partial<ResponseFlowConfig>) => onChange({ ...value, ...p });
+
+  return (
+    <div className="rounded-lg border bg-card">
+      <div className="flex items-center justify-between border-b px-3 py-2">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <MessageSquareText className="h-4 w-4" />
+          Fluxo de resposta
+          {value.enabled && <Badge variant="secondary" className="text-[10px]">Ativo</Badge>}
+        </div>
+        <Switch checked={value.enabled} onCheckedChange={(v) => patch({ enabled: v })} />
+      </div>
+
+      {value.enabled ? (
+        <div className="space-y-4 p-3">
+          <div>
+            <Label className="mb-1 block text-xs">Mensagem automática ao responder</Label>
+            <Textarea
+              rows={3}
+              maxLength={1024}
+              placeholder="Olá {{nome}}! Recebemos sua mensagem e um atendente responderá em breve."
+              value={value.auto_reply_text}
+              onChange={(e) => patch({ auto_reply_text: e.target.value })}
+            />
+            <div className="mt-1 text-[11px] text-muted-foreground">
+              Enviada uma vez por conversa (respeitando o cooldown). Deixe em branco para não enviar texto.
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label className="mb-1 block text-xs">Status da conversa</Label>
+              <Select
+                value={value.assign_status}
+                onValueChange={(v) => patch({ assign_status: v as ResponseFlowConfig["assign_status"] })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Manter atual</SelectItem>
+                  <SelectItem value="open">Aberto</SelectItem>
+                  <SelectItem value="waiting">Aguardando</SelectItem>
+                  <SelectItem value="in_progress">Em atendimento</SelectItem>
+                  <SelectItem value="resolved">Resolvido</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="mb-1 block text-xs">Cooldown (minutos)</Label>
+              <Input
+                type="number"
+                min={0}
+                max={10080}
+                value={value.cooldown_minutes}
+                onChange={(e) => patch({ cooldown_minutes: Math.max(0, Number(e.target.value) || 0) })}
+              />
+              <div className="mt-1 text-[11px] text-muted-foreground">
+                Tempo mínimo entre auto-respostas na mesma conversa.
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <Label className="mb-1 block text-xs">Tags aplicadas à conversa</Label>
+            <Input
+              placeholder="lead, quente, política"
+              value={tagsInput}
+              onChange={(e) => setTagsInput(e.target.value)}
+              onBlur={() => {
+                const tags = tagsInput
+                  .split(",")
+                  .map((t) => t.trim())
+                  .filter(Boolean)
+                  .slice(0, 10);
+                patch({ tags });
+              }}
+            />
+            <div className="mt-1 text-[11px] text-muted-foreground">
+              Separadas por vírgula. Adicionadas automaticamente na conversa quando o contato responder.
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="p-3 text-xs text-muted-foreground">
+          Ative para responder automaticamente ao primeiro retorno do contato e marcar a conversa no módulo de Atendimento.
+        </div>
+      )}
+    </div>
+  );
+}
