@@ -297,7 +297,28 @@ function ChatPanel(props: {
   const [text, setText] = useState("");
   const [tplOpen, setTplOpen] = useState(false);
   const [tplId, setTplId] = useState<string>("");
+  const [replyTo, setReplyTo] = useState<{ wamid: string; preview: string } | null>(null);
+  const [attachOpen, setAttachOpen] = useState(false);
+  const [attachTab, setAttachTab] = useState<"media" | "buttons" | "list">("media");
+  const [mediaType, setMediaType] = useState<"image" | "video" | "audio" | "document">("image");
+  const [mediaLink, setMediaLink] = useState("");
+  const [mediaCaption, setMediaCaption] = useState("");
+  const [mediaFilename, setMediaFilename] = useState("");
+  const [btnBody, setBtnBody] = useState("");
+  const [btnHeader, setBtnHeader] = useState("");
+  const [btnFooter, setBtnFooter] = useState("");
+  const [buttons, setButtons] = useState<Array<{ id: string; title: string }>>([
+    { id: "opt_1", title: "" },
+  ]);
+  const [listBody, setListBody] = useState("");
+  const [listHeader, setListHeader] = useState("");
+  const [listFooter, setListFooter] = useState("");
+  const [listButton, setListButton] = useState("Ver opções");
+  const [listRows, setListRows] = useState<Array<{ id: string; title: string; description: string }>>([
+    { id: "row_1", title: "", description: "" },
+  ]);
   const scrollRef = useRef<HTMLDivElement>(null);
+
 
   const convQuery = useQuery({
     queryKey: ["atd", "conv", conversationId],
