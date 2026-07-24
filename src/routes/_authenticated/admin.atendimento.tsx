@@ -304,7 +304,7 @@ function ChatPanel(props: {
   const [tplId, setTplId] = useState<string>("");
   const [replyTo, setReplyTo] = useState<{ wamid: string; preview: string } | null>(null);
   const [attachOpen, setAttachOpen] = useState(false);
-  const [attachTab, setAttachTab] = useState<"media" | "buttons" | "list">("media");
+  const [attachTab, setAttachTab] = useState<"media" | "buttons" | "list" | "cta">("media");
   const [mediaType, setMediaType] = useState<"image" | "video" | "audio" | "document">("image");
   const [mediaLink, setMediaLink] = useState("");
   const [mediaCaption, setMediaCaption] = useState("");
