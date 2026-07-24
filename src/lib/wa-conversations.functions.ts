@@ -28,17 +28,21 @@ export const listConversationsAtd = createServerFn({ method: "GET" })
   .inputValidator((d: unknown) =>
     z
       .object({
-        status: z.enum(["all", "open", "waiting", "in_progress", "resolved", "archived"]).default("all"),
-        window: z.enum(["all", "open", "closed"]).default("all"),
-        assigned: z.enum(["all", "me", "none"]).default("all"),
+        status: z.enum(["all", "open", "waiting", "in_progress", "resolved", "archived"]).optional(),
+        window: z.enum(["all", "open", "closed"]).optional(),
+        assigned: z.enum(["all", "me", "none"]).optional(),
         campaign_id: z.string().uuid().optional(),
         search: z.string().optional(),
-        limit: z.number().int().min(1).max(200).default(100),
+        limit: z.number().int().min(1).max(200).optional(),
       })
-      .default({}),
+      .parse(d ?? {}),
   )
   .handler(async ({ data, context }) => {
     const wsId = await primaryWorkspaceId(context.supabase, context.userId);
+    const status = data.status ?? "all";
+    const windowF = data.window ?? "all";
+    const assigned = data.assigned ?? "all";
+    const limit = data.limit ?? 100;
     let q = context.supabase
       .from("wa_conversations")
       .select(
@@ -47,12 +51,12 @@ export const listConversationsAtd = createServerFn({ method: "GET" })
       .eq("workspace_id", wsId)
       .order("last_message_at", { ascending: false, nullsFirst: false })
       .order("updated_at", { ascending: false })
-      .limit(data.limit);
+      .limit(limit);
 
-    if (data.status !== "all") q = q.eq("conversation_status", data.status);
-    if (data.window !== "all") q = q.eq("service_window_status", data.window);
-    if (data.assigned === "me") q = q.eq("assigned_user_id", context.userId);
-    if (data.assigned === "none") q = q.is("assigned_user_id", null);
+    if (status !== "all") q = q.eq("conversation_status", status);
+    if (windowF !== "all") q = q.eq("service_window_status", windowF);
+    if (assigned === "me") q = q.eq("assigned_user_id", context.userId);
+    if (assigned === "none") q = q.is("assigned_user_id", null);
     if (data.campaign_id) q = q.eq("campaign_id", data.campaign_id);
     if (data.search && data.search.trim()) {
       const s = `%${data.search.trim()}%`;
