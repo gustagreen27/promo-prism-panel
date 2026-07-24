@@ -2230,6 +2230,50 @@ export type Database = {
         }
         Relationships: []
       }
+      wa_attendance_settings: {
+        Row: {
+          agent_roles: Database["public"]["Enums"]["workspace_role"][]
+          created_at: string
+          keyword_rules: Json
+          notify_on_new_conversation: boolean
+          notify_on_sla_breach: boolean
+          round_robin_enabled: boolean
+          sla_first_response_minutes: number
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          agent_roles?: Database["public"]["Enums"]["workspace_role"][]
+          created_at?: string
+          keyword_rules?: Json
+          notify_on_new_conversation?: boolean
+          notify_on_sla_breach?: boolean
+          round_robin_enabled?: boolean
+          sla_first_response_minutes?: number
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          agent_roles?: Database["public"]["Enums"]["workspace_role"][]
+          created_at?: string
+          keyword_rules?: Json
+          notify_on_new_conversation?: boolean
+          notify_on_sla_breach?: boolean
+          round_robin_enabled?: boolean
+          sla_first_response_minutes?: number
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wa_attendance_settings_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wa_campaign_attempts: {
         Row: {
           attempt_number: number
@@ -2951,6 +2995,7 @@ export type Database = {
       }
       wa_conversations: {
         Row: {
+          assigned_at: string | null
           assigned_user_id: string | null
           campaign_id: string | null
           campaign_recipient_id: string | null
@@ -2961,6 +3006,7 @@ export type Database = {
           contact_phone: string
           conversation_status: string
           created_at: string
+          first_response_at: string | null
           flow_id: string | null
           flow_version_id: string | null
           id: string
@@ -2974,6 +3020,8 @@ export type Database = {
           service_window_expires_at: string | null
           service_window_opened_at: string | null
           service_window_status: string
+          sla_first_response_breached_at: string | null
+          sla_first_response_deadline: string | null
           tags: string[]
           template_id: string | null
           template_name: string | null
@@ -2984,6 +3032,7 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          assigned_at?: string | null
           assigned_user_id?: string | null
           campaign_id?: string | null
           campaign_recipient_id?: string | null
@@ -2994,6 +3043,7 @@ export type Database = {
           contact_phone: string
           conversation_status?: string
           created_at?: string
+          first_response_at?: string | null
           flow_id?: string | null
           flow_version_id?: string | null
           id?: string
@@ -3007,6 +3057,8 @@ export type Database = {
           service_window_expires_at?: string | null
           service_window_opened_at?: string | null
           service_window_status?: string
+          sla_first_response_breached_at?: string | null
+          sla_first_response_deadline?: string | null
           tags?: string[]
           template_id?: string | null
           template_name?: string | null
@@ -3017,6 +3069,7 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          assigned_at?: string | null
           assigned_user_id?: string | null
           campaign_id?: string | null
           campaign_recipient_id?: string | null
@@ -3027,6 +3080,7 @@ export type Database = {
           contact_phone?: string
           conversation_status?: string
           created_at?: string
+          first_response_at?: string | null
           flow_id?: string | null
           flow_version_id?: string | null
           id?: string
@@ -3040,6 +3094,8 @@ export type Database = {
           service_window_expires_at?: string | null
           service_window_opened_at?: string | null
           service_window_status?: string
+          sla_first_response_breached_at?: string | null
+          sla_first_response_deadline?: string | null
           tags?: string[]
           template_id?: string | null
           template_name?: string | null
@@ -4821,6 +4877,13 @@ export type Database = {
           wa_campaign_id: string
         }[]
       }
+      wa_pick_next_agent: {
+        Args: {
+          _roles: Database["public"]["Enums"]["workspace_role"][]
+          _ws: string
+        }
+        Returns: string
+      }
       wa_recalc_campaign_progress: {
         Args: { _campaign_id: string }
         Returns: undefined
@@ -4855,6 +4918,7 @@ export type Database = {
           total_allowed: number
         }[]
       }
+      wa_sla_sweep: { Args: never; Returns: number }
       wa_tick_acquire_lease: {
         Args: { _duration_seconds?: number; _holder: string }
         Returns: boolean
