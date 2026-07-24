@@ -34,12 +34,13 @@ const WHATSAPP_NUMBER = "5562933003970"; // editar aqui
 // ============ REAL SCREENSHOTS ============
 import painelLoteriaJb from "@/assets/painel-loteriajb.png.asset.json";
 import painelLoteriaJbMobile from "@/assets/painel-loteriajb-mobile.png.asset.json";
+import editorMensagem from "@/assets/editor-mensagem-painel.png.asset.json";
 // Substitua os valores abaixo pelas URLs das capturas reais do painel Disparos FR.
 // Enquanto vazios, a interface mostra placeholders identificados.
 const SCREENSHOTS = {
   heroPanel: painelLoteriaJb.url, // Painel principal — dobra do hero (grande destaque)
   heroPanelMobile: painelLoteriaJbMobile.url,
-  msgConfig: "", // Aba 1 — Mensagem configurada (editor da campanha)
+  msgConfig: editorMensagem.url, // Aba 1 — Mensagem configurada (editor da campanha)
   msgReceived: "", // Aba 2 — Mensagem recebida (print do WhatsApp do contato)
   campaignRunning: "", // Aba 3 — Campanha em execução (progresso ao vivo)
   finalReport: painelLoteriaJb.url, // Relatório final ao encerrar a campanha
