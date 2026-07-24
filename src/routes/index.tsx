@@ -380,7 +380,6 @@ function Header({
 function Hero() {
   return (
     <section id="top" className="relative pt-28 sm:pt-32 pb-16 sm:pb-24">
-      {/* single subtle atmosphere — sem glow verde exagerado */}
       <div
         aria-hidden
         className="absolute inset-x-0 top-0 h-[420px] pointer-events-none"
@@ -393,24 +392,22 @@ function Hero() {
         <div className="lg:col-span-5 lg:pt-6">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-neutral-300">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Para empresas com bases a partir de 2 mil contatos
+            Para bases a partir de 2 mil contatos
           </div>
           <h1 className="mt-5 text-[34px] sm:text-5xl lg:text-[56px] font-semibold tracking-tight leading-[1.05] text-white">
-            Alcance sua base de clientes pelo{" "}
+            Envie campanhas para sua base pelo{" "}
             <span className="whitespace-nowrap">WhatsApp Oficial</span>
           </h1>
-          <p className="mt-4 text-lg text-neutral-300">
-            Campanhas{" "}
+          <p className="mt-4 text-lg">
             <span className="font-semibold text-emerald-400">
-              a partir de R$ 0,13 por envio
-            </span>
-            <span className="block text-[13px] text-neutral-500 mt-1">
-              Condição disponível para volumes acima de 250 mil contatos.
+              A partir de R$ 0,13 por envio
             </span>
           </p>
+          <p className="mt-1 text-[13px] text-neutral-500">
+            Para volumes acima de 250 mil contatos.
+          </p>
           <p className="mt-4 text-[15px] leading-relaxed text-neutral-300 max-w-lg">
-            Você envia a base. Nossa equipe configura a campanha. E você
-            acompanha enviados, entregues e falhas em tempo real.
+            Você envia a base. Nós configuramos a campanha e você acompanha tudo em tempo real.
           </p>
 
           <div className="mt-7 flex flex-col sm:flex-row gap-3">
@@ -434,19 +431,19 @@ function Hero() {
             </button>
           </div>
 
-          <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-[13px] text-neutral-400">
-            <li className="inline-flex items-center gap-2">
-              <Check className="h-3.5 w-3.5 text-emerald-500" />
-              Simulação gratuita
-            </li>
-            <li className="inline-flex items-center gap-2">
-              <Check className="h-3.5 w-3.5 text-emerald-500" />
-              Sem compromisso
-            </li>
-            <li className="inline-flex items-center gap-2">
-              <Check className="h-3.5 w-3.5 text-emerald-500" />
-              Atendimento humano
-            </li>
+          <ul className="mt-8 grid grid-cols-3 gap-3 max-w-md">
+            {[
+              { Icon: ShieldCheck, label: "Simulação gratuita" },
+              { Icon: CheckCircle2, label: "Sem compromisso" },
+              { Icon: Headphones, label: "Atendimento humano" },
+            ].map(({ Icon, label }) => (
+              <li key={label} className="flex flex-col items-start gap-2">
+                <span className="grid h-9 w-9 place-items-center rounded-lg border border-emerald-500/25 bg-emerald-500/[0.06] text-emerald-400">
+                  <Icon className="h-4 w-4" />
+                </span>
+                <span className="text-[12px] leading-tight text-neutral-300">{label}</span>
+              </li>
+            ))}
           </ul>
         </div>
 
@@ -459,22 +456,14 @@ function Hero() {
                 "radial-gradient(60% 50% at 70% 30%, rgba(16,185,129,0.35), transparent 70%)",
             }}
           />
-          <ScreenshotFrame
-            src={SCREENSHOTS.heroPanel}
-            srcMobile={SCREENSHOTS.heroPanelMobile}
-            alt="Painel de acompanhamento em tempo real da plataforma Disparos FR"
-            label="Painel principal (hero)"
-            caption="Captura real do painel de acompanhamento da Disparos FR."
-            aspect="16/10"
-            aspectMobile="9/10"
-            priority
-          />
+          <PainelRealCard variant="live" />
         </div>
 
       </div>
     </section>
   );
 }
+
 
 // ============ DASHBOARD MOCK (realistic) ============
 function DashboardMock({ compact = false }: { compact?: boolean }) {
