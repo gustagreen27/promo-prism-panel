@@ -213,7 +213,6 @@ function LandingPage() {
       <Header menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
       <main>
         <Hero />
-        <Metrics />
         <HowItWorks />
         <CampaignInAction />
         <SimulatorSection />
@@ -403,9 +402,9 @@ function PainelRealCard({ variant = "live" }: { variant?: PainelVariant }) {
     <div className="relative rounded-[22px] border border-white/[0.08] bg-[#101216] p-5 sm:p-6 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)]">
       <div className="flex items-center justify-between gap-3">
         <div className="inline-flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/25 bg-emerald-500/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-emerald-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            Painel real
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-neutral-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            Exemplo de visualização
           </span>
         </div>
         <span
@@ -488,11 +487,11 @@ function PainelRealCard({ variant = "live" }: { variant?: PainelVariant }) {
 
       <button
         onClick={() =>
-          openWhatsApp("Olá! Quero ver o relatório completo de uma campanha real.")
+          openWhatsApp("Olá! Quero ver um relatório de uma campanha real da Disparos FR.")
         }
         className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-[13px] font-medium text-neutral-100 hover:bg-white/[0.06] transition-colors"
       >
-        Ver relatório completo
+        Falar com um especialista
         <ArrowRight className="h-3.5 w-3.5" />
       </button>
     </div>
@@ -518,22 +517,18 @@ function Hero() {
             Para bases a partir de 2 mil contatos
           </div>
           <h1 className="mt-5 text-[34px] sm:text-5xl lg:text-[56px] font-semibold tracking-tight leading-[1.05] text-white">
-            Envie campanhas para sua base pelo{" "}
-            <span className="whitespace-nowrap">WhatsApp Oficial</span>
+            Envie campanhas para sua base via{" "}
+            <span className="text-emerald-400">API Oficial do WhatsApp</span>
           </h1>
-          <p className="mt-4 text-lg">
-            <span className="font-semibold text-emerald-400">
-              A partir de R$ 0,13 por envio
-            </span>
+          <p className="mt-5 text-[15px] leading-relaxed text-neutral-300 max-w-lg">
+            Atendemos campanhas a partir de <span className="font-semibold text-white">2 mil contatos</span>.
+            Valores de <span className="font-semibold text-emerald-400">R$ 0,13 por envio</span> para volumes acima de 250 mil contatos.
           </p>
-          <p className="mt-1 text-[13px] text-neutral-500">
-            Para volumes acima de 250 mil contatos.
-          </p>
-          <p className="mt-4 text-[15px] leading-relaxed text-neutral-300 max-w-lg">
-            Você envia a base. Nós configuramos a campanha e você acompanha tudo em tempo real.
+          <p className="mt-3 text-[14px] leading-relaxed text-neutral-400 max-w-lg">
+            Você envia a base ou solicita os leads. Nossa equipe configura, você aprova e acompanha tudo pelo painel.
           </p>
 
-          <div className="mt-7 flex flex-col sm:flex-row gap-3">
+          <div className="mt-7 flex flex-col sm:flex-row sm:items-center gap-3">
             <button
               onClick={() => {
                 trackPixel("ClickPrimaryCTA", { source: "hero" });
@@ -548,9 +543,10 @@ function Hero() {
             </button>
             <button
               onClick={() => scrollToId("como-funciona")}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-6 py-3.5 text-[15px] font-medium text-neutral-100 hover:bg-white/[0.05] transition-colors"
+              className="inline-flex items-center gap-1.5 text-[14px] font-medium text-neutral-300 hover:text-white transition-colors sm:px-2"
             >
               Ver como funciona
+              <ArrowRight className="h-3.5 w-3.5" />
             </button>
           </div>
 
@@ -2044,7 +2040,7 @@ function CampaignInAction() {
       title: "Campanha em execução",
       desc: "Acompanhe enviados, entregues, falhas e progresso enquanto a campanha acontece.",
       src: SCREENSHOTS.campaignRunning,
-      label: "Painel com campanha rodando ao vivo",
+      label: "Painel Disparos FR durante uma campanha",
       alt: "Painel do Disparos FR com enviados, entregues, falhas e progresso em tempo real",
     },
   ];
