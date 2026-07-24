@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RecuperarSenhaRouteImport } from './routes/recuperar-senha'
+import { Route as Politica2026RouteImport } from './routes/politica2026'
 import { Route as PoliticaDePrivacidadeRouteImport } from './routes/politica-de-privacidade'
 import { Route as PainelRouteImport } from './routes/painel'
 import { Route as LoginRouteImport } from './routes/login'
@@ -95,6 +96,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const RecuperarSenhaRoute = RecuperarSenhaRouteImport.update({
   id: '/recuperar-senha',
   path: '/recuperar-senha',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Politica2026Route = Politica2026RouteImport.update({
+  id: '/politica2026',
+  path: '/politica2026',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PoliticaDePrivacidadeRoute = PoliticaDePrivacidadeRouteImport.update({
@@ -532,6 +538,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/painel': typeof PainelRouteWithChildren
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
+  '/politica2026': typeof Politica2026Route
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
   '/campaigns/$id': typeof CampaignsIdRoute
@@ -609,6 +616,7 @@ export interface FileRoutesByTo {
   '/cadastro': typeof CadastroRoute
   '/login': typeof LoginRoute
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
+  '/politica2026': typeof Politica2026Route
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
   '/campaigns/$id': typeof CampaignsIdRoute
@@ -688,6 +696,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/painel': typeof PainelRouteWithChildren
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
+  '/politica2026': typeof Politica2026Route
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
   '/campaigns/$id': typeof CampaignsIdRoute
@@ -768,6 +777,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/painel'
     | '/politica-de-privacidade'
+    | '/politica2026'
     | '/recuperar-senha'
     | '/reset-password'
     | '/campaigns/$id'
@@ -845,6 +855,7 @@ export interface FileRouteTypes {
     | '/cadastro'
     | '/login'
     | '/politica-de-privacidade'
+    | '/politica2026'
     | '/recuperar-senha'
     | '/reset-password'
     | '/campaigns/$id'
@@ -923,6 +934,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/painel'
     | '/politica-de-privacidade'
+    | '/politica2026'
     | '/recuperar-senha'
     | '/reset-password'
     | '/campaigns/$id'
@@ -1003,6 +1015,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   PainelRoute: typeof PainelRouteWithChildren
   PoliticaDePrivacidadeRoute: typeof PoliticaDePrivacidadeRoute
+  Politica2026Route: typeof Politica2026Route
   RecuperarSenhaRoute: typeof RecuperarSenhaRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   CampaignsIdRoute: typeof CampaignsIdRoute
@@ -1031,6 +1044,13 @@ declare module '@tanstack/react-router' {
       path: '/recuperar-senha'
       fullPath: '/recuperar-senha'
       preLoaderRoute: typeof RecuperarSenhaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/politica2026': {
+      id: '/politica2026'
+      path: '/politica2026'
+      fullPath: '/politica2026'
+      preLoaderRoute: typeof Politica2026RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/politica-de-privacidade': {
@@ -1767,6 +1787,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   PainelRoute: PainelRouteWithChildren,
   PoliticaDePrivacidadeRoute: PoliticaDePrivacidadeRoute,
+  Politica2026Route: Politica2026Route,
   RecuperarSenhaRoute: RecuperarSenhaRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   CampaignsIdRoute: CampaignsIdRoute,
@@ -1784,13 +1805,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
