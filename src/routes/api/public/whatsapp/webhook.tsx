@@ -358,13 +358,17 @@ async function handleChange(supabaseAdmin: any, change: any) {
 
   const phoneNumberId = value?.metadata?.phone_number_id ?? null;
   let connectionId: string | null = null;
+  let workspaceId: string | null = null;
+  let wabaId: string | null = null;
   if (phoneNumberId) {
     const { data: conn } = await supabaseAdmin
       .from("whatsapp_connections")
-      .select("id")
+      .select("id, workspace_id, waba_id")
       .eq("phone_number_id", phoneNumberId)
       .maybeSingle();
     connectionId = conn?.id ?? null;
+    workspaceId = conn?.workspace_id ?? null;
+    wabaId = conn?.waba_id ?? null;
   }
 
   // ── statuses[] ─────────────────────────────────────────────────
