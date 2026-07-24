@@ -2163,7 +2163,9 @@ function MobileStickyCTA() {
       <button
         onClick={() => {
           trackPixel("ClickPrimaryCTA", { source: "sticky-mobile" });
-          scrollToId("simulador");
+          openWhatsApp(
+            "Olá! Quero simular uma campanha de WhatsApp pela Disparos FR."
+          );
         }}
         className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3.5 text-[15px] font-medium text-neutral-950"
       >
