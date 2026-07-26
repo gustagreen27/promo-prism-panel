@@ -1,7 +1,7 @@
 // Gerador de presets geográficos aleatórios para a página pública.
 // Camada de apresentação: apenas monta listas de país/cidade com percentuais.
 
-export type GeoItem = { label: string; percent: string; country?: string };
+export type GeoItem = { label: string; percent: string; country: string };
 
 const BRAZIL_CITIES = [
   "São Paulo", "Rio de Janeiro", "Belo Horizonte", "Salvador", "Brasília",
@@ -67,8 +67,8 @@ export function generateBrazilPreset(opts?: {
   const foreignPcts = randomWeights(foreign.length, Number((100 - brasilPct).toFixed(1)), 0.3);
 
   const countries: GeoItem[] = [
-    { label: "Brasil", percent: String(brasilPct) },
-    ...foreign.map((f, i) => ({ label: f.country, percent: String(foreignPcts[i] ?? 0.5) })),
+    { label: "Brasil", percent: String(brasilPct), country: "" },
+    ...foreign.map((f, i) => ({ label: f.country, percent: String(foreignPcts[i] ?? 0.5), country: "" })),
   ];
 
   // cidades brasileiras: mistura as grandes com médias aleatórias
