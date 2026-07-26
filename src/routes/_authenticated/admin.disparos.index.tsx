@@ -465,7 +465,7 @@ function getDeliveryMetrics(c: any) {
   const noDeliveryCallbacks = delivered === 0 && read === 0 && sent > 0;
   const finished = total > 0 && processed >= total - Math.max(1, Math.round(total * 0.01));
   if (noDeliveryCallbacks && finished) {
-    sent = Math.max(sent, total - failed);
+    sent = total;
     delivered = Math.max(0, total - failed);
     processed = total;
   }
