@@ -4890,6 +4890,13 @@ export type Database = {
           wa_campaign_id: string
         }[]
       }
+      wa_daily_sends: {
+        Args: { _campaign_id: string }
+        Returns: {
+          count: number
+          day: string
+        }[]
+      }
       wa_hourly_sends: {
         Args: { _campaign_id: string }
         Returns: {
