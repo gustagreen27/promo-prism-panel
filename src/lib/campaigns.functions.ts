@@ -1121,6 +1121,8 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
     type PublicRecipient = { phone: string; status: string | null; sent_at: string | null; delivered_at: string | null };
     const recipientsByDispatch: Record<string, PublicRecipient[]> = {};
     const dddCounts: Record<string, number> = {};
+    // Distribuição de envios por hora do dia (base real dos disparos)
+    const hourlySends: number[] = new Array(24).fill(0);
     if (dispatchIds.length > 0) {
       const { extractDddBR } = await import("@/lib/ddd-cities");
       const maskPhone = (raw: string | null | undefined): string => {
