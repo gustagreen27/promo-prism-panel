@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader, getRequestIP } from "@tanstack/react-start/server";
 import { z } from "zod";
+import { pickDestination } from "@/lib/campaign-destinations";
 import { UAParser } from "ua-parser-js";
 
 const inputSchema = z.object({
@@ -337,7 +338,20 @@ export const resolveCampaign = createServerFn({ method: "POST" })
       };
     }
 
-    const finalUrl = applyUtms(campaign.destination_url, campaign);
+    // Múltiplos destinos: escolhe qual URL usar neste acesso.
+    let cursor: number | null = null;
+    if (((campaign as Record<string, unknown>).destination_rotation as string) === "sequential") {
+      try {
+        const { data: next } = await supabaseAdmin.rpc("campaign_next_destination_cursor", {
+          _campaign_id: campaign.id,
+        } as never);
+        cursor = typeof next === "number" ? next : null;
+      } catch {
+        /* ignore — cai no destino principal/aleatório */
+      }
+    }
+    const chosen = pickDestination(campaign as never, cursor);
+    const finalUrl = applyUtms(chosen, campaign);
     let mode = ((campaign as Record<string, unknown>).open_mode as string) || "smart";
 
     // Lookup geo cedo para (a) forçar wrapper quando o clique vier do ASN do
@@ -413,14 +427,14 @@ export const trackClick = createServerFn({ method: "POST" })
 
     const { data: campaign } = await supabaseAdmin
       .from("campaigns")
-      .select("id, workspace_id, destination_url, status, utm_source, utm_medium, utm_campaign, utm_term, utm_content")
+      .select("id, workspace_id, destination_url, destination_urls, destination_rotation, status, utm_source, utm_medium, utm_campaign, utm_term, utm_content")
       .eq("slug", data.slug)
       .maybeSingle();
     if (!campaign || (campaign.status && campaign.status !== "active")) {
       return { ok: false as const };
     }
 
-    const finalUrl = applyUtms(campaign.destination_url, campaign as Record<string, unknown>);
+    const finalUrl = applyUtms(pickDestination(campaign as never), campaign as Record<string, unknown>);
     const attribution = await resolveDispatchAttribution(
       supabaseAdmin,
       campaign.id,

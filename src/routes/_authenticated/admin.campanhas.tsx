@@ -11,6 +11,7 @@ import {
 import { applyIntentPreset } from "@/lib/intent-presets";
 import { CAMPAIGN_TYPES, LINK_INTENTS, OPEN_MODES, PAGE_CATEGORIES } from "@/lib/campaign-options";
 import { slugify } from "@/lib/slugify";
+import { ROTATION_OPTIONS, normalizeDestinations, type CampaignDestination } from "@/lib/campaign-destinations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -163,7 +164,15 @@ function CampaignRow({
           <MetaStat label="Cliques totais" value={c.total_clicks} />
           <MetaStat label="Cliques únicos" value={c.unique_clicks} />
           <MetaStat label="Status" value={isActive ? "Ativa" : c.status === "paused" ? "Pausada" : "Rascunho"} />
-          <MetaStat label="Destino" value={c.destination_url} truncate />
+          <MetaStat
+            label={
+              Array.isArray((c as any).destination_urls) && (c as any).destination_urls.length > 0
+                ? `Destinos (${1 + (c as any).destination_urls.length})`
+                : "Destino"
+            }
+            value={c.destination_url}
+            truncate
+          />
         </div>
       </CardContent>
 
@@ -305,6 +314,10 @@ function CampaignDialog(props: CampaignDialogProps) {
   const [name, setName] = useState(c?.name ?? "");
   const [slug, setSlug] = useState(c?.slug ?? "");
   const [destination, setDestination] = useState(c?.destination_url ?? "");
+  const [extraDests, setExtraDests] = useState<CampaignDestination[]>(
+    normalizeDestinations(c?.destination_urls),
+  );
+  const [rotation, setRotation] = useState<string>(c?.destination_rotation ?? "random");
   const [slugTouched, setSlugTouched] = useState(isEdit);
   const [campaignType, setCampaignType] = useState<string>(c?.campaign_type ?? "");
   const [linkIntent, setLinkIntent] = useState<string>(c?.link_intent ?? "");
@@ -325,6 +338,8 @@ function CampaignDialog(props: CampaignDialogProps) {
     setName(c.name ?? "");
     setSlug(c.slug ?? "");
     setDestination(c.destination_url ?? "");
+    setExtraDests(normalizeDestinations(c.destination_urls));
+    setRotation(c.destination_rotation ?? "random");
     setCampaignType(c.campaign_type ?? "");
     setLinkIntent(c.link_intent ?? "");
     setPageCategory(c.page_category ?? "");
@@ -356,6 +371,7 @@ function CampaignDialog(props: CampaignDialogProps) {
       props.onSaved();
       if (!isEdit) {
         setName(""); setSlug(""); setDestination(""); setSlugTouched(false);
+        setExtraDests([]); setRotation("random");
         setCampaignType(""); setLinkIntent(""); setPageCategory("");
         setLinkTitle(""); setLinkDescription(""); setIntermediateText(""); setCtaLabel("");
         setOpenMode("smart");
@@ -410,6 +426,8 @@ function CampaignDialog(props: CampaignDialogProps) {
               name: name.trim(),
               slug: slug.trim() || undefined,
               destination_url: destination.trim(),
+              destination_urls: normalizeDestinations(extraDests),
+              destination_rotation: rotation as "random" | "sequential",
               campaign_type: campaignType || undefined,
               link_intent: linkIntent || undefined,
               page_category: pageCategory || undefined,
@@ -447,13 +465,115 @@ function CampaignDialog(props: CampaignDialogProps) {
               </p>
             </div>
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="dest">URL de destino</Label>
+              <Label htmlFor="dest">URL de destino principal</Label>
               <Input
                 id="dest" type="url" required
                 placeholder="https://exemplo.com/oferta"
                 value={destination}
                 onChange={(e) => setDestination(e.target.value)}
               />
+            </div>
+
+            <div className="space-y-3 sm:col-span-2 rounded-lg border bg-muted/20 p-4">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <Label>Destinos adicionais</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Adicione quantos destinos quiser (sem limite). Os acessos serão distribuídos
+                    entre o destino principal e estes.
+                  </p>
+                </div>
+                <span className="shrink-0 rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground">
+                  {1 + extraDests.length} destino(s)
+                </span>
+              </div>
+
+              {extraDests.length > 0 && (
+                <div className="space-y-2">
+                  {extraDests.map((d, i) => (
+                    <div key={i} className="flex flex-wrap items-center gap-2">
+                      <Input
+                        type="url"
+                        className="min-w-[180px] flex-1"
+                        placeholder="https://exemplo.com/destino-2"
+                        value={d.url}
+                        onChange={(e) =>
+                          setExtraDests((prev) =>
+                            prev.map((x, ix) => (ix === i ? { ...x, url: e.target.value } : x)),
+                          )
+                        }
+                      />
+                      <Input
+                        className="w-32"
+                        placeholder="Rótulo"
+                        value={d.label ?? ""}
+                        onChange={(e) =>
+                          setExtraDests((prev) =>
+                            prev.map((x, ix) => (ix === i ? { ...x, label: e.target.value } : x)),
+                          )
+                        }
+                      />
+                      <Input
+                        className="w-20"
+                        type="number" min={1} max={1000}
+                        title="Peso na distribuição"
+                        value={d.weight ?? 1}
+                        onChange={(e) =>
+                          setExtraDests((prev) =>
+                            prev.map((x, ix) =>
+                              ix === i ? { ...x, weight: Number(e.target.value) || 1 } : x,
+                            ),
+                          )
+                        }
+                      />
+                      <Button
+                        type="button" variant="ghost" size="icon"
+                        aria-label="Remover destino"
+                        onClick={() => setExtraDests((prev) => prev.filter((_, ix) => ix !== i))}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button" variant="outline" size="sm"
+                  onClick={() => setExtraDests((prev) => [...prev, { url: "", label: "", weight: 1 }])}
+                >
+                  + Adicionar destino
+                </Button>
+                <Button
+                  type="button" variant="ghost" size="sm"
+                  onClick={() =>
+                    setExtraDests((prev) => [
+                      ...prev,
+                      ...Array.from({ length: 5 }, () => ({ url: "", label: "", weight: 1 })),
+                    ])
+                  }
+                >
+                  + 5 campos
+                </Button>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="rotation">Distribuição entre destinos</Label>
+                <select
+                  id="rotation"
+                  className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                  value={rotation}
+                  onChange={(e) => setRotation(e.target.value)}
+                >
+                  {ROTATION_OPTIONS.map((r) => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  {ROTATION_OPTIONS.find((r) => r.value === rotation)?.description}
+                </p>
+              </div>
             </div>
 
             <div className="space-y-2">

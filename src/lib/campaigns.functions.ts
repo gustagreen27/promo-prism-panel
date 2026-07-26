@@ -41,7 +41,19 @@ const campaignFields = {
   status: statusEnum.optional(),
   open_mode: openModeEnum.optional(),
   participants: z.array(z.enum(["gustavo", "cayo"])).optional().default([]),
+  destination_rotation: z.enum(["random", "sequential"]).optional(),
+  destination_urls: z
+    .array(
+      z.object({
+        url: z.string().trim().url().max(2048),
+        label: z.union([z.string().trim().max(80), z.null()]).optional(),
+        weight: z.number().min(1).max(1000).optional(),
+      }),
+    )
+    .max(100)
+    .optional(),
 };
+
 
 const createSchema = z.object({
   name: z.string().trim().min(1).max(120),
