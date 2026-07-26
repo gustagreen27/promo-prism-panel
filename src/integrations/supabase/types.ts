@@ -727,7 +727,10 @@ export type Database = {
           created_at: string
           created_by: string | null
           cta_label: string | null
+          destination_cursor: number
+          destination_rotation: string
           destination_url: string
+          destination_urls: Json
           favicon_url: string | null
           id: string
           iframe_checked_at: string | null
@@ -765,7 +768,10 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           cta_label?: string | null
+          destination_cursor?: number
+          destination_rotation?: string
           destination_url: string
+          destination_urls?: Json
           favicon_url?: string | null
           id?: string
           iframe_checked_at?: string | null
@@ -803,7 +809,10 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           cta_label?: string | null
+          destination_cursor?: number
+          destination_rotation?: string
           destination_url?: string
+          destination_urls?: Json
           favicon_url?: string | null
           id?: string
           iframe_checked_at?: string | null
@@ -4789,6 +4798,10 @@ export type Database = {
     }
     Functions: {
       backfill_contact_workspace_ids: { Args: never; Returns: Json }
+      campaign_next_destination_cursor: {
+        Args: { _campaign_id: string }
+        Returns: number
+      }
       get_my_context: { Args: never; Returns: Json }
       has_role: {
         Args: {
