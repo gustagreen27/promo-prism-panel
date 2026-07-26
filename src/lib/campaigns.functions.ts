@@ -1121,8 +1121,17 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
     type PublicRecipient = { phone: string; status: string | null; sent_at: string | null; delivered_at: string | null };
     const recipientsByDispatch: Record<string, PublicRecipient[]> = {};
     const dddCounts: Record<string, number> = {};
-    // Distribuição de envios por hora do dia (base real dos disparos)
+    // Distribuição de envios por hora do dia (base real dos disparos, fuso BR)
     const hourlySends: number[] = new Array(24).fill(0);
+    {
+      const { data: hs } = await (supabaseAdmin as any).rpc("wa_hourly_sends", {
+        _campaign_id: data.id,
+      });
+      for (const row of (hs ?? []) as { hour: number; count: number }[]) {
+        const h = Number(row.hour);
+        if (h >= 0 && h < 24) hourlySends[h] = Number(row.count) || 0;
+      }
+    }
     if (dispatchIds.length > 0) {
       const { extractDddBR } = await import("@/lib/ddd-cities");
       const maskPhone = (raw: string | null | undefined): string => {
@@ -1160,11 +1169,6 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
           for (const r of dddRes.data ?? []) {
             const ddd = extractDddBR((r as { phone: string | null }).phone);
             if (ddd) dddCounts[ddd] = (dddCounts[ddd] ?? 0) + 1;
-            const sentAt = (r as { sent_at?: string | null }).sent_at;
-            if (sentAt) {
-              const h = new Date(sentAt).getHours();
-              if (h >= 0 && h < 24) hourlySends[h] += 1;
-            }
           }
 
         }),

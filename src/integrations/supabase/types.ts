@@ -4890,6 +4890,13 @@ export type Database = {
           wa_campaign_id: string
         }[]
       }
+      wa_hourly_sends: {
+        Args: { _campaign_id: string }
+        Returns: {
+          count: number
+          hour: number
+        }[]
+      }
       wa_pick_next_agent: {
         Args: {
           _roles: Database["public"]["Enums"]["workspace_role"][]
