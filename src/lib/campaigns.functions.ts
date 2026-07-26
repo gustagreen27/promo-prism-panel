@@ -1203,6 +1203,8 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
       dispatches: normalizedDispatches,
       recipientsByDispatch,
       dddCounts,
+      hourlySends,
+
       overrides,
       publicSettings: pubSettings.data ?? null,
       publicMetrics: pubMetrics.data ?? [],
