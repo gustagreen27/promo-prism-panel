@@ -256,6 +256,15 @@ function PublicCampaignReport() {
     let series = Object.entries(byDay)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, count]) => ({ date, count }));
+    // Base diária vinda dos disparos (sent_at dos destinatários).
+    const sendsByDay = ((data as any)?.dailySends ?? []) as {
+      date: string;
+      count: number;
+    }[];
+    const daysTotal = sendsByDay.reduce((s, r) => s + (r.count ?? 0), 0);
+    if (daysTotal > 0) {
+      series = sendsByDay.map((r) => ({ date: r.date, count: r.count ?? 0 }));
+    }
     // Base horária vinda dos disparos (sent_at dos destinatários).
     // Cai para os cliques reais apenas quando não há envios registrados.
     const sendsByHour = ((data as any)?.hourlySends ?? []) as number[];
@@ -454,9 +463,10 @@ function PublicCampaignReport() {
       }));
       series = scaleSeries(series, total);
       hourly = scaleSeries(hourly, total);
-    } else if (sendsTotal > 0) {
-      // Mantém o formato horário dos disparos, mas na escala do total público.
-      hourly = scaleSeries(hourly, total);
+    } else {
+      // Mantém o formato dos disparos, mas na escala do total público.
+      if (sendsTotal > 0) hourly = scaleSeries(hourly, total);
+      if (daysTotal > 0) series = scaleSeries(series, total);
     }
 
     return {
