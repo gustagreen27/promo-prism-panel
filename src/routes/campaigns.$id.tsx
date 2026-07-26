@@ -840,7 +840,9 @@ function DispatchCard({
   const displayName = perSnapshot?.name ?? d.name;
   const total = perSnapshot?.total ?? snapshot?.total ?? d.total_recipients ?? 0;
   const rawDelivered = perSnapshot?.delivered ?? snapshot?.delivered ?? overrides?.delivered ?? (d.delivered_count ?? 0);
-  const sent = perSnapshot?.sent ?? snapshot?.sent ?? overrides?.sent ?? rawDelivered;
+  // "Enviados" = mensagens aceitas pela Meta (já normalizado no servidor: total quando
+  // a campanha terminou sem callbacks). Nunca derivar de "entregues".
+  const sent = perSnapshot?.sent ?? snapshot?.sent ?? overrides?.sent ?? (d.sent_count ?? rawDelivered);
   const failed = perSnapshot?.failed ?? snapshot?.failed ?? overrides?.failed ?? (d.failed_count ?? 0);
   // Público: entregues reais reportados pela Meta (delivered + read + replied),
   // mesma métrica do admin. `sent` e `failed` são contagens independentes que somam ao total,
