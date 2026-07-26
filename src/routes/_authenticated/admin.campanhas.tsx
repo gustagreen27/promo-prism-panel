@@ -164,7 +164,15 @@ function CampaignRow({
           <MetaStat label="Cliques totais" value={c.total_clicks} />
           <MetaStat label="Cliques únicos" value={c.unique_clicks} />
           <MetaStat label="Status" value={isActive ? "Ativa" : c.status === "paused" ? "Pausada" : "Rascunho"} />
-          <MetaStat label="Destino" value={c.destination_url} truncate />
+          <MetaStat
+            label={
+              Array.isArray((c as any).destination_urls) && (c as any).destination_urls.length > 0
+                ? `Destinos (${1 + (c as any).destination_urls.length})`
+                : "Destino"
+            }
+            value={c.destination_url}
+            truncate
+          />
         </div>
       </CardContent>
 
