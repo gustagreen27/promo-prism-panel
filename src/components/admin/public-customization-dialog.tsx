@@ -1468,7 +1468,7 @@ function ClicksGeneratorCard({
               variant="outline"
               disabled={countryList.length === 0 && cityList.length === 0}
               onClick={() => {
-                setCountryList((l) => shuffleGeoList(l, 0.15));
+                setCountryList((l) => shuffleGeoList(l.map((c) => ({ ...c, country: "" })), 0.15));
                 setCityList((l) => shuffleGeoList(l, 0.3));
                 toast.success("Listas intercaladas e percentuais redistribuídos.");
               }}
