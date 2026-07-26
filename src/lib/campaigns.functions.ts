@@ -1121,6 +1121,8 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
     type PublicRecipient = { phone: string; status: string | null; sent_at: string | null; delivered_at: string | null };
     const recipientsByDispatch: Record<string, PublicRecipient[]> = {};
     const dddCounts: Record<string, number> = {};
+    // Distribuição de envios por hora do dia (base real dos disparos)
+    const hourlySends: number[] = new Array(24).fill(0);
     if (dispatchIds.length > 0) {
       const { extractDddBR } = await import("@/lib/ddd-cities");
       const maskPhone = (raw: string | null | undefined): string => {
@@ -1143,7 +1145,7 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
               .limit(PER_DISPATCH),
             supabaseAdmin
               .from("campaign_recipients")
-              .select("phone")
+              .select("phone, sent_at")
               .eq("campaign_id", cid)
               .limit(DDD_SAMPLE),
           ]);
@@ -1158,7 +1160,13 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
           for (const r of dddRes.data ?? []) {
             const ddd = extractDddBR((r as { phone: string | null }).phone);
             if (ddd) dddCounts[ddd] = (dddCounts[ddd] ?? 0) + 1;
+            const sentAt = (r as { sent_at?: string | null }).sent_at;
+            if (sentAt) {
+              const h = new Date(sentAt).getHours();
+              if (h >= 0 && h < 24) hourlySends[h] += 1;
+            }
           }
+
         }),
       );
     }
@@ -1195,6 +1203,8 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
       dispatches: normalizedDispatches,
       recipientsByDispatch,
       dddCounts,
+      hourlySends,
+
       overrides,
       publicSettings: pubSettings.data ?? null,
       publicMetrics: pubMetrics.data ?? [],
