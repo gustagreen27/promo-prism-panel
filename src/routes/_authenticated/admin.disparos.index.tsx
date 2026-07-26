@@ -459,15 +459,16 @@ function getDeliveryMetrics(c: any) {
   let processed = num(progress.processed, sent + failed + optOut + cancelled + skipped);
   const clicks = num(c.clicks_count);
 
-  // Campanhas sem webhook assinado nunca recebem callbacks de entrega/leitura.
-  // Nesse caso, quando o disparo já rodou por completo, exibimos enviados = total
-  // de contatos e entregues = total - falhas (camada de apresentação apenas).
+  // "Entregue" = mensagem aceita pela Meta (enviada sem falha). Campanhas sem
+  // webhook assinado nunca recebem callbacks; camada de apresentação apenas.
   const noDeliveryCallbacks = delivered === 0 && read === 0 && sent > 0;
   const finished = total > 0 && processed >= total - Math.max(1, Math.round(total * 0.01));
   if (noDeliveryCallbacks && finished) {
     sent = total;
     delivered = Math.max(0, total - failed);
     processed = total;
+  } else {
+    delivered = Math.max(delivered, Math.max(0, sent - failed));
   }
 
   return { total, sent, delivered, read, failed, processed, clicks };
