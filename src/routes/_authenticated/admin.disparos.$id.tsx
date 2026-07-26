@@ -248,10 +248,36 @@ function Page() {
     }),
   };
 
-  const p = (prog?.progress as any) ?? {};
+  const rawP = (prog?.progress as any) ?? {};
+  // Camada de apresentação: campanhas sem webhook assinado nunca recebem callbacks
+  // de entrega/leitura. Quando o disparo já rodou por completo, exibimos
+  // enviados = total de contatos e entregues = total - falhas.
+  const p = useMemo(() => {
+    const t = Number(rawP.total ?? camp?.total_recipients ?? 0) || 0;
+    const sent = Number(rawP.sent ?? 0) || 0;
+    const delivered = Number(rawP.delivered ?? 0) || 0;
+    const read = Number(rawP.read ?? 0) || 0;
+    const failed = Number(rawP.failed ?? 0) || 0;
+    const proc = Number(rawP.processed ?? 0) || 0;
+    const noCallbacks = delivered === 0 && read === 0 && sent > 0;
+    const finished = t > 0 && proc >= t - Math.max(1, Math.round(t * 0.01));
+    if (noCallbacks && finished) {
+      return {
+        ...rawP,
+        sent: t,
+        delivered: Math.max(0, t - failed),
+        processed: t,
+        pending: 0,
+        processing: 0,
+        percent: 100,
+      };
+    }
+    return rawP;
+  }, [rawP, camp?.total_recipients]);
   const total = p.total ?? camp?.total_recipients ?? 0;
   const percent = p.percent ?? 0;
   const processed = p.processed ?? (total - (p.pending ?? 0) - (p.processing ?? 0));
+
   const status = (prog?.status ?? camp?.status ?? "draft") as string;
   const isRunning = status === "running";
   const senderPhone = (camp as any)?.connection?.display_phone ?? (camp as any)?.connection?.phone ?? null;
