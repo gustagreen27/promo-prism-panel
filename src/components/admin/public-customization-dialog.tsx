@@ -1443,47 +1443,33 @@ function ClicksGeneratorCard({
               size="sm"
               variant="secondary"
               onClick={() => {
-                setCountryList([
-                  { label: "Brasil", percent: "92" },
-                  { label: "Portugal", percent: "3" },
-                  { label: "Estados Unidos", percent: "2" },
-                  { label: "Argentina", percent: "2" },
-                  { label: "Paraguai", percent: "1" },
-                ]);
-                setCityList([
-                  { label: "São Paulo", percent: "18", country: "Brasil" },
-                  { label: "Rio de Janeiro", percent: "12", country: "Brasil" },
-                  { label: "Belo Horizonte", percent: "8", country: "Brasil" },
-                  { label: "Salvador", percent: "7", country: "Brasil" },
-                  { label: "Brasília", percent: "7", country: "Brasil" },
-                  { label: "Fortaleza", percent: "6", country: "Brasil" },
-                  { label: "Curitiba", percent: "6", country: "Brasil" },
-                  { label: "Manaus", percent: "5", country: "Brasil" },
-                  { label: "Recife", percent: "5", country: "Brasil" },
-                  { label: "Porto Alegre", percent: "5", country: "Brasil" },
-                  { label: "Goiânia", percent: "4", country: "Brasil" },
-                  { label: "Belém", percent: "3", country: "Brasil" },
-                  { label: "Campinas", percent: "3", country: "Brasil" },
-                  { label: "São Luís", percent: "3", country: "Brasil" },
-                  { label: "Lisboa", percent: "2", country: "Portugal" },
-                  { label: "Porto", percent: "1", country: "Portugal" },
-                  { label: "Miami", percent: "1", country: "Estados Unidos" },
-                  { label: "Orlando", percent: "1", country: "Estados Unidos" },
-                  { label: "Buenos Aires", percent: "2", country: "Argentina" },
-                  { label: "Assunção", percent: "1", country: "Paraguai" },
-                ]);
+                const preset = generateBrazilPreset();
+                setCountryList(preset.countries);
+                setCityList(preset.cities);
                 setHierarchical(true);
                 if (!masterEnabled) {
                   toast.warning(
                     "Preset aplicado. Ative “Personalização” e salve para exibir na página pública.",
                   );
                 } else {
-                  toast.success("Preset Brasil aplicado. Salve para publicar.");
+                  toast.success("Preset Brasil aleatório gerado. Salve para publicar.");
                 }
-
               }}
             >
-              <Sparkles className="h-3 w-3 mr-1" /> Aplicar preset Brasil
+              <Sparkles className="h-3 w-3 mr-1" /> Gerar preset Brasil (aleatório)
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={countryList.length === 0 && cityList.length === 0}
+              onClick={() => {
+                setCountryList((l) => shuffleGeoList(l, 0.15));
+                setCityList((l) => shuffleGeoList(l, 0.3));
+                toast.success("Listas intercaladas e percentuais redistribuídos.");
+              }}
+            >
+              <Shuffle className="h-3 w-3 mr-1" /> Intercalar
             </Button>
             <Button
               type="button"
@@ -1496,6 +1482,7 @@ function ClicksGeneratorCard({
             >
               <Trash2 className="h-3 w-3 mr-1" /> Limpar listas
             </Button>
+
           </div>
 
 
