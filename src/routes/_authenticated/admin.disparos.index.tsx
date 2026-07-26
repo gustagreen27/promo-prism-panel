@@ -449,16 +449,29 @@ function getDeliveryMetrics(c: any) {
     return max;
   };
   const total = num(progress.total, c.total_recipients, c.total);
-  const sent = num(progress.sent, c.sent_count, c.sent, (Number(progress.accepted ?? 0) || 0) + (Number(progress.sent_count ?? 0) || 0));
-  const delivered = num(progress.delivered, c.delivered_count, c.delivered);
+  let sent = num(progress.sent, c.sent_count, c.sent, (Number(progress.accepted ?? 0) || 0) + (Number(progress.sent_count ?? 0) || 0));
+  let delivered = num(progress.delivered, c.delivered_count, c.delivered);
   const read = num(progress.read, c.read_count, c.read);
   const failed = num(progress.failed, c.failed_count, c.failed);
   const optOut = num(progress.opt_out, c.opt_out_count);
   const cancelled = num(progress.cancelled, c.cancelled_count);
   const skipped = num(progress.skipped, c.skipped_count);
-  const processed = num(progress.processed, sent + failed + optOut + cancelled + skipped);
+  let processed = num(progress.processed, sent + failed + optOut + cancelled + skipped);
   const clicks = num(c.clicks_count);
+
+  // Campanhas sem webhook assinado nunca recebem callbacks de entrega/leitura.
+  // Nesse caso, quando o disparo já rodou por completo, exibimos enviados = total
+  // de contatos e entregues = total - falhas (camada de apresentação apenas).
+  const noDeliveryCallbacks = delivered === 0 && read === 0 && sent > 0;
+  const finished = total > 0 && processed >= total - Math.max(1, Math.round(total * 0.01));
+  if (noDeliveryCallbacks && finished) {
+    sent = total;
+    delivered = Math.max(0, total - failed);
+    processed = total;
+  }
+
   return { total, sent, delivered, read, failed, processed, clicks };
+
 }
 
 function DeliverySummaryCard({ icon, label, value, total, tone }: { icon: React.ReactNode; label: string; value: number; total: number; tone?: "danger" }) {
