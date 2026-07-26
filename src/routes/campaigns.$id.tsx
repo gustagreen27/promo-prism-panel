@@ -724,55 +724,8 @@ function PublicCampaignReport() {
           </Card>
         )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Histórico de acessos</CardTitle>
-            <CardDescription>
-              Últimos acessos registrados na página pública.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {data.clicks.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhum acesso registrado ainda.</p>
-            ) : (
-              <div className="max-h-96 overflow-auto rounded-md border">
-                <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-muted/50 text-xs text-muted-foreground">
-                    <tr>
-                      <th className="px-3 py-2 text-left font-medium">Data/Hora</th>
-                      <th className="px-3 py-2 text-left font-medium">Local</th>
-                      <th className="px-3 py-2 text-left font-medium">Dispositivo</th>
-                      <th className="px-3 py-2 text-left font-medium">Navegador</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.clicks.slice(0, 500).map((c) => (
-                      <tr key={c.id as string} className="border-t">
-                        <td className="px-3 py-1.5 text-xs">
-                          {new Date(c.clicked_at as string).toLocaleString("pt-BR")}
-                        </td>
-                        <td className="px-3 py-1.5 text-xs">
-                          {[c.city, c.region, c.country].filter(Boolean).join(", ") || "—"}
-                        </td>
-                        <td className="px-3 py-1.5 text-xs">
-                          {[c.device_type, c.os].filter(Boolean).join(" · ") || "—"}
-                        </td>
-                        <td className="px-3 py-1.5 text-xs text-muted-foreground">
-                          {(c.browser as string) || "—"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {data.clicks.length > 500 && (
-                  <div className="border-t bg-muted/30 px-3 py-1.5 text-center text-xs text-muted-foreground">
-                    Mostrando os 500 mais recentes de {data.clicks.length.toLocaleString("pt-BR")}.
-                  </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+
+
 
         <footer className="pt-6 text-center text-xs text-muted-foreground">
           Relatório somente para visualização.
