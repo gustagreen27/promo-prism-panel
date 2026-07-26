@@ -38,9 +38,13 @@ import {
   RefreshCw,
   RotateCcw,
   Save,
+  Save,
+  Shuffle,
   Sparkles,
   Trash2,
 } from "lucide-react";
+import { generateBrazilPreset, shuffleGeoList } from "@/lib/geo-preset-generator";
+
 import {
   clearAllPublicOverrides,
   controlPublicSimulation,
