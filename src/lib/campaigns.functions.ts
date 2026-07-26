@@ -1145,7 +1145,7 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
               .limit(PER_DISPATCH),
             supabaseAdmin
               .from("campaign_recipients")
-              .select("phone")
+              .select("phone, sent_at")
               .eq("campaign_id", cid)
               .limit(DDD_SAMPLE),
           ]);
@@ -1160,7 +1160,13 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
           for (const r of dddRes.data ?? []) {
             const ddd = extractDddBR((r as { phone: string | null }).phone);
             if (ddd) dddCounts[ddd] = (dddCounts[ddd] ?? 0) + 1;
+            const sentAt = (r as { sent_at?: string | null }).sent_at;
+            if (sentAt) {
+              const h = new Date(sentAt).getHours();
+              if (h >= 0 && h < 24) hourlySends[h] += 1;
+            }
           }
+
         }),
       );
     }
