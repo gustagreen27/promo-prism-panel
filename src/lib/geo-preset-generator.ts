@@ -60,11 +60,12 @@ export function generateBrazilPreset(opts?: {
   foreignCountries?: number;
 }): { countries: GeoItem[]; cities: GeoItem[] } {
   const cityCount = opts?.cities ?? Math.round(rand(16, 24));
-  const foreignCount = opts?.foreignCountries ?? Math.round(rand(3, 5));
+  // Foco sempre no Brasil: no máximo 2 países estrangeiros, com peso residual.
+  const foreignCount = opts?.foreignCountries ?? Math.round(rand(0, 2));
 
-  const brasilPct = Number(rand(88, 95).toFixed(1));
+  const brasilPct = Number(rand(96, 99).toFixed(1));
   const foreign = shuffle(OTHER_COUNTRIES).slice(0, foreignCount);
-  const foreignPcts = randomWeights(foreign.length, Number((100 - brasilPct).toFixed(1)), 0.3);
+  const foreignPcts = randomWeights(foreign.length, Number((100 - brasilPct).toFixed(1)), 0.1);
 
   const countries: GeoItem[] = [
     { label: "Brasil", percent: String(brasilPct), country: "" },
@@ -72,36 +73,49 @@ export function generateBrazilPreset(opts?: {
   ];
 
   // cidades brasileiras: mistura as grandes com médias aleatórias
-  const brCities = shuffle(BRAZIL_CITIES).slice(0, Math.max(6, cityCount - foreign.length));
+  const brCities = shuffle(BRAZIL_CITIES).slice(0, Math.max(10, cityCount - foreign.length));
   const brPcts = randomWeights(brCities.length, brasilPct);
-  const cities: GeoItem[] = brCities.map((label, i) => ({
-    label,
-    percent: String(brPcts[i] ?? 0.5),
-    country: "Brasil",
-  }));
+  const cities: GeoItem[] = shuffle(
+    brCities.map((label, i) => ({
+      label,
+      percent: String(brPcts[i] ?? 0.5),
+      country: "Brasil",
+    })),
+  );
 
   foreign.forEach((f, i) => {
-    const pick = shuffle(f.cities).slice(0, Math.random() > 0.5 ? 2 : 1);
-    const pcts = randomWeights(pick.length, foreignPcts[i] ?? 0.5, 0.2);
+    const pick = shuffle(f.cities).slice(0, 1);
+    const pcts = randomWeights(pick.length, foreignPcts[i] ?? 0.3, 0.1);
     pick.forEach((label, j) =>
       cities.push({ label, percent: String(pcts[j] ?? 0.2), country: f.country }),
     );
   });
 
-  return { countries, cities: shuffle(cities) };
+  // Brasil sempre à frente na listagem.
+  return { countries, cities };
 }
 
-/** Intercala (embaralha) a ordem e redistribui levemente os percentuais existentes. */
+/**
+ * Intercala (embaralha) a ordem e redistribui levemente os percentuais.
+ * O Brasil (e as cidades brasileiras) permanece sempre em primeiro plano.
+ */
 export function shuffleGeoList(list: GeoItem[], jitter = 0.25): GeoItem[] {
   if (list.length === 0) return list;
+  const isBR = (it: GeoItem) => {
+    const v = `${it.country || ""} ${it.label}`.toLowerCase();
+    return v.includes("brasil") || v.includes("brazil");
+  };
   const total = list.reduce((s, it) => s + (Number(it.percent) || 0), 0);
-  const shuffled = shuffle(list);
-  const weights = shuffled.map(
-    (it) => Math.max(0.05, (Number(it.percent) || 0.5) * rand(1 - jitter, 1 + jitter)),
+  const br = shuffle(list.filter(isBR));
+  const rest = shuffle(list.filter((it) => !isBR(it)));
+  const ordered = [...br, ...rest];
+  const weights = ordered.map((it) =>
+    Math.max(0.05, (Number(it.percent) || 0.5) * rand(1 - jitter, 1 + jitter)),
   );
   const ws = weights.reduce((s, v) => s + v, 0);
-  return shuffled.map((it, i) => ({
+  return ordered.map((it, i) => ({
     ...it,
     percent: String(Number(((weights[i] / ws) * total).toFixed(1))),
   }));
 }
+
