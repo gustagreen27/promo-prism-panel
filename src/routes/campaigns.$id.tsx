@@ -454,6 +454,9 @@ function PublicCampaignReport() {
       }));
       series = scaleSeries(series, total);
       hourly = scaleSeries(hourly, total);
+    } else if (sendsTotal > 0) {
+      // Mantém o formato horário dos disparos, mas na escala do total público.
+      hourly = scaleSeries(hourly, total);
     }
 
     return {
