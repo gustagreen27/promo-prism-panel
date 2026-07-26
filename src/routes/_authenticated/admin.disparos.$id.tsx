@@ -249,9 +249,8 @@ function Page() {
   };
 
   const rawP = (prog?.progress as any) ?? {};
-  // Camada de apresentação: campanhas sem webhook assinado nunca recebem callbacks
-  // de entrega/leitura. Quando o disparo já rodou por completo, exibimos
-  // enviados = total de contatos e entregues = total - falhas.
+  // Camada de apresentação: "Entregue" = mensagem aceita pela Meta, ou seja,
+  // tudo que foi enviado sem falha (independente de callback de entrega).
   const p = useMemo(() => {
     const t = Number(rawP.total ?? camp?.total_recipients ?? 0) || 0;
     const sent = Number(rawP.sent ?? 0) || 0;
@@ -272,7 +271,9 @@ function Page() {
         percent: 100,
       };
     }
-    return rawP;
+    // Aceito pela Meta: nunca menos do que enviados - falhas.
+    const accepted = Math.max(0, sent - failed);
+    return accepted > delivered ? { ...rawP, delivered: accepted } : rawP;
   }, [rawP, camp?.total_recipients]);
   const total = p.total ?? camp?.total_recipients ?? 0;
   const percent = p.percent ?? 0;
