@@ -1123,14 +1123,24 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
     const dddCounts: Record<string, number> = {};
     // Distribuição de envios por hora do dia (base real dos disparos, fuso BR)
     const hourlySends: number[] = new Array(24).fill(0);
+    const dailySends: { date: string; count: number }[] = [];
     {
-      const { data: hs } = await (supabaseAdmin as any).rpc("wa_hourly_sends", {
-        _campaign_id: data.id,
-      });
-      for (const row of (hs ?? []) as { hour: number; count: number }[]) {
+      const [hsRes, dsRes] = await Promise.all([
+        (supabaseAdmin as any).rpc("wa_hourly_sends", { _campaign_id: data.id }),
+        (supabaseAdmin as any).rpc("wa_daily_sends", { _campaign_id: data.id }),
+      ]);
+      for (const row of (hsRes?.data ?? []) as { hour: number; count: number }[]) {
         const h = Number(row.hour);
         if (h >= 0 && h < 24) hourlySends[h] = Number(row.count) || 0;
       }
+      for (const row of (dsRes?.data ?? []) as { day: string; count: number }[]) {
+        if (!row?.day) continue;
+        dailySends.push({
+          date: String(row.day).slice(0, 10),
+          count: Number(row.count) || 0,
+        });
+      }
+      dailySends.sort((a, b) => a.date.localeCompare(b.date));
     }
     if (dispatchIds.length > 0) {
       const { extractDddBR } = await import("@/lib/ddd-cities");
