@@ -778,14 +778,23 @@ function normalizeDispatch<T extends WaDispatchRow>(r: T): T {
   const total = Number(r.total_recipients ?? 0);
   const rawSent = Number(r.sent_count ?? 0);
   const rawDelivered = Number(r.delivered_count ?? 0);
+  const rawRead = Number((r as { read_count?: number | null }).read_count ?? 0);
   const failed = Number(r.failed_count ?? 0);
-  // Enviados: maior valor conhecido (sent do Meta ou entregues, caso o
-  // webhook de sent não tenha chegado). Entregues: valor real reportado
-  // pela Meta (delivered+read+replied agregados), limitado a sent.
-  // Sem override público habilitado, sempre mostra o real.
-  const sent = Math.max(rawSent, rawDelivered);
-  const delivered = Math.min(sent, rawDelivered);
-  const processed = Math.min(total, sent + failed);
+  // "Entregue" = mensagem aceita pela Meta (enviada sem falha). Campanhas sem
+  // webhook assinado nunca recebem callbacks de delivered/read — camada de
+  // apresentação apenas, não altera dados operacionais.
+  let sent = Math.max(rawSent, rawDelivered);
+  let delivered = Math.min(sent, rawDelivered);
+  let processed = Math.min(total, sent + failed);
+  const noDeliveryCallbacks = rawDelivered === 0 && rawRead === 0 && sent > 0;
+  const finished = total > 0 && processed >= total - Math.max(1, Math.round(total * 0.01));
+  if (noDeliveryCallbacks && finished) {
+    sent = total;
+    delivered = Math.max(0, total - failed);
+    processed = total;
+  } else {
+    delivered = Math.max(delivered, Math.max(0, sent - failed));
+  }
   const percent = total > 0 ? Math.min(100, Math.round((processed / total) * 100)) : 0;
   const progress = {
     ...(r.progress ?? {}),
@@ -798,6 +807,7 @@ function normalizeDispatch<T extends WaDispatchRow>(r: T): T {
   };
   return { ...r, sent_count: sent, delivered_count: delivered, progress } as T;
 }
+
 
 
 export const listWaCampaignsForLinking = createServerFn({ method: "GET" })
