@@ -256,9 +256,14 @@ function PublicCampaignReport() {
     let series = Object.entries(byDay)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, count]) => ({ date, count }));
-    let hourly = byHour.map((count, hour) => ({
+    // Base horária vinda dos disparos (sent_at dos destinatários).
+    // Cai para os cliques reais apenas quando não há envios registrados.
+    const sendsByHour = ((data as any)?.hourlySends ?? []) as number[];
+    const sendsTotal = sendsByHour.reduce((s, n) => s + (n ?? 0), 0);
+    const hourBase = sendsTotal > 0 ? sendsByHour : byHour;
+    let hourly = hourBase.map((count, hour) => ({
       hour: `${String(hour).padStart(2, "0")}h`,
-      count,
+      count: count ?? 0,
     }));
     const top = (field: keyof (typeof clicks)[number]) => {
       const m: Record<string, number> = {};
