@@ -190,13 +190,24 @@ export const uploadPhoneProfilePicture = createServerFn({ method: "POST" })
       const cleanName = data.file_name.replace(/[^\w.\-]/g, "_").slice(0, 100);
 
       try {
-        // Session
-        const sess = await metaFetch(
-          `/${appId}/uploads?file_name=${encodeURIComponent(cleanName)}&file_length=${size}&file_type=${encodeURIComponent(mime)}`,
-          { method: "POST", headers: { Authorization: `Bearer ${conn.access_token}` } },
-        );
-        const sessionId: string = sess.id;
-        if (!sessionId) throw new Error("Sessão de upload inválida.");
+        // Session — tenta o app da conexão e, se falhar, o app global
+        const appCandidates = Array.from(new Set([appId, globalAppId].filter(Boolean) as string[]));
+        let sessionId = "";
+        let sessErr: unknown = null;
+        for (const candidate of appCandidates) {
+          try {
+            const sess = await metaFetch(
+              `/${candidate}/uploads?file_name=${encodeURIComponent(cleanName)}&file_length=${size}&file_type=${encodeURIComponent(mime)}`,
+              { method: "POST", headers: { Authorization: `Bearer ${conn.access_token}` } },
+            );
+            if (sess?.id) { sessionId = String(sess.id); sessErr = null; break; }
+            sessErr = new Error("Sessão de upload inválida.");
+          } catch (e) {
+            sessErr = e;
+          }
+        }
+        if (!sessionId) throw sessErr ?? new Error("Sessão de upload inválida.");
+
 
         // Bytes
         const upRes = await metaFetchRaw(`/${sessionId}`, {
