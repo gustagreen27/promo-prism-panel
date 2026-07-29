@@ -11,23 +11,15 @@ const CTA_LABEL = "Falar com a equipe";
 export const Route = createFileRoute("/politica2026")({
   head: () => ({
     meta: [
-      { title: "Disparos FR — WhatsApp Oficial para Campanhas Políticas" },
+      // Página despublicada: mantida apenas para acesso direto por link.
+      // Não deve ser indexada nem compartilhada em redes sociais.
+      { title: "Página não publicada — Disparos FR" },
+      { name: "robots", content: "noindex, nofollow, noarchive, nosnippet" },
+      { name: "googlebot", content: "noindex, nofollow" },
       {
         name: "description",
-        content:
-          "Operação completa de campanhas políticas no WhatsApp pela API Oficial: organização da base, segmentação por cidade/DDD, envio e acompanhamento em tempo real com respeito à LGPD e às normas do TSE.",
+        content: "Conteúdo interno não publicado.",
       },
-      {
-        property: "og:title",
-        content: "Disparos FR — WhatsApp Oficial para Campanhas Políticas",
-      },
-      {
-        property: "og:description",
-        content:
-          "Alcance eleitores pela API Oficial do WhatsApp com segmentação, aprovação de mensagem e painel em tempo real.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
       {
