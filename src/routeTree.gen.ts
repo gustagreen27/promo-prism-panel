@@ -15,6 +15,7 @@ import { Route as Politica2026RouteImport } from './routes/politica2026'
 import { Route as PoliticaDePrivacidadeRouteImport } from './routes/politica-de-privacidade'
 import { Route as PainelRouteImport } from './routes/painel'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ConformidadeRouteImport } from './routes/conformidade'
 import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as SlugRouteImport } from './routes/$slug'
@@ -118,6 +119,11 @@ const PainelRoute = PainelRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConformidadeRoute = ConformidadeRouteImport.update({
+  id: '/conformidade',
+  path: '/conformidade',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CadastroRoute = CadastroRouteImport.update({
@@ -549,6 +555,7 @@ export interface FileRoutesByFullPath {
   '/$slug': typeof SlugRoute
   '/auth': typeof AuthRoute
   '/cadastro': typeof CadastroRoute
+  '/conformidade': typeof ConformidadeRoute
   '/login': typeof LoginRoute
   '/painel': typeof PainelRouteWithChildren
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
@@ -630,6 +637,7 @@ export interface FileRoutesByTo {
   '/$slug': typeof SlugRoute
   '/auth': typeof AuthRoute
   '/cadastro': typeof CadastroRoute
+  '/conformidade': typeof ConformidadeRoute
   '/login': typeof LoginRoute
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/politica2026': typeof Politica2026Route
@@ -711,6 +719,7 @@ export interface FileRoutesById {
   '/$slug': typeof SlugRoute
   '/auth': typeof AuthRoute
   '/cadastro': typeof CadastroRoute
+  '/conformidade': typeof ConformidadeRoute
   '/login': typeof LoginRoute
   '/painel': typeof PainelRouteWithChildren
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
@@ -794,6 +803,7 @@ export interface FileRouteTypes {
     | '/$slug'
     | '/auth'
     | '/cadastro'
+    | '/conformidade'
     | '/login'
     | '/painel'
     | '/politica-de-privacidade'
@@ -875,6 +885,7 @@ export interface FileRouteTypes {
     | '/$slug'
     | '/auth'
     | '/cadastro'
+    | '/conformidade'
     | '/login'
     | '/politica-de-privacidade'
     | '/politica2026'
@@ -955,6 +966,7 @@ export interface FileRouteTypes {
     | '/$slug'
     | '/auth'
     | '/cadastro'
+    | '/conformidade'
     | '/login'
     | '/painel'
     | '/politica-de-privacidade'
@@ -1038,6 +1050,7 @@ export interface RootRouteChildren {
   SlugRoute: typeof SlugRoute
   AuthRoute: typeof AuthRoute
   CadastroRoute: typeof CadastroRoute
+  ConformidadeRoute: typeof ConformidadeRoute
   LoginRoute: typeof LoginRoute
   PainelRoute: typeof PainelRouteWithChildren
   PoliticaDePrivacidadeRoute: typeof PoliticaDePrivacidadeRoute
@@ -1099,6 +1112,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/conformidade': {
+      id: '/conformidade'
+      path: '/conformidade'
+      fullPath: '/conformidade'
+      preLoaderRoute: typeof ConformidadeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cadastro': {
@@ -1827,6 +1847,7 @@ const rootRouteChildren: RootRouteChildren = {
   SlugRoute: SlugRoute,
   AuthRoute: AuthRoute,
   CadastroRoute: CadastroRoute,
+  ConformidadeRoute: ConformidadeRoute,
   LoginRoute: LoginRoute,
   PainelRoute: PainelRouteWithChildren,
   PoliticaDePrivacidadeRoute: PoliticaDePrivacidadeRoute,
