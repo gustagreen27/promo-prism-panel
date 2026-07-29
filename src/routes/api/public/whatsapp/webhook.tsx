@@ -144,7 +144,11 @@ function safeCompareHex(providedHex: string, expectedHex: string): boolean {
   }
 }
 
-function verifySignatureWithSecret(rawBody: string, signatureHeader: string | null, secret: string | null | undefined): boolean {
+function verifySignatureWithSecret(
+  rawBody: string,
+  signatureHeader: string | null,
+  secret: string | null | undefined,
+): boolean {
   if (!secret) return false;
   if (!signatureHeader || !signatureHeader.startsWith("sha256=")) return false;
   const provided = signatureHeader.slice("sha256=".length).trim();
@@ -175,7 +179,6 @@ function extractRoutingHints(rawBody: string): { phone_number_ids: string[]; wab
   }
   return { phone_number_ids: Array.from(phones), waba_ids: Array.from(wabas) };
 }
-
 
 // Extrai a mensagem de erro mais informativa de uma entrada `errors[]` da Meta.
 function extractError(err: any) {
@@ -294,7 +297,6 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
         // (matchedBy é apenas registrado nos logs abaixo, quando aplicável)
         void matchedBy;
 
-
         let payload: any = {};
         try {
           payload = JSON.parse(rawBody);
@@ -356,9 +358,7 @@ async function handleChange(supabaseAdmin: any, change: any) {
     field === "message_template_components_update" ||
     field === "template_category_update"
   ) {
-    const metaId = value?.message_template_id
-      ? String(value.message_template_id)
-      : null;
+    const metaId = value?.message_template_id ? String(value.message_template_id) : null;
     const name: string | null = value?.message_template_name ?? null;
     const language: string | null = value?.message_template_language ?? null;
     const patch: Record<string, any> = { updated_at: new Date().toISOString() };
@@ -393,10 +393,7 @@ async function handleChange(supabaseAdmin: any, change: any) {
     field === "account_update"
   ) {
     const phoneNumberId =
-      value?.phone_number ||
-      value?.phone_number_id ||
-      value?.metadata?.phone_number_id ||
-      null;
+      value?.phone_number || value?.phone_number_id || value?.metadata?.phone_number_id || null;
     if (phoneNumberId) {
       const patch: Record<string, any> = { last_meta_sync_at: new Date().toISOString() };
       if (field === "phone_number_quality_update") {
@@ -739,9 +736,7 @@ async function upsertConversationFromInbound(
     else preview = `[${type}]`;
   }
 
-  const profileName: string | null = message?.profile?.name
-    ? String(message.profile.name)
-    : null;
+  const profileName: string | null = message?.profile?.name ? String(message.profile.name) : null;
 
   // Lookups read-only (contato e última campanha vinculada ao número).
   // A Meta pode entregar o número BR sem o 9º dígito (ou com), então
@@ -982,7 +977,15 @@ async function applyResponseFlow(
     inboundWamid?: string | null;
   },
 ) {
-  const { workspaceId, conversationId, connectionId, phoneNumberId, from, campaignId, inboundWamid } = args;
+  const {
+    workspaceId,
+    conversationId,
+    connectionId,
+    phoneNumberId,
+    from,
+    campaignId,
+    inboundWamid,
+  } = args;
 
   const { data: camp } = await supabaseAdmin
     .from("wa_campaigns")
@@ -1002,7 +1005,6 @@ async function applyResponseFlow(
     cta_footer?: string | null;
   };
 
-
   const { data: conv } = await supabaseAdmin
     .from("wa_conversations")
     .select("id, tags, metadata, conversation_status")
@@ -1012,7 +1014,7 @@ async function applyResponseFlow(
 
   const meta = (conv.metadata ?? {}) as Record<string, any>;
   const lastAutoAt = meta.last_auto_reply_at ? Date.parse(meta.last_auto_reply_at) : 0;
-  const cooldownMs = Math.max(0, (cfg.cooldown_minutes ?? 60)) * 60 * 1000;
+  const cooldownMs = Math.max(0, cfg.cooldown_minutes ?? 60) * 60 * 1000;
   const now = Date.now();
   const cooldownOk = !lastAutoAt || now - lastAutoAt >= cooldownMs;
 
@@ -1029,7 +1031,11 @@ async function applyResponseFlow(
   }
 
   const text = (cfg.auto_reply_text ?? "").trim();
-  const ctaEnabled = !!(cfg.cta_enabled && (cfg.cta_button_text ?? "").trim() && (cfg.cta_url ?? "").trim());
+  const ctaEnabled = !!(
+    cfg.cta_enabled &&
+    (cfg.cta_button_text ?? "").trim() &&
+    (cfg.cta_url ?? "").trim()
+  );
   const hasContent = ctaEnabled || !!text;
   if (!hasContent || !cooldownOk || !connectionId || !phoneNumberId) return;
 
@@ -1089,7 +1095,6 @@ async function applyResponseFlow(
     next_attempt_at: nowIso,
   });
 
-
   await supabaseAdmin
     .from("wa_conversations")
     .update({
@@ -1100,4 +1105,3 @@ async function applyResponseFlow(
     })
     .eq("id", conversationId);
 }
-
