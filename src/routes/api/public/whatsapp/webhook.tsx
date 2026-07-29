@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-const OPT_OUT_REGEX = /\b(parar|sair|cancelar|cancela|remover|descadastrar|n[ãa]o quero|stop|unsubscribe)\b/i;
+const OPT_OUT_REGEX =
+  /\b(parar|sair|cancelar|cancela|remover|descadastrar|n[ãa]o quero|stop|unsubscribe)\b/i;
 
 // Prioridade — evita regressão de status (ex.: um webhook "sent" atrasado
 // não pode sobrescrever um "read" já registrado).
@@ -28,6 +29,93 @@ function brPhoneVariants(raw: string): string[] {
   return Array.from(out);
 }
 
+function inboundMessageText(message: any): string {
+  return String(
+    message?.text?.body ??
+      message?.button?.text ??
+      message?.button?.payload ??
+      message?.interactive?.button_reply?.title ??
+      message?.interactive?.list_reply?.title ??
+      "",
+  );
+}
+
+async function resolveInboundCampaignLink(
+  supabaseAdmin: any,
+  args: {
+    from?: string | null;
+    contextWamid?: string | null;
+    connectionWorkspaceId?: string | null;
+    connectionId?: string | null;
+  },
+): Promise<{ workspaceId: string | null; campaignId: string | null; recipientId: string | null }> {
+  const { from, contextWamid, connectionWorkspaceId, connectionId } = args;
+
+  if (contextWamid) {
+    const { data: byContext } = await supabaseAdmin
+      .from("campaign_recipients")
+      .select("id, campaign_id, workspace_id, wa_campaigns!inner(workspace_id)")
+      .eq("meta_message_id", contextWamid)
+      .maybeSingle();
+    if (byContext?.id) {
+      const campaignWorkspaceId = (byContext as any).wa_campaigns?.workspace_id ?? null;
+      return {
+        workspaceId: campaignWorkspaceId ?? byContext.workspace_id ?? connectionWorkspaceId ?? null,
+        campaignId: byContext.campaign_id ?? null,
+        recipientId: byContext.id,
+      };
+    }
+  }
+
+  if (!from) {
+    return { workspaceId: connectionWorkspaceId ?? null, campaignId: null, recipientId: null };
+  }
+
+  const phoneCandidates = brPhoneVariants(from);
+  let q = supabaseAdmin
+    .from("campaign_recipients")
+    .select(
+      "id, campaign_id, workspace_id, last_attempt_at, wa_campaigns!inner(workspace_id, connection_id)",
+    )
+    .in("phone", phoneCandidates)
+    .order("last_attempt_at", { ascending: false, nullsFirst: false })
+    .limit(1);
+  if (connectionId) q = q.eq("wa_campaigns.connection_id", connectionId);
+  const { data: rows } = await q;
+  let row = rows?.[0] ?? null;
+
+  if (!row && connectionWorkspaceId) {
+    const { data: workspaceRows } = await supabaseAdmin
+      .from("campaign_recipients")
+      .select("id, campaign_id, workspace_id, last_attempt_at, wa_campaigns!inner(workspace_id)")
+      .in("phone", phoneCandidates)
+      .eq("wa_campaigns.workspace_id", connectionWorkspaceId)
+      .order("last_attempt_at", { ascending: false, nullsFirst: false })
+      .limit(1);
+    row = workspaceRows?.[0] ?? null;
+  }
+
+  if (!row) {
+    const { data: anyRows } = await supabaseAdmin
+      .from("campaign_recipients")
+      .select("id, campaign_id, workspace_id, last_attempt_at, wa_campaigns!inner(workspace_id)")
+      .in("phone", phoneCandidates)
+      .order("last_attempt_at", { ascending: false, nullsFirst: false })
+      .limit(1);
+    row = anyRows?.[0] ?? null;
+  }
+
+  if (!row?.id) {
+    return { workspaceId: connectionWorkspaceId ?? null, campaignId: null, recipientId: null };
+  }
+
+  const campaignWorkspaceId = (row as any).wa_campaigns?.workspace_id ?? null;
+  return {
+    workspaceId: campaignWorkspaceId ?? row.workspace_id ?? connectionWorkspaceId ?? null,
+    campaignId: row.campaign_id ?? null,
+    recipientId: row.id,
+  };
+}
 
 // Enum whatsapp_templates.status = approved|pending|rejected|paused|disabled
 function mapTemplateStatus(ev: string | undefined | null): string | null {
@@ -56,7 +144,11 @@ function safeCompareHex(providedHex: string, expectedHex: string): boolean {
   }
 }
 
-function verifySignatureWithSecret(rawBody: string, signatureHeader: string | null, secret: string | null | undefined): boolean {
+function verifySignatureWithSecret(
+  rawBody: string,
+  signatureHeader: string | null,
+  secret: string | null | undefined,
+): boolean {
   if (!secret) return false;
   if (!signatureHeader || !signatureHeader.startsWith("sha256=")) return false;
   const provided = signatureHeader.slice("sha256=".length).trim();
@@ -87,7 +179,6 @@ function extractRoutingHints(rawBody: string): { phone_number_ids: string[]; wab
   }
   return { phone_number_ids: Array.from(phones), waba_ids: Array.from(wabas) };
 }
-
 
 // Extrai a mensagem de erro mais informativa de uma entrada `errors[]` da Meta.
 function extractError(err: any) {
@@ -206,7 +297,6 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
         // (matchedBy é apenas registrado nos logs abaixo, quando aplicável)
         void matchedBy;
 
-
         let payload: any = {};
         try {
           payload = JSON.parse(rawBody);
@@ -268,9 +358,7 @@ async function handleChange(supabaseAdmin: any, change: any) {
     field === "message_template_components_update" ||
     field === "template_category_update"
   ) {
-    const metaId = value?.message_template_id
-      ? String(value.message_template_id)
-      : null;
+    const metaId = value?.message_template_id ? String(value.message_template_id) : null;
     const name: string | null = value?.message_template_name ?? null;
     const language: string | null = value?.message_template_language ?? null;
     const patch: Record<string, any> = { updated_at: new Date().toISOString() };
@@ -305,10 +393,7 @@ async function handleChange(supabaseAdmin: any, change: any) {
     field === "account_update"
   ) {
     const phoneNumberId =
-      value?.phone_number ||
-      value?.phone_number_id ||
-      value?.metadata?.phone_number_id ||
-      null;
+      value?.phone_number || value?.phone_number_id || value?.metadata?.phone_number_id || null;
     if (phoneNumberId) {
       const patch: Record<string, any> = { last_meta_sync_at: new Date().toISOString() };
       if (field === "phone_number_quality_update") {
@@ -489,8 +574,9 @@ async function handleChange(supabaseAdmin: any, change: any) {
   const messages: any[] = Array.isArray(value?.messages) ? value.messages : [];
   for (const m of messages) {
     const from: string | undefined = m?.from;
-    const body: string = m?.text?.body ?? "";
+    const body: string = inboundMessageText(m);
     const wamid: string | null = m?.id ?? null;
+    const contextWamid: string | null = m?.context?.id ? String(m.context.id) : null;
 
     // Dedup por wamid — se já registramos essa mensagem, ignoramos.
     if (wamid) {
@@ -502,7 +588,16 @@ async function handleChange(supabaseAdmin: any, change: any) {
       if (dup) continue;
     }
 
+    const campaignLink = await resolveInboundCampaignLink(supabaseAdmin, {
+      from,
+      contextWamid,
+      connectionWorkspaceId: workspaceId,
+      connectionId,
+    });
+    const effectiveWorkspaceId = campaignLink.workspaceId ?? workspaceId;
+
     await supabaseAdmin.from("whatsapp_inbox").insert({
+      workspace_id: effectiveWorkspaceId,
       connection_id: connectionId,
       phone: from,
       direction: "in",
@@ -513,21 +608,30 @@ async function handleChange(supabaseAdmin: any, change: any) {
     });
 
     if (from) {
-      await supabaseAdmin
-        .from("campaign_recipients")
-        .update({ status: "replied", replied_at: new Date().toISOString() })
-        .eq("phone", from)
-        .in("status", ["sent", "delivered", "read"]);
+      const repliedAt = new Date().toISOString();
+      if (campaignLink.recipientId) {
+        await supabaseAdmin
+          .from("campaign_recipients")
+          .update({ status: "replied", replied_at: repliedAt })
+          .eq("id", campaignLink.recipientId)
+          .in("status", ["sent", "delivered", "read"]);
+      } else {
+        await supabaseAdmin
+          .from("campaign_recipients")
+          .update({ status: "replied", replied_at: repliedAt })
+          .in("phone", brPhoneVariants(from))
+          .in("status", ["sent", "delivered", "read"]);
+      }
       await supabaseAdmin
         .from("contacts")
         .update({ last_interaction_at: new Date().toISOString() })
-        .eq("phone", from);
+        .in("phone", brPhoneVariants(from));
 
       // ── Atendimento: alimenta wa_conversations + wa_conversation_messages ──
-      if (workspaceId) {
+      if (effectiveWorkspaceId) {
         try {
           await upsertConversationFromInbound(supabaseAdmin, {
-            workspaceId,
+            workspaceId: effectiveWorkspaceId,
             connectionId,
             phoneNumberId,
             wabaId,
@@ -535,6 +639,8 @@ async function handleChange(supabaseAdmin: any, change: any) {
             body,
             message: m,
             wamid,
+            linkedCampaignId: campaignLink.campaignId,
+            linkedCampaignRecipientId: campaignLink.recipientId,
           });
         } catch (e: any) {
           await supabaseAdmin.from("whatsapp_webhook_logs").insert({
@@ -554,7 +660,7 @@ async function handleChange(supabaseAdmin: any, change: any) {
       await supabaseAdmin
         .from("contacts")
         .update({ opt_out: true, opt_out_at: new Date().toISOString() })
-        .eq("phone", from);
+        .in("phone", brPhoneVariants(from));
     }
   }
 }
@@ -574,9 +680,22 @@ async function upsertConversationFromInbound(
     body: string;
     message: any;
     wamid: string | null;
+    linkedCampaignId?: string | null;
+    linkedCampaignRecipientId?: string | null;
   },
 ) {
-  const { workspaceId, connectionId, phoneNumberId, wabaId, from, body, message, wamid } = args;
+  const {
+    workspaceId,
+    connectionId,
+    phoneNumberId,
+    wabaId,
+    from,
+    body,
+    message,
+    wamid,
+    linkedCampaignId,
+    linkedCampaignRecipientId,
+  } = args;
 
   // Timestamp OFICIAL da Meta (segundos epoch em string). Fallback: agora.
   const metaTsSec = Number(message?.timestamp);
@@ -617,9 +736,7 @@ async function upsertConversationFromInbound(
     else preview = `[${type}]`;
   }
 
-  const profileName: string | null = message?.profile?.name
-    ? String(message.profile.name)
-    : null;
+  const profileName: string | null = message?.profile?.name ? String(message.profile.name) : null;
 
   // Lookups read-only (contato e última campanha vinculada ao número).
   // A Meta pode entregar o número BR sem o 9º dígito (ou com), então
@@ -636,9 +753,9 @@ async function upsertConversationFromInbound(
       .maybeSingle();
     if (c?.id) contactId = c.id;
   }
-  let campaignId: string | null = null;
-  let campaignRecipientId: string | null = null;
-  {
+  let campaignId: string | null = linkedCampaignId ?? null;
+  let campaignRecipientId: string | null = linkedCampaignRecipientId ?? null;
+  if (!campaignRecipientId) {
     // workspace_id em campaign_recipients pode estar nulo em bases antigas —
     // por isso filtramos pelo workspace da campanha, não da linha.
     const { data: rows } = await supabaseAdmin
@@ -654,8 +771,6 @@ async function upsertConversationFromInbound(
       campaignId = r.campaign_id ?? null;
     }
   }
-
-
   // ── (2) SHELL DA CONVERSA ──────────────────────────────────────────
   // Precisamos de um conversation_id para gravar a mensagem. Criamos/lemos
   // sem tocar em last_inbound_at nem service_window_* — esses campos só
@@ -671,7 +786,9 @@ async function upsertConversationFromInbound(
       )
       .eq("workspace_id", workspaceId)
       .eq("connection_id", connectionId)
-      .eq("contact_phone", from)
+      .in("contact_phone", phoneCandidates)
+      .order("updated_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (existing?.id) {
@@ -684,8 +801,8 @@ async function upsertConversationFromInbound(
       const shellPatch: Record<string, any> = {};
       if (!existing.contact_id && contactId) shellPatch.contact_id = contactId;
       if (!existing.contact_name && profileName) shellPatch.contact_name = profileName;
-      if (!existing.campaign_id && campaignId) shellPatch.campaign_id = campaignId;
-      if (!existing.campaign_recipient_id && campaignRecipientId)
+      if (campaignId && existing.campaign_id !== campaignId) shellPatch.campaign_id = campaignId;
+      if (campaignRecipientId && existing.campaign_recipient_id !== campaignRecipientId)
         shellPatch.campaign_recipient_id = campaignRecipientId;
       if (Object.keys(shellPatch).length > 0) {
         await supabaseAdmin.from("wa_conversations").update(shellPatch).eq("id", existing.id);
@@ -718,7 +835,9 @@ async function upsertConversationFromInbound(
           .select("id, unread_count, last_inbound_at")
           .eq("workspace_id", workspaceId)
           .eq("connection_id", connectionId)
-          .eq("contact_phone", from)
+          .in("contact_phone", phoneCandidates)
+          .order("updated_at", { ascending: false })
+          .limit(1)
           .maybeSingle();
         conversationId = reread?.id ?? null;
         existingUnread = reread?.unread_count ?? 0;
@@ -858,7 +977,15 @@ async function applyResponseFlow(
     inboundWamid?: string | null;
   },
 ) {
-  const { workspaceId, conversationId, connectionId, phoneNumberId, from, campaignId, inboundWamid } = args;
+  const {
+    workspaceId,
+    conversationId,
+    connectionId,
+    phoneNumberId,
+    from,
+    campaignId,
+    inboundWamid,
+  } = args;
 
   const { data: camp } = await supabaseAdmin
     .from("wa_campaigns")
@@ -878,7 +1005,6 @@ async function applyResponseFlow(
     cta_footer?: string | null;
   };
 
-
   const { data: conv } = await supabaseAdmin
     .from("wa_conversations")
     .select("id, tags, metadata, conversation_status")
@@ -888,7 +1014,7 @@ async function applyResponseFlow(
 
   const meta = (conv.metadata ?? {}) as Record<string, any>;
   const lastAutoAt = meta.last_auto_reply_at ? Date.parse(meta.last_auto_reply_at) : 0;
-  const cooldownMs = Math.max(0, (cfg.cooldown_minutes ?? 60)) * 60 * 1000;
+  const cooldownMs = Math.max(0, cfg.cooldown_minutes ?? 60) * 60 * 1000;
   const now = Date.now();
   const cooldownOk = !lastAutoAt || now - lastAutoAt >= cooldownMs;
 
@@ -905,7 +1031,11 @@ async function applyResponseFlow(
   }
 
   const text = (cfg.auto_reply_text ?? "").trim();
-  const ctaEnabled = !!(cfg.cta_enabled && (cfg.cta_button_text ?? "").trim() && (cfg.cta_url ?? "").trim());
+  const ctaEnabled = !!(
+    cfg.cta_enabled &&
+    (cfg.cta_button_text ?? "").trim() &&
+    (cfg.cta_url ?? "").trim()
+  );
   const hasContent = ctaEnabled || !!text;
   if (!hasContent || !cooldownOk || !connectionId || !phoneNumberId) return;
 
@@ -965,7 +1095,6 @@ async function applyResponseFlow(
     next_attempt_at: nowIso,
   });
 
-
   await supabaseAdmin
     .from("wa_conversations")
     .update({
@@ -976,4 +1105,3 @@ async function applyResponseFlow(
     })
     .eq("id", conversationId);
 }
-
