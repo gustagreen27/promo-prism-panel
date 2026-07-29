@@ -166,9 +166,18 @@ export const uploadPhoneProfilePicture = createServerFn({ method: "POST" })
       file_name: z.string().max(200).default("perfil.jpg"),
     }).parse(d))
   .handler(async ({ data, context }) => {
-    const appId = process.env.META_APP_ID;
-    if (!appId) throw new Error("META_APP_ID não configurado.");
     const conn = await loadConnectionSecure(context.supabase, context.userId, data.connection_id);
+    // A sessão de upload precisa ser criada no MESMO app do token usado.
+    // Conexões com credenciais próprias usam o app_id da conexão; as demais, o global.
+    const globalAppId = process.env.META_APP_ID ?? null;
+    const connAppId = !conn.use_global_token && conn.app_id ? String(conn.app_id) : null;
+    const appId = connAppId ?? globalAppId;
+    if (!appId) {
+      throw new Error(
+        "App ID da Meta não configurado para esta conexão. Informe o App ID nas credenciais da conexão ou configure o App ID global.",
+      );
+    }
+
 
     return await withLock(`picture:${conn.phone_number_id}`, async () => {
       const b64 = data.file_base64.includes(",") ? data.file_base64.split(",")[1] : data.file_base64;
