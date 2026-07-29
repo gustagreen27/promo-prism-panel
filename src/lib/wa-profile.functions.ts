@@ -396,7 +396,7 @@ export const diagnoseConnection = createServerFn({ method: "POST" })
         push({ key: "debug_token", label: "debug_token (Meta)", status: "error", detail: dbgErr?.message ?? "Falha ao inspecionar o token", meta_error: dbgErr });
         causes.push("DEBUG_TOKEN_FAILED");
       } else {
-        dbg = j?.data ?? {};
+        const scopes: string[] = Array.isArray(dbg.scopes) ? dbg.scopes : [];
         const scopes: string[] = Array.isArray(dbg.scopes) ? dbg.scopes : [];
         const missing = NEEDED_SCOPES.filter((s) => !scopes.includes(s));
         const gran = Array.isArray(dbg.granular_scopes) ? dbg.granular_scopes : [];
