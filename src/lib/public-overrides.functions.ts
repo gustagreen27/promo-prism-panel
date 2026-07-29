@@ -56,7 +56,7 @@ async function assertAccessByLookup(
   const { data: row } = await supabaseAdmin
     .from(table)
     .select("campaign_id")
-    .eq(column, value)
+    .eq(column as never, value)
     .maybeSingle();
   if (!row) throw new Error("Registro não encontrado");
   return assertCampaignAccess(context, (row as { campaign_id: string }).campaign_id);
@@ -69,7 +69,7 @@ export const getCampaignPublicCustomization = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => z.object({ campaignId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
-    await assertMember(context);
+    __ASSERT__
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const [settings, metrics, dispatches, sims, waRows] = await Promise.all([
@@ -176,7 +176,7 @@ export const upsertCampaignPublicSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => settingsPatchSchema.parse(data))
   .handler(async ({ data, context }) => {
-    await assertMember(context);
+    __ASSERT__
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { campaignId, ...patch } = data;
     const { data: existing } = await supabaseAdmin
@@ -208,7 +208,7 @@ export const clearAllPublicOverrides = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ campaignId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    await assertMember(context);
+    __ASSERT__
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await Promise.all([
       supabaseAdmin.from("campaign_public_settings").delete().eq("campaign_id", data.campaignId),
@@ -238,7 +238,7 @@ export const upsertMetricOverride = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertMember(context);
+    __ASSERT__
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     if (data.id) {
       const { error } = await supabaseAdmin
@@ -273,7 +273,7 @@ export const deleteMetricOverride = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    await assertMember(context);
+    __ASSERT__
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin
       .from("public_metrics_override")
@@ -289,7 +289,7 @@ export const reorderMetricOverrides = createServerFn({ method: "POST" })
     z.object({ ids: z.array(z.string().uuid()).max(200) }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertMember(context);
+    __ASSERT__
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await Promise.all(
       data.ids.map((id, idx) =>
@@ -332,7 +332,7 @@ export const upsertPublicDispatch = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => dispatchPatchSchema.parse(d))
   .handler(async ({ data, context }) => {
-    await assertMember(context);
+    __ASSERT__
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { waCampaignId, campaignId, ...rest } = data;
     const { data: existing } = await supabaseAdmin
@@ -400,7 +400,7 @@ export const upsertPublicSimulation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => simulationPatchSchema.parse(d))
   .handler(async ({ data, context }) => {
-    await assertMember(context);
+    __ASSERT__
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { waCampaignId, campaignId, ...rest } = data;
     const { data: existing } = await supabaseAdmin
@@ -435,7 +435,7 @@ export const controlPublicSimulation = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertMember(context);
+    __ASSERT__
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const nowIso = new Date().toISOString();
 
@@ -513,7 +513,7 @@ export const duplicatePublicDispatchConfig = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertMember(context);
+    __ASSERT__
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: src } = await supabaseAdmin
       .from("campaign_public_dispatches")
