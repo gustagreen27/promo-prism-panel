@@ -32,23 +32,22 @@ import logoAsset from "@/assets/disparos-fr-logo-new.png.asset.json";
 const WHATSAPP_NUMBER = "5562933003970"; // editar aqui
 
 // ============ REAL SCREENSHOTS ============
-import painelLoteriaJb from "@/assets/painel-loteriajb.png.asset.json";
-import painelLoteriaJbMobile from "@/assets/painel-loteriajb-mobile.png.asset.json";
+import painelGenerico from "@/assets/painel-relatorio-generico.png";
+import painelGenericoMobile from "@/assets/painel-relatorio-generico-mobile.png";
 import editorMensagem from "@/assets/editor-mensagem-painel.png.asset.json";
 import mensagemWhatsapp from "@/assets/mensagem-whatsapp-recebida.png.asset.json";
 import painelCampanhaAoVivo from "@/assets/painel-campanha-ao-vivo.png.asset.json";
-// Substitua os valores abaixo pelas URLs das capturas reais do painel Disparos FR.
-// Enquanto vazios, a interface mostra placeholders identificados.
+// Capturas de painel com dados de exemplo anonimizados (sem marca de cliente).
 const SCREENSHOTS = {
-  heroPanel: painelLoteriaJb.url, // Painel principal — dobra do hero (grande destaque)
-  heroPanelMobile: painelLoteriaJbMobile.url,
+  heroPanel: painelGenerico, // Painel principal — dobra do hero (grande destaque)
+  heroPanelMobile: painelGenericoMobile,
   msgConfig: editorMensagem.url, // Aba 1 — Mensagem configurada (editor da campanha)
   msgReceived: mensagemWhatsapp.url, // Aba 2 — Mensagem recebida (print do WhatsApp do contato)
   campaignRunning: painelCampanhaAoVivo.url, // Aba 3 — Campanha em execução (progresso ao vivo)
-  finalReport: painelLoteriaJb.url, // Relatório final ao encerrar a campanha
-  finalReportMobile: painelLoteriaJbMobile.url,
-  caseStudy: painelLoteriaJb.url, // Estudo de caso — captura do painel do caso real
-  caseStudyMobile: painelLoteriaJbMobile.url,
+  finalReport: painelGenerico, // Relatório final ao encerrar a campanha
+  finalReportMobile: painelGenericoMobile,
+  caseStudy: painelGenerico, // Estudo de caso — captura do painel (dados de exemplo)
+  caseStudyMobile: painelGenericoMobile,
 };
 
 // Vídeo/gravação de tela opcional. Deixe src vazio para ocultar o player.
