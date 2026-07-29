@@ -182,7 +182,7 @@ export const adminUpdateBillingSettings = createServerFn({ method: 'POST' })
       .from('billing_settings')
       .update(patch)
       .eq('id', 1)
-      .select()
+      .select('id, default_price_cents, minimum_deposit_cents, default_minimum_messages, currency')
       .single()
     if (error) throw error
     return row
