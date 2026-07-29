@@ -17,10 +17,49 @@ const dispatchMode = z.enum(["real", "fixed", "auto"]);
 const metricsMode = z.enum(["real", "replace", "merge"]);
 const growthKind = z.enum(["linear", "random", "batches", "stepped", "real_plus", "manual"]);
 
-async function assertMember(context: { supabase: any; userId: string }) {
-  // requireSupabaseAuth já autentica; RLS das tabelas garante que só o membro
-  // do workspace da campanha consegue mexer. Aqui apenas garantimos que há user.
-  if (!context.userId) throw new Error("Unauthorized");
+type Ctx = { supabase: any; userId: string };
+
+/** Garante que o usuário é membro (ou staff) do workspace dono da campanha. */
+async function assertCampaignAccess(context: Ctx, campaignId: string) {
+  if (!context?.userId) throw new Error("Unauthorized");
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: camp } = await supabaseAdmin
+    .from("campaigns")
+    .select("id, workspace_id")
+    .eq("id", campaignId)
+    .maybeSingle();
+  if (!camp) throw new Error("Campanha não encontrada");
+
+  const { data: staff } = await context.supabase.rpc("is_internal_staff", {
+    _user: context.userId,
+  });
+  if (staff) return camp;
+
+  const wsId = (camp as { workspace_id: string | null }).workspace_id;
+  if (!wsId) throw new Error("Forbidden");
+  const { data: member } = await context.supabase.rpc("is_workspace_member", {
+    _ws: wsId,
+    _user: context.userId,
+  });
+  if (!member) throw new Error("Forbidden");
+  return camp;
+}
+
+/** Resolve a campanha a partir de um id de override/dispatch e valida acesso. */
+async function assertAccessByLookup(
+  context: Ctx,
+  table: "public_metrics_override" | "campaign_public_dispatches" | "public_progress_simulation",
+  column: "id" | "wa_campaign_id",
+  value: string,
+) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: row } = await supabaseAdmin
+    .from(table)
+    .select("campaign_id")
+    .eq(column, value)
+    .maybeSingle();
+  if (!row) throw new Error("Registro não encontrado");
+  return assertCampaignAccess(context, (row as { campaign_id: string }).campaign_id);
 }
 
 // ============================================================================
