@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-const OPT_OUT_REGEX = /\b(parar|sair|cancelar|cancela|remover|descadastrar|n[ãa]o quero|stop|unsubscribe)\b/i;
+const OPT_OUT_REGEX =
+  /\b(parar|sair|cancelar|cancela|remover|descadastrar|n[ãa]o quero|stop|unsubscribe)\b/i;
 
 // Prioridade — evita regressão de status (ex.: um webhook "sent" atrasado
 // não pode sobrescrever um "read" já registrado).
@@ -73,7 +74,9 @@ async function resolveInboundCampaignLink(
   const phoneCandidates = brPhoneVariants(from);
   let q = supabaseAdmin
     .from("campaign_recipients")
-    .select("id, campaign_id, workspace_id, last_attempt_at, wa_campaigns!inner(workspace_id, connection_id)")
+    .select(
+      "id, campaign_id, workspace_id, last_attempt_at, wa_campaigns!inner(workspace_id, connection_id)",
+    )
     .in("phone", phoneCandidates)
     .order("last_attempt_at", { ascending: false, nullsFirst: false })
     .limit(1);
@@ -113,7 +116,6 @@ async function resolveInboundCampaignLink(
     recipientId: row.id,
   };
 }
-
 
 // Enum whatsapp_templates.status = approved|pending|rejected|paused|disabled
 function mapTemplateStatus(ev: string | undefined | null): string | null {
@@ -774,8 +776,6 @@ async function upsertConversationFromInbound(
       campaignId = r.campaign_id ?? null;
     }
   }
-
-
   // ── (2) SHELL DA CONVERSA ──────────────────────────────────────────
   // Precisamos de um conversation_id para gravar a mensagem. Criamos/lemos
   // sem tocar em last_inbound_at nem service_window_* — esses campos só
