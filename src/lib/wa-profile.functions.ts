@@ -397,7 +397,6 @@ export const diagnoseConnection = createServerFn({ method: "POST" })
         causes.push("DEBUG_TOKEN_FAILED");
       } else {
         const scopes: string[] = Array.isArray(dbg.scopes) ? dbg.scopes : [];
-        const scopes: string[] = Array.isArray(dbg.scopes) ? dbg.scopes : [];
         const missing = NEEDED_SCOPES.filter((s) => !scopes.includes(s));
         const gran = Array.isArray(dbg.granular_scopes) ? dbg.granular_scopes : [];
         const grantedBiz = new Set<string>();
