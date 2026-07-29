@@ -15,6 +15,20 @@ const STATUS_PRIORITY: Record<string, number> = {
   replied: 6,
 };
 
+// Variantes de um número BR: a Meta entrega alguns celulares sem o 9º dígito,
+// enquanto a base pode ter salvo com ele (ou vice-versa).
+function brPhoneVariants(raw: string): string[] {
+  const d = String(raw ?? "").replace(/\D/g, "");
+  const out = new Set<string>([d]);
+  if (d.startsWith("55")) {
+    const rest = d.slice(2);
+    if (rest.length === 11 && rest[2] === "9") out.add(`55${rest.slice(0, 2)}${rest.slice(3)}`);
+    if (rest.length === 10) out.add(`55${rest.slice(0, 2)}9${rest.slice(2)}`);
+  }
+  return Array.from(out);
+}
+
+
 // Enum whatsapp_templates.status = approved|pending|rejected|paused|disabled
 function mapTemplateStatus(ev: string | undefined | null): string | null {
   if (!ev) return null;
@@ -608,32 +622,39 @@ async function upsertConversationFromInbound(
     : null;
 
   // Lookups read-only (contato e última campanha vinculada ao número).
+  // A Meta pode entregar o número BR sem o 9º dígito (ou com), então
+  // comparamos todas as variantes plausíveis do telefone.
+  const phoneCandidates = brPhoneVariants(from);
   let contactId: string | null = null;
   {
     const { data: c } = await supabaseAdmin
       .from("contacts")
       .select("id, name")
       .eq("workspace_id", workspaceId)
-      .eq("phone", from)
+      .in("phone", phoneCandidates)
+      .limit(1)
       .maybeSingle();
     if (c?.id) contactId = c.id;
   }
   let campaignId: string | null = null;
   let campaignRecipientId: string | null = null;
   {
-    const { data: r } = await supabaseAdmin
+    // workspace_id em campaign_recipients pode estar nulo em bases antigas —
+    // por isso filtramos pelo workspace da campanha, não da linha.
+    const { data: rows } = await supabaseAdmin
       .from("campaign_recipients")
-      .select("id, campaign_id, workspace_id")
-      .eq("workspace_id", workspaceId)
-      .eq("phone", from)
+      .select("id, campaign_id, workspace_id, last_attempt_at, wa_campaigns!inner(workspace_id)")
+      .in("phone", phoneCandidates)
+      .eq("wa_campaigns.workspace_id", workspaceId)
       .order("last_attempt_at", { ascending: false, nullsFirst: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
+    const r = rows?.[0];
     if (r?.id) {
       campaignRecipientId = r.id;
       campaignId = r.campaign_id ?? null;
     }
   }
+
 
   // ── (2) SHELL DA CONVERSA ──────────────────────────────────────────
   // Precisamos de um conversation_id para gravar a mensagem. Criamos/lemos
