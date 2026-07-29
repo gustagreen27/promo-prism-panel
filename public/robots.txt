@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /politica2026
+Disallow: /admin
+Disallow: /painel
