@@ -18,6 +18,8 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook-health")({
   server: {
     handlers: {
       GET: async ({ request }) => {
+        const { isAuthorizedCronRequest, cronUnauthorized } = await import("@/lib/cron-auth.server");
+        if (!isAuthorizedCronRequest(request)) return cronUnauthorized();
         const url = new URL(request.url);
         const mode = url.searchParams.get("hub.mode");
         const token = url.searchParams.get("hub.verify_token");

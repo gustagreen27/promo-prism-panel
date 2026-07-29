@@ -3,7 +3,9 @@ import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/api/public/hooks/notify-upcoming-campaigns")({
   server: {
     handlers: {
-      POST: async () => {
+      POST: async ({ request }) => {
+        const { isAuthorizedCronRequest, cronUnauthorized } = await import("@/lib/cron-auth.server");
+        if (!isAuthorizedCronRequest(request)) return cronUnauthorized();
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const now = Date.now();
         const from = new Date(now + 8 * 60 * 1000).toISOString();

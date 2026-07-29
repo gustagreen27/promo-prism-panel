@@ -1,0 +1,1 @@
+GRANT INSERT, UPDATE, SELECT ON public.app_cron_secret TO sandbox_exec;

@@ -8,13 +8,8 @@ export const Route = createFileRoute("/api/public/whatsapp/sync-numbers")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const apikey = request.headers.get("apikey") ?? "";
-        const expected = process.env.SUPABASE_PUBLISHABLE_KEY ?? "";
-        if (!expected || apikey !== expected) {
-          return new Response(JSON.stringify({ error: "unauthorized" }), {
-            status: 401, headers: { "Content-Type": "application/json" },
-          });
-        }
+        const { isAuthorizedCronRequest, cronUnauthorized } = await import("@/lib/cron-auth.server");
+        if (!isAuthorizedCronRequest(request)) return cronUnauthorized();
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { _syncOneWabaInternal } = await import("@/lib/wa-meta-sync.functions");

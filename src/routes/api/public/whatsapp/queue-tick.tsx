@@ -6,8 +6,8 @@ const PROJECT_ID = "9c7682d6-edcd-4388-a36c-36249d4d6ab8";
 const FALLBACK_CHAIN_URL =
   process.env.WA_TICK_CHAIN_URL ||
   `https://project--${PROJECT_ID}.lovable.app/api/public/whatsapp/queue-tick`;
-// Só usado como header apikey pelo endpoint público — sem privilégios.
-const CHAIN_APIKEY = process.env.SUPABASE_PUBLISHABLE_KEY || "";
+// Segredo interno usado para autenticar o self-chain (header `apikey`).
+const CHAIN_APIKEY = process.env.WA_CRON_SECRET || "";
 
 // Lease curto para self-chain contínuo: se uma execução cair, o próximo tick
 // retoma em segundos, sem ficar preso até o próximo minuto.
@@ -17,6 +17,8 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const { isAuthorizedCronRequest, cronUnauthorized } = await import("@/lib/cron-auth.server");
+        if (!isAuthorizedCronRequest(request)) return cronUnauthorized();
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { processCampaignTick } = await import("@/lib/wa-queue.server");
 
