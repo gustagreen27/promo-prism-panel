@@ -101,7 +101,9 @@ async function syncWaba(supabaseAdmin: any, waba: any) {
 export const Route = createFileRoute("/api/public/hooks/wa-templates-sync")({
   server: {
     handlers: {
-      POST: async () => {
+      POST: async ({ request }) => {
+        const { isAuthorizedCronRequest, cronUnauthorized } = await import("@/lib/cron-auth.server");
+        if (!isAuthorizedCronRequest(request)) return cronUnauthorized();
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const startedAt = new Date().toISOString();
 

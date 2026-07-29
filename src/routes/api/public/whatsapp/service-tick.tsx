@@ -19,11 +19,17 @@ async function fetchWithTimeout(url: string, init: RequestInit, ms = TIMEOUT_MS)
 export const Route = createFileRoute("/api/public/whatsapp/service-tick")({
   server: {
     handlers: {
-      POST: async () => runTick(),
-      GET: async () => runTick(),
+      POST: async ({ request }) => guard(request),
+      GET: async ({ request }) => guard(request),
     },
   },
 });
+
+async function guard(request: Request) {
+  const { isAuthorizedCronRequest, cronUnauthorized } = await import("@/lib/cron-auth.server");
+  if (!isAuthorizedCronRequest(request)) return cronUnauthorized();
+  return runTick();
+}
 
 async function runTick() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

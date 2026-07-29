@@ -7,10 +7,20 @@ export const Route = createFileRoute("/api/public/ci/$")({
     handlers: {
       GET: async ({ params }) => {
         const path = (params as { _splat?: string })._splat ?? "";
-        if (!path || path.includes("..")) {
+        // Só serve arquivos de imagem referenciados por alguma campanha.
+        if (!path || path.includes("..") || !/^[A-Za-z0-9._/-]+$/.test(path)) {
+          return new Response("Not found", { status: 404 });
+        }
+        if (!/\.(png|jpe?g|webp|gif|svg|ico)$/i.test(path)) {
           return new Response("Not found", { status: 404 });
         }
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { data: allowed } = await supabaseAdmin.rpc("ci_path_is_public" as never, {
+          _path: path,
+        } as never);
+        if (!allowed) {
+          return new Response("Not found", { status: 404 });
+        }
         const { data, error } = await supabaseAdmin.storage
           .from("campaign-images")
           .download(path);
