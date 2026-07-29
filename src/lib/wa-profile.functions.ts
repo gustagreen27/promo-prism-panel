@@ -367,17 +367,33 @@ export const diagnoseConnection = createServerFn({ method: "POST" })
     const tokenLast6 = conn.access_token.slice(-6);
     push({ key: "load", label: "Carregar conexão e token", status: "success", detail: `Origem: ${tokenSource === "global" ? "WHATSAPP_ACCESS_TOKEN (global)" : "token da própria conexão"} · termina em …${tokenLast6}` });
 
-    // 2) debug_token (chamada separada, exige app token quando disponível)
-    const appId = process.env.META_APP_ID;
-    const appSecret = process.env.META_APP_SECRET;
-    const appToken = appId && appSecret ? `${appId}|${appSecret}` : conn.access_token;
+    // 2) debug_token — usa App ID/Secret da própria conexão quando houver
+    const connAppId = (conn as any).app_id ? String((conn as any).app_id) : null;
+    const connAppSecret = (conn as any).app_secret ? String((conn as any).app_secret) : null;
+    const appId = connAppId ?? process.env.META_APP_ID ?? null;
+    const appSecret = connAppSecret ?? process.env.META_APP_SECRET ?? null;
+    const appTokenCandidates = [
+      appId && appSecret ? `${appId}|${appSecret}` : null,
+      conn.access_token,
+    ].filter(Boolean) as string[];
     let dbg: any = null;
-    try {
+    let dbgErr: any = null;
+    for (const appToken of appTokenCandidates) {
       const url = `https://graph.facebook.com/v21.0/debug_token?input_token=${encodeURIComponent(conn.access_token)}&access_token=${encodeURIComponent(appToken)}`;
-      const r = await fetch(url);
-      const j: any = await r.json().catch(() => ({}));
-      if (!r.ok || j?.error) {
-        push({ key: "debug_token", label: "debug_token (Meta)", status: "error", detail: j?.error?.message ?? `HTTP ${r.status}`, meta_error: j?.error });
+      try {
+        const r = await fetch(url);
+        const j: any = await r.json().catch(() => ({}));
+        if (!r.ok || j?.error) { dbgErr = j?.error ?? { message: `HTTP ${r.status}` }; continue; }
+        dbg = j?.data ?? {};
+        dbgErr = null;
+        break;
+      } catch (e: any) {
+        dbgErr = { message: e?.message ?? "Falha ao chamar debug_token" };
+      }
+    }
+    try {
+      if (!dbg) {
+        push({ key: "debug_token", label: "debug_token (Meta)", status: "error", detail: dbgErr?.message ?? "Falha ao inspecionar o token", meta_error: dbgErr });
         causes.push("DEBUG_TOKEN_FAILED");
       } else {
         dbg = j?.data ?? {};
