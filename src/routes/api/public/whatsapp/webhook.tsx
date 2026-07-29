@@ -15,6 +15,20 @@ const STATUS_PRIORITY: Record<string, number> = {
   replied: 6,
 };
 
+// Variantes de um número BR: a Meta entrega alguns celulares sem o 9º dígito,
+// enquanto a base pode ter salvo com ele (ou vice-versa).
+function brPhoneVariants(raw: string): string[] {
+  const d = String(raw ?? "").replace(/\D/g, "");
+  const out = new Set<string>([d]);
+  if (d.startsWith("55")) {
+    const rest = d.slice(2);
+    if (rest.length === 11 && rest[2] === "9") out.add(`55${rest.slice(0, 2)}${rest.slice(3)}`);
+    if (rest.length === 10) out.add(`55${rest.slice(0, 2)}9${rest.slice(2)}`);
+  }
+  return Array.from(out);
+}
+
+
 // Enum whatsapp_templates.status = approved|pending|rejected|paused|disabled
 function mapTemplateStatus(ev: string | undefined | null): string | null {
   if (!ev) return null;
