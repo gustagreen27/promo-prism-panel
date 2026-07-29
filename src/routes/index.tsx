@@ -2613,6 +2613,11 @@ function Footer() {
                   Termos de Uso
                 </a>
               </li>
+              <li>
+                <a href="/conformidade" className="hover:text-white">
+                  Conformidade e uso responsável
+                </a>
+              </li>
             </ul>
           </div>
         </div>
