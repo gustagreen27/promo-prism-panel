@@ -39,7 +39,7 @@ function Page() {
   const qc = useQueryClient();
   const listsQuery = useQuery({ queryKey: ["lists"], queryFn: () => listFn() });
   const { data: lists = [] } = listsQuery;
-  const contactsQuery = useQuery({ queryKey: ["contacts"], queryFn: () => contactsFn() });
+  const contactsQuery = useQuery({ queryKey: ["contacts", ""], queryFn: () => contactsFn({ data: { limit: 200 } }) });
   const { data: contacts = [] } = contactsQuery;
   const clientsQuery = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
   const { data: clients = [] } = clientsQuery;
