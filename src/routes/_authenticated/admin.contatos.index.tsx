@@ -36,8 +36,14 @@ function Page() {
   const clientsFn = useServerFn(listClients);
   const projectsFn = useServerFn(listProjects);
   const qc = useQueryClient();
-  const contactsQuery = useQuery({ queryKey: ["contacts"], queryFn: () => listFn() });
+  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
+  const contactsQuery = useQuery({
+    queryKey: ["contacts", query],
+    queryFn: () => listFn({ data: { search: query || undefined, limit: 200 } }),
+  });
   const { data: rows = [], isLoading } = contactsQuery;
+
   const clientsQuery = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
   const { data: clients = [] } = clientsQuery;
   const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: () => projectsFn() });
