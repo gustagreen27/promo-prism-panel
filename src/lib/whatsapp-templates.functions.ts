@@ -212,8 +212,10 @@ async function _syncWabaTemplates(supabase: any, waba_ref_id: string) {
     const { data: existing } = await supabase
       .from("whatsapp_templates")
       .select("id")
+      .eq("waba_ref_id", waba_ref_id)
       .eq("name", t.name)
       .eq("language", t.language)
+      .limit(1)
       .maybeSingle();
 
     const payload = {
