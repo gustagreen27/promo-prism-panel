@@ -36,8 +36,14 @@ function Page() {
   const clientsFn = useServerFn(listClients);
   const projectsFn = useServerFn(listProjects);
   const qc = useQueryClient();
-  const contactsQuery = useQuery({ queryKey: ["contacts"], queryFn: () => listFn() });
+  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
+  const contactsQuery = useQuery({
+    queryKey: ["contacts", query],
+    queryFn: () => listFn({ data: { search: query || undefined, limit: 200 } }),
+  });
   const { data: rows = [], isLoading } = contactsQuery;
+
   const clientsQuery = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
   const { data: clients = [] } = clientsQuery;
   const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: () => projectsFn() });
@@ -88,6 +94,23 @@ function Page() {
       {(clientsQuery.error || projectsQuery.error) && (
         <ErrorCard error={clientsQuery.error ?? projectsQuery.error} onRetry={() => { clientsQuery.refetch(); projectsQuery.refetch(); }} />
       )}
+      <form
+        className="mb-4 flex gap-2"
+        onSubmit={(e) => { e.preventDefault(); setQuery(search.trim()); }}
+      >
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar por nome, telefone ou e-mail…"
+          className="max-w-sm"
+        />
+        <Button type="submit" variant="secondary">Buscar</Button>
+        {query && <Button type="button" variant="ghost" onClick={() => { setSearch(""); setQuery(""); }}>Limpar</Button>}
+      </form>
+      <p className="mb-2 text-xs text-muted-foreground">
+        Exibindo até 200 contatos por vez — use a busca para encontrar registros específicos.
+      </p>
+
       <div className="rounded-xl border bg-card">
         {isLoading ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
         : contactsQuery.error ? <ErrorCard error={contactsQuery.error} onRetry={() => contactsQuery.refetch()} />
