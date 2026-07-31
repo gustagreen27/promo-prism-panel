@@ -49,8 +49,22 @@ export const adminListAllTemplates = createServerFn({ method: "POST" })
     const { supabase, userId } = context as any;
     await assertAdmin(supabase, userId);
     let q = supabase.from("whatsapp_templates").select("*");
-    if (data.connection_id) q = q.eq("connection_id", data.connection_id);
+    if (data.connection_id) {
+      // Templates são sincronizados por WABA (ficam vinculados só à 1ª conexão dela).
+      // Portanto filtramos pela WABA da conexão, com fallback para a própria conexão.
+      const { data: conn } = await supabase
+        .from("whatsapp_connections")
+        .select("waba_ref_id")
+        .eq("id", data.connection_id)
+        .maybeSingle();
+      if (conn?.waba_ref_id) {
+        q = q.or(`waba_ref_id.eq.${conn.waba_ref_id},connection_id.eq.${data.connection_id}`);
+      } else {
+        q = q.eq("connection_id", data.connection_id);
+      }
+    }
     const { data: rows, error } = await q.order("name", { ascending: true });
+
     if (error) throw error;
     return { templates: rows ?? [] };
   });
