@@ -50,15 +50,37 @@ export function normalizeBrPhone(raw: string): string | null {
 
 export const listContacts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((d: unknown) =>
+    z.object({
+      search: z.string().trim().max(160).optional(),
+      limit: z.number().int().min(1).max(500).optional(),
+      offset: z.number().int().min(0).optional(),
+    }).optional().parse(d ?? {})
+  )
+  .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { data, error } = await context.supabase
+    const limit = data?.limit ?? 200;
+    const offset = data?.offset ?? 0;
+    const search = (data?.search ?? "").trim();
+
+    let q = context.supabase
       .from("contacts")
       .select("*, client:clients(id,name), project:projects(id,name)")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (search) {
+      const digits = digitsOnly(search);
+      const or = [`name.ilike.%${search}%`, `email.ilike.%${search}%`];
+      if (digits) or.push(`phone.ilike.%${digits}%`);
+      q = q.or(or.join(","));
+    }
+
+    const { data: rows, error } = await q;
     if (error) throw error;
-    return data ?? [];
+    return rows ?? [];
   });
+
 
 export const createContact = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
