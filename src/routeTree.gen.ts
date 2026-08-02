@@ -82,6 +82,7 @@ import { Route as AuthenticatedAdminWhatsappConexoesRouteImport } from './routes
 import { Route as AuthenticatedAdminRelatoriosNewRouteImport } from './routes/_authenticated/admin.relatorios.new'
 import { Route as AuthenticatedAdminRelatoriosAnalyticsRouteImport } from './routes/_authenticated/admin.relatorios.analytics'
 import { Route as AuthenticatedAdminRelatoriosIdRouteImport } from './routes/_authenticated/admin.relatorios.$id'
+import { Route as AuthenticatedAdminDisparosMultiRouteImport } from './routes/_authenticated/admin.disparos.multi'
 import { Route as AuthenticatedAdminDisparosIdRouteImport } from './routes/_authenticated/admin.disparos.$id'
 import { Route as AuthenticatedAdminContatosListasRouteImport } from './routes/_authenticated/admin.contatos.listas'
 import { Route as AuthenticatedAdminContatosAuditoriaRouteImport } from './routes/_authenticated/admin.contatos.auditoria'
@@ -501,6 +502,12 @@ const AuthenticatedAdminRelatoriosIdRoute =
     path: '/admin/relatorios/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAdminDisparosMultiRoute =
+  AuthenticatedAdminDisparosMultiRouteImport.update({
+    id: '/multi',
+    path: '/multi',
+    getParentRoute: () => AuthenticatedAdminDisparosRoute,
+  } as any)
 const AuthenticatedAdminDisparosIdRoute =
   AuthenticatedAdminDisparosIdRouteImport.update({
     id: '/$id',
@@ -598,6 +605,7 @@ export interface FileRoutesByFullPath {
   '/admin/contatos/auditoria': typeof AuthenticatedAdminContatosAuditoriaRoute
   '/admin/contatos/listas': typeof AuthenticatedAdminContatosListasRoute
   '/admin/disparos/$id': typeof AuthenticatedAdminDisparosIdRoute
+  '/admin/disparos/multi': typeof AuthenticatedAdminDisparosMultiRoute
   '/admin/relatorios/$id': typeof AuthenticatedAdminRelatoriosIdRoute
   '/admin/relatorios/analytics': typeof AuthenticatedAdminRelatoriosAnalyticsRoute
   '/admin/relatorios/new': typeof AuthenticatedAdminRelatoriosNewRoute
@@ -678,6 +686,7 @@ export interface FileRoutesByTo {
   '/admin/contatos/auditoria': typeof AuthenticatedAdminContatosAuditoriaRoute
   '/admin/contatos/listas': typeof AuthenticatedAdminContatosListasRoute
   '/admin/disparos/$id': typeof AuthenticatedAdminDisparosIdRoute
+  '/admin/disparos/multi': typeof AuthenticatedAdminDisparosMultiRoute
   '/admin/relatorios/$id': typeof AuthenticatedAdminRelatoriosIdRoute
   '/admin/relatorios/analytics': typeof AuthenticatedAdminRelatoriosAnalyticsRoute
   '/admin/relatorios/new': typeof AuthenticatedAdminRelatoriosNewRoute
@@ -762,6 +771,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/contatos/auditoria': typeof AuthenticatedAdminContatosAuditoriaRoute
   '/_authenticated/admin/contatos/listas': typeof AuthenticatedAdminContatosListasRoute
   '/_authenticated/admin/disparos/$id': typeof AuthenticatedAdminDisparosIdRoute
+  '/_authenticated/admin/disparos/multi': typeof AuthenticatedAdminDisparosMultiRoute
   '/_authenticated/admin/relatorios/$id': typeof AuthenticatedAdminRelatoriosIdRoute
   '/_authenticated/admin/relatorios/analytics': typeof AuthenticatedAdminRelatoriosAnalyticsRoute
   '/_authenticated/admin/relatorios/new': typeof AuthenticatedAdminRelatoriosNewRoute
@@ -846,6 +856,7 @@ export interface FileRouteTypes {
     | '/admin/contatos/auditoria'
     | '/admin/contatos/listas'
     | '/admin/disparos/$id'
+    | '/admin/disparos/multi'
     | '/admin/relatorios/$id'
     | '/admin/relatorios/analytics'
     | '/admin/relatorios/new'
@@ -926,6 +937,7 @@ export interface FileRouteTypes {
     | '/admin/contatos/auditoria'
     | '/admin/contatos/listas'
     | '/admin/disparos/$id'
+    | '/admin/disparos/multi'
     | '/admin/relatorios/$id'
     | '/admin/relatorios/analytics'
     | '/admin/relatorios/new'
@@ -1009,6 +1021,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/contatos/auditoria'
     | '/_authenticated/admin/contatos/listas'
     | '/_authenticated/admin/disparos/$id'
+    | '/_authenticated/admin/disparos/multi'
     | '/_authenticated/admin/relatorios/$id'
     | '/_authenticated/admin/relatorios/analytics'
     | '/_authenticated/admin/relatorios/new'
@@ -1583,6 +1596,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRelatoriosIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin/disparos/multi': {
+      id: '/_authenticated/admin/disparos/multi'
+      path: '/multi'
+      fullPath: '/admin/disparos/multi'
+      preLoaderRoute: typeof AuthenticatedAdminDisparosMultiRouteImport
+      parentRoute: typeof AuthenticatedAdminDisparosRoute
+    }
     '/_authenticated/admin/disparos/$id': {
       id: '/_authenticated/admin/disparos/$id'
       path: '/$id'
@@ -1644,12 +1664,14 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedAdminDisparosRouteChildren {
   AuthenticatedAdminDisparosIdRoute: typeof AuthenticatedAdminDisparosIdRoute
+  AuthenticatedAdminDisparosMultiRoute: typeof AuthenticatedAdminDisparosMultiRoute
   AuthenticatedAdminDisparosIndexRoute: typeof AuthenticatedAdminDisparosIndexRoute
 }
 
 const AuthenticatedAdminDisparosRouteChildren: AuthenticatedAdminDisparosRouteChildren =
   {
     AuthenticatedAdminDisparosIdRoute: AuthenticatedAdminDisparosIdRoute,
+    AuthenticatedAdminDisparosMultiRoute: AuthenticatedAdminDisparosMultiRoute,
     AuthenticatedAdminDisparosIndexRoute: AuthenticatedAdminDisparosIndexRoute,
   }
 
@@ -1870,13 +1892,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

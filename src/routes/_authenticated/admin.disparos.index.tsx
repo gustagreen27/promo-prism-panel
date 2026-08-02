@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -6,8 +6,9 @@ import { toast } from "sonner";
 import {
   Plus, Search, Play, Pause, XCircle, Eye, RefreshCw, ArrowLeft,
   Calendar, CheckCircle2, AlertTriangle, Clock, Rocket, MessageSquareText, CalendarClock, Trash2,
-  Send, CheckCheck, MousePointerClick,
+  Send, CheckCheck, MousePointerClick, Layers,
 } from "lucide-react";
+
 import { PageHeader } from "@/components/admin/page-header";
 import { ErrorCard } from "@/components/admin/query-state";
 import { Button } from "@/components/ui/button";
@@ -220,9 +221,15 @@ function ListView({ onNew }: { onNew: () => void }) {
               <RefreshCw className={`mr-2 h-4 w-4 ${campaignsQ.isFetching ? "animate-spin" : ""}`} />
               Atualizar
             </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/admin/disparos/multi">
+                <Layers className="mr-2 h-4 w-4" /> Multi-BM
+              </Link>
+            </Button>
             <Button size="lg" className="rounded-full shadow-sm" onClick={onNew}>
               <Plus className="mr-2 h-4 w-4" /> Novo disparo
             </Button>
+
           </div>
         }
       />

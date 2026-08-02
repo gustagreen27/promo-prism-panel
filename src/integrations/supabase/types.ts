@@ -2554,6 +2554,9 @@ export type Database = {
           scheduled_pause_until: string | null
           send_rate_per_min: number
           sent_count: number
+          split_group_id: string | null
+          split_group_index: number | null
+          split_group_name: string | null
           started_at: string | null
           started_by: string | null
           status: Database["public"]["Enums"]["wa_campaign_status"]
@@ -2641,6 +2644,9 @@ export type Database = {
           scheduled_pause_until?: string | null
           send_rate_per_min?: number
           sent_count?: number
+          split_group_id?: string | null
+          split_group_index?: number | null
+          split_group_name?: string | null
           started_at?: string | null
           started_by?: string | null
           status?: Database["public"]["Enums"]["wa_campaign_status"]
@@ -2728,6 +2734,9 @@ export type Database = {
           scheduled_pause_until?: string | null
           send_rate_per_min?: number
           sent_count?: number
+          split_group_id?: string | null
+          split_group_index?: number | null
+          split_group_name?: string | null
           started_at?: string | null
           started_by?: string | null
           status?: Database["public"]["Enums"]["wa_campaign_status"]
@@ -4966,6 +4975,10 @@ export type Database = {
         }[]
       }
       wa_sla_sweep: { Args: never; Returns: number }
+      wa_split_build_recipients: {
+        Args: { _campaign_ids: string[]; _list_id: string; _weights: number[] }
+        Returns: Json
+      }
       wa_tick_acquire_lease: {
         Args: { _duration_seconds?: number; _holder: string }
         Returns: boolean
