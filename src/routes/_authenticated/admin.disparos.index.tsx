@@ -220,9 +220,15 @@ function ListView({ onNew }: { onNew: () => void }) {
               <RefreshCw className={`mr-2 h-4 w-4 ${campaignsQ.isFetching ? "animate-spin" : ""}`} />
               Atualizar
             </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/admin/disparos/multi">
+                <Layers className="mr-2 h-4 w-4" /> Multi-BM
+              </Link>
+            </Button>
             <Button size="lg" className="rounded-full shadow-sm" onClick={onNew}>
               <Plus className="mr-2 h-4 w-4" /> Novo disparo
             </Button>
+
           </div>
         }
       />
