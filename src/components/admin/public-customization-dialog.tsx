@@ -796,15 +796,29 @@ function DispatchCard({
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div className="space-y-1">
             <Label className="text-xs font-medium text-muted-foreground">Modo</Label>
-            <Select value={mode} onValueChange={setMode}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="real">Dados reais</SelectItem>
-                <SelectItem value="fixed">Personalizados fixos</SelectItem>
-                <SelectItem value="auto">Progressão automática</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="grid grid-cols-3 gap-1 rounded-lg border bg-muted/50 p-1">
+              {[
+                { v: "real", l: "Real" },
+                { v: "fixed", l: "Fixo" },
+                { v: "auto", l: "Auto" },
+              ].map((o) => (
+                <button
+                  key={o.v}
+                  type="button"
+                  onClick={() => setMode(o.v)}
+                  className={
+                    "rounded-md px-2 py-1.5 text-xs font-medium transition-colors " +
+                    (mode === o.v
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground")
+                  }
+                >
+                  {o.l}
+                </button>
+              ))}
+            </div>
           </div>
+
           <div className="space-y-1">
             <Label className="text-xs font-medium text-muted-foreground">Nome público</Label>
             <Input value={publicName} onChange={(e) => setPublicName(e.target.value)} placeholder={wa.name ?? ""} />
