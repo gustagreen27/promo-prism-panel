@@ -4982,6 +4982,7 @@ export type Database = {
           day: string
         }[]
       }
+      wa_dispatch_performance: { Args: { _campaign_id: string }; Returns: Json }
       wa_hourly_sends: {
         Args: { _campaign_id: string }
         Returns: {
