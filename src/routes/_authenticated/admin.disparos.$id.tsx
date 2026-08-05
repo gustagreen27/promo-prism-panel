@@ -211,7 +211,15 @@ function Page() {
         }
         return startFn({ data: { id } });
       },
-      onSuccess: () => { toast.success("Campanha iniciada"); invalidate(); },
+      onSuccess: (r: any) => {
+        toast.success("Campanha submetida com sucesso — processamento em alta velocidade", {
+          description: r?.queued
+            ? `${Number(r.queued).toLocaleString("pt-BR")} destinatários enfileirados · ${r.workerLanes ?? 1} workers paralelos`
+            : undefined,
+        });
+        invalidate();
+      },
+
       onError: (e: any) => toast.error(e?.message ?? "Erro ao iniciar"),
     }),
     pause: useMutation({
