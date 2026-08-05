@@ -243,7 +243,7 @@ export async function runScenario(params: {
 
   const { data: recs } = await supabaseAdmin
     .from("campaign_recipients")
-    .select("status,meta_message_id,next_attempt_at")
+    .select("status,meta_message_id,next_attempt_at,sent_at,request_started_at,response_received_at")
     .eq("campaign_id", s.campaignId);
   const wamids = (recs ?? []).map((r) => (r as any).meta_message_id).filter(Boolean) as string[];
   const dupes = wamids.length - new Set(wamids).size;
@@ -257,6 +257,16 @@ export async function runScenario(params: {
   const pendingFuture = (recs ?? []).filter(
     (r) => (r as any).status === "pending" && (r as any).next_attempt_at,
   ).length;
+  const acceptedTimes = (recs ?? [])
+    .map((r) => (r as any).sent_at as string | null)
+    .filter(Boolean)
+    .sort() as string[];
+  const latencies = (recs ?? [])
+    .map((r) => {
+      const a = (r as any).request_started_at, b = (r as any).response_received_at;
+      return a && b ? new Date(b).getTime() - new Date(a).getTime() : null;
+    })
+    .filter((x): x is number => x != null);
   const { data: campAfter } = await supabaseAdmin
     .from("wa_campaigns")
     .select("status,pause_reason,last_error")
@@ -298,6 +308,17 @@ export async function runScenario(params: {
       max_tick_gap_ms: tickGaps.length ? Math.max(...tickGaps) : 0,
       tick_gaps_ms: tickGaps,
       duplicates: dupes,
+      first_accepted_at: acceptedTimes[0] ?? null,
+      last_accepted_at: acceptedTimes[acceptedTimes.length - 1] ?? null,
+      accepted_span_ms:
+        acceptedTimes.length > 1
+          ? new Date(acceptedTimes[acceptedTimes.length - 1]).getTime() - new Date(acceptedTimes[0]).getTime()
+          : 0,
+      api_latency_ms: {
+        avg: latencies.length ? +(latencies.reduce((a, b) => a + b, 0) / latencies.length).toFixed(1) : 0,
+        p95: pct(latencies, 0.95),
+        max: latencies.length ? Math.max(...latencies) : 0,
+      },
       by_status: byStatus,
       pending_with_next_attempt: pendingFuture,
       campaign_after: campAfter ?? null,
