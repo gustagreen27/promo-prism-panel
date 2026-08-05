@@ -246,6 +246,11 @@ export function computeDispatchSnapshot(
   }
   sent = Math.floor(sent);
 
+  // "Real + simulado": a curva nunca fica abaixo dos números reais, então se o
+  // disparo real voltar a andar (ou já passou da projeção), o público acompanha.
+  const floorReal = Boolean((sim.growth_params ?? {})['floor_real']);
+  if (floorReal) sent = Math.max(sent, real.sent);
+
   const total = Math.max(sent, sim.sent_end);
   const dStart = sim.delivered_start ?? 0;
   const dEnd = sim.delivered_end ?? Math.floor(sim.sent_end * (sim.delivered_ratio ?? 0.95));
@@ -253,8 +258,12 @@ export function computeDispatchSnapshot(
   const fEnd = sim.failed_end ?? Math.floor(sim.sent_end * (sim.failed_ratio ?? 0.05));
 
   const progress = sim.sent_end > sim.sent_start ? (sent - sim.sent_start) / (sim.sent_end - sim.sent_start) : 0;
-  const delivered = Math.min(sent, Math.floor(dStart + progress * (dEnd - dStart)));
-  const failed = Math.min(sent, Math.floor(fStart + progress * (fEnd - fStart)));
+  let delivered = Math.min(sent, Math.floor(dStart + progress * (dEnd - dStart)));
+  let failed = Math.min(sent, Math.floor(fStart + progress * (fEnd - fStart)));
+  if (floorReal) {
+    delivered = Math.min(sent, Math.max(delivered, real.delivered));
+    failed = Math.min(sent, Math.max(failed, real.failed));
+  }
 
   const percent = total > 0 ? Math.min(100, (sent / total) * 100) : 0;
 
