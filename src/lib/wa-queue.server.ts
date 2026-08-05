@@ -1093,8 +1093,10 @@ export async function processCampaignTick(
     // Bootstrap
     await reserveNextChunk();
 
+    const laneRuntimeMs = Math.max(2000, Number(opts?.maxRuntimeMs ?? MAX_TICK_RUNTIME_MS));
     while (!systemicPause) {
-      if (Date.now() - tickStart > MAX_TICK_RUNTIME_MS) break;
+      if (Date.now() - tickStart > laneRuntimeMs) break;
+
       flushTelemetryIfNeeded();
       // libera slots consumidos em batch (~1×/s)
       if (Date.now() - lastSlotFlushAt >= 1000) {
