@@ -970,10 +970,12 @@ export async function processCampaignTick(
     let localGlobalTokens = 0;
     let lastTokenWaitUntil = 0;
 
-    // Pacing LOCAL da campanha: nextCampaignPermitAt garante spacing uniforme.
-    // NÃO começa "cheio" — o primeiro dispatch é imediato, os demais respeitam spacing.
-    const spacingMs = 1000 / rawCampRate;
+    // Pacing LOCAL da lane: cada trilha paralela cobre 1/laneCount do rate da
+    // campanha; somadas, as lanes chegam ao rate configurado. O teto real
+    // continua sendo o bucket global do número (wa_try_consume_tokens).
+    const spacingMs = (1000 * laneCount) / rawCampRate;
     let nextCampaignPermitAt = Date.now();
+
 
     // Vagas de concorrência global do número (acquire atômico, release em batch).
     let localGlobalSlots = 0;
