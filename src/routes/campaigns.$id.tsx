@@ -206,9 +206,7 @@ function PublicCampaignReport() {
     for (const d of data.dispatches ?? []) {
       const ov = resolveOverride(d.id);
       const sim = publicSimulations.find((x) => x.wa_campaign_id === d.id);
-      // Um override explícito por disparo é autônomo. Ele não deve depender
-      // da existência/ativação das configurações globais da página pública.
-      if (ov?.enabled) {
+      if (customEnabled && ov?.enabled) {
         const snap = computeDispatchSnapshot(
           ov as DispatchOverrideRow,
           (sim ?? null) as DispatchSimRow | null,
@@ -567,7 +565,7 @@ function PublicCampaignReport() {
                 const perDispatchOverride = resolveOverride(d.id);
                 const perDispatchSim = publicSimulations.find((x) => x.wa_campaign_id === d.id) ?? null;
                 const perSnap: Snapshot | null =
-                  perDispatchOverride?.enabled
+                  customEnabled && perDispatchOverride?.enabled
                     ? computeDispatchSnapshot(
                         perDispatchOverride as DispatchOverrideRow,
                         perDispatchSim as DispatchSimRow | null,
