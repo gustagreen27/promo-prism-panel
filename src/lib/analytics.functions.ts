@@ -15,12 +15,10 @@ async function assertCampaignAccess(supabase: any, userId: string, campaignId: s
   const { data: staff } = await supabase.rpc('is_internal_staff', { _user: userId })
   if (staff) return c.workspace_id
   if (!c.workspace_id) throw new Error('Sem permissão')
-  const { data: member } = await supabase
-    .from('workspace_members')
-    .select('workspace_id')
-    .eq('workspace_id', c.workspace_id)
-    .eq('user_id', userId)
-    .maybeSingle()
+  const { data: member } = await supabase.rpc('is_workspace_member', {
+    _ws: c.workspace_id,
+    _user: userId,
+  })
   if (!member) throw new Error('Sem permissão para esta campanha')
   return c.workspace_id
 }
