@@ -981,6 +981,30 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                         <div className="rounded-md border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground break-all">
                           {String(tplUrlButton?.url ?? "")}
                         </div>
+                        {(() => {
+                          const raw = String(tplUrlButton?.url ?? "");
+                          const trackedHosts = ["disparosfr.com", "www.disparosfr.com"];
+                          let host = "";
+                          try { host = new URL(raw.replace(/\{\{\d+\}\}/g, "x")).hostname; } catch { host = ""; }
+                          const tracked = trackedHosts.includes(host);
+                          return tracked ? (
+                            <div className="rounded-md border border-primary/30 bg-primary/5 p-2 text-[11px] text-primary">
+                              Link rastreado: preencha a variável com o <strong>slug</strong> da campanha criada em
+                              {" "}<code>/admin/campaigns</code> (ex.: <code>bigode</code>). Os cliques aparecem em tempo real.
+                            </div>
+                          ) : (
+                            <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-2 text-[11px] text-amber-700 dark:text-amber-400">
+                              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                              <div>
+                                Este botão aponta para <strong>{host || "domínio externo"}</strong>, fora do rastreio — os cliques
+                                <strong> não serão contabilizados</strong>. Para medir cliques, aprove um template cuja URL do botão seja
+                                {" "}<code>https://disparosfr.com/{"{{1}}"}</code> e informe aqui o slug da campanha (o destino final continua o mesmo,
+                                configurado em <code>/admin/campaigns</code>).
+                              </div>
+                            </div>
+                          );
+                        })()}
+
                         <div className="grid gap-2 sm:grid-cols-2">
                           {tplUrlVarNums.map((n) => {
                             const val = btnVars[String(n)] ?? "";
