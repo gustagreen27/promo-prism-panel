@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -657,12 +657,24 @@ function DispatchCard({
 
   const [dupTo, setDupTo] = useState<string>("");
   const [contRate, setContRate] = useState<string>("120");
+  // Quando preenchido, o ritmo é derivado automaticamente do tempo desejado.
+  const [contFinishMin, setContFinishMin] = useState<string>("");
 
   const realSentNow = Number(wa.sent_count ?? 0);
   const defaultTarget = Math.max(realSentNow, Number(wa.total_recipients ?? 0));
   const [tgtSent, setTgtSent] = useState<string>(String(defaultTarget));
   const [tgtDelivered, setTgtDelivered] = useState<string>(String(Math.round(defaultTarget * 0.95)));
   const [tgtFailed, setTgtFailed] = useState<string>(String(defaultTarget - Math.round(defaultTarget * 0.95)));
+
+  // Recalcula o ritmo necessário sempre que os números finais ou o tempo desejado mudam.
+  const remainingNow = Math.max(0, Math.max(realSentNow, Number(tgtSent || 0)) - realSentNow);
+  useEffect(() => {
+    const mins = Number(contFinishMin || 0);
+    if (mins > 0) {
+      setContRate(String(Math.max(1, Math.ceil(remainingNow / mins))));
+    }
+  }, [remainingNow, contFinishMin]);
+
 
   // "Continuar do real": mantém os números reais como ponto de partida e segue
   // a progressão só na página pública (dados reais + simulados), mesmo com o
@@ -939,13 +951,21 @@ function DispatchCard({
           const remaining = Math.max(0, total - realSent);
           const rateNum = Math.max(1, Number(contRate || 120));
           const etaMin = Math.ceil(remaining / rateNum);
-          const etaLabel =
+          const fmtMin = (m: number) => (m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}min` : `${m} min`);
+          const etaLabel = remaining === 0 ? "já no total" : `~${fmtMin(etaMin)}`;
+          const etaClock =
             remaining === 0
-              ? "já no total"
-              : etaMin >= 60
-                ? `~${Math.floor(etaMin / 60)}h ${etaMin % 60}min`
-                : `~${etaMin} min`;
+              ? null
+              : new Date(Date.now() + etaMin * 60_000).toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
+          const wantMin = Number(contFinishMin || 0);
+          const neededRate = wantMin > 0 ? Math.max(1, Math.ceil(remaining / wantMin)) : null;
+          const remDelivered = Math.max(0, Math.min(total, Number(tgtDelivered || 0)) - realDelivered);
+          const remFailed = Math.max(0, Math.min(total, Number(tgtFailed || 0)) - realFailed);
           const sumWarn = Number(tgtDelivered || 0) + Number(tgtFailed || 0) > total;
+
           return (
             <section className="rounded-xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/[0.08] to-transparent p-4">
               <div className="flex flex-wrap items-center gap-2">
@@ -1008,14 +1028,25 @@ function DispatchCard({
                 </div>
               </div>
 
-
               <div className="mt-3 flex flex-wrap items-end gap-3">
-                <div className="w-36 space-y-1">
+                <div className="w-32 space-y-1">
                   <Label className="text-xs">Ritmo (msg/min)</Label>
                   <Input
                     value={contRate}
                     inputMode="numeric"
-                    onChange={(e) => setContRate(e.target.value.replace(/\D/g, ""))}
+                    onChange={(e) => {
+                      setContFinishMin("");
+                      setContRate(e.target.value.replace(/\D/g, ""));
+                    }}
+                  />
+                </div>
+                <div className="w-32 space-y-1">
+                  <Label className="text-xs">Concluir em (min)</Label>
+                  <Input
+                    value={contFinishMin}
+                    placeholder="auto"
+                    inputMode="numeric"
+                    onChange={(e) => setContFinishMin(e.target.value.replace(/\D/g, ""))}
                   />
                 </div>
                 <div className="flex flex-wrap gap-1.5 pb-0.5">
@@ -1024,29 +1055,46 @@ function DispatchCard({
                       key={r}
                       type="button"
                       size="sm"
-                      variant={Number(contRate) === r ? "secondary" : "ghost"}
+                      variant={Number(contRate) === r && !contFinishMin ? "secondary" : "ghost"}
                       className="h-8 px-2.5 text-xs"
-                      onClick={() => setContRate(String(r))}
+                      onClick={() => {
+                        setContFinishMin("");
+                        setContRate(String(r));
+                      }}
                     >
                       {r}
                     </Button>
                   ))}
                 </div>
-                <div className="ml-auto flex items-center gap-3">
-                  <span className="text-[11px] text-muted-foreground">
-                    Conclusão pública <span className="font-medium text-foreground">{etaLabel}</span>
-                  </span>
-                  <Button
-                    size="sm"
-                    className="bg-emerald-600 text-white hover:bg-emerald-600/90"
-                    disabled={continueFromReal.isPending}
-                    onClick={() => continueFromReal.mutate()}
-                  >
-                    <Play className="mr-1 h-4 w-4" />
-                    {continueFromReal.isPending ? "Aplicando..." : "Continuar daqui"}
-                  </Button>
-                </div>
               </div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border bg-background/60 p-3">
+                <div className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-4">
+                  <MiniStat label="Restam enviar" value={remaining.toLocaleString("pt-BR")} />
+                  <MiniStat
+                    label="Restam entr./falhas"
+                    value={`${remDelivered.toLocaleString("pt-BR")} / ${remFailed.toLocaleString("pt-BR")}`}
+                  />
+                  <MiniStat
+                    label="Ritmo necessário"
+                    value={neededRate ? `${neededRate.toLocaleString("pt-BR")}/min` : `${rateNum.toLocaleString("pt-BR")}/min`}
+                  />
+                  <MiniStat
+                    label="Conclusão pública"
+                    value={etaClock ? `${etaLabel} (${etaClock})` : etaLabel}
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  className="bg-emerald-600 text-white hover:bg-emerald-600/90"
+                  disabled={continueFromReal.isPending}
+                  onClick={() => continueFromReal.mutate()}
+                >
+                  <Play className="mr-1 h-4 w-4" />
+                  {continueFromReal.isPending ? "Aplicando..." : "Continuar daqui"}
+                </Button>
+              </div>
+
             </section>
           );
         })()}
