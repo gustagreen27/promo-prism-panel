@@ -643,14 +643,14 @@ export const getCampaignSpeedLimits = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .maybeSingle();
     if (!camp?.connection_id) {
-      return { cap_rate_per_second: null as number | null, quality_rating: null, throughput_level: null, phone_label: null };
+      return { cap_rate_per_second: null as number | null, quality_rating: null, phone_label: null };
     }
     const { data: conn } = await supabase
       .from("whatsapp_connections")
-      .select("display_phone_number, global_rate_per_second, maximum_rate_per_second, quality_rating, throughput_level, status")
+      .select("phone_number, global_rate_per_second, maximum_rate_per_second, quality_rating, status")
       .eq("id", camp.connection_id)
       .maybeSingle();
-    if (!conn) return { cap_rate_per_second: null as number | null, quality_rating: null, throughput_level: null, phone_label: null };
+    if (!conn) return { cap_rate_per_second: null as number | null, quality_rating: null, phone_label: null };
     const cap = Math.min(
       Math.max(1, Number((conn as any).global_rate_per_second ?? 80)),
       Math.max(1, Number((conn as any).maximum_rate_per_second ?? 80)),
@@ -658,8 +658,7 @@ export const getCampaignSpeedLimits = createServerFn({ method: "POST" })
     return {
       cap_rate_per_second: cap,
       quality_rating: (conn as any).quality_rating ?? null,
-      throughput_level: (conn as any).throughput_level ?? null,
-      phone_label: (conn as any).display_phone_number ?? null,
+      phone_label: (conn as any).phone_number ?? null,
       connection_status: (conn as any).status ?? null,
     };
   });
