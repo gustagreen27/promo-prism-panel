@@ -657,12 +657,24 @@ function DispatchCard({
 
   const [dupTo, setDupTo] = useState<string>("");
   const [contRate, setContRate] = useState<string>("120");
+  // Quando preenchido, o ritmo é derivado automaticamente do tempo desejado.
+  const [contFinishMin, setContFinishMin] = useState<string>("");
 
   const realSentNow = Number(wa.sent_count ?? 0);
   const defaultTarget = Math.max(realSentNow, Number(wa.total_recipients ?? 0));
   const [tgtSent, setTgtSent] = useState<string>(String(defaultTarget));
   const [tgtDelivered, setTgtDelivered] = useState<string>(String(Math.round(defaultTarget * 0.95)));
   const [tgtFailed, setTgtFailed] = useState<string>(String(defaultTarget - Math.round(defaultTarget * 0.95)));
+
+  // Recalcula o ritmo necessário sempre que os números finais ou o tempo desejado mudam.
+  const remainingNow = Math.max(0, Math.max(realSentNow, Number(tgtSent || 0)) - realSentNow);
+  useEffect(() => {
+    const mins = Number(contFinishMin || 0);
+    if (mins > 0) {
+      setContRate(String(Math.max(1, Math.ceil(remainingNow / mins))));
+    }
+  }, [remainingNow, contFinishMin]);
+
 
   // "Continuar do real": mantém os números reais como ponto de partida e segue
   // a progressão só na página pública (dados reais + simulados), mesmo com o
