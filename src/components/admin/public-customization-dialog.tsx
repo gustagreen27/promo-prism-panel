@@ -879,34 +879,83 @@ function DispatchCard({
           />
         )}
 
-        <section className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
-          <div className="mb-2 flex items-center gap-2">
-            <Play className="h-3.5 w-3.5 text-emerald-600" />
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Continuar do real (real + simulado)
-            </div>
-          </div>
-          <p className="mb-3 text-[11px] text-muted-foreground">
-            Parte exatamente dos números reais de agora ({Number(wa.sent_count ?? 0).toLocaleString("pt-BR")} de{" "}
-            {Number(wa.total_recipients ?? 0).toLocaleString("pt-BR")}) e segue avançando só na página
-            pública — mesmo com o disparo real pausado. Se o real voltar a andar, o público acompanha
-            (nunca volta atrás).
-          </p>
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="w-40 space-y-1">
-              <Label className="text-xs">Ritmo público (msg/min)</Label>
-              <Input value={contRate} onChange={(e) => setContRate(e.target.value)} />
-            </div>
-            <Button
-              size="sm"
-              className="bg-emerald-600 hover:bg-emerald-600/90"
-              disabled={continueFromReal.isPending}
-              onClick={() => continueFromReal.mutate()}
-            >
-              <Play className="mr-1 h-4 w-4" /> Continuar daqui
-            </Button>
-          </div>
-        </section>
+        {(() => {
+          const realSent = Number(wa.sent_count ?? 0);
+          const total = Math.max(realSent, Number(wa.total_recipients ?? 0));
+          const remaining = Math.max(0, total - realSent);
+          const rateNum = Math.max(1, Number(contRate || 120));
+          const etaMin = Math.ceil(remaining / rateNum);
+          const etaLabel =
+            remaining === 0
+              ? "já no total"
+              : etaMin >= 60
+                ? `~${Math.floor(etaMin / 60)}h ${etaMin % 60}min`
+                : `~${etaMin} min`;
+          return (
+            <section className="rounded-xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/[0.08] to-transparent p-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="grid h-7 w-7 place-items-center rounded-lg bg-emerald-500/15 text-emerald-600">
+                  <Play className="h-3.5 w-3.5" />
+                </span>
+                <div className="text-sm font-semibold">Continuar do real</div>
+                <Badge variant="outline" className="border-emerald-500/40 text-[10px] text-emerald-700 dark:text-emerald-300">
+                  real + simulado
+                </Badge>
+              </div>
+
+              <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                A página pública parte dos números reais de agora e continua avançando sozinha — mesmo com o
+                disparo pausado. Se o real voltar a andar, o público acompanha e nunca volta atrás.
+              </p>
+
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                <MiniStat label="Ponto de partida" value={realSent.toLocaleString("pt-BR")} />
+                <MiniStat label="Meta pública" value={total.toLocaleString("pt-BR")} />
+                <MiniStat label="Restam" value={remaining.toLocaleString("pt-BR")} />
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-end gap-3">
+                <div className="w-36 space-y-1">
+                  <Label className="text-xs">Ritmo (msg/min)</Label>
+                  <Input
+                    value={contRate}
+                    inputMode="numeric"
+                    onChange={(e) => setContRate(e.target.value.replace(/\D/g, ""))}
+                  />
+                </div>
+                <div className="flex flex-wrap gap-1.5 pb-0.5">
+                  {[60, 120, 300, 600].map((r) => (
+                    <Button
+                      key={r}
+                      type="button"
+                      size="sm"
+                      variant={Number(contRate) === r ? "secondary" : "ghost"}
+                      className="h-8 px-2.5 text-xs"
+                      onClick={() => setContRate(String(r))}
+                    >
+                      {r}
+                    </Button>
+                  ))}
+                </div>
+                <div className="ml-auto flex items-center gap-3">
+                  <span className="text-[11px] text-muted-foreground">
+                    Conclusão pública <span className="font-medium text-foreground">{etaLabel}</span>
+                  </span>
+                  <Button
+                    size="sm"
+                    className="bg-emerald-600 text-white hover:bg-emerald-600/90"
+                    disabled={continueFromReal.isPending}
+                    onClick={() => continueFromReal.mutate()}
+                  >
+                    <Play className="mr-1 h-4 w-4" />
+                    {continueFromReal.isPending ? "Aplicando..." : "Continuar daqui"}
+                  </Button>
+                </div>
+              </div>
+            </section>
+          );
+        })()}
+
 
 
         <div className="-mx-4 flex flex-wrap items-center gap-2 border-t bg-muted/20 px-4 py-3 sm:-mx-6 sm:px-6">
