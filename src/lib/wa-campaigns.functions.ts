@@ -647,7 +647,7 @@ export const getCampaignSpeedLimits = createServerFn({ method: "POST" })
     }
     const { data: conn } = await supabase
       .from("whatsapp_connections")
-      .select("phone_number, global_rate_per_second, maximum_rate_per_second, quality_rating, status")
+      .select("display_phone, phone, global_rate_per_second, maximum_rate_per_second, quality_rating, status")
       .eq("id", camp.connection_id)
       .maybeSingle();
     if (!conn) return { cap_rate_per_second: null as number | null, quality_rating: null, phone_label: null };
@@ -658,7 +658,7 @@ export const getCampaignSpeedLimits = createServerFn({ method: "POST" })
     return {
       cap_rate_per_second: cap,
       quality_rating: (conn as any).quality_rating ?? null,
-      phone_label: (conn as any).phone_number ?? null,
+      phone_label: (conn as any).display_phone ?? (conn as any).phone ?? null,
       connection_status: (conn as any).status ?? null,
     };
   });
