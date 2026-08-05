@@ -11,6 +11,7 @@ import {
 } from "@/lib/wa-queue.server";
 
 const ADMIN_USER_ID = "869c12fd-8d99-41fa-a970-77608a94fe02";
+const HARNESS_WORKSPACE_ID = "2156c069-7c38-4e35-bfa2-39500f542f6d";
 
 export function buildFakeTransport(latencyMs: number): WaTransport {
   let counter = 0;
@@ -43,6 +44,7 @@ async function setup(params: {
   globalMaxConc: number;
   campConc: number;
   numberMaxRate: number;
+  lanes?: number;
 }): Promise<Setup> {
   const tag = `harness-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
   const phoneNumberId = tag;
@@ -84,11 +86,13 @@ async function setup(params: {
     .from("wa_campaigns")
     .insert({
       name: tag,
+      workspace_id: HARNESS_WORKSPACE_ID,
       connection_id: conn.id,
       template_id: tpl.id,
       status: "running",
       rate_per_second: params.rate,
       max_concurrency: params.campConc,
+      worker_lanes: Math.max(1, Number(params.lanes ?? 1)),
       total_recipients: params.recipients,
       started_at: new Date().toISOString(),
       created_by: ADMIN_USER_ID,
@@ -137,16 +141,19 @@ export async function runScenario(params: {
   globalMaxConc?: number;
   numberMaxRate?: number;
   reservationBudget?: number;
+  lanes?: number;
 }) {
   const campConc = params.campConc ?? Math.max(30, params.rate * 2);
   const globalMaxConc = params.globalMaxConc ?? 300;
   const numberMaxRate = params.numberMaxRate ?? 80;
+  const lanes = Math.max(1, Math.min(12, Number(params.lanes ?? 1)));
   const s = await setup({
     rate: params.rate,
     recipients: params.recipients,
     globalMaxConc,
     campConc,
     numberMaxRate,
+    lanes,
   });
 
   const transport = buildFakeTransport(params.latencyMs);
@@ -155,22 +162,37 @@ export async function runScenario(params: {
 
   const tickResults: any[] = [];
   const tickGaps: number[] = [];
+  const enqueuedAt = new Date().toISOString();
+  const runStartedAt = Date.now();
   let lastTickEnd = 0;
   try {
     for (let i = 0; i < params.ticks; i++) {
       if (lastTickEnd) tickGaps.push(Date.now() - lastTickEnd);
       const t0 = Date.now();
-      const res = await processCampaignTick(s.campaignId, params.reservationBudget ?? 5000, {
-        transport,
-        instrumentation,
+      const laneResults = await Promise.all(
+        Array.from({ length: lanes }, (_, laneIdx) =>
+          processCampaignTick(s.campaignId, params.reservationBudget ?? 5000, {
+            transport,
+            instrumentation,
+            lane: laneIdx,
+          }).catch((err: any) => ({ processed: 0, done: false, error: err?.message ?? String(err) } as any)),
+        ),
+      );
+      const processed = laneResults.reduce((a, r: any) => a + Number(r.processed ?? 0), 0);
+      tickResults.push({
+        processed,
+        lanes: laneResults.map((r: any) => r.processed ?? 0),
+        done: laneResults.every((r: any) => r.done),
+        duration_ms: Date.now() - t0,
       });
-      tickResults.push({ ...res, duration_ms: Date.now() - t0 });
       lastTickEnd = Date.now();
-      if (res.done) break;
+      if (laneResults.every((r: any) => r.done)) break;
     }
   } catch (err: any) {
     tickResults.push({ error: err?.message ?? String(err) });
   }
+  const runDurationMs = Date.now() - runStartedAt;
+
 
   const { data: events } = await supabaseAdmin
     .from("campaign_timeline")
@@ -221,12 +243,36 @@ export async function runScenario(params: {
 
   const { data: recs } = await supabaseAdmin
     .from("campaign_recipients")
-    .select("status,meta_message_id")
+    .select("status,meta_message_id,next_attempt_at,sent_at,request_started_at,response_received_at")
     .eq("campaign_id", s.campaignId);
   const wamids = (recs ?? []).map((r) => (r as any).meta_message_id).filter(Boolean) as string[];
   const dupes = wamids.length - new Set(wamids).size;
   const stuck = (recs ?? []).filter((r) => (r as any).status === "processing").length;
   const sentOrAccepted = (recs ?? []).filter((r) => ["sent", "accepted"].includes((r as any).status)).length;
+  const byStatus: Record<string, number> = {};
+  for (const r of recs ?? []) {
+    const st = String((r as any).status);
+    byStatus[st] = (byStatus[st] ?? 0) + 1;
+  }
+  const pendingFuture = (recs ?? []).filter(
+    (r) => (r as any).status === "pending" && (r as any).next_attempt_at,
+  ).length;
+  const acceptedTimes = (recs ?? [])
+    .map((r) => (r as any).sent_at as string | null)
+    .filter(Boolean)
+    .sort() as string[];
+  const latencies = (recs ?? [])
+    .map((r) => {
+      const a = (r as any).request_started_at, b = (r as any).response_received_at;
+      return a && b ? new Date(b).getTime() - new Date(a).getTime() : null;
+    })
+    .filter((x): x is number => x != null);
+  const { data: campAfter } = await supabaseAdmin
+    .from("wa_campaigns")
+    .select("status,pause_reason,last_error")
+    .eq("id", s.campaignId)
+    .maybeSingle();
+
 
   const { data: rl } = await supabaseAdmin
     .from("wa_rate_limits")
@@ -244,7 +290,10 @@ export async function runScenario(params: {
       campConc,
       globalMaxConc,
       numberMaxRate,
+      lanes,
     },
+    enqueued_at: enqueuedAt,
+    run_duration_ms: runDurationMs,
     ticks: tickResults,
     totals: {
       total_started: totalStarted,
@@ -259,6 +308,21 @@ export async function runScenario(params: {
       max_tick_gap_ms: tickGaps.length ? Math.max(...tickGaps) : 0,
       tick_gaps_ms: tickGaps,
       duplicates: dupes,
+      first_accepted_at: acceptedTimes[0] ?? null,
+      last_accepted_at: acceptedTimes[acceptedTimes.length - 1] ?? null,
+      accepted_span_ms:
+        acceptedTimes.length > 1
+          ? new Date(acceptedTimes[acceptedTimes.length - 1]).getTime() - new Date(acceptedTimes[0]).getTime()
+          : 0,
+      api_latency_ms: {
+        avg: latencies.length ? +(latencies.reduce((a, b) => a + b, 0) / latencies.length).toFixed(1) : 0,
+        p95: pct(latencies, 0.95),
+        max: latencies.length ? Math.max(...latencies) : 0,
+      },
+      by_status: byStatus,
+      pending_with_next_attempt: pendingFuture,
+      campaign_after: campAfter ?? null,
+
       stuck_processing: stuck,
       slot_orphans_after: slotOrphansAfter,
     },

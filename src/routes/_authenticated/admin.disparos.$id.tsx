@@ -19,6 +19,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { getWaCampaign } from "@/lib/wa-campaigns.functions";
+import { DispatchPerformancePanel } from "@/components/admin/dispatch-performance-panel";
 import {
   getCampaignProgress, getCampaignTimeline, getCampaignRecipients,
   getCampaignFinalReport, getCampaignErrors, getRecipientPreviews,
@@ -500,6 +501,13 @@ function Page() {
         <Stat icon={XCircle} label="Falhas" value={p.failed ?? 0} tone="danger" />
         <Stat icon={Ban} label="Opt-out" value={p.opt_out ?? 0} tone="warning" />
       </div>
+
+      <DispatchPerformancePanel
+        campaignId={id}
+        live={["running", "scheduled", "queued"].includes(String((prog as any)?.status ?? ""))}
+      />
+
+
 
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="flex flex-wrap">

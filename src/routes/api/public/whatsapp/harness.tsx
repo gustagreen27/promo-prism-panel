@@ -118,6 +118,7 @@ export const Route = createFileRoute("/api/public/whatsapp/harness")({
             globalMaxConc: body?.globalMaxConc,
             numberMaxRate: body?.numberMaxRate,
             reservationBudget: body?.reservationBudget,
+            lanes: body?.lanes,
           });
           console.log(
             JSON.stringify({
