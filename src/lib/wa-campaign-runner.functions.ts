@@ -265,6 +265,13 @@ export const startCampaignAsync = createServerFn({ method: "POST" })
 
 
 
+    // Submissão imediata (modelo Infobip): a campanha inteira é aceita agora,
+    // marcada com um bulk_id, e os workers paralelos consomem a fila em
+    // background. O painel não espera o processamento.
+    const bulkId = (camp as any).bulk_id ?? crypto.randomUUID();
+    const rps = Math.max(1, Number((camp as any).rate_per_second ?? 80));
+    const lanes = Math.max(1, Math.min(12, Math.ceil(rps / 20)));
+
     await supabase
       .from("wa_campaigns")
       .update({
@@ -273,15 +280,26 @@ export const startCampaignAsync = createServerFn({ method: "POST" })
         started_by: context.userId,
         total_recipients: recCount,
         last_error: null,
-      })
+        bulk_id: bulkId,
+        submitted_at: new Date().toISOString(),
+        worker_lanes: lanes,
+      } as any)
       .eq("id", data.id);
 
-    await logEvent(supabase, data.id, "started", `Campanha iniciada (${recCount} destinatários)`, context.userId, { total: recCount });
+    await logEvent(
+      supabase,
+      data.id,
+      "submitted",
+      `Campanha submetida com sucesso — ${recCount} destinatários enfileirados (${lanes} workers paralelos)`,
+      context.userId,
+      { total: recCount, bulk_id: bulkId, worker_lanes: lanes },
+    );
 
-    // Trigger immediate tick (fire and forget)
+    // Dispara os workers imediatamente (fire and forget)
     triggerQueueTick("manual-start", getRequestBaseUrl());
 
-    return { ok: true };
+    return { ok: true, bulkId, queued: recCount, workerLanes: lanes };
+
   });
 
 export const pauseCampaignAsync = createServerFn({ method: "POST" })
