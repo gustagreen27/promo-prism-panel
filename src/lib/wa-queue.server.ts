@@ -880,15 +880,28 @@ export async function processCampaignTick(
 
       if (isRateLimit) {
         consecutive429++;
-        if (consecutive429 >= SYSTEMIC_RATE_LIMIT_STREAK) {
-          systemicPause = {
-            reason: "rate_limit",
-            message: `Auto-pausada: ${consecutive429} erros 130429 consecutivos — reduzir rate`,
-          };
+        // NÃO pausa a campanha: reduz temporariamente APENAS este número.
+        // Depois do throttle expirar, o número volta ao teto progressivamente.
+        if (consecutive429 === 1 || consecutive429 % SYSTEMIC_RATE_LIMIT_STREAK === 0) {
+          try {
+            const { data: newRate } = await supabaseAdmin.rpc("wa_throttle_number" as any, {
+              _phone_number_id: phoneNumberId,
+              _factor: 0.6,
+              _seconds: 20,
+              _reason: `130429 x${consecutive429}`,
+            });
+            await logEvent(
+              campaignId,
+              "number_throttled",
+              `130429 no número ${phoneNumberId} — reduzindo temporariamente para ${newRate ?? "?"} msg/s (campanha segue ativa)`,
+              { phone_number_id: phoneNumberId, streak: consecutive429, new_rate: newRate },
+            );
+          } catch { /* best-effort */ }
         }
       } else {
         consecutive429 = 0;
       }
+
 
       if (isTokenErr) {
         systemicPause = {
