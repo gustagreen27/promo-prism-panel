@@ -11,6 +11,7 @@ import {
 } from "@/lib/wa-queue.server";
 
 const ADMIN_USER_ID = "869c12fd-8d99-41fa-a970-77608a94fe02";
+const HARNESS_WORKSPACE_ID = "2156c069-7c38-4e35-bfa2-39500f542f6d";
 
 export function buildFakeTransport(latencyMs: number): WaTransport {
   let counter = 0;
