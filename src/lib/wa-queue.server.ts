@@ -88,26 +88,34 @@ async function logEvent(campaignId: string, event_type: string, message: string,
   } catch {}
 }
 
-async function acquireLease(campaignId: string): Promise<string | null> {
-  const leaseId = crypto.randomUUID();
-  const until = new Date(Date.now() + LEASE_MS).toISOString();
-  const { data, error } = await supabaseAdmin
-    .from("wa_campaigns")
-    .update({ worker_lease_id: leaseId, worker_lease_until: until })
-    .eq("id", campaignId)
-    .or(`worker_lease_until.is.null,worker_lease_until.lt.${new Date().toISOString()}`)
-    .select("id")
-    .maybeSingle();
+// ---------------------------------------------------------------------------
+// Lease por LANE (trilha de trabalho), não por campanha.
+// Modelo Infobip: N workers paralelos consomem a mesma fila da campanha ao
+// mesmo tempo. A exclusão real de duplicidade vem do SKIP LOCKED na reserva
+// de destinatários; a lane só evita que a MESMA trilha rode duas vezes.
+// ---------------------------------------------------------------------------
+const LANE_LEASE_SECONDS = 25;
+
+async function acquireLease(campaignId: string, lane: number): Promise<string | null> {
+  const holder = `${lane}-${crypto.randomUUID()}`;
+  const { data, error } = await supabaseAdmin.rpc("wa_lane_acquire" as any, {
+    _campaign_id: campaignId,
+    _lane: lane,
+    _holder: holder,
+    _seconds: LANE_LEASE_SECONDS,
+  });
   if (error || !data) return null;
-  return leaseId;
+  return holder;
 }
 
-async function releaseLease(campaignId: string) {
-  await supabaseAdmin
-    .from("wa_campaigns")
-    .update({ worker_lease_id: null, worker_lease_until: null })
-    .eq("id", campaignId);
+async function releaseLease(campaignId: string, lane: number, holder: string) {
+  await supabaseAdmin.rpc("wa_lane_release" as any, {
+    _campaign_id: campaignId,
+    _lane: lane,
+    _holder: holder,
+  });
 }
+
 
 export async function finalizeCampaign(campaignId: string) {
   const { data: camp } = await supabaseAdmin
