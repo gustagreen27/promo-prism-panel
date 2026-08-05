@@ -1135,6 +1135,32 @@ function MiniStat({ label, value }: { label: string; value: string }) {
 }
 
 
+function toLocalInput(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const off = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - off).toISOString().slice(0, 16);
+}
+function fromLocalInput(v: string): string | null {
+  if (!v) return null;
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+function fmtClock(iso: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+function fmtDur(sec: number): string {
+  if (!sec || sec <= 0) return "—";
+  const m = Math.round(sec / 60);
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60);
+  return `${h}h ${m % 60}min`;
+}
+
 function AutoSimForm({
   wa,
   campaignId: _campaignId,
@@ -1149,20 +1175,80 @@ function AutoSimForm({
   onControl: (action: "start" | "pause" | "resume" | "restart" | "sync_real" | "disable") => Promise<any>;
 }) {
   const s = simulation ?? {};
-  const [startAt, setStartAt] = useState<string>(s.start_at ? s.start_at.slice(0, 16) : "");
-  const [endAt, setEndAt] = useState<string>(s.end_at ? s.end_at.slice(0, 16) : "");
-  const [durationSec, setDurationSec] = useState<string>(s.duration_sec ?? "");
+  const simKey = `${wa.id}:${s.updated_at ?? "new"}:${s.runtime?.started_at ?? ""}:${s.runtime?.paused_at ?? ""}`;
+
+  const realSent = Number(wa.sent_count ?? 0);
+  const realDelivered = Number(wa.delivered_count ?? 0);
+  const realFailed = Number(wa.failed_count ?? 0);
+  const realTotal = Math.max(realSent, Number(wa.total_recipients ?? 0));
+
+  const [startAt, setStartAt] = useState<string>(toLocalInput(s.start_at));
+  const [endAt, setEndAt] = useState<string>(toLocalInput(s.end_at));
+  const [durationSec, setDurationSec] = useState<string>(s.duration_sec != null ? String(s.duration_sec) : "3600");
   const [refresh, setRefresh] = useState<string>(String(s.refresh_interval_sec ?? 5));
-  const [sentStart, setSentStart] = useState<string>(String(s.sent_start ?? 0));
-  const [sentEnd, setSentEnd] = useState<string>(String(s.sent_end ?? wa.total_recipients ?? 0));
-  const [dRatio, setDRatio] = useState<string>(String(s.delivered_ratio ?? 0.95));
-  const [fRatio, setFRatio] = useState<string>(String(s.failed_ratio ?? 0.05));
+  const [sentStart, setSentStart] = useState<string>(String(s.sent_start ?? realSent));
+  const [sentEnd, setSentEnd] = useState<string>(String(s.sent_end ?? realTotal ?? 0));
+  const [deliveredStart, setDeliveredStart] = useState<string>(String(s.delivered_start ?? realDelivered));
+  const [failedStart, setFailedStart] = useState<string>(String(s.failed_start ?? realFailed));
+  const [deliveredEnd, setDeliveredEnd] = useState<string>(
+    s.delivered_end != null ? String(s.delivered_end) : String(Math.round(Number(s.sent_end ?? realTotal ?? 0) * 0.95)),
+  );
+  const [failedEnd, setFailedEnd] = useState<string>(
+    s.failed_end != null ? String(s.failed_end) : String(Math.round(Number(s.sent_end ?? realTotal ?? 0) * 0.05)),
+  );
   const [growth, setGrowth] = useState<string>(s.growth ?? "linear");
+  const gp = (s.growth_params ?? {}) as Record<string, any>;
+  const [randMin, setRandMin] = useState<string>(String(gp.random_min ?? 0.9));
+  const [randMax, setRandMax] = useState<string>(String(gp.random_max ?? 1.1));
+  const [batchSize, setBatchSize] = useState<string>(String(gp.batch_size ?? 100));
+  const [batchInterval, setBatchInterval] = useState<string>(String(gp.batch_interval_sec ?? 30));
+  const [offset, setOffset] = useState<string>(String(gp.offset ?? 0));
+  const [manualValue, setManualValue] = useState<string>(String(s.runtime?.manual_value ?? 0));
+  const [floorReal, setFloorReal] = useState<boolean>(Boolean(gp.floor_real));
   const [pauses, setPauses] = useState<any[]>(s.pauses ?? []);
   const [statusLabel, setStatusLabel] = useState<string>(s.status_label ?? "");
+  const [busy, setBusy] = useState<string>("");
+
+  // Ressincroniza o formulário sempre que a simulação salva mudar no servidor.
+  useEffect(() => {
+    const n = simulation ?? {};
+    setStartAt(toLocalInput(n.start_at));
+    setEndAt(toLocalInput(n.end_at));
+    setDurationSec(n.duration_sec != null ? String(n.duration_sec) : "3600");
+    setRefresh(String(n.refresh_interval_sec ?? 5));
+    setSentStart(String(n.sent_start ?? realSent));
+    setSentEnd(String(n.sent_end ?? realTotal ?? 0));
+    setDeliveredStart(String(n.delivered_start ?? realDelivered));
+    setFailedStart(String(n.failed_start ?? realFailed));
+    setDeliveredEnd(
+      n.delivered_end != null ? String(n.delivered_end) : String(Math.round(Number(n.sent_end ?? realTotal ?? 0) * 0.95)),
+    );
+    setFailedEnd(
+      n.failed_end != null ? String(n.failed_end) : String(Math.round(Number(n.sent_end ?? realTotal ?? 0) * 0.05)),
+    );
+    setGrowth(n.growth ?? "linear");
+    const p = (n.growth_params ?? {}) as Record<string, any>;
+    setRandMin(String(p.random_min ?? 0.9));
+    setRandMax(String(p.random_max ?? 1.1));
+    setBatchSize(String(p.batch_size ?? 100));
+    setBatchInterval(String(p.batch_interval_sec ?? 30));
+    setOffset(String(p.offset ?? 0));
+    setFloorReal(Boolean(p.floor_real));
+    setManualValue(String(n.runtime?.manual_value ?? 0));
+    setPauses(Array.isArray(n.pauses) ? n.pauses : []);
+    setStatusLabel(n.status_label ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [simKey]);
+
+  // Relógio para a pré-visualização ao vivo.
+  const [now, setNow] = useState<Date>(() => new Date());
+  useEffect(() => {
+    const ms = Math.max(1, Number(refresh || 5)) * 1000;
+    const t = setInterval(() => setNow(new Date()), Math.min(ms, 5000));
+    return () => clearInterval(t);
+  }, [refresh]);
 
   const runtime = s.runtime ?? { active: false };
-
   const runState = runtime.paused_at ? "paused" : runtime.active ? "running" : "idle";
   const runBadge =
     runState === "running"
@@ -1177,24 +1263,180 @@ function AutoSimForm({
         ? "bg-amber-500"
         : "bg-muted-foreground/40";
 
+  const nSentStart = Math.max(0, Number(sentStart || 0));
+  const nSentEnd = Math.max(nSentStart, Number(sentEnd || 0));
+  const nDur = Math.max(1, Number(durationSec || 0) || 3600);
+  const ratePerMin = Math.round(((nSentEnd - nSentStart) / nDur) * 60);
+  const sumWarn = Number(deliveredEnd || 0) + Number(failedEnd || 0) > nSentEnd;
+
+  const growthParams = useMemo(() => {
+    const p: Record<string, unknown> = { floor_real: floorReal };
+    if (growth === "random") {
+      p.random_min = Number(randMin || 0.9);
+      p.random_max = Number(randMax || 1.1);
+    }
+    if (growth === "batches") {
+      p.batch_size = Number(batchSize || 100);
+      p.batch_interval_sec = Number(batchInterval || 30);
+    }
+    if (growth === "real_plus") p.offset = Number(offset || 0);
+    return p;
+  }, [growth, floorReal, randMin, randMax, batchSize, batchInterval, offset]);
+
+  const patch = useMemo(
+    () => ({
+      start_at: fromLocalInput(startAt),
+      end_at: fromLocalInput(endAt),
+      duration_sec: nDur,
+      refresh_interval_sec: Math.max(1, Number(refresh || 5)),
+      sent_start: nSentStart,
+      sent_end: nSentEnd,
+      delivered_start: Math.max(0, Number(deliveredStart || 0)),
+      failed_start: Math.max(0, Number(failedStart || 0)),
+      delivered_end: Math.max(0, Number(deliveredEnd || 0)),
+      failed_end: Math.max(0, Number(failedEnd || 0)),
+      delivered_ratio: nSentEnd > 0 ? Math.min(1, Number(deliveredEnd || 0) / nSentEnd) : null,
+      failed_ratio: nSentEnd > 0 ? Math.min(1, Number(failedEnd || 0) / nSentEnd) : null,
+      growth: growth as any,
+      growth_params: growthParams,
+      pauses,
+      status_label: statusLabel || null,
+    }),
+    [startAt, endAt, nDur, refresh, nSentStart, nSentEnd, deliveredStart, failedStart, deliveredEnd, failedEnd, growth, growthParams, pauses, statusLabel],
+  );
+
+  // Pré-visualização ao vivo com a mesma função usada na página pública.
+  const previewRow: DispatchSimRow = useMemo(
+    () => ({
+      wa_campaign_id: wa.id,
+      campaign_id: null,
+      start_at: patch.start_at,
+      end_at: patch.end_at,
+      duration_sec: patch.duration_sec,
+      refresh_interval_sec: patch.refresh_interval_sec,
+      sent_start: patch.sent_start,
+      sent_end: patch.sent_end,
+      delivered_ratio: patch.delivered_ratio,
+      failed_ratio: patch.failed_ratio,
+      delivered_start: patch.delivered_start,
+      delivered_end: patch.delivered_end,
+      failed_start: patch.failed_start,
+      failed_end: patch.failed_end,
+      percent_start: null,
+      percent_end: null,
+      growth: patch.growth,
+      growth_params: { ...patch.growth_params, ...(growth === "manual" ? {} : {}) },
+      pauses: patch.pauses as any,
+      runtime: {
+        active: true,
+        started_at:
+          runtime.started_at ?? patch.start_at ?? new Date(now.getTime() - 1000).toISOString(),
+        paused_at: null,
+        accumulated_pause_ms: runtime.accumulated_pause_ms ?? 0,
+        manual_value: Number(manualValue || 0),
+      },
+      status_label: patch.status_label,
+    }),
+    [patch, wa.id, runtime.started_at, runtime.accumulated_pause_ms, manualValue, growth, now],
+  );
+
+  const previewAt = (offsetMs: number) =>
+    computeDispatchSnapshot(
+      { wa_campaign_id: wa.id, campaign_id: null, enabled: true, mode: "auto", public_name: null, public_status: null, fixed: null },
+      previewRow,
+      { name: wa.name ?? null, status: wa.status ?? null, total: realTotal, sent: realSent, delivered: realDelivered, failed: realFailed },
+      new Date(now.getTime() + offsetMs),
+    );
+
+  const snapNow = previewAt(0);
+  const snap5 = previewAt(5 * 60_000);
+  const snap30 = previewAt(30 * 60_000);
+  const snap60 = previewAt(60 * 60_000);
+
+  const doSave = async () => {
+    setBusy("save");
+    try {
+      await onSave(patch);
+    } finally {
+      setBusy("");
+    }
+  };
+  const doControl = async (action: "start" | "pause" | "resume" | "restart" | "sync_real" | "disable") => {
+    setBusy(action);
+    try {
+      // Salva antes para garantir que a linha exista e use os valores da tela.
+      if (action !== "disable" && action !== "sync_real") await onSave(patch);
+      await onControl(action);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const applyRate = (perMin: number) => {
+    const delta = Math.max(0, nSentEnd - nSentStart);
+    if (perMin <= 0 || delta <= 0) return;
+    const sec = Math.max(1, Math.round((delta / perMin) * 60));
+    setDurationSec(String(sec));
+    const base = fromLocalInput(startAt) ?? new Date().toISOString();
+    setEndAt(toLocalInput(new Date(new Date(base).getTime() + sec * 1000).toISOString()));
+  };
+
   return (
     <div className="rounded-lg border bg-muted/20 p-4 space-y-4">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
           <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Progressão automática
           </div>
         </div>
-        <span
-          className={
-            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium " +
-            runBadge
-          }
-        >
-          <span className={"h-1.5 w-1.5 rounded-full " + runDot} />
-          {runState === "running" ? "Rodando" : runState === "paused" ? "Pausada" : "Parada"}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-muted-foreground">
+            {ratePerMin > 0 ? `${ratePerMin.toLocaleString("pt-BR")} msg/min · ${fmtDur(nDur)}` : fmtDur(nDur)}
+          </span>
+          <span
+            className={
+              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium " + runBadge
+            }
+          >
+            <span className={"h-1.5 w-1.5 rounded-full " + runDot} />
+            {runState === "running" ? "Rodando" : runState === "paused" ? "Pausada" : "Parada"}
+          </span>
+        </div>
+      </div>
+
+      {/* Pré-visualização ao vivo */}
+      <div className="rounded-md border bg-background p-3">
+        <div className="mb-2 flex items-center justify-between">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70">
+            Pré-visualização pública
+          </div>
+          <span className="text-[11px] text-muted-foreground">
+            atualiza a cada {Math.max(1, Number(refresh || 5))}s · {snapNow.status}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <MiniStat label="Enviados agora" value={snapNow.sent.toLocaleString("pt-BR")} />
+          <MiniStat label="Entregues" value={snapNow.delivered.toLocaleString("pt-BR")} />
+          <MiniStat label="Falhas" value={snapNow.failed.toLocaleString("pt-BR")} />
+          <MiniStat label="Progresso" value={`${snapNow.percent.toFixed(1)}%`} />
+        </div>
+        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+          <div className="h-full rounded-full bg-sky-500 transition-all" style={{ width: `${snapNow.percent}%` }} />
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <MiniStat label="+5 min" value={snap5.sent.toLocaleString("pt-BR")} />
+          <MiniStat label="+30 min" value={snap30.sent.toLocaleString("pt-BR")} />
+          <MiniStat label="+1 h" value={snap60.sent.toLocaleString("pt-BR")} />
+          <MiniStat label="Conclusão (ETA)" value={fmtClock(snapNow.eta_at)} />
+        </div>
+        {runState === "idle" && (
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Projeção considerando início agora. Clique em <strong>Iniciar</strong> para valer na página pública.
+          </p>
+        )}
       </div>
 
       {/* Janela de tempo */}
@@ -1205,33 +1447,144 @@ function AutoSimForm({
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <div className="space-y-1">
             <Label className="text-xs">Início</Label>
-            <Input type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} />
+            <Input
+              type="datetime-local"
+              value={startAt}
+              onChange={(e) => {
+                setStartAt(e.target.value);
+                const iso = fromLocalInput(e.target.value);
+                if (iso) setEndAt(toLocalInput(new Date(new Date(iso).getTime() + nDur * 1000).toISOString()));
+              }}
+            />
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Fim</Label>
-            <Input type="datetime-local" value={endAt} onChange={(e) => setEndAt(e.target.value)} />
+            <Input
+              type="datetime-local"
+              value={endAt}
+              onChange={(e) => {
+                setEndAt(e.target.value);
+                const endIso = fromLocalInput(e.target.value);
+                const startIso = fromLocalInput(startAt) ?? new Date().toISOString();
+                if (endIso) {
+                  const sec = Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / 1000);
+                  if (sec > 0) setDurationSec(String(sec));
+                }
+              }}
+            />
           </div>
-          <NumField label="Duração (s)" value={String(durationSec)} onChange={setDurationSec} />
+          <div className="space-y-1">
+            <Label className="text-xs">Duração (min)</Label>
+            <Input
+              type="number"
+              inputMode="numeric"
+              value={String(Math.max(1, Math.round(nDur / 60)))}
+              onChange={(e) => {
+                const min = Math.max(1, Number(e.target.value || 1));
+                setDurationSec(String(min * 60));
+                const base = fromLocalInput(startAt) ?? new Date().toISOString();
+                setEndAt(toLocalInput(new Date(new Date(base).getTime() + min * 60_000).toISOString()));
+              }}
+            />
+          </div>
           <NumField label="Intervalo refresh (s)" value={refresh} onChange={setRefresh} />
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] text-muted-foreground">Atalhos:</span>
+          {[15, 30, 60, 120, 240].map((m) => (
+            <Button
+              key={m}
+              type="button"
+              size="sm"
+              variant={Math.round(nDur / 60) === m ? "secondary" : "ghost"}
+              className="h-7 px-2 text-xs"
+              onClick={() => {
+                setDurationSec(String(m * 60));
+                const base = fromLocalInput(startAt) ?? new Date().toISOString();
+                if (!startAt) setStartAt(toLocalInput(base));
+                setEndAt(toLocalInput(new Date(new Date(base).getTime() + m * 60_000).toISOString()));
+              }}
+            >
+              {m < 60 ? `${m}min` : `${m / 60}h`}
+            </Button>
+          ))}
+          <span className="mx-1 h-4 w-px bg-border" />
+          <span className="text-[11px] text-muted-foreground">Ritmo:</span>
+          {[60, 120, 300, 600].map((r) => (
+            <Button
+              key={r}
+              type="button"
+              size="sm"
+              variant={ratePerMin === r ? "secondary" : "ghost"}
+              className="h-7 px-2 text-xs"
+              onClick={() => applyRate(r)}
+            >
+              {r}/min
+            </Button>
+          ))}
         </div>
       </div>
 
-      {/* Volume e taxas */}
+      {/* Volume */}
       <div>
-        <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70">
-          Volume e taxas
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70">
+            Volume (início → fim)
+          </span>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-6 px-2 text-[11px]"
+            onClick={() => {
+              setSentStart(String(realSent));
+              setDeliveredStart(String(realDelivered));
+              setFailedStart(String(realFailed));
+            }}
+          >
+            <RefreshCw className="mr-1 h-3 w-3" /> Usar números reais como início
+          </Button>
         </div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
           <NumField label="Enviados início" value={sentStart} onChange={setSentStart} />
-          <NumField label="Enviados fim" value={sentEnd} onChange={setSentEnd} />
-          <div className="space-y-1">
-            <Label className="text-xs">Taxa entrega (0–1)</Label>
-            <Input value={dRatio} onChange={(e) => setDRatio(e.target.value)} />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Taxa falha (0–1)</Label>
-            <Input value={fRatio} onChange={(e) => setFRatio(e.target.value)} />
-          </div>
+          <NumField label="Entregues início" value={deliveredStart} onChange={setDeliveredStart} />
+          <NumField label="Falhas início" value={failedStart} onChange={setFailedStart} />
+          <NumField
+            label="Enviados fim"
+            value={sentEnd}
+            onChange={(v) => {
+              setSentEnd(v);
+              const t = Math.max(0, Number(v || 0));
+              setDeliveredEnd(String(Math.round(t * 0.95)));
+              setFailedEnd(String(t - Math.round(t * 0.95)));
+            }}
+          />
+          <NumField label="Entregues fim" value={deliveredEnd} onChange={setDeliveredEnd} />
+          <NumField label="Falhas fim" value={failedEnd} onChange={setFailedEnd} />
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <span className="text-[11px] text-muted-foreground">Atalhos entrega:</span>
+          {[90, 95, 98, 100].map((p) => (
+            <Button
+              key={p}
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-xs"
+              onClick={() => {
+                const d = Math.round((nSentEnd * p) / 100);
+                setDeliveredEnd(String(d));
+                setFailedEnd(String(nSentEnd - d));
+              }}
+            >
+              {p}%
+            </Button>
+          ))}
+          {sumWarn && (
+            <span className="text-[11px] text-amber-600">
+              Entregues + falhas maior que enviados — será limitado ao total.
+            </span>
+          )}
         </div>
       </div>
 
@@ -1246,12 +1599,12 @@ function AutoSimForm({
             <Select value={growth} onValueChange={setGrowth}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="linear">Linear</SelectItem>
-                <SelectItem value="random">Aleatória</SelectItem>
+                <SelectItem value="linear">Linear (constante)</SelectItem>
+                <SelectItem value="random">Aleatória (variação natural)</SelectItem>
                 <SelectItem value="batches">Em lotes</SelectItem>
                 <SelectItem value="stepped">Por etapas</SelectItem>
                 <SelectItem value="real_plus">Real + offset</SelectItem>
-                <SelectItem value="manual">Manual</SelectItem>
+                <SelectItem value="manual">Manual (valor fixo)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -1260,6 +1613,36 @@ function AutoSimForm({
             <Input value={statusLabel} onChange={(e) => setStatusLabel(e.target.value)} placeholder="ex: Em execução" />
           </div>
         </div>
+
+        {growth === "random" && (
+          <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+            <NumField label="Variação mín. (x)" value={randMin} onChange={setRandMin} />
+            <NumField label="Variação máx. (x)" value={randMax} onChange={setRandMax} />
+          </div>
+        )}
+        {growth === "batches" && (
+          <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+            <NumField label="Tamanho do lote" value={batchSize} onChange={setBatchSize} />
+            <NumField label="Intervalo do lote (s)" value={batchInterval} onChange={setBatchInterval} />
+          </div>
+        )}
+        {growth === "real_plus" && (
+          <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+            <NumField label="Offset sobre o real" value={offset} onChange={setOffset} />
+          </div>
+        )}
+        {growth === "manual" && (
+          <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+            <NumField label="Valor manual (enviados)" value={manualValue} onChange={setManualValue} />
+          </div>
+        )}
+
+        <label className="mt-3 flex items-center gap-2 rounded-md border bg-background px-3 py-2">
+          <Switch checked={floorReal} onCheckedChange={setFloorReal} />
+          <span className="text-xs">
+            Nunca ficar abaixo dos números reais (real + simulado)
+          </span>
+        </label>
       </div>
 
       {/* Pausas */}
@@ -1273,7 +1656,15 @@ function AutoSimForm({
             variant="outline"
             className="h-7"
             onClick={() =>
-              setPauses([...pauses, { after_sent: 0, duration_sec: 60, status_label: "Pausada", recalc_eta: true }])
+              setPauses([
+                ...pauses,
+                {
+                  after_sent: Math.round((nSentStart + nSentEnd) / 2),
+                  duration_sec: 300,
+                  status_label: "Pausada",
+                  recalc_eta: true,
+                },
+              ])
             }
           >
             <Plus className="mr-1 h-3 w-3" /> Nova pausa
@@ -1318,46 +1709,53 @@ function AutoSimForm({
 
       {/* Ações da simulação */}
       <div className="rounded-md border bg-background p-3 space-y-3">
-        <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70">
-          Controle
+        <div className="flex items-center justify-between">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70">
+            Controle
+          </div>
+          {runtime.started_at && (
+            <span className="text-[11px] text-muted-foreground">
+              Iniciada em {fmtClock(runtime.started_at)}
+            </span>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            size="sm"
-            onClick={() =>
-              onSave({
-                start_at: startAt ? new Date(startAt).toISOString() : null,
-                end_at: endAt ? new Date(endAt).toISOString() : null,
-                duration_sec: durationSec === "" ? null : Number(durationSec),
-                refresh_interval_sec: Number(refresh || 5),
-                sent_start: Number(sentStart || 0),
-                sent_end: Number(sentEnd || 0),
-                delivered_ratio: Number(dRatio || 0),
-                failed_ratio: Number(fRatio || 0),
-                growth: growth as any,
-                growth_params: {},
-                pauses,
-                status_label: statusLabel || null,
-              })
-            }
-          >
-            <Save className="mr-1 h-4 w-4" /> Salvar simulação
+          <Button size="sm" onClick={doSave} disabled={!!busy}>
+            <Save className="mr-1 h-4 w-4" /> {busy === "save" ? "Salvando..." : "Salvar simulação"}
           </Button>
 
           <div className="ml-auto inline-flex flex-wrap items-center gap-1 rounded-md border bg-muted/40 p-1">
-            <Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => onControl("start")}>
-              <Play className="h-3 w-3 text-emerald-600" /> Iniciar
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 gap-1"
+              disabled={!!busy || runState === "running"}
+              onClick={() => doControl("start")}
+            >
+              <Play className="h-3 w-3 text-emerald-600" /> {busy === "start" ? "..." : "Iniciar"}
             </Button>
-            <Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => onControl("pause")}>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 gap-1"
+              disabled={!!busy || runState !== "running"}
+              onClick={() => doControl("pause")}
+            >
               <Pause className="h-3 w-3 text-amber-600" /> Pausar
             </Button>
-            <Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => onControl("resume")}>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 gap-1"
+              disabled={!!busy || runState !== "paused"}
+              onClick={() => doControl("resume")}
+            >
               <Play className="h-3 w-3 text-sky-600" /> Retomar
             </Button>
-            <Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => onControl("restart")}>
+            <Button size="sm" variant="ghost" className="h-7 gap-1" disabled={!!busy} onClick={() => doControl("restart")}>
               <RotateCcw className="h-3 w-3" /> Reiniciar
             </Button>
-            <Button size="sm" variant="ghost" className="h-7 gap-1" onClick={() => onControl("sync_real")}>
+            <Button size="sm" variant="ghost" className="h-7 gap-1" disabled={!!busy} onClick={() => doControl("sync_real")}>
               <RefreshCw className="h-3 w-3" /> Sincronizar
             </Button>
             <span className="mx-1 h-4 w-px bg-border" />
@@ -1365,12 +1763,16 @@ function AutoSimForm({
               size="sm"
               variant="ghost"
               className="h-7 gap-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
-              onClick={() => onControl("disable")}
+              disabled={!!busy}
+              onClick={() => doControl("disable")}
             >
               <Trash2 className="h-3 w-3" /> Remover
             </Button>
           </div>
         </div>
+        <p className="text-[11px] text-muted-foreground">
+          Iniciar/Reiniciar já salvam os campos acima automaticamente.
+        </p>
       </div>
     </div>
   );
