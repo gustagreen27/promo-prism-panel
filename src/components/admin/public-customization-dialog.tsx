@@ -951,13 +951,21 @@ function DispatchCard({
           const remaining = Math.max(0, total - realSent);
           const rateNum = Math.max(1, Number(contRate || 120));
           const etaMin = Math.ceil(remaining / rateNum);
-          const etaLabel =
+          const fmtMin = (m: number) => (m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}min` : `${m} min`);
+          const etaLabel = remaining === 0 ? "já no total" : `~${fmtMin(etaMin)}`;
+          const etaClock =
             remaining === 0
-              ? "já no total"
-              : etaMin >= 60
-                ? `~${Math.floor(etaMin / 60)}h ${etaMin % 60}min`
-                : `~${etaMin} min`;
+              ? null
+              : new Date(Date.now() + etaMin * 60_000).toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
+          const wantMin = Number(contFinishMin || 0);
+          const neededRate = wantMin > 0 ? Math.max(1, Math.ceil(remaining / wantMin)) : null;
+          const remDelivered = Math.max(0, Math.min(total, Number(tgtDelivered || 0)) - realDelivered);
+          const remFailed = Math.max(0, Math.min(total, Number(tgtFailed || 0)) - realFailed);
           const sumWarn = Number(tgtDelivered || 0) + Number(tgtFailed || 0) > total;
+
           return (
             <section className="rounded-xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/[0.08] to-transparent p-4">
               <div className="flex flex-wrap items-center gap-2">
