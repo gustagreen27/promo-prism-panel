@@ -482,7 +482,21 @@ export async function processCampaignTick(
     //   1 vaga de concorrência
     const numberMaxRate = Math.max(1, Number((conn as any).maximum_rate_per_second ?? 80));
     const numberGlobalRate = Math.max(1, Number((conn as any).global_rate_per_second ?? numberMaxRate));
-    const phoneBucketRate = Math.min(numberGlobalRate, numberMaxRate);
+    let phoneBucketRate = Math.min(numberGlobalRate, numberMaxRate);
+    // Throttle adaptativo POR NÚMERO: se este número levou 130429/timeout há
+    // pouco, ele (e só ele) trabalha com rate reduzido até expirar.
+    try {
+      const { data: rl } = await supabaseAdmin
+        .from("wa_rate_limits")
+        .select("throttle_rate,throttle_until")
+        .eq("phone_number_id", conn.phone_number_id!)
+        .maybeSingle();
+      const thrUntil = (rl as any)?.throttle_until ? new Date((rl as any).throttle_until).getTime() : 0;
+      const thrRate = Number((rl as any)?.throttle_rate ?? 0);
+      if (thrRate > 0 && thrUntil > Date.now()) {
+        phoneBucketRate = Math.max(1, Math.min(phoneBucketRate, thrRate));
+      }
+    } catch { /* throttle é best-effort */ }
     const campRateRaw = (camp as any).rate_per_second;
     // Sem taxa definida na campanha => modo rajada no teto do número.
     const rawCampRate =
@@ -491,6 +505,9 @@ export async function processCampaignTick(
         : Math.max(1, Number(campRateRaw));
     // Rate efetivo desta campanha = min(campanha, bucket global do número).
     const effectiveRate = Math.min(rawCampRate, phoneBucketRate);
+    // Número de trilhas paralelas desta campanha (workers simultâneos).
+    const laneCount = Math.max(1, Number((camp as any).worker_lanes ?? 4));
+
     // Para manter N requisições reais por segundo, a concorrência precisa cobrir
     // a latência da Graph API. Ex.: 80/s com timeout de ~8s precisa de ~640+
     // requisições em voo; com só 120/200, o sistema envia um bloco e para até
