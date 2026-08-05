@@ -598,6 +598,7 @@ export const updateCampaignSpeed = createServerFn({ method: "POST" })
     if (error) throw error;
     // Teto real do número (bucket global compartilhado por phone_number_id).
     let effective_rate_per_second = row.rate_per_second as number;
+    let cap_rate_per_second: number | null = null;
     if (row.connection_id) {
       const { data: conn } = await supabase
         .from("whatsapp_connections")
@@ -609,9 +610,11 @@ export const updateCampaignSpeed = createServerFn({ method: "POST" })
           Math.max(1, Number((conn as any).global_rate_per_second ?? 80)),
           Math.max(1, Number((conn as any).maximum_rate_per_second ?? 80)),
         );
+        cap_rate_per_second = cap;
         effective_rate_per_second = Math.min(effective_rate_per_second, cap);
       }
     }
+    const capped = cap_rate_per_second != null && (row.rate_per_second as number) > cap_rate_per_second;
 
     try {
       await supabase.from("campaign_timeline").insert({
@@ -621,6 +624,43 @@ export const updateCampaignSpeed = createServerFn({ method: "POST" })
         metadata: { ...clean, effective_rate_per_second, by: userId },
       });
     } catch { /* timeline é best-effort */ }
-    return { ...row, effective_rate_per_second };
+    return { ...row, effective_rate_per_second, cap_rate_per_second, capped };
 
   });
+
+/**
+ * Limites de velocidade do número associado à campanha (para alertas na UI).
+ */
+export const getCampaignSpeedLimits = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabase } = context as any;
+    const { data: camp } = await supabase
+      .from("wa_campaigns")
+      .select("connection_id")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!camp?.connection_id) {
+      return { cap_rate_per_second: null as number | null, quality_rating: null, throughput_level: null, phone_label: null };
+    }
+    const { data: conn } = await supabase
+      .from("whatsapp_connections")
+      .select("display_phone_number, global_rate_per_second, maximum_rate_per_second, quality_rating, throughput_level, status")
+      .eq("id", camp.connection_id)
+      .maybeSingle();
+    if (!conn) return { cap_rate_per_second: null as number | null, quality_rating: null, throughput_level: null, phone_label: null };
+    const cap = Math.min(
+      Math.max(1, Number((conn as any).global_rate_per_second ?? 80)),
+      Math.max(1, Number((conn as any).maximum_rate_per_second ?? 80)),
+    );
+    return {
+      cap_rate_per_second: cap,
+      quality_rating: (conn as any).quality_rating ?? null,
+      throughput_level: (conn as any).throughput_level ?? null,
+      phone_label: (conn as any).display_phone_number ?? null,
+      connection_status: (conn as any).status ?? null,
+    };
+  });
+
