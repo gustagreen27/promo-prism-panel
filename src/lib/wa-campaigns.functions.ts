@@ -663,3 +663,84 @@ export const getCampaignSpeedLimits = createServerFn({ method: "POST" })
     };
   });
 
+
+/**
+ * Modo Rajada ("tudo de uma vez"): eleva o teto do número e coloca a campanha
+ * na velocidade máxima suportada, sem jitter. Depois disso o sistema só coleta
+ * os webhooks de status (entregue/lido/falha).
+ */
+export const setCampaignTurbo = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      id: z.string().uuid(),
+      target_rate_per_second: z.number().int().min(1).max(200).optional(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabase, userId } = context as any;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: camp, error: campErr } = await supabase
+      .from("wa_campaigns")
+      .select("id, connection_id, total_recipients")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (campErr) throw campErr;
+    if (!camp) throw new Error("Campanha não encontrada");
+
+    const target = data.target_rate_per_second ?? 80;
+    let cap = target;
+    let phoneLabel: string | null = null;
+
+    if (camp.connection_id) {
+      const { data: conn } = await supabaseAdmin
+        .from("whatsapp_connections")
+        .select("id, display_phone, phone, maximum_rate_per_second, global_rate_per_second, global_max_concurrency")
+        .eq("id", camp.connection_id)
+        .maybeSingle();
+      if (conn) {
+        phoneLabel = (conn as any).display_phone ?? (conn as any).phone ?? null;
+        const maxRate = Math.max(Number((conn as any).maximum_rate_per_second ?? 80), target);
+        cap = Math.min(target, maxRate);
+        await supabaseAdmin
+          .from("whatsapp_connections")
+          .update({
+            maximum_rate_per_second: maxRate,
+            global_rate_per_second: cap,
+            global_max_concurrency: Math.max(
+              Number((conn as any).global_max_concurrency ?? 200),
+              cap * 10,
+            ),
+          })
+          .eq("id", conn.id);
+      }
+    }
+
+    const batch = Math.max(50, Math.min(500, cap * 5));
+    const { data: row, error } = await supabase
+      .from("wa_campaigns")
+      .update({
+        rate_per_second: cap,
+        send_rate_per_min: Math.min(6000, cap * 60),
+        batch_size: batch,
+        jitter_ms: 0,
+        max_concurrency: Math.min(1000, cap * 10),
+      })
+      .eq("id", data.id)
+      .select("id, send_rate_per_min, rate_per_second, batch_size, jitter_ms, max_concurrency")
+      .single();
+    if (error) throw error;
+
+    try {
+      await supabase.from("campaign_timeline").insert({
+        campaign_id: data.id,
+        event_type: "speed_update",
+        message: `Modo rajada ativado: ~${cap} msg/s (${cap * 60}/min) · lote ${batch} · sem jitter${phoneLabel ? ` · número ${phoneLabel}` : ""}`,
+        metadata: { turbo: true, rate_per_second: cap, by: userId },
+      });
+    } catch { /* best-effort */ }
+
+    return { ...row, effective_rate_per_second: cap, phone_label: phoneLabel };
+  });
