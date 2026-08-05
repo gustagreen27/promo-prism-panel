@@ -656,6 +656,63 @@ function DispatchCard({
   const [fSpeed, setFSpeed] = useState<string>(f.speed_label ?? "");
 
   const [dupTo, setDupTo] = useState<string>("");
+  const [contRate, setContRate] = useState<string>("120");
+
+  // "Continuar do real": mantém os números reais como ponto de partida e segue
+  // a progressão só na página pública (dados reais + simulados), mesmo com o
+  // disparo real pausado. Nunca toca no disparo real.
+  const continueFromReal = useMutation({
+    mutationFn: async () => {
+      const rate = Math.max(1, Number(contRate || 120));
+      const realSent = Number(wa.sent_count ?? 0);
+      const total = Math.max(realSent, Number(wa.total_recipients ?? 0));
+      const realDelivered = Number(wa.delivered_count ?? 0);
+      const realFailed = Number(wa.failed_count ?? 0);
+      const remaining = Math.max(0, total - realSent);
+      const durationSec = Math.max(60, Math.ceil((remaining / rate) * 60));
+      const dRatio = realSent > 0 ? Math.min(1, realDelivered / realSent) : 0.9;
+      const fRatio = realSent > 0 ? Math.min(1, realFailed / realSent) : 0.05;
+
+      await upsertFn({
+        data: {
+          waCampaignId: wa.id,
+          campaignId,
+          enabled: true,
+          mode: "auto" as const,
+          public_name: publicName || null,
+          public_status: publicStatus || null,
+        },
+      });
+      await simUpsertFn({
+        data: {
+          waCampaignId: wa.id,
+          campaignId,
+          start_at: new Date().toISOString(),
+          end_at: null,
+          duration_sec: durationSec,
+          refresh_interval_sec: 5,
+          sent_start: realSent,
+          sent_end: total,
+          delivered_ratio: dRatio,
+          failed_ratio: fRatio,
+          delivered_start: realDelivered,
+          failed_start: realFailed,
+          growth: "random" as const,
+          growth_params: { floor_real: true, random_min: 0.97, random_max: 1.03 },
+          pauses: [],
+          status_label: "Em execução",
+        },
+      });
+      await simCtrlFn({ data: { waCampaignId: wa.id, action: "start" as const } });
+    },
+    onSuccess: () => {
+      setEnabled(true);
+      setMode("auto");
+      toast.success("Continuando do ponto real na página pública");
+      onChange();
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
 
   const save = useMutation({
     mutationFn: () =>
