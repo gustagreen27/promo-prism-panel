@@ -3,11 +3,14 @@ import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware'
 import { z } from 'zod'
 
 async function assertCampaignAccess(supabase: any, userId: string, campaignId: string) {
-  const { data: c } = await supabase
+  // Lê a campanha com o client admin: RLS pode esconder a linha do usuário
+  // antes mesmo de conseguirmos avaliar a permissão real (staff/membro).
+  const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
+  const { data: c } = await supabaseAdmin
     .from('campaigns')
     .select('workspace_id')
     .eq('id', campaignId)
-    .maybeSingle()
+    .maybeSingle<{ workspace_id: string | null }>()
   if (!c) throw new Error('Campanha não encontrada')
   const { data: staff } = await supabase.rpc('is_internal_staff', { _user: userId })
   if (staff) return c.workspace_id
