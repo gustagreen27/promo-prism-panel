@@ -300,16 +300,18 @@ export async function processCampaignTick(
   const clock = opts?.clock ?? REAL_CLOCK;
   const transport = opts?.transport ?? REAL_TRANSPORT;
   const onRpc = opts?.instrumentation?.onRpc;
+  const lane = Math.max(0, Number(opts?.lane ?? 0));
 
-  const lease = await acquireLease(campaignId);
+  const lease = await acquireLease(campaignId, lane);
   if (!lease) return { processed: 0, done: false, skipped: true };
   let campaignLeaseReleased = false;
 
   const releaseCampaignLeaseOnce = async () => {
     if (campaignLeaseReleased) return;
     campaignLeaseReleased = true;
-    await releaseLease(campaignId);
+    await releaseLease(campaignId, lane, lease);
   };
+
 
   try {
     const { data: camp } = await supabaseAdmin
