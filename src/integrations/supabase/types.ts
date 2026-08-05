@@ -2494,6 +2494,7 @@ export type Database = {
           avg_speed_per_min: number | null
           batch_pause_ms: number | null
           batch_size: number
+          bulk_id: string | null
           button_url_mapping: Json | null
           canceled_at: string | null
           canceled_by: string | null
@@ -2534,6 +2535,7 @@ export type Database = {
           paused_at: string | null
           paused_by: string | null
           price_cents_at_start: number | null
+          priority: number
           progress: Json
           project_id: string | null
           quiet_hours_end: string | null
@@ -2560,6 +2562,7 @@ export type Database = {
           started_at: string | null
           started_by: string | null
           status: Database["public"]["Enums"]["wa_campaign_status"]
+          submitted_at: string | null
           tag_filters: string[] | null
           target_per_hour: number | null
           template_failover_mode: string
@@ -2571,6 +2574,7 @@ export type Database = {
           use_multi_route: boolean
           variables_mapping: Json | null
           waba_ref_id: string | null
+          worker_lanes: number
           worker_lease_id: string | null
           worker_lease_until: string | null
           workspace_id: string | null
@@ -2584,6 +2588,7 @@ export type Database = {
           avg_speed_per_min?: number | null
           batch_pause_ms?: number | null
           batch_size?: number
+          bulk_id?: string | null
           button_url_mapping?: Json | null
           canceled_at?: string | null
           canceled_by?: string | null
@@ -2624,6 +2629,7 @@ export type Database = {
           paused_at?: string | null
           paused_by?: string | null
           price_cents_at_start?: number | null
+          priority?: number
           progress?: Json
           project_id?: string | null
           quiet_hours_end?: string | null
@@ -2650,6 +2656,7 @@ export type Database = {
           started_at?: string | null
           started_by?: string | null
           status?: Database["public"]["Enums"]["wa_campaign_status"]
+          submitted_at?: string | null
           tag_filters?: string[] | null
           target_per_hour?: number | null
           template_failover_mode?: string
@@ -2661,6 +2668,7 @@ export type Database = {
           use_multi_route?: boolean
           variables_mapping?: Json | null
           waba_ref_id?: string | null
+          worker_lanes?: number
           worker_lease_id?: string | null
           worker_lease_until?: string | null
           workspace_id?: string | null
@@ -2674,6 +2682,7 @@ export type Database = {
           avg_speed_per_min?: number | null
           batch_pause_ms?: number | null
           batch_size?: number
+          bulk_id?: string | null
           button_url_mapping?: Json | null
           canceled_at?: string | null
           canceled_by?: string | null
@@ -2714,6 +2723,7 @@ export type Database = {
           paused_at?: string | null
           paused_by?: string | null
           price_cents_at_start?: number | null
+          priority?: number
           progress?: Json
           project_id?: string | null
           quiet_hours_end?: string | null
@@ -2740,6 +2750,7 @@ export type Database = {
           started_at?: string | null
           started_by?: string | null
           status?: Database["public"]["Enums"]["wa_campaign_status"]
+          submitted_at?: string | null
           tag_filters?: string[] | null
           target_per_hour?: number | null
           template_failover_mode?: string
@@ -2751,6 +2762,7 @@ export type Database = {
           use_multi_route?: boolean
           variables_mapping?: Json | null
           waba_ref_id?: string | null
+          worker_lanes?: number
           worker_lease_id?: string | null
           worker_lease_until?: string | null
           workspace_id?: string | null
@@ -3293,6 +3305,9 @@ export type Database = {
           phone_number_id: string
           rate_per_second: number
           slot_updated_at: string | null
+          throttle_rate: number | null
+          throttle_reason: string | null
+          throttle_until: string | null
           throughput_level: string | null
           throughput_mps: number | null
           throughput_synced_at: string | null
@@ -3307,6 +3322,9 @@ export type Database = {
           phone_number_id: string
           rate_per_second?: number
           slot_updated_at?: string | null
+          throttle_rate?: number | null
+          throttle_reason?: string | null
+          throttle_until?: string | null
           throughput_level?: string | null
           throughput_mps?: number | null
           throughput_synced_at?: string | null
@@ -3321,6 +3339,9 @@ export type Database = {
           phone_number_id?: string
           rate_per_second?: number
           slot_updated_at?: string | null
+          throttle_rate?: number | null
+          throttle_reason?: string | null
+          throttle_until?: string | null
           throughput_level?: string | null
           throughput_mps?: number | null
           throughput_synced_at?: string | null
@@ -3469,6 +3490,41 @@ export type Database = {
           last_chain_request_id?: number | null
         }
         Relationships: []
+      }
+      wa_worker_lanes: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          holder: string | null
+          lane_index: number
+          lease_until: string | null
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          holder?: string | null
+          lane_index: number
+          lease_until?: string | null
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          holder?: string | null
+          lane_index?: number
+          lease_until?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wa_worker_lanes_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "wa_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       wallet_reservations: {
         Row: {
@@ -4933,6 +4989,19 @@ export type Database = {
           hour: number
         }[]
       }
+      wa_lane_acquire: {
+        Args: {
+          _campaign_id: string
+          _holder: string
+          _lane: number
+          _seconds?: number
+        }
+        Returns: boolean
+      }
+      wa_lane_release: {
+        Args: { _campaign_id: string; _holder: string; _lane: number }
+        Returns: boolean
+      }
       wa_pick_next_agent: {
         Args: {
           _roles: Database["public"]["Enums"]["workspace_role"][]
@@ -4978,6 +5047,15 @@ export type Database = {
       wa_split_build_recipients: {
         Args: { _campaign_ids: string[]; _list_id: string; _weights: number[] }
         Returns: Json
+      }
+      wa_throttle_number: {
+        Args: {
+          _factor?: number
+          _phone_number_id: string
+          _reason?: string
+          _seconds?: number
+        }
+        Returns: number
       }
       wa_tick_acquire_lease: {
         Args: { _duration_seconds?: number; _holder: string }
