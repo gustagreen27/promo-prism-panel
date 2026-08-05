@@ -397,7 +397,7 @@ export const swapCampaignConfig = createServerFn({ method: "POST" })
     // Valida template
     const { data: tpl, error: tErr } = await supabase
       .from("whatsapp_templates")
-      .select("id,name,status,language,connection_id,body,header_type,buttons")
+      .select("id,name,status,language,connection_id,waba_ref_id,body,header_type,buttons")
       .eq("id", newTemplateId)
       .single();
     if (tErr) throw tErr;
@@ -406,14 +406,10 @@ export const swapCampaignConfig = createServerFn({ method: "POST" })
     if (!["approved", "aprovado", "active", "ativo"].includes(tst)) {
       throw new Error(`Template selecionado não está ativo (status: ${tpl.status}).`);
     }
-    if (tpl.connection_id && tpl.connection_id !== newConnectionId) {
-      throw new Error("Template não é compatível com o número selecionado.");
-    }
-
     // Valida conexão
     const { data: conn, error: connErr } = await supabase
       .from("whatsapp_connections")
-      .select("id,name,display_phone,phone,phone_number_id,status")
+      .select("id,name,display_phone,phone,phone_number_id,status,waba_ref_id")
       .eq("id", newConnectionId)
       .single();
     if (connErr) throw connErr;
@@ -423,6 +419,13 @@ export const swapCampaignConfig = createServerFn({ method: "POST" })
       throw new Error(`Número selecionado não está ativo (status: ${conn.status}).`);
     }
     if (!conn.phone_number_id) throw new Error("Número selecionado não tem phone_number_id configurado.");
+
+    // Templates são sincronizados por WABA: compatível se pertencer à mesma WABA
+    // (ou, na ausência de WABA, à própria conexão).
+    const sameWaba = tpl.waba_ref_id && conn.waba_ref_id && tpl.waba_ref_id === conn.waba_ref_id;
+    if (!sameWaba && tpl.connection_id && tpl.connection_id !== newConnectionId) {
+      throw new Error("Template não é compatível com o número selecionado.");
+    }
 
     // Se o template mudou e tem variáveis, exige mapeamento novo
     const templateChanged = newTemplateId !== camp.template_id;
