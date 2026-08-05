@@ -66,9 +66,11 @@ const MAX_TICK_RUNTIME_MS = 10 * 1000;
 // Rate limiter defaults (used to bootstrap wa_rate_limits on first call).
 // The real values live in wa_rate_limits per phone_number_id and are shared
 // by every campaign using the same número.
-// Default rate = 1 msg/s. Only used when the campaign row has NULL rate_per_second
-// (a value of 0 or an explicit number is honored below via ?? not ||).
-const DEFAULT_RATE_PER_SECOND = 1;
+// Padrão = RAJADA: quando a campanha não define rate_per_second, usamos o teto
+// do próprio número (bucket global) — ou seja, envia tudo o mais rápido possível
+// e depois é só coletar os webhooks. Um valor explícito (inclusive baixo) é
+// sempre respeitado (usamos ?? e não ||).
+const DEFAULT_RATE_PER_SECOND = 80;
 const DEFAULT_MAX_CONCURRENCY = 15;
 // Systemic-error thresholds — pause the campaign only when the whole path is broken,
 // individual errors go through retry-with-backoff instead.
@@ -466,7 +468,12 @@ export async function processCampaignTick(
     const numberMaxRate = Math.max(1, Number((conn as any).maximum_rate_per_second ?? 80));
     const numberGlobalRate = Math.max(1, Number((conn as any).global_rate_per_second ?? numberMaxRate));
     const phoneBucketRate = Math.min(numberGlobalRate, numberMaxRate);
-    const rawCampRate = Math.max(1, Number((camp as any).rate_per_second ?? DEFAULT_RATE_PER_SECOND));
+    const campRateRaw = (camp as any).rate_per_second;
+    // Sem taxa definida na campanha => modo rajada no teto do número.
+    const rawCampRate =
+      campRateRaw == null
+        ? Math.max(phoneBucketRate, DEFAULT_RATE_PER_SECOND)
+        : Math.max(1, Number(campRateRaw));
     // Rate efetivo desta campanha = min(campanha, bucket global do número).
     const effectiveRate = Math.min(rawCampRate, phoneBucketRate);
     // Para manter N requisições reais por segundo, a concorrência precisa cobrir
