@@ -6,9 +6,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   ArrowLeft, Play, Pause, XCircle, RefreshCw, Copy, Download, Printer, ListRestart, Loader2,
-  Users, Send, CheckCircle2, Eye, MessageSquare, Ban, TrendingUp, Clock, AlertTriangle, Activity, Replace, MousePointerClick,
+  Users, Send, CheckCircle2, Eye, MessageSquare, Ban, TrendingUp, Clock, AlertTriangle, Activity, Replace, MousePointerClick, Gauge,
 } from "lucide-react";
 import { SwapConfigDialog } from "@/components/admin/SwapConfigDialog";
+import { SpeedControlDialog } from "@/components/admin/SpeedControlDialog";
 import { PageHeader } from "@/components/admin/page-header";
 import { ErrorCard } from "@/components/admin/query-state";
 import { StatusBadge } from "@/components/admin/status-badge";
@@ -65,6 +66,7 @@ function Page() {
   const getPrev = useServerFn(getRecipientPreviews);
   const [previewSearch, setPreviewSearch] = useState("");
   const [swapOpen, setSwapOpen] = useState(false);
+  const [speedOpen, setSpeedOpen] = useState(false);
 
   const campQ = useQuery({
     queryKey: ["wa-camp", id],
@@ -433,6 +435,9 @@ function Page() {
                 <Replace className="mr-2 h-4 w-4" />Trocar número/template
               </Button>
             )}
+            <Button size="sm" variant="outline" onClick={() => setSpeedOpen(true)}>
+              <Gauge className="mr-2 h-4 w-4" />Velocidade
+            </Button>
             <Button size="sm" variant="outline" onClick={() => m.dup.mutate()}>
               <Copy className="mr-2 h-4 w-4" />Duplicar
             </Button>
@@ -747,6 +752,15 @@ function Page() {
         </TabsContent>
       </Tabs>
 
+      <SpeedControlDialog
+        open={speedOpen}
+        onOpenChange={setSpeedOpen}
+        campaignId={id}
+        currentRate={(camp as any)?.send_rate_per_min}
+        currentBatch={(camp as any)?.batch_size}
+        currentJitter={(camp as any)?.jitter_ms}
+        onSaved={invalidate}
+      />
       <SwapConfigDialog
         open={swapOpen}
         onOpenChange={setSwapOpen}
