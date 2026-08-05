@@ -33,7 +33,12 @@ export type WaTickOptions = {
   transport?: WaTransport;
   clock?: WaClock;
   instrumentation?: WaInstrumentation;
+  /** Índice da trilha paralela (lane) deste worker. */
+  lane?: number;
+  /** Tempo máximo de execução desta lane (ms). */
+  maxRuntimeMs?: number;
 };
+
 
 const REAL_CLOCK: WaClock = {
   now: () => Date.now(),
@@ -88,26 +93,34 @@ async function logEvent(campaignId: string, event_type: string, message: string,
   } catch {}
 }
 
-async function acquireLease(campaignId: string): Promise<string | null> {
-  const leaseId = crypto.randomUUID();
-  const until = new Date(Date.now() + LEASE_MS).toISOString();
-  const { data, error } = await supabaseAdmin
-    .from("wa_campaigns")
-    .update({ worker_lease_id: leaseId, worker_lease_until: until })
-    .eq("id", campaignId)
-    .or(`worker_lease_until.is.null,worker_lease_until.lt.${new Date().toISOString()}`)
-    .select("id")
-    .maybeSingle();
+// ---------------------------------------------------------------------------
+// Lease por LANE (trilha de trabalho), não por campanha.
+// Modelo Infobip: N workers paralelos consomem a mesma fila da campanha ao
+// mesmo tempo. A exclusão real de duplicidade vem do SKIP LOCKED na reserva
+// de destinatários; a lane só evita que a MESMA trilha rode duas vezes.
+// ---------------------------------------------------------------------------
+const LANE_LEASE_SECONDS = 25;
+
+async function acquireLease(campaignId: string, lane: number): Promise<string | null> {
+  const holder = `${lane}-${crypto.randomUUID()}`;
+  const { data, error } = await supabaseAdmin.rpc("wa_lane_acquire" as any, {
+    _campaign_id: campaignId,
+    _lane: lane,
+    _holder: holder,
+    _seconds: LANE_LEASE_SECONDS,
+  });
   if (error || !data) return null;
-  return leaseId;
+  return holder;
 }
 
-async function releaseLease(campaignId: string) {
-  await supabaseAdmin
-    .from("wa_campaigns")
-    .update({ worker_lease_id: null, worker_lease_until: null })
-    .eq("id", campaignId);
+async function releaseLease(campaignId: string, lane: number, holder: string) {
+  await supabaseAdmin.rpc("wa_lane_release" as any, {
+    _campaign_id: campaignId,
+    _lane: lane,
+    _holder: holder,
+  });
 }
+
 
 export async function finalizeCampaign(campaignId: string) {
   const { data: camp } = await supabaseAdmin
@@ -292,16 +305,18 @@ export async function processCampaignTick(
   const clock = opts?.clock ?? REAL_CLOCK;
   const transport = opts?.transport ?? REAL_TRANSPORT;
   const onRpc = opts?.instrumentation?.onRpc;
+  const lane = Math.max(0, Number(opts?.lane ?? 0));
 
-  const lease = await acquireLease(campaignId);
+  const lease = await acquireLease(campaignId, lane);
   if (!lease) return { processed: 0, done: false, skipped: true };
   let campaignLeaseReleased = false;
 
   const releaseCampaignLeaseOnce = async () => {
     if (campaignLeaseReleased) return;
     campaignLeaseReleased = true;
-    await releaseLease(campaignId);
+    await releaseLease(campaignId, lane, lease);
   };
+
 
   try {
     const { data: camp } = await supabaseAdmin
@@ -467,7 +482,21 @@ export async function processCampaignTick(
     //   1 vaga de concorrência
     const numberMaxRate = Math.max(1, Number((conn as any).maximum_rate_per_second ?? 80));
     const numberGlobalRate = Math.max(1, Number((conn as any).global_rate_per_second ?? numberMaxRate));
-    const phoneBucketRate = Math.min(numberGlobalRate, numberMaxRate);
+    let phoneBucketRate = Math.min(numberGlobalRate, numberMaxRate);
+    // Throttle adaptativo POR NÚMERO: se este número levou 130429/timeout há
+    // pouco, ele (e só ele) trabalha com rate reduzido até expirar.
+    try {
+      const { data: rl } = await supabaseAdmin
+        .from("wa_rate_limits")
+        .select("throttle_rate,throttle_until")
+        .eq("phone_number_id", conn.phone_number_id!)
+        .maybeSingle();
+      const thrUntil = (rl as any)?.throttle_until ? new Date((rl as any).throttle_until).getTime() : 0;
+      const thrRate = Number((rl as any)?.throttle_rate ?? 0);
+      if (thrRate > 0 && thrUntil > Date.now()) {
+        phoneBucketRate = Math.max(1, Math.min(phoneBucketRate, thrRate));
+      }
+    } catch { /* throttle é best-effort */ }
     const campRateRaw = (camp as any).rate_per_second;
     // Sem taxa definida na campanha => modo rajada no teto do número.
     const rawCampRate =
@@ -476,6 +505,9 @@ export async function processCampaignTick(
         : Math.max(1, Number(campRateRaw));
     // Rate efetivo desta campanha = min(campanha, bucket global do número).
     const effectiveRate = Math.min(rawCampRate, phoneBucketRate);
+    // Número de trilhas paralelas desta campanha (workers simultâneos).
+    const laneCount = Math.max(1, Number((camp as any).worker_lanes ?? 4));
+
     // Para manter N requisições reais por segundo, a concorrência precisa cobrir
     // a latência da Graph API. Ex.: 80/s com timeout de ~8s precisa de ~640+
     // requisições em voo; com só 120/200, o sistema envia um bloco e para até
@@ -848,15 +880,28 @@ export async function processCampaignTick(
 
       if (isRateLimit) {
         consecutive429++;
-        if (consecutive429 >= SYSTEMIC_RATE_LIMIT_STREAK) {
-          systemicPause = {
-            reason: "rate_limit",
-            message: `Auto-pausada: ${consecutive429} erros 130429 consecutivos — reduzir rate`,
-          };
+        // NÃO pausa a campanha: reduz temporariamente APENAS este número.
+        // Depois do throttle expirar, o número volta ao teto progressivamente.
+        if (consecutive429 === 1 || consecutive429 % SYSTEMIC_RATE_LIMIT_STREAK === 0) {
+          try {
+            const { data: newRate } = await supabaseAdmin.rpc("wa_throttle_number" as any, {
+              _phone_number_id: phoneNumberId,
+              _factor: 0.6,
+              _seconds: 20,
+              _reason: `130429 x${consecutive429}`,
+            });
+            await logEvent(
+              campaignId,
+              "number_throttled",
+              `130429 no número ${phoneNumberId} — reduzindo temporariamente para ${newRate ?? "?"} msg/s (campanha segue ativa)`,
+              { phone_number_id: phoneNumberId, streak: consecutive429, new_rate: newRate },
+            );
+          } catch { /* best-effort */ }
         }
       } else {
         consecutive429 = 0;
       }
+
 
       if (isTokenErr) {
         systemicPause = {
@@ -925,10 +970,12 @@ export async function processCampaignTick(
     let localGlobalTokens = 0;
     let lastTokenWaitUntil = 0;
 
-    // Pacing LOCAL da campanha: nextCampaignPermitAt garante spacing uniforme.
-    // NÃO começa "cheio" — o primeiro dispatch é imediato, os demais respeitam spacing.
-    const spacingMs = 1000 / rawCampRate;
+    // Pacing LOCAL da lane: cada trilha paralela cobre 1/laneCount do rate da
+    // campanha; somadas, as lanes chegam ao rate configurado. O teto real
+    // continua sendo o bucket global do número (wa_try_consume_tokens).
+    const spacingMs = (1000 * laneCount) / rawCampRate;
     let nextCampaignPermitAt = Date.now();
+
 
     // Vagas de concorrência global do número (acquire atômico, release em batch).
     let localGlobalSlots = 0;
@@ -1046,8 +1093,10 @@ export async function processCampaignTick(
     // Bootstrap
     await reserveNextChunk();
 
+    const laneRuntimeMs = Math.max(2000, Number(opts?.maxRuntimeMs ?? MAX_TICK_RUNTIME_MS));
     while (!systemicPause) {
-      if (Date.now() - tickStart > MAX_TICK_RUNTIME_MS) break;
+      if (Date.now() - tickStart > laneRuntimeMs) break;
+
       flushTelemetryIfNeeded();
       // libera slots consumidos em batch (~1×/s)
       if (Date.now() - lastSlotFlushAt >= 1000) {

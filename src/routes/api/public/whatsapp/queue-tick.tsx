@@ -27,9 +27,37 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
         const holder = `${source}-${crypto.randomUUID()}`;
         const host = request.headers.get("host");
         const proto = request.headers.get("x-forwarded-proto") ?? (host?.includes("localhost") ? "http" : "https");
-        const chainUrl = host
+        const selfUrl = host
           ? new URL("/api/public/whatsapp/queue-tick", `${proto}://${host}`).toString()
           : FALLBACK_CHAIN_URL;
+        const chainUrl = selfUrl;
+
+        let body: any = null;
+        try { body = await request.clone().json(); } catch { /* sem body */ }
+
+        // ------------------------------------------------------------------
+        // MODO WORKER (lane): esta requisição É um worker paralelo de uma
+        // campanha específica. Não passa pelo lease global nem pela
+        // manutenção — só consome a fila continuamente.
+        // ------------------------------------------------------------------
+        if (body?.campaign_id) {
+          const campaignId = String(body.campaign_id);
+          const lane = Math.max(0, Number(body.lane ?? 0));
+          const budget = Math.max(1, Math.min(20000, Number(body.budget ?? 5000)));
+          try {
+            const r = await processCampaignTick(campaignId, budget, {
+              lane,
+              maxRuntimeMs: Math.max(2000, Math.min(20000, Number(body.runtime_ms ?? 12000))),
+            });
+            return Response.json({ ok: true, mode: "lane", campaign_id: campaignId, lane, ...r });
+          } catch (e: any) {
+            return Response.json(
+              { ok: false, mode: "lane", campaign_id: campaignId, lane, error: e?.message ?? String(e) },
+              { status: 500 },
+            );
+          }
+        }
+
 
         // -------- Lease global: impede sobreposição entre cron e chain --------
         const { data: acquired } = await supabaseAdmin.rpc(
@@ -80,23 +108,31 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
               let busy = false;
               if (connIds.length > 0) {
                 const recentIso = new Date(Date.now() - 30 * 1000).toISOString();
-                const { data: activeCamps } = await supabaseAdmin
+                const { data: runningCamps } = await supabaseAdmin
                   .from("wa_campaigns")
                   .select("id")
                   .in("connection_id", connIds)
-                  .eq("status", "running")
-                  .gt("worker_lease_until", nowIso);
-                if ((activeCamps?.length ?? 0) > 0) busy = true;
-                if (!busy) {
-                  const { count: procCount } = await supabaseAdmin
-                    .from("campaign_recipients")
-                    .select("id", { count: "exact", head: true })
-                    .in("campaign_id", (activeCamps ?? []).map((c: any) => c.id) as any)
-                    .eq("status", "processing")
-                    .gte("last_attempt_at", recentIso);
-                  if ((procCount ?? 0) > 0) busy = true;
+                  .eq("status", "running");
+                const campIds = (runningCamps ?? []).map((c: any) => c.id as string);
+                if (campIds.length > 0) {
+                  const { data: liveLanes } = await supabaseAdmin
+                    .from("wa_worker_lanes")
+                    .select("campaign_id")
+                    .in("campaign_id", campIds)
+                    .gt("lease_until", nowIso);
+                  if ((liveLanes?.length ?? 0) > 0) busy = true;
+                  if (!busy) {
+                    const { count: procCount } = await supabaseAdmin
+                      .from("campaign_recipients")
+                      .select("id", { count: "exact", head: true })
+                      .in("campaign_id", campIds as any)
+                      .eq("status", "processing")
+                      .gte("last_attempt_at", recentIso);
+                    if ((procCount ?? 0) > 0) busy = true;
+                  }
                 }
               }
+
               if (busy) continue;
               await supabaseAdmin
                 .from("wa_rate_limits")
@@ -200,13 +236,16 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
 
           const staleCutoff = new Date(Date.now() - 60 * 1000).toISOString();
           const nowIso2 = new Date().toISOString();
+          // Campanhas com alguma lane ativa não entram no auto-heal (podem ter
+          // requisições ainda em voo).
           const { data: activeLeased } = await supabaseAdmin
-            .from("wa_campaigns")
-            .select("id")
-            .in("status", ["running", "paused"])
-            .not("worker_lease_until", "is", null)
-            .gt("worker_lease_until", nowIso2);
-          const activeLeaseIds = (activeLeased ?? []).map((c: any) => c.id as string);
+            .from("wa_worker_lanes")
+            .select("campaign_id")
+            .gt("lease_until", nowIso2);
+          const activeLeaseIds = [
+            ...new Set((activeLeased ?? []).map((c: any) => c.campaign_id as string)),
+          ];
+
 
           let healQuery = supabaseAdmin
             .from("campaign_recipients")
@@ -236,44 +275,79 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
 
           const { data: running } = await supabaseAdmin
             .from("wa_campaigns")
-            .select("id, rate_per_second")
-            .eq("status", "running");
+            .select("id, rate_per_second, worker_lanes, priority")
+            .eq("status", "running")
+            .order("priority", { ascending: false });
 
           const TICK_WINDOW_S = 12;
           const results: any[] = [];
 
           // O lease global só protege a etapa de manutenção/seleção do tick.
-          // O controle contra duplicidade real fica no lease por campanha +
+          // O controle contra duplicidade real fica no lease por lane +
           // SKIP LOCKED dos destinatários. Liberar aqui evita que uma execução
           // fique segurando o cron enquanto espera respostas da Graph API.
           await releaseTickLeaseOnce();
 
+          // ------------------------------------------------------------------
+          // FAN-OUT: cada campanha ativa recebe N workers paralelos (lanes).
+          // Cada lane é uma requisição independente para este mesmo endpoint,
+          // rodando em outro isolate — é isso que remove o gargalo de "um
+          // worker por campanha por tick".
+          // ------------------------------------------------------------------
+          const runLane = async (campaignId: string, lane: number, budget: number) => {
+            if (lane === 0) {
+              // lane 0 roda in-process (aproveita este worker)
+              return processCampaignTick(campaignId, budget, { lane, maxRuntimeMs: 12000 });
+            }
+            const res = await fetch(selfUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-cron-secret": CHAIN_APIKEY,
+                apikey: CHAIN_APIKEY,
+                "x-tick-source": "lane",
+              },
+              body: JSON.stringify({ campaign_id: campaignId, lane, budget, runtime_ms: 12000 }),
+            });
+            return res.json();
+          };
+
+          const jobs: Promise<void>[] = [];
           for (const c of running ?? []) {
-            // Rate default = 1 msg/s quando a campanha não define; qualquer valor
-            // explícito (inclusive baixo) é respeitado sem clamp para cima.
-            const rps = Math.max(1, Number((c as any).rate_per_second ?? 1));
-            const reservationBudget = Math.min(5000, rps * TICK_WINDOW_S);
-            try {
-              const r = await processCampaignTick(c.id, reservationBudget);
-              results.push({ id: c.id, ...r });
-            } catch (e: any) {
-              const msg = e?.message ?? String(e);
-              results.push({ id: c.id, error: msg });
-              // Registro visível na campanha: last_error + timeline event.
-              try {
-                await supabaseAdmin
-                  .from("wa_campaigns")
-                  .update({ last_error: `tick_failed: ${msg}` })
-                  .eq("id", c.id);
-                await supabaseAdmin.from("campaign_timeline").insert({
-                  campaign_id: c.id,
-                  event_type: "tick_failed",
-                  message: `Tick falhou: ${msg}`,
-                  payload: { source },
-                });
-              } catch { /* best-effort */ }
+            const rps = Math.max(1, Number((c as any).rate_per_second ?? 80));
+            const lanes = Math.max(1, Math.min(12, Number((c as any).worker_lanes ?? 4)));
+            const reservationBudget = Math.max(
+              50,
+              Math.min(20000, Math.ceil((rps * TICK_WINDOW_S) / lanes)),
+            );
+            for (let lane = 0; lane < lanes; lane++) {
+              jobs.push(
+                (async () => {
+                  try {
+                    const r = await runLane(c.id, lane, reservationBudget);
+                    results.push({ id: c.id, lane, ...(r as any) });
+                  } catch (e: any) {
+                    const msg = e?.message ?? String(e);
+                    results.push({ id: c.id, lane, error: msg });
+                    try {
+                      await supabaseAdmin
+                        .from("wa_campaigns")
+                        .update({ last_error: `tick_failed: ${msg}` })
+                        .eq("id", c.id);
+                      await supabaseAdmin.from("campaign_timeline").insert({
+                        campaign_id: c.id,
+                        event_type: "tick_failed",
+                        message: `Worker (lane ${lane}) falhou: ${msg}`,
+                        payload: { source, lane },
+                      });
+                    } catch { /* best-effort */ }
+                  }
+                })(),
+              );
             }
           }
+          await Promise.all(jobs);
+
 
 
           const hadWork = (running?.length ?? 0) > 0;
