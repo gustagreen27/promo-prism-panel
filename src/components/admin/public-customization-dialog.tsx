@@ -791,7 +791,36 @@ function DispatchCard({
             <span className="text-xs font-medium">Personalizar</span>
           </label>
         </div>
+
+        {(() => {
+          const sent = Number(wa.sent_count ?? 0);
+          const total = Math.max(sent, Number(wa.total_recipients ?? 0));
+          const pct = total ? Math.min(100, Math.round((sent / total) * 100)) : 0;
+          return (
+            <div className="mt-3 space-y-1.5">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                <span className="font-medium text-foreground">
+                  {sent.toLocaleString("pt-BR")} / {total.toLocaleString("pt-BR")}
+                </span>
+                <span className="text-muted-foreground/40">·</span>
+                <span>{pct}% real</span>
+                <span className="ml-auto inline-flex items-center gap-2">
+                  <span className="text-emerald-600 dark:text-emerald-400">
+                    {Number(wa.delivered_count ?? 0).toLocaleString("pt-BR")} entregues
+                  </span>
+                  <span className="text-rose-600 dark:text-rose-400">
+                    {Number(wa.failed_count ?? 0).toLocaleString("pt-BR")} falhas
+                  </span>
+                </span>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          );
+        })()}
       </CardHeader>
+
       <CardContent className={"space-y-4 pt-4 " + (enabled ? "" : "opacity-60")}>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div className="space-y-1">
