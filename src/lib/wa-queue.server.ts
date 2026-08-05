@@ -33,7 +33,12 @@ export type WaTickOptions = {
   transport?: WaTransport;
   clock?: WaClock;
   instrumentation?: WaInstrumentation;
+  /** Índice da trilha paralela (lane) deste worker. */
+  lane?: number;
+  /** Tempo máximo de execução desta lane (ms). */
+  maxRuntimeMs?: number;
 };
+
 
 const REAL_CLOCK: WaClock = {
   now: () => Date.now(),
