@@ -55,12 +55,18 @@ export function SpeedControlDialog({
           jitter_ms: Math.max(0, Math.min(60000, Math.round(jitter))),
         },
       }),
-    onSuccess: () => {
-      toast.success("Velocidade atualizada — vale já no próximo ciclo");
+    onSuccess: (r: any) => {
+      const eff = r?.effective_rate_per_second;
+      toast.success(
+        eff
+          ? `Velocidade atualizada — ~${eff} msg/s efetivo (vale no próximo ciclo)`
+          : "Velocidade atualizada — vale já no próximo ciclo",
+      );
       onSaved?.();
       onOpenChange(false);
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao atualizar velocidade"),
+
   });
 
   return (

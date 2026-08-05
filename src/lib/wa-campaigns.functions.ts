@@ -583,21 +583,44 @@ export const updateCampaignSpeed = createServerFn({ method: "POST" })
     await assertAdmin(context);
     const { supabase, userId } = context as any;
     const { id, ...patch } = data;
-    const clean = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined));
+    const clean: Record<string, unknown> = Object.fromEntries(
+      Object.entries(patch).filter(([, v]) => v !== undefined),
+    );
+    // O motor de disparo usa rate_per_second (token bucket). Mantemos
+    // send_rate_per_min como valor exibido e derivamos o rate real daqui.
+    clean.rate_per_second = Math.max(1, Math.ceil(data.send_rate_per_min / 60));
     const { data: row, error } = await supabase
       .from("wa_campaigns")
       .update(clean)
       .eq("id", id)
-      .select("id, send_rate_per_min, batch_size, jitter_ms")
+      .select("id, send_rate_per_min, rate_per_second, batch_size, jitter_ms, connection_id")
       .single();
     if (error) throw error;
+    // Teto real do número (bucket global compartilhado por phone_number_id).
+    let effective_rate_per_second = row.rate_per_second as number;
+    if (row.connection_id) {
+      const { data: conn } = await supabase
+        .from("whatsapp_connections")
+        .select("global_rate_per_second, maximum_rate_per_second")
+        .eq("id", row.connection_id)
+        .maybeSingle();
+      if (conn) {
+        const cap = Math.min(
+          Math.max(1, Number((conn as any).global_rate_per_second ?? 80)),
+          Math.max(1, Number((conn as any).maximum_rate_per_second ?? 80)),
+        );
+        effective_rate_per_second = Math.min(effective_rate_per_second, cap);
+      }
+    }
+
     try {
       await supabase.from("campaign_timeline").insert({
         campaign_id: id,
         event_type: "speed_update",
-        message: `Velocidade ajustada: ${row.send_rate_per_min} msg/min · lote ${row.batch_size ?? "—"} · jitter ${row.jitter_ms ?? 0}ms`,
-        metadata: { ...clean, by: userId },
+        message: `Velocidade ajustada: ${row.send_rate_per_min} msg/min (~${effective_rate_per_second} msg/s efetivo) · lote ${row.batch_size ?? "—"} · jitter ${row.jitter_ms ?? 0}ms`,
+        metadata: { ...clean, effective_rate_per_second, by: userId },
       });
     } catch { /* timeline é best-effort */ }
-    return row;
+    return { ...row, effective_rate_per_second };
+
   });
