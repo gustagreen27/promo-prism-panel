@@ -1,114 +1,85 @@
-# Personalização pública completa por disparo
+# Arquitetura de disparo modelo Infobip
 
-## Novas tabelas (migration única)
+Trocar o modelo atual (1 worker por campanha, acordado por cron a cada tick) por
+**submissão imediata + fila persistente + múltiplos workers paralelos por número**,
+com status reais separados (fila / aceito pela Meta / entregue / lido / falha).
 
-```
-campaign_public_settings          -- 1:1 com campaigns
-  campaign_id (PK, FK campaigns)
-  enabled boolean                 -- master switch
-  metrics_mode text               -- 'real' | 'replace' | 'merge' (default 'real')
-  custom_totals jsonb             -- { clicks, countries_count, cities_count, devices_count }
-  clicks_series jsonb             -- [{ت, count }]
-  hourly_series jsonb             -- [{ hour, count }]
-  updated_at, updated_by
+## 1. Submissão imediata ("Campanha submetida com sucesso")
 
-public_metrics_override           -- 1:N por chave (país/cidade/dispositivo/navegador)
-  id, campaign_id, kind ('country'|'city'|'device'|'browser')
-  label, count, position
+- `Iniciar disparo` passa a chamar um único endpoint de submissão que:
+  1. valida campanha, número(s) e template;
+  2. dispara a inserção em massa dos destinatários (já feita em SQL, roda em bloco,
+     sem laço na interface) — para bases grandes a inserção é dividida em blocos
+     encadeados no servidor, não na tela;
+  3. gera um `bulk_id` e responde na hora `{ bulk_id, total, status: "queued" }`;
+  4. acorda os workers imediatamente (sem esperar o próximo ciclo).
+- A tela mostra "Campanha submetida com sucesso — processamento em alta velocidade"
+  assim que a resposta chega. Nada de aguardar percorrer contatos.
 
-campaign_public_dispatches        -- 1:1 com wa_campaigns (por disparo)
-  wa_campaign_id (PK, FK wa_campaigns)
-  campaign_id (FK, para RLS/listagem)
-  enabled boolean
-  mode text                       -- 'real' | 'fixed' | 'auto'
-  public_name text, public_status text
-  fixed jsonb                     -- { total, sent, delivered, failed, percent, started_at, eta_at, speed_label, updated_at }
-  updated_at, updated_by
+## 2. Fila persistente
 
-public_progress_simulation        -- 1:1 com wa_campaigns (modo auto)
-  wa_campaign_id (PK)
-  start_at, end_at, duration_sec, refresh_interval_sec
-  sent_start, sent_end
-  delivered_ratio, failed_ratio   -- ou explícitos delivered_start/end
-  percent_start, percent_end
-  growth text                     -- 'linear'|'random'|'batches'|'stepped'|'real_plus'|'manual'
-  growth_params jsonb             -- { min_step, max_step, batch_size, batch_interval, offset }
-  runtime jsonb                   -- { active, started_at, paused_at, accumulated_pause_ms, manual_value }
-  pauses jsonb                    -- [{ after_sent, duration_sec, status_label, recalc_eta }]
-  status_label text
-```
+Fila continua em Postgres (é a única opção compatível com a infraestrutura atual:
+o backend roda em Workers/edge, sem Redis). O que muda:
 
-Todas com RLS por workspace (via `campaigns.workspace_id`), GRANT authenticated + service_role, e SELECT anon na leitura pública via server function publishable.
+- reserva de destinatários com `FOR UPDATE SKIP LOCKED` em blocos grandes;
+- índice parcial por `(campaign_id, status, route_id)` para reserva O(1);
+- idempotência: cada destinatário só sai da fila uma vez (`claim_token` único) e
+  nenhuma linha com `meta_message_id` preenchido pode ser reenviada;
+- retomada automática: linhas presas em `processing` voltam para a fila por idade.
 
-## Server functions (src/lib/public-overrides.functions.ts — novo)
+## 3. Workers paralelos (fim do gargalo de 1 lane por campanha)
 
-- `getCampaignPublicSettings(campaignId)` — settings + dispatches + simulations + metric items (admin)
-- `updateCampaignPublicSettings(campaignId, patch)` — enable/disable master, metrics_mode, totals, séries
-- `upsertPublicDispatch(waCampaignId, patch)` — nome/status/mode/fixed
-- `upsertPublicSimulation(waCampaignId, patch)` — parâmetros de progressão automática
-- `controlPublicSimulation(waCampaignId, action)` — start/pause/resume/restart/sync_real/disable
-- `upsertMetricOverride(id?, campaignId, kind, label, count, position)`
-- `deleteMetricOverride(id)`
-- `reorderMetricOverrides(campaignId, kind, ids[])`
-- `duplicatePublicDispatchConfig(fromWaId, toWaId)`
-- `clearAllPublicOverrides(campaignId)`
+- Remover o lease único por campanha. O lease passa a ser por **lane**:
+  `(campaign_id, route_id, lane_index)`, com N lanes por número.
+- Cada lane roda em loop contínuo e se re-encadeia sozinha enquanto houver fila;
+  o cron vira apenas *watchdog* (repõe lanes mortas), não o motor.
+- Distribuição automática entre todos os números da campanha (rotas), cada número
+  com seu próprio limitador e concorrência. Sem teto global: 5 números de 80 msg/s
+  = 400 req/s.
 
-`getPublicCampaignReport` (existente em campaigns.functions.ts) lê as novas tabelas via cliente publishable e aplica overrides. Retorna `server_now` para cálculo client-side da simulação.
+## 4. Status reais
 
-## Cálculo da simulação (src/lib/public-simulation.ts — refatorar)
+| Estado | Significado |
+|---|---|
+| `queued` | na fila, ainda não submetido à Meta |
+| `accepted` | Meta retornou 200 + `wamid` (é o que conta como **Enviado**) |
+| `delivered` | webhook |
+| `read` | webhook |
+| `failed` | erro definitivo da API ou webhook |
 
-`computeDispatchSnapshot(simulation, realDispatch, serverNow)` retorna
-`{ sent, delivered, failed, percent, status, eta_at, updated_at }`
-aplicando growth kind, pausas programadas e ajuste `real_plus`. Idêntico ao atual, mas por-disparo.
+Contadores e páginas (admin e pública) passam a ler `accepted` como "enviado".
+Nenhum número simulado — remoção do caminho de simulação nos relatórios reais.
 
-## UI (/admin/campaigns/:id)
+## 5. Controle de erro por escopo
 
-Substituir o botão único por página/aba **"Personalização pública"** com:
+- `130429` / timeout / 5xx: reduz **apenas o número afetado** (throttle adaptativo),
+  recuperação progressiva depois de estabilizar. Campanha não pausa.
+- Erro definitivo de destinatário: marca `failed` e segue, sem afetar velocidade.
+- `132015` / `132016`: bloqueia **apenas a rota/template** afetado; outras rotas seguem.
+- Retry com backoff só para erro temporário; após N tentativas vai para
+  dead-letter (`failed` + motivo), sem loop infinito.
 
-1. **Cabeçalho** — switch master, badge "Ativa", botões: Ver pública, Pré-visualizar, Restaurar reais, Limpar tudo.
-2. **Métricas gerais** — toggle modo (real/substituir/mesclar); totais numéricos; editor de séries; tabelas CRUD (add/edit/delete/reordenar drag) para países, cidades, dispositivos, navegadores.
-3. **Disparos vinculados** — lista de `wa_campaigns` da campanha; cada card expansível com:
-   - Modo: Real | Fixo | Automático
-   - **Fixo**: nome público, status público (select 10 opções + custom), total, enviados, entregues, falhas, %, início, ETA, velocidade, updated_at
-   - **Automático**: todos os campos de tempo (início/fim/duração/intervalo), taxas por s/min/h, valores início/fim (enviados/entregues/falhas/%), curva de crescimento + params, pausas programadas (após N envios, duração, status, recalc ETA), controles run/pause/resume/restart/sync/disable, preview projeção +5m/+30m/+1h/+4h
-   - Ação: duplicar config para outro disparo
-4. **Rodapé** — Salvar, cancelar, última atualização.
+## 6. Prioridade e tempo real
 
-Componentes novos:
-- `src/components/admin/public-customization/index.tsx` (container + tabs)
-- `.../general-metrics-tab.tsx`
-- `.../metric-list-editor.tsx` (CRUD + reorder)
-- `.../dispatch-card.tsx` (por wa_campaign)
-- `.../dispatch-fixed-form.tsx`
-- `.../dispatch-auto-form.tsx`
-- `.../simulation-preview.tsx`
+- Campanhas marcadas como urgentes recebem mais lanes na disputa por capacidade.
+- Painel em tempo real por realtime/polling curto sobre os contadores reais.
+- Webhooks continuam num caminho independente dos workers de envio.
 
-## Página pública (src/routes/campaigns.$id.tsx)
+## Detalhes técnicos
 
-- Ler settings + dispatches + simulations + metric items via `getPublicCampaignReport`
-- Para cada bloco de disparo: se `enabled && mode='fixed'` → usar `fixed`; se `mode='auto'` → hook `useDispatchSimulation` recalcula a cada `refresh_interval_sec`; senão dados reais
-- Métricas gerais: aplicar `metrics_mode` (replace/merge) por chave
-- Nunca ler/escrever em wa_campaigns/campaign_recipients
+- Migração: novos campos de status/claim em `campaign_recipients`, tabela de lanes
+  (`wa_worker_lanes`), throttle por número em `wa_rate_limits`, índices parciais,
+  RPC de reserva com `SKIP LOCKED` por rota.
+- Código: `src/lib/wa-queue.server.ts` (motor por lane), novo
+  `src/lib/wa-submit.functions.ts` (submissão + bulk_id), `queue-tick.tsx` vira
+  watchdog/lane-runner, ajustes nos contadores em `wa-campaign-runner.functions.ts`,
+  `campaigns.$id.tsx` (público) e telas de admin.
+- Compatibilidade: campanhas já em andamento continuam funcionando; os status
+  antigos são mapeados para os novos na migração.
 
-## Isolamento operacional
+## Entrega em fases
 
-Nenhum código em wa-campaign-runner, wa-queue, webhooks, admin.disparos lê essas tabelas. Toda escrita passa por server fns novas com `requireSupabaseAuth` + checagem `has_role('admin')` ou membership do workspace.
-
-## Arquivos afetados
-
-Novos:
-- `supabase/migrations/<timestamp>_public_customization.sql`
-- `src/lib/public-overrides.functions.ts`
-- `src/components/admin/public-customization/*` (7 arquivos)
-- `src/hooks/use-dispatch-simulation.ts`
-
-Editados:
-- `src/lib/public-simulation.ts` — generalizar por-disparo
-- `src/lib/campaigns.functions.ts` — `getPublicCampaignReport` lê novas tabelas
-- `src/routes/campaigns.$id.tsx` — aplicar overrides por bloco
-- `src/routes/_authenticated/admin.campaigns.$id.tsx` — abrir novo painel
-- `src/routes/_authenticated/admin.campanhas.tsx` — badge "personalização ativa"
-
-## Fora de escopo
-
-Nenhuma alteração em: wa_campaigns, campaign_recipients, wa_campaign_runner, wa-queue, webhooks, edge functions, triggers de campanha, RLS existente, `/admin/disparos`.
+1. Submissão imediata + bulk_id + mensagem na tela.
+2. Lanes paralelas por número e fim do lease único.
+3. Status reais separados e contadores/relatórios.
+4. Throttle adaptativo por número, DLQ, prioridade.
