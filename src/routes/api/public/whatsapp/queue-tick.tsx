@@ -27,9 +27,37 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
         const holder = `${source}-${crypto.randomUUID()}`;
         const host = request.headers.get("host");
         const proto = request.headers.get("x-forwarded-proto") ?? (host?.includes("localhost") ? "http" : "https");
-        const chainUrl = host
+        const selfUrl = host
           ? new URL("/api/public/whatsapp/queue-tick", `${proto}://${host}`).toString()
           : FALLBACK_CHAIN_URL;
+        const chainUrl = selfUrl;
+
+        let body: any = null;
+        try { body = await request.clone().json(); } catch { /* sem body */ }
+
+        // ------------------------------------------------------------------
+        // MODO WORKER (lane): esta requisição É um worker paralelo de uma
+        // campanha específica. Não passa pelo lease global nem pela
+        // manutenção — só consome a fila continuamente.
+        // ------------------------------------------------------------------
+        if (body?.campaign_id) {
+          const campaignId = String(body.campaign_id);
+          const lane = Math.max(0, Number(body.lane ?? 0));
+          const budget = Math.max(1, Math.min(20000, Number(body.budget ?? 5000)));
+          try {
+            const r = await processCampaignTick(campaignId, budget, {
+              lane,
+              maxRuntimeMs: Math.max(2000, Math.min(20000, Number(body.runtime_ms ?? 12000))),
+            });
+            return Response.json({ ok: true, mode: "lane", campaign_id: campaignId, lane, ...r });
+          } catch (e: any) {
+            return Response.json(
+              { ok: false, mode: "lane", campaign_id: campaignId, lane, error: e?.message ?? String(e) },
+              { status: 500 },
+            );
+          }
+        }
+
 
         // -------- Lease global: impede sobreposição entre cron e chain --------
         const { data: acquired } = await supabaseAdmin.rpc(
