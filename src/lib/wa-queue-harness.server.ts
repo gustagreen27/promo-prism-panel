@@ -44,6 +44,7 @@ async function setup(params: {
   globalMaxConc: number;
   campConc: number;
   numberMaxRate: number;
+  lanes?: number;
 }): Promise<Setup> {
   const tag = `harness-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
   const phoneNumberId = tag;
@@ -91,6 +92,7 @@ async function setup(params: {
       status: "running",
       rate_per_second: params.rate,
       max_concurrency: params.campConc,
+      worker_lanes: Math.max(1, Number(params.lanes ?? 1)),
       total_recipients: params.recipients,
       started_at: new Date().toISOString(),
       created_by: ADMIN_USER_ID,
