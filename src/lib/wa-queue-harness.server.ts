@@ -139,16 +139,19 @@ export async function runScenario(params: {
   globalMaxConc?: number;
   numberMaxRate?: number;
   reservationBudget?: number;
+  lanes?: number;
 }) {
   const campConc = params.campConc ?? Math.max(30, params.rate * 2);
   const globalMaxConc = params.globalMaxConc ?? 300;
   const numberMaxRate = params.numberMaxRate ?? 80;
+  const lanes = Math.max(1, Math.min(12, Number(params.lanes ?? 1)));
   const s = await setup({
     rate: params.rate,
     recipients: params.recipients,
     globalMaxConc,
     campConc,
     numberMaxRate,
+    lanes,
   });
 
   const transport = buildFakeTransport(params.latencyMs);
@@ -157,22 +160,37 @@ export async function runScenario(params: {
 
   const tickResults: any[] = [];
   const tickGaps: number[] = [];
+  const enqueuedAt = new Date().toISOString();
+  const runStartedAt = Date.now();
   let lastTickEnd = 0;
   try {
     for (let i = 0; i < params.ticks; i++) {
       if (lastTickEnd) tickGaps.push(Date.now() - lastTickEnd);
       const t0 = Date.now();
-      const res = await processCampaignTick(s.campaignId, params.reservationBudget ?? 5000, {
-        transport,
-        instrumentation,
+      const laneResults = await Promise.all(
+        Array.from({ length: lanes }, (_, laneIdx) =>
+          processCampaignTick(s.campaignId, params.reservationBudget ?? 5000, {
+            transport,
+            instrumentation,
+            lane: laneIdx,
+          }).catch((err: any) => ({ processed: 0, done: false, error: err?.message ?? String(err) } as any)),
+        ),
+      );
+      const processed = laneResults.reduce((a, r: any) => a + Number(r.processed ?? 0), 0);
+      tickResults.push({
+        processed,
+        lanes: laneResults.map((r: any) => r.processed ?? 0),
+        done: laneResults.every((r: any) => r.done),
+        duration_ms: Date.now() - t0,
       });
-      tickResults.push({ ...res, duration_ms: Date.now() - t0 });
       lastTickEnd = Date.now();
-      if (res.done) break;
+      if (laneResults.every((r: any) => r.done)) break;
     }
   } catch (err: any) {
     tickResults.push({ error: err?.message ?? String(err) });
   }
+  const runDurationMs = Date.now() - runStartedAt;
+
 
   const { data: events } = await supabaseAdmin
     .from("campaign_timeline")
