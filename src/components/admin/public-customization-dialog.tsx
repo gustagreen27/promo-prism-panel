@@ -62,6 +62,7 @@ import {
   type DispatchSimRow,
 } from "@/lib/dispatch-simulation";
 import {
+  computeGeneratedClicks,
   seedFromString,
   type ClicksGeneratorConfig,
 } from "@/lib/public-clicks-generator";
