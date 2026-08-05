@@ -656,6 +656,63 @@ function DispatchCard({
   const [fSpeed, setFSpeed] = useState<string>(f.speed_label ?? "");
 
   const [dupTo, setDupTo] = useState<string>("");
+  const [contRate, setContRate] = useState<string>("120");
+
+  // "Continuar do real": mantém os números reais como ponto de partida e segue
+  // a progressão só na página pública (dados reais + simulados), mesmo com o
+  // disparo real pausado. Nunca toca no disparo real.
+  const continueFromReal = useMutation({
+    mutationFn: async () => {
+      const rate = Math.max(1, Number(contRate || 120));
+      const realSent = Number(wa.sent_count ?? 0);
+      const total = Math.max(realSent, Number(wa.total_recipients ?? 0));
+      const realDelivered = Number(wa.delivered_count ?? 0);
+      const realFailed = Number(wa.failed_count ?? 0);
+      const remaining = Math.max(0, total - realSent);
+      const durationSec = Math.max(60, Math.ceil((remaining / rate) * 60));
+      const dRatio = realSent > 0 ? Math.min(1, realDelivered / realSent) : 0.9;
+      const fRatio = realSent > 0 ? Math.min(1, realFailed / realSent) : 0.05;
+
+      await upsertFn({
+        data: {
+          waCampaignId: wa.id,
+          campaignId,
+          enabled: true,
+          mode: "auto" as const,
+          public_name: publicName || null,
+          public_status: publicStatus || null,
+        },
+      });
+      await simUpsertFn({
+        data: {
+          waCampaignId: wa.id,
+          campaignId,
+          start_at: new Date().toISOString(),
+          end_at: null,
+          duration_sec: durationSec,
+          refresh_interval_sec: 5,
+          sent_start: realSent,
+          sent_end: total,
+          delivered_ratio: dRatio,
+          failed_ratio: fRatio,
+          delivered_start: realDelivered,
+          failed_start: realFailed,
+          growth: "random" as const,
+          growth_params: { floor_real: true, random_min: 0.97, random_max: 1.03 },
+          pauses: [],
+          status_label: "Em execução",
+        },
+      });
+      await simCtrlFn({ data: { waCampaignId: wa.id, action: "start" as const } });
+    },
+    onSuccess: () => {
+      setEnabled(true);
+      setMode("auto");
+      toast.success("Continuando do ponto real na página pública");
+      onChange();
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
 
   const save = useMutation({
     mutationFn: () =>
@@ -821,6 +878,36 @@ function DispatchCard({
             }
           />
         )}
+
+        <section className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <Play className="h-3.5 w-3.5 text-emerald-600" />
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Continuar do real (real + simulado)
+            </div>
+          </div>
+          <p className="mb-3 text-[11px] text-muted-foreground">
+            Parte exatamente dos números reais de agora ({Number(wa.sent_count ?? 0).toLocaleString("pt-BR")} de{" "}
+            {Number(wa.total_recipients ?? 0).toLocaleString("pt-BR")}) e segue avançando só na página
+            pública — mesmo com o disparo real pausado. Se o real voltar a andar, o público acompanha
+            (nunca volta atrás).
+          </p>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="w-40 space-y-1">
+              <Label className="text-xs">Ritmo público (msg/min)</Label>
+              <Input value={contRate} onChange={(e) => setContRate(e.target.value)} />
+            </div>
+            <Button
+              size="sm"
+              className="bg-emerald-600 hover:bg-emerald-600/90"
+              disabled={continueFromReal.isPending}
+              onClick={() => continueFromReal.mutate()}
+            >
+              <Play className="mr-1 h-4 w-4" /> Continuar daqui
+            </Button>
+          </div>
+        </section>
+
 
         <div className="-mx-4 flex flex-wrap items-center gap-2 border-t bg-muted/20 px-4 py-3 sm:-mx-6 sm:px-6">
           <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
