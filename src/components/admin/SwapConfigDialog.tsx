@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -36,10 +36,18 @@ export function SwapConfigDialog({ open, onOpenChange, campaign, onSuccess }: Sw
   const [rate, setRate] = useState<number>(30);
   const [resume, setResume] = useState<boolean>(true);
   const [prevBodyVarCount, setPrevBodyVarCount] = useState<number>(0);
+  const initializedCampaignId = useRef<string | null>(null);
 
-  // Reset when opened
+  // Initialize once per dialog opening. The campaign query polls in the
+  // background and returns a new object on every refresh; resetting from that
+  // object would immediately undo a template selected by the user.
   useEffect(() => {
-    if (!open || !campaign) return;
+    if (!open) {
+      initializedCampaignId.current = null;
+      return;
+    }
+    if (!campaign?.id || initializedCampaignId.current === campaign.id) return;
+    initializedCampaignId.current = campaign.id;
     setConnectionId(campaign.connection_id ?? "");
     setTemplateId(campaign.template_id ?? "");
     const tv = (campaign.template_variables ?? campaign.variables_mapping ?? {}) as Record<string, string>;
@@ -53,7 +61,7 @@ export function SwapConfigDialog({ open, onOpenChange, campaign, onSuccess }: Sw
     setHeaderMediaUrl(String(tv._header_image_url ?? ""));
     setRate(Number(campaign.send_rate_per_min ?? 30));
     setResume(true);
-  }, [open, campaign]);
+  });
 
   // Load numbers
   useEffect(() => {
@@ -64,8 +72,10 @@ export function SwapConfigDialog({ open, onOpenChange, campaign, onSuccess }: Sw
   // Load templates by connection
   useEffect(() => {
     if (!open || !connectionId) { setTemplates([]); return; }
+    let cancelled = false;
     listTemplates({ data: { connection_id: connectionId } })
       .then((r: any) => {
+        if (cancelled) return;
         const list = r?.templates ?? [];
         setTemplates(list);
         // Clear pre-selected template if it's not active/approved (e.g. disabled by Meta)
@@ -77,7 +87,12 @@ export function SwapConfigDialog({ open, onOpenChange, campaign, onSuccess }: Sw
           return current;
         });
       })
-      .catch(() => setTemplates([]));
+      .catch(() => {
+        if (!cancelled) setTemplates([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [open, connectionId, listTemplates]);
 
   const selectedNumber = useMemo(() => numbers.find((n) => n.id === connectionId), [numbers, connectionId]);
