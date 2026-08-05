@@ -879,6 +879,36 @@ function DispatchCard({
           />
         )}
 
+        <section className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <Play className="h-3.5 w-3.5 text-emerald-600" />
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Continuar do real (real + simulado)
+            </div>
+          </div>
+          <p className="mb-3 text-[11px] text-muted-foreground">
+            Parte exatamente dos números reais de agora ({Number(wa.sent_count ?? 0).toLocaleString("pt-BR")} de{" "}
+            {Number(wa.total_recipients ?? 0).toLocaleString("pt-BR")}) e segue avançando só na página
+            pública — mesmo com o disparo real pausado. Se o real voltar a andar, o público acompanha
+            (nunca volta atrás).
+          </p>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="w-40 space-y-1">
+              <Label className="text-xs">Ritmo público (msg/min)</Label>
+              <Input value={contRate} onChange={(e) => setContRate(e.target.value)} />
+            </div>
+            <Button
+              size="sm"
+              className="bg-emerald-600 hover:bg-emerald-600/90"
+              disabled={continueFromReal.isPending}
+              onClick={() => continueFromReal.mutate()}
+            >
+              <Play className="mr-1 h-4 w-4" /> Continuar daqui
+            </Button>
+          </div>
+        </section>
+
+
         <div className="-mx-4 flex flex-wrap items-center gap-2 border-t bg-muted/20 px-4 py-3 sm:-mx-6 sm:px-6">
           <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
             <Save className="mr-1 h-4 w-4" /> Salvar disparo
