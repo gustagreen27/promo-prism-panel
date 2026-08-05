@@ -228,13 +228,16 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
 
           const staleCutoff = new Date(Date.now() - 60 * 1000).toISOString();
           const nowIso2 = new Date().toISOString();
+          // Campanhas com alguma lane ativa não entram no auto-heal (podem ter
+          // requisições ainda em voo).
           const { data: activeLeased } = await supabaseAdmin
-            .from("wa_campaigns")
-            .select("id")
-            .in("status", ["running", "paused"])
-            .not("worker_lease_until", "is", null)
-            .gt("worker_lease_until", nowIso2);
-          const activeLeaseIds = (activeLeased ?? []).map((c: any) => c.id as string);
+            .from("wa_worker_lanes")
+            .select("campaign_id")
+            .gt("lease_until", nowIso2);
+          const activeLeaseIds = [
+            ...new Set((activeLeased ?? []).map((c: any) => c.campaign_id as string)),
+          ];
+
 
           let healQuery = supabaseAdmin
             .from("campaign_recipients")
