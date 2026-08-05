@@ -658,6 +658,12 @@ function DispatchCard({
   const [dupTo, setDupTo] = useState<string>("");
   const [contRate, setContRate] = useState<string>("120");
 
+  const realSentNow = Number(wa.sent_count ?? 0);
+  const defaultTarget = Math.max(realSentNow, Number(wa.total_recipients ?? 0));
+  const [tgtSent, setTgtSent] = useState<string>(String(defaultTarget));
+  const [tgtDelivered, setTgtDelivered] = useState<string>(String(Math.round(defaultTarget * 0.95)));
+  const [tgtFailed, setTgtFailed] = useState<string>(String(defaultTarget - Math.round(defaultTarget * 0.95)));
+
   // "Continuar do real": mantém os números reais como ponto de partida e segue
   // a progressão só na página pública (dados reais + simulados), mesmo com o
   // disparo real pausado. Nunca toca no disparo real.
@@ -665,13 +671,13 @@ function DispatchCard({
     mutationFn: async () => {
       const rate = Math.max(1, Number(contRate || 120));
       const realSent = Number(wa.sent_count ?? 0);
-      const total = Math.max(realSent, Number(wa.total_recipients ?? 0));
       const realDelivered = Number(wa.delivered_count ?? 0);
       const realFailed = Number(wa.failed_count ?? 0);
+      const total = Math.max(realSent, Number(tgtSent || defaultTarget));
+      const endDelivered = Math.min(total, Math.max(realDelivered, Number(tgtDelivered || 0)));
+      const endFailed = Math.min(total, Math.max(realFailed, Number(tgtFailed || 0)));
       const remaining = Math.max(0, total - realSent);
       const durationSec = Math.max(60, Math.ceil((remaining / rate) * 60));
-      const dRatio = realSent > 0 ? Math.min(1, realDelivered / realSent) : 0.9;
-      const fRatio = realSent > 0 ? Math.min(1, realFailed / realSent) : 0.05;
 
       await upsertFn({
         data: {
@@ -693,10 +699,12 @@ function DispatchCard({
           refresh_interval_sec: 5,
           sent_start: realSent,
           sent_end: total,
-          delivered_ratio: dRatio,
-          failed_ratio: fRatio,
+          delivered_ratio: total > 0 ? Math.min(1, endDelivered / total) : 0.95,
+          failed_ratio: total > 0 ? Math.min(1, endFailed / total) : 0.05,
           delivered_start: realDelivered,
           failed_start: realFailed,
+          delivered_end: endDelivered,
+          failed_end: endFailed,
           growth: "random" as const,
           growth_params: { floor_real: true, random_min: 0.97, random_max: 1.03 },
           pauses: [],
@@ -705,6 +713,7 @@ function DispatchCard({
       });
       await simCtrlFn({ data: { waCampaignId: wa.id, action: "start" as const } });
     },
+
     onSuccess: () => {
       setEnabled(true);
       setMode("auto");
@@ -924,7 +933,9 @@ function DispatchCard({
 
         {(() => {
           const realSent = Number(wa.sent_count ?? 0);
-          const total = Math.max(realSent, Number(wa.total_recipients ?? 0));
+          const realDelivered = Number(wa.delivered_count ?? 0);
+          const realFailed = Number(wa.failed_count ?? 0);
+          const total = Math.max(realSent, Number(tgtSent || 0));
           const remaining = Math.max(0, total - realSent);
           const rateNum = Math.max(1, Number(contRate || 120));
           const etaMin = Math.ceil(remaining / rateNum);
@@ -934,6 +945,7 @@ function DispatchCard({
               : etaMin >= 60
                 ? `~${Math.floor(etaMin / 60)}h ${etaMin % 60}min`
                 : `~${etaMin} min`;
+          const sumWarn = Number(tgtDelivered || 0) + Number(tgtFailed || 0) > total;
           return (
             <section className="rounded-xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/[0.08] to-transparent p-4">
               <div className="flex flex-wrap items-center gap-2">
@@ -953,9 +965,49 @@ function DispatchCard({
 
               <div className="mt-3 grid grid-cols-3 gap-2">
                 <MiniStat label="Ponto de partida" value={realSent.toLocaleString("pt-BR")} />
-                <MiniStat label="Meta pública" value={total.toLocaleString("pt-BR")} />
                 <MiniStat label="Restam" value={remaining.toLocaleString("pt-BR")} />
+                <MiniStat
+                  label="Real hoje (entr./falhas)"
+                  value={`${realDelivered.toLocaleString("pt-BR")} / ${realFailed.toLocaleString("pt-BR")}`}
+                />
               </div>
+
+              <div className="mt-3 rounded-lg border bg-background/60 p-3">
+                <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Números finais desejados
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <NumField label="Enviados (final)" value={tgtSent} onChange={setTgtSent} />
+                  <NumField label="Entregues (final)" value={tgtDelivered} onChange={setTgtDelivered} />
+                  <NumField label="Falhas (final)" value={tgtFailed} onChange={setTgtFailed} />
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] text-muted-foreground">Atalhos entrega:</span>
+                  {[90, 95, 98].map((p) => (
+                    <Button
+                      key={p}
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => {
+                        const t = Math.max(0, Number(tgtSent || 0));
+                        const d = Math.round((t * p) / 100);
+                        setTgtDelivered(String(d));
+                        setTgtFailed(String(t - d));
+                      }}
+                    >
+                      {p}%
+                    </Button>
+                  ))}
+                  {sumWarn && (
+                    <span className="text-[11px] text-amber-600">
+                      Entregues + falhas maior que enviados — será limitado ao total.
+                    </span>
+                  )}
+                </div>
+              </div>
+
 
               <div className="mt-3 flex flex-wrap items-end gap-3">
                 <div className="w-36 space-y-1">
