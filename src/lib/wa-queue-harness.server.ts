@@ -85,6 +85,7 @@ async function setup(params: {
     .from("wa_campaigns")
     .insert({
       name: tag,
+      workspace_id: HARNESS_WORKSPACE_ID,
       connection_id: conn.id,
       template_id: tpl.id,
       status: "running",
