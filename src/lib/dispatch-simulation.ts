@@ -262,8 +262,11 @@ export function computeDispatchSnapshot(
   let failed = Math.min(sent, Math.floor(fStart + progress * (fEnd - fStart)));
   if (floorReal) {
     delivered = Math.min(sent, Math.max(delivered, real.delivered));
-    failed = Math.min(sent, Math.max(failed, real.failed));
+    // Quando a simulação prevê queda de falhas (reprocessamento), o piso real
+    // não se aplica — as falhas devem diminuir até o alvo configurado.
+    if (fEnd >= fStart) failed = Math.min(sent, Math.max(failed, real.failed));
   }
+
 
   const percent = total > 0 ? Math.min(100, (sent / total) * 100) : 0;
 
