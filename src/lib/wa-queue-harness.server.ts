@@ -223,12 +223,26 @@ export async function runScenario(params: {
 
   const { data: recs } = await supabaseAdmin
     .from("campaign_recipients")
-    .select("status,meta_message_id")
+    .select("status,meta_message_id,next_attempt_at")
     .eq("campaign_id", s.campaignId);
   const wamids = (recs ?? []).map((r) => (r as any).meta_message_id).filter(Boolean) as string[];
   const dupes = wamids.length - new Set(wamids).size;
   const stuck = (recs ?? []).filter((r) => (r as any).status === "processing").length;
   const sentOrAccepted = (recs ?? []).filter((r) => ["sent", "accepted"].includes((r as any).status)).length;
+  const byStatus: Record<string, number> = {};
+  for (const r of recs ?? []) {
+    const st = String((r as any).status);
+    byStatus[st] = (byStatus[st] ?? 0) + 1;
+  }
+  const pendingFuture = (recs ?? []).filter(
+    (r) => (r as any).status === "pending" && (r as any).next_attempt_at,
+  ).length;
+  const { data: campAfter } = await supabaseAdmin
+    .from("wa_campaigns")
+    .select("status,pause_reason,last_error")
+    .eq("id", s.campaignId)
+    .maybeSingle();
+
 
   const { data: rl } = await supabaseAdmin
     .from("wa_rate_limits")
