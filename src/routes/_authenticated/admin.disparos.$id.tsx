@@ -501,6 +501,13 @@ function Page() {
         <Stat icon={Ban} label="Opt-out" value={p.opt_out ?? 0} tone="warning" />
       </div>
 
+      <DispatchPerformancePanel
+        campaignId={id}
+        live={["running", "scheduled", "queued"].includes(String((prog as any)?.status ?? ""))}
+      />
+
+
+
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="flex flex-wrap">
           <TabsTrigger value="overview">Visão geral</TabsTrigger>
