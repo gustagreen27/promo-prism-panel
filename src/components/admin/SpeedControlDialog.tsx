@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Gauge, Loader2 } from "lucide-react";
-import { updateCampaignSpeed } from "@/lib/wa-campaigns.functions";
+import { AlertTriangle, Gauge, Info, Loader2 } from "lucide-react";
+import { getCampaignSpeedLimits, updateCampaignSpeed } from "@/lib/wa-campaigns.functions";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +37,26 @@ export function SpeedControlDialog({
   const [batch, setBatch] = useState(25);
   const [jitter, setJitter] = useState(0);
   const save = useServerFn(updateCampaignSpeed);
+  const fetchLimits = useServerFn(getCampaignSpeedLimits);
+
+  const limitsQ = useQuery({
+    queryKey: ["campaign-speed-limits", campaignId],
+    queryFn: () => fetchLimits({ data: { id: campaignId } }),
+    enabled: open,
+    staleTime: 60_000,
+  });
+  const limits: any = limitsQ.data;
+  const cap = Number(limits?.cap_rate_per_second ?? 0) || null;
+  const capPerMin = cap ? cap * 60 : null;
+  const requestedPerSecond = Math.max(1, Math.ceil(rate / 60));
+  const willCap = !!cap && requestedPerSecond > cap;
+  const nearCap = !!cap && !willCap && requestedPerSecond >= cap * 0.85;
+  const quality = String(limits?.quality_rating ?? "").toUpperCase();
+  const lowQuality = quality === "RED" || quality === "YELLOW" || quality === "LOW" || quality === "MEDIUM";
+  const connSuspended = ["suspenso", "suspended", "restricted"].includes(
+    String(limits?.connection_status ?? "").toLowerCase(),
+  );
+  const batchTooBig = !!cap && batch > cap * 20;
 
   useEffect(() => {
     if (!open) return;
@@ -57,6 +78,14 @@ export function SpeedControlDialog({
       }),
     onSuccess: (r: any) => {
       const eff = r?.effective_rate_per_second;
+      if (r?.capped) {
+        toast.warning(
+          `Velocidade salva, mas limitada pelo número: teto ~${r.cap_rate_per_second} msg/s (~${Number(r.cap_rate_per_second) * 60}/min)`,
+        );
+        onSaved?.();
+        onOpenChange(false);
+        return;
+      }
       toast.success(
         eff
           ? `Velocidade atualizada — ~${eff} msg/s efetivo (vale no próximo ciclo)`
@@ -140,6 +169,71 @@ export function SpeedControlDialog({
             </div>
             <Slider value={[Math.min(jitter, 5000)]} min={0} max={5000} step={100} onValueChange={(v) => setJitter(v[0])} />
           </div>
+
+          {willCap && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Acima do teto do número</AlertTitle>
+              <AlertDescription>
+                {limits?.phone_label ? `${limits.phone_label} ` : "Este número "}
+                aceita no máximo ~{cap} msg/s (~{capPerMin}/min). Você pediu {rate}/min
+                (~{requestedPerSecond} msg/s) — o excedente será descartado pelo controle de taxa e o
+                disparo continuará em ~{capPerMin}/min.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {nearCap && (
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Perto do limite da conta</AlertTitle>
+              <AlertDescription>
+                Você está usando ~{Math.round((requestedPerSecond / (cap || 1)) * 100)}% do teto do número
+                (~{capPerMin}/min). Picos podem gerar erros 130429 (rate limit) da Meta.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {lowQuality && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Qualidade do número: {quality}</AlertTitle>
+              <AlertDescription>
+                Com qualidade abaixo de verde, a Meta pode reduzir seu limite diário. Recomendado manter
+                a velocidade em modo Lenta/Normal até a qualidade se recuperar.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {connSuspended && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Número restrito</AlertTitle>
+              <AlertDescription>
+                A conexão está com status “{limits?.connection_status}”. Aumentar a velocidade não terá efeito
+                enquanto a restrição da Meta não for removida.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {batchTooBig && (
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Lote grande demais para a taxa</AlertTitle>
+              <AlertDescription>
+                Um lote de {batch} com teto de ~{cap} msg/s leva ~{Math.round(batch / (cap || 1))}s por ciclo e
+                pode estourar o tempo de execução. Reduza o lote para ~{Math.max(1, Math.round((cap || 1) * 10))}.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {cap && !willCap && !nearCap && (
+            <p className="flex items-start gap-2 text-xs text-muted-foreground">
+              <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              Teto atual do número: ~{cap} msg/s (~{capPerMin}/min). Taxas acima disso são limitadas
+              automaticamente pela Meta.
+            </p>
+          )}
 
           <p className="text-xs text-muted-foreground">
             Taxas muito altas dependem do limite da conta na Meta — se aparecerem erros de rate limit, reduza.
