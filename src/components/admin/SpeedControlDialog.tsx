@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { AlertTriangle, Gauge, Info, Loader2 } from "lucide-react";
-import { getCampaignSpeedLimits, updateCampaignSpeed } from "@/lib/wa-campaigns.functions";
+import { AlertTriangle, Gauge, Info, Loader2, Zap } from "lucide-react";
+import { getCampaignSpeedLimits, setCampaignTurbo, updateCampaignSpeed } from "@/lib/wa-campaigns.functions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,7 @@ export function SpeedControlDialog({
   const [jitter, setJitter] = useState(0);
   const save = useServerFn(updateCampaignSpeed);
   const fetchLimits = useServerFn(getCampaignSpeedLimits);
+  const turboFn = useServerFn(setCampaignTurbo);
 
   const limitsQ = useQuery({
     queryKey: ["campaign-speed-limits", campaignId],
@@ -65,6 +66,18 @@ export function SpeedControlDialog({
     setJitter(Number(currentJitter ?? 0) || 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  const turbo = useMutation({
+    mutationFn: () => turboFn({ data: { id: campaignId, target_rate_per_second: 80 } }),
+    onSuccess: (r: any) => {
+      toast.success(
+        `Modo rajada ativado — ~${r?.effective_rate_per_second ?? 80} msg/s (${(r?.effective_rate_per_second ?? 80) * 60}/min). Agora é só aguardar os webhooks.`,
+      );
+      onSaved?.();
+      onOpenChange(false);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao ativar modo rajada"),
+  });
 
   const m = useMutation({
     mutationFn: () =>
@@ -111,6 +124,23 @@ export function SpeedControlDialog({
         </DialogHeader>
 
         <div className="space-y-5">
+          <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="flex items-center gap-1.5 text-sm font-medium">
+                  <Zap className="h-4 w-4 text-primary" /> Rajada — enviar tudo de uma vez
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Sobe o teto do número ao máximo, sem jitter, e dispara tudo. Depois o sistema só coleta os webhooks de entrega.
+                </p>
+              </div>
+              <Button type="button" size="sm" onClick={() => turbo.mutate()} disabled={turbo.isPending}>
+                {turbo.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Zap className="mr-1 h-4 w-4" />}
+                Ativar
+              </Button>
+            </div>
+          </div>
+
           <div className="flex flex-wrap gap-2">
             {PRESETS.map((p) => (
               <Button
