@@ -617,9 +617,10 @@ export const updateCampaignSpeed = createServerFn({ method: "POST" })
       await supabase.from("campaign_timeline").insert({
         campaign_id: id,
         event_type: "speed_update",
-        message: `Velocidade ajustada: ${row.send_rate_per_min} msg/min · lote ${row.batch_size ?? "—"} · jitter ${row.jitter_ms ?? 0}ms`,
-        metadata: { ...clean, by: userId },
+        message: `Velocidade ajustada: ${row.send_rate_per_min} msg/min (~${effective_rate_per_second} msg/s efetivo) · lote ${row.batch_size ?? "—"} · jitter ${row.jitter_ms ?? 0}ms`,
+        metadata: { ...clean, effective_rate_per_second, by: userId },
       });
     } catch { /* timeline é best-effort */ }
-    return row;
+    return { ...row, effective_rate_per_second };
+
   });
