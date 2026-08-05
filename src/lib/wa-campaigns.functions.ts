@@ -564,3 +564,40 @@ export const swapCampaignConfig = createServerFn({ method: "POST" })
       status: newStatus ?? camp.status,
     };
   });
+
+/**
+ * Ajusta a velocidade de uma campanha ao vivo (sem parar/reiniciar):
+ * taxa por minuto, lote por ciclo e jitter. Aplica imediatamente no próximo tick.
+ */
+export const updateCampaignSpeed = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      id: z.string().uuid(),
+      send_rate_per_min: z.number().int().min(1).max(6000),
+      batch_size: z.number().int().min(1).max(500).optional(),
+      jitter_ms: z.number().int().min(0).max(60000).optional(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabase, userId } = context as any;
+    const { id, ...patch } = data;
+    const clean = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined));
+    const { data: row, error } = await supabase
+      .from("wa_campaigns")
+      .update(clean)
+      .eq("id", id)
+      .select("id, send_rate_per_min, batch_size, jitter_ms")
+      .single();
+    if (error) throw error;
+    try {
+      await supabase.from("campaign_timeline").insert({
+        campaign_id: id,
+        event_type: "speed_update",
+        message: `Velocidade ajustada: ${row.send_rate_per_min} msg/min · lote ${row.batch_size ?? "—"} · jitter ${row.jitter_ms ?? 0}ms`,
+        metadata: { ...clean, by: userId },
+      });
+    } catch { /* timeline é best-effort */ }
+    return row;
+  });
