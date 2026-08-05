@@ -1028,14 +1028,25 @@ function DispatchCard({
                 </div>
               </div>
 
-
               <div className="mt-3 flex flex-wrap items-end gap-3">
-                <div className="w-36 space-y-1">
+                <div className="w-32 space-y-1">
                   <Label className="text-xs">Ritmo (msg/min)</Label>
                   <Input
                     value={contRate}
                     inputMode="numeric"
-                    onChange={(e) => setContRate(e.target.value.replace(/\D/g, ""))}
+                    onChange={(e) => {
+                      setContFinishMin("");
+                      setContRate(e.target.value.replace(/\D/g, ""));
+                    }}
+                  />
+                </div>
+                <div className="w-32 space-y-1">
+                  <Label className="text-xs">Concluir em (min)</Label>
+                  <Input
+                    value={contFinishMin}
+                    placeholder="auto"
+                    inputMode="numeric"
+                    onChange={(e) => setContFinishMin(e.target.value.replace(/\D/g, ""))}
                   />
                 </div>
                 <div className="flex flex-wrap gap-1.5 pb-0.5">
@@ -1044,29 +1055,46 @@ function DispatchCard({
                       key={r}
                       type="button"
                       size="sm"
-                      variant={Number(contRate) === r ? "secondary" : "ghost"}
+                      variant={Number(contRate) === r && !contFinishMin ? "secondary" : "ghost"}
                       className="h-8 px-2.5 text-xs"
-                      onClick={() => setContRate(String(r))}
+                      onClick={() => {
+                        setContFinishMin("");
+                        setContRate(String(r));
+                      }}
                     >
                       {r}
                     </Button>
                   ))}
                 </div>
-                <div className="ml-auto flex items-center gap-3">
-                  <span className="text-[11px] text-muted-foreground">
-                    Conclusão pública <span className="font-medium text-foreground">{etaLabel}</span>
-                  </span>
-                  <Button
-                    size="sm"
-                    className="bg-emerald-600 text-white hover:bg-emerald-600/90"
-                    disabled={continueFromReal.isPending}
-                    onClick={() => continueFromReal.mutate()}
-                  >
-                    <Play className="mr-1 h-4 w-4" />
-                    {continueFromReal.isPending ? "Aplicando..." : "Continuar daqui"}
-                  </Button>
-                </div>
               </div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border bg-background/60 p-3">
+                <div className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-4">
+                  <MiniStat label="Restam enviar" value={remaining.toLocaleString("pt-BR")} />
+                  <MiniStat
+                    label="Restam entr./falhas"
+                    value={`${remDelivered.toLocaleString("pt-BR")} / ${remFailed.toLocaleString("pt-BR")}`}
+                  />
+                  <MiniStat
+                    label="Ritmo necessário"
+                    value={neededRate ? `${neededRate.toLocaleString("pt-BR")}/min` : `${rateNum.toLocaleString("pt-BR")}/min`}
+                  />
+                  <MiniStat
+                    label="Conclusão pública"
+                    value={etaClock ? `${etaLabel} (${etaClock})` : etaLabel}
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  className="bg-emerald-600 text-white hover:bg-emerald-600/90"
+                  disabled={continueFromReal.isPending}
+                  onClick={() => continueFromReal.mutate()}
+                >
+                  <Play className="mr-1 h-4 w-4" />
+                  {continueFromReal.isPending ? "Aplicando..." : "Continuar daqui"}
+                </Button>
+              </div>
+
             </section>
           );
         })()}
