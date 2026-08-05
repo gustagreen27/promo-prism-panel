@@ -130,8 +130,9 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
                       .gte("last_attempt_at", recentIso);
                     if ((procCount ?? 0) > 0) busy = true;
                   }
-
+                }
               }
+
               if (busy) continue;
               await supabaseAdmin
                 .from("wa_rate_limits")
