@@ -19,6 +19,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { getWaCampaign } from "@/lib/wa-campaigns.functions";
+import { DispatchPerformancePanel } from "@/components/admin/dispatch-performance-panel";
 import {
   getCampaignProgress, getCampaignTimeline, getCampaignRecipients,
   getCampaignFinalReport, getCampaignErrors, getRecipientPreviews,
