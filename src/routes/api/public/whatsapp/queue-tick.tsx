@@ -47,7 +47,7 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
           try {
             const r = await processCampaignTick(campaignId, budget, {
               lane,
-              maxRuntimeMs: Math.max(2000, Math.min(20000, Number(body.runtime_ms ?? 12000))),
+              maxRuntimeMs: Math.max(2000, Math.min(50000, Number(body.runtime_ms ?? 45000))),
             });
             return Response.json({ ok: true, mode: "lane", campaign_id: campaignId, lane, ...r });
           } catch (e: any) {
@@ -279,7 +279,7 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
             .eq("status", "running")
             .order("priority", { ascending: false });
 
-          const TICK_WINDOW_S = 12;
+          const TICK_WINDOW_S = 45;
           const results: any[] = [];
 
           // O lease global só protege a etapa de manutenção/seleção do tick.
@@ -297,7 +297,7 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
           const runLane = async (campaignId: string, lane: number, budget: number) => {
             if (lane === 0) {
               // lane 0 roda in-process (aproveita este worker)
-              return processCampaignTick(campaignId, budget, { lane, maxRuntimeMs: 12000 });
+              return processCampaignTick(campaignId, budget, { lane, maxRuntimeMs: 45000 });
             }
             const res = await fetch(selfUrl, {
               method: "POST",
@@ -307,7 +307,7 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
                 apikey: CHAIN_APIKEY,
                 "x-tick-source": "lane",
               },
-              body: JSON.stringify({ campaign_id: campaignId, lane, budget, runtime_ms: 12000 }),
+              body: JSON.stringify({ campaign_id: campaignId, lane, budget, runtime_ms: 45000 }),
             });
             return res.json();
           };
