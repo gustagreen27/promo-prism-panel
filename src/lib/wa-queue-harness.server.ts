@@ -275,6 +275,10 @@ export async function runScenario(params: {
       max_tick_gap_ms: tickGaps.length ? Math.max(...tickGaps) : 0,
       tick_gaps_ms: tickGaps,
       duplicates: dupes,
+      by_status: byStatus,
+      pending_with_next_attempt: pendingFuture,
+      campaign_after: campAfter ?? null,
+
       stuck_processing: stuck,
       slot_orphans_after: slotOrphansAfter,
     },
