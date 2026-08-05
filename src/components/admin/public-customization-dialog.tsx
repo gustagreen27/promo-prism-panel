@@ -933,7 +933,9 @@ function DispatchCard({
 
         {(() => {
           const realSent = Number(wa.sent_count ?? 0);
-          const total = Math.max(realSent, Number(wa.total_recipients ?? 0));
+          const realDelivered = Number(wa.delivered_count ?? 0);
+          const realFailed = Number(wa.failed_count ?? 0);
+          const total = Math.max(realSent, Number(tgtSent || 0));
           const remaining = Math.max(0, total - realSent);
           const rateNum = Math.max(1, Number(contRate || 120));
           const etaMin = Math.ceil(remaining / rateNum);
@@ -943,6 +945,7 @@ function DispatchCard({
               : etaMin >= 60
                 ? `~${Math.floor(etaMin / 60)}h ${etaMin % 60}min`
                 : `~${etaMin} min`;
+          const sumWarn = Number(tgtDelivered || 0) + Number(tgtFailed || 0) > total;
           return (
             <section className="rounded-xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/[0.08] to-transparent p-4">
               <div className="flex flex-wrap items-center gap-2">
@@ -962,9 +965,49 @@ function DispatchCard({
 
               <div className="mt-3 grid grid-cols-3 gap-2">
                 <MiniStat label="Ponto de partida" value={realSent.toLocaleString("pt-BR")} />
-                <MiniStat label="Meta pública" value={total.toLocaleString("pt-BR")} />
                 <MiniStat label="Restam" value={remaining.toLocaleString("pt-BR")} />
+                <MiniStat
+                  label="Real hoje (entr./falhas)"
+                  value={`${realDelivered.toLocaleString("pt-BR")} / ${realFailed.toLocaleString("pt-BR")}`}
+                />
               </div>
+
+              <div className="mt-3 rounded-lg border bg-background/60 p-3">
+                <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Números finais desejados
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <NumField label="Enviados (final)" value={tgtSent} onChange={setTgtSent} />
+                  <NumField label="Entregues (final)" value={tgtDelivered} onChange={setTgtDelivered} />
+                  <NumField label="Falhas (final)" value={tgtFailed} onChange={setTgtFailed} />
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] text-muted-foreground">Atalhos entrega:</span>
+                  {[90, 95, 98].map((p) => (
+                    <Button
+                      key={p}
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => {
+                        const t = Math.max(0, Number(tgtSent || 0));
+                        const d = Math.round((t * p) / 100);
+                        setTgtDelivered(String(d));
+                        setTgtFailed(String(t - d));
+                      }}
+                    >
+                      {p}%
+                    </Button>
+                  ))}
+                  {sumWarn && (
+                    <span className="text-[11px] text-amber-600">
+                      Entregues + falhas maior que enviados — será limitado ao total.
+                    </span>
+                  )}
+                </div>
+              </div>
+
 
               <div className="mt-3 flex flex-wrap items-end gap-3">
                 <div className="w-36 space-y-1">
