@@ -108,22 +108,29 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
               let busy = false;
               if (connIds.length > 0) {
                 const recentIso = new Date(Date.now() - 30 * 1000).toISOString();
-                const { data: activeCamps } = await supabaseAdmin
+                const { data: runningCamps } = await supabaseAdmin
                   .from("wa_campaigns")
                   .select("id")
                   .in("connection_id", connIds)
-                  .eq("status", "running")
-                  .gt("worker_lease_until", nowIso);
-                if ((activeCamps?.length ?? 0) > 0) busy = true;
-                if (!busy) {
-                  const { count: procCount } = await supabaseAdmin
-                    .from("campaign_recipients")
-                    .select("id", { count: "exact", head: true })
-                    .in("campaign_id", (activeCamps ?? []).map((c: any) => c.id) as any)
-                    .eq("status", "processing")
-                    .gte("last_attempt_at", recentIso);
-                  if ((procCount ?? 0) > 0) busy = true;
-                }
+                  .eq("status", "running");
+                const campIds = (runningCamps ?? []).map((c: any) => c.id as string);
+                if (campIds.length > 0) {
+                  const { data: liveLanes } = await supabaseAdmin
+                    .from("wa_worker_lanes")
+                    .select("campaign_id")
+                    .in("campaign_id", campIds)
+                    .gt("lease_until", nowIso);
+                  if ((liveLanes?.length ?? 0) > 0) busy = true;
+                  if (!busy) {
+                    const { count: procCount } = await supabaseAdmin
+                      .from("campaign_recipients")
+                      .select("id", { count: "exact", head: true })
+                      .in("campaign_id", campIds as any)
+                      .eq("status", "processing")
+                      .gte("last_attempt_at", recentIso);
+                    if ((procCount ?? 0) > 0) busy = true;
+                  }
+
               }
               if (busy) continue;
               await supabaseAdmin
