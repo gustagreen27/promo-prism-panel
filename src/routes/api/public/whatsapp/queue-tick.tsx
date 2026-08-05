@@ -264,44 +264,79 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
 
           const { data: running } = await supabaseAdmin
             .from("wa_campaigns")
-            .select("id, rate_per_second")
-            .eq("status", "running");
+            .select("id, rate_per_second, worker_lanes, priority")
+            .eq("status", "running")
+            .order("priority", { ascending: false });
 
           const TICK_WINDOW_S = 12;
           const results: any[] = [];
 
           // O lease global só protege a etapa de manutenção/seleção do tick.
-          // O controle contra duplicidade real fica no lease por campanha +
+          // O controle contra duplicidade real fica no lease por lane +
           // SKIP LOCKED dos destinatários. Liberar aqui evita que uma execução
           // fique segurando o cron enquanto espera respostas da Graph API.
           await releaseTickLeaseOnce();
 
+          // ------------------------------------------------------------------
+          // FAN-OUT: cada campanha ativa recebe N workers paralelos (lanes).
+          // Cada lane é uma requisição independente para este mesmo endpoint,
+          // rodando em outro isolate — é isso que remove o gargalo de "um
+          // worker por campanha por tick".
+          // ------------------------------------------------------------------
+          const runLane = async (campaignId: string, lane: number, budget: number) => {
+            if (lane === 0) {
+              // lane 0 roda in-process (aproveita este worker)
+              return processCampaignTick(campaignId, budget, { lane, maxRuntimeMs: 12000 });
+            }
+            const res = await fetch(selfUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-cron-secret": CHAIN_APIKEY,
+                apikey: CHAIN_APIKEY,
+                "x-tick-source": "lane",
+              },
+              body: JSON.stringify({ campaign_id: campaignId, lane, budget, runtime_ms: 12000 }),
+            });
+            return res.json();
+          };
+
+          const jobs: Promise<void>[] = [];
           for (const c of running ?? []) {
-            // Rate default = 1 msg/s quando a campanha não define; qualquer valor
-            // explícito (inclusive baixo) é respeitado sem clamp para cima.
-            const rps = Math.max(1, Number((c as any).rate_per_second ?? 1));
-            const reservationBudget = Math.min(5000, rps * TICK_WINDOW_S);
-            try {
-              const r = await processCampaignTick(c.id, reservationBudget);
-              results.push({ id: c.id, ...r });
-            } catch (e: any) {
-              const msg = e?.message ?? String(e);
-              results.push({ id: c.id, error: msg });
-              // Registro visível na campanha: last_error + timeline event.
-              try {
-                await supabaseAdmin
-                  .from("wa_campaigns")
-                  .update({ last_error: `tick_failed: ${msg}` })
-                  .eq("id", c.id);
-                await supabaseAdmin.from("campaign_timeline").insert({
-                  campaign_id: c.id,
-                  event_type: "tick_failed",
-                  message: `Tick falhou: ${msg}`,
-                  payload: { source },
-                });
-              } catch { /* best-effort */ }
+            const rps = Math.max(1, Number((c as any).rate_per_second ?? 80));
+            const lanes = Math.max(1, Math.min(12, Number((c as any).worker_lanes ?? 4)));
+            const reservationBudget = Math.max(
+              50,
+              Math.min(20000, Math.ceil((rps * TICK_WINDOW_S) / lanes)),
+            );
+            for (let lane = 0; lane < lanes; lane++) {
+              jobs.push(
+                (async () => {
+                  try {
+                    const r = await runLane(c.id, lane, reservationBudget);
+                    results.push({ id: c.id, lane, ...(r as any) });
+                  } catch (e: any) {
+                    const msg = e?.message ?? String(e);
+                    results.push({ id: c.id, lane, error: msg });
+                    try {
+                      await supabaseAdmin
+                        .from("wa_campaigns")
+                        .update({ last_error: `tick_failed: ${msg}` })
+                        .eq("id", c.id);
+                      await supabaseAdmin.from("campaign_timeline").insert({
+                        campaign_id: c.id,
+                        event_type: "tick_failed",
+                        message: `Worker (lane ${lane}) falhou: ${msg}`,
+                        payload: { source, lane },
+                      });
+                    } catch { /* best-effort */ }
+                  }
+                })(),
+              );
             }
           }
+          await Promise.all(jobs);
+
 
 
           const hadWork = (running?.length ?? 0) > 0;
