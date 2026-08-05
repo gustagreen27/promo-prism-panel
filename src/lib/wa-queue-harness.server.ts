@@ -280,7 +280,10 @@ export async function runScenario(params: {
       campConc,
       globalMaxConc,
       numberMaxRate,
+      lanes,
     },
+    enqueued_at: enqueuedAt,
+    run_duration_ms: runDurationMs,
     ticks: tickResults,
     totals: {
       total_started: totalStarted,
