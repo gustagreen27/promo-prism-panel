@@ -1153,6 +1153,7 @@ export async function processCampaignTick(
       if (Date.now() - tickStart > laneRuntimeMs) break;
 
       flushTelemetryIfNeeded();
+      void heartbeat();
       // libera slots consumidos em batch (~1×/s)
       if (Date.now() - lastSlotFlushAt >= 1000) {
         await flushSlotReleases();
@@ -1163,18 +1164,30 @@ export async function processCampaignTick(
       }
 
       if (localQueue.length === 0) {
-        if (reservingPromise) { await reservingPromise; continue; }
-        if (inflight.size === 0) break;
+        const idle0 = Date.now();
+        if (reservingPromise) {
+          await reservingPromise;
+          markIdle("aguardando_reserva", Date.now() - idle0);
+          continue;
+        }
+        if (inflight.size === 0) { markIdle("fila_vazia", 0); break; }
         await Promise.race(inflight);
+        markIdle("fila_local_vazia", Date.now() - idle0);
         continue;
       }
 
-      // Concorrência LOCAL da campanha
-      if (inflight.size >= maxConc) {
+      // Pool HTTP REAL da lane: mantém exatamente `laneHttpConcurrency`
+      // requisições aguardando resposta; assim que uma termina, a próxima
+      // começa (reposição imediata, sem await sequencial em for).
+      const laneCap = Math.min(maxConc, laneHttpConcurrency);
+      if (inflight.size >= laneCap) {
         rateLimitedBySecond.concurrency++;
+        const idle0 = Date.now();
         await Promise.race(inflight);
+        markIdle("pool_cheio", Date.now() - idle0);
         continue;
       }
+
 
       const now = Date.now();
 
