@@ -597,6 +597,34 @@ export async function processCampaignTick(
     const numberMaxRate = Math.max(1, Number((conn as any).maximum_rate_per_second ?? 80));
     const numberGlobalRate = Math.max(1, Number((conn as any).global_rate_per_second ?? numberMaxRate));
     let phoneBucketRate = Math.min(numberGlobalRate, numberMaxRate);
+    // Qualidade em alerta: a Meta reduz entrega e aumenta risco de bloqueio
+    // quando o número está YELLOW/RED. Em vez de só avisar, reduzimos a
+    // velocidade automaticamente enquanto a qualidade não voltar a GREEN.
+    const qualityRating = String((conn as any).quality_rating ?? "").toUpperCase();
+    if (qualityRating === "YELLOW" || qualityRating === "MEDIUM") {
+      const capped = Math.max(1, Math.floor(phoneBucketRate * 0.5));
+      if (capped < phoneBucketRate) {
+        phoneBucketRate = capped;
+        void logEvent(
+          campaignId,
+          "quality_throttle",
+          `Qualidade do número em ${qualityRating} — velocidade reduzida automaticamente para ${capped} msg/s`,
+          { quality_rating: qualityRating, rate: capped },
+        );
+      }
+    } else if (qualityRating === "RED" || qualityRating === "LOW") {
+      const capped = Math.max(1, Math.floor(phoneBucketRate * 0.2));
+      if (capped < phoneBucketRate) {
+        phoneBucketRate = capped;
+        void logEvent(
+          campaignId,
+          "quality_throttle",
+          `Qualidade do número em ${qualityRating} — velocidade reduzida automaticamente para ${capped} msg/s`,
+          { quality_rating: qualityRating, rate: capped },
+        );
+      }
+    }
+
     // Throttle adaptativo POR NÚMERO: se este número levou 130429/timeout há
     // pouco, ele (e só ele) trabalha com rate reduzido até expirar.
     try {
