@@ -20,13 +20,14 @@ import { adminListAllNumbers, adminListAllTemplates } from "@/lib/admin-dispatch
 import { startWaCampaign as adminStartWaCampaign, scheduleWaCampaign as adminScheduleWaCampaign } from "@/lib/wa-campaigns.functions";
 import { linkEventToCampaign } from "@/lib/calendar.functions";
 import { checkSchedulingConflict } from "@/lib/wa-schedule.functions";
+import { createSplitDispatch } from "@/lib/wa-split.functions";
 import { supabase } from "@/integrations/supabase/client";
 import {
   CalendarClock, CheckCircle2, Plus, AlertTriangle, ArrowLeft, ArrowRight,
   Phone, MessageSquareText, Save, Clock, Signal, Wifi, WifiOff, Loader2,
   Send, Pause, Play, Ban, XOctagon, Timer, Users2, Activity, PhoneCall, Sliders,
   BarChart3, Image as ImageIcon, Video as VideoIcon, FileText, Upload, X, Link2,
-  Info, Zap,
+  Info, Zap, Layers,
 } from "lucide-react";
 import { Stepper, type WizardStep } from "@/components/campaigns/wizard/Stepper";
 import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
@@ -226,6 +227,7 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   const fnAdminSchedule = useServerFn(adminScheduleWaCampaign);
   const fnLink = useServerFn(linkEventToCampaign);
   const fnConflict = useServerFn(checkSchedulingConflict);
+  const fnSplit = useServerFn(createSplitDispatch);
 
   const DRAFT_KEY = `wa_wizard_draft_${workspaceId}`;
 
@@ -237,6 +239,11 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   const [name, setName] = useState("");
   const [connectionId, setConnectionId] = useState<string>("");
   const [templateId, setTemplateId] = useState<string>("");
+  /** Combinações extras (número + template). Vazio = disparo simples. */
+  const [extraLegs, setExtraLegs] = useState<Array<{ connection_id: string; template_id: string; weight: number }>>([]);
+  const [primaryWeight, setPrimaryWeight] = useState<number>(1);
+  /** Cache de templates por conexão, usado pelas combinações extras. */
+  const [legTemplates, setLegTemplates] = useState<Record<string, TemplateRow[]>>({});
   const [contactSel, setContactSel] = useState<ContactSelValue | null>(null);
   const [dispatch, setDispatch] = useState<DispatchConfig>(defaultDispatch("economico"));
   const [responseFlow, setResponseFlow] = useState<ResponseFlowConfig>(defaultResponseFlow());
@@ -288,6 +295,29 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
       .then((r) => setTemplates(r.templates))
       .catch(() => setTemplates([]));
   }, [connectionId, workspaceId, fnListTemplates]);
+
+  // Templates das combinações extras (um fetch por conexão, com cache).
+  useEffect(() => {
+    const ids = Array.from(new Set(extraLegs.map((l) => l.connection_id).filter(Boolean)));
+    const missing = ids.filter((id) => !legTemplates[id]);
+    if (missing.length === 0) return;
+    let alive = true;
+    (async () => {
+      for (const id of missing) {
+        try {
+          const r = await fnListTemplates({ data: { workspace_id: workspaceId, connection_id: id } });
+          if (!alive) return;
+          setLegTemplates((s) => ({ ...s, [id]: r.templates }));
+        } catch {
+          if (!alive) return;
+          setLegTemplates((s) => ({ ...s, [id]: [] }));
+        }
+      }
+    })();
+    return () => { alive = false; };
+  }, [extraLegs, legTemplates, workspaceId, fnListTemplates]);
+
+
 
   // -------- Draft persistence --------
   const draftHasContent = (d: any) =>
@@ -669,6 +699,44 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
     if (finalMode === "schedule" && conflicts.length > 0 && !forceConflict) {
       toast.error("Existe conflito de horário. Marque 'forçar' para prosseguir."); return;
     }
+    // ---- Múltiplas combinações (número + template) ----
+    const validExtras = extraLegs.filter((l) => l.connection_id && l.template_id);
+    if (validExtras.length > 0) {
+      setSubmitting(true);
+      try {
+        const legs = [
+          { connection_id: connectionId, template_id: templateId, weight: Math.max(1, primaryWeight) },
+          ...validExtras.map((l) => ({ ...l, weight: Math.max(1, Number(l.weight) || 1) })),
+        ];
+        const r: any = await fnSplit({
+          data: {
+            name: name.trim(),
+            workspace_id: workspaceId,
+            list_id: contactSel.list_id,
+            legs,
+            variables_mapping: bodyVars,
+            button_url_mapping: btnVars,
+            send_rate_per_min: Math.max(1, Math.min(2400, Math.round(dispatch.rate_per_second * 60))),
+            rate_per_second: dispatch.rate_per_second,
+            max_concurrency: dispatch.max_concurrency,
+            timezone,
+            scheduled_at: finalMode === "schedule" ? new Date(scheduledAt).toISOString() : null,
+            start_now: finalMode === "now",
+          },
+        });
+        toast.success(`${r?.campaigns?.length ?? legs.length} disparos criados — contatos divididos entre as combinações.`);
+        try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+        const first = r?.campaigns?.[0]?.id as string | undefined;
+        if (first) setCampaignId(first);
+        setStep(5); setMaxReached(5);
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "Erro ao criar disparos múltiplos");
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
     setSubmitting(true);
     try {
       const dispatchPayload = {
@@ -926,6 +994,118 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                     totalRecipients={validContacts}
                     onVerdict={setPreflightVerdict}
                   />
+                )}
+
+                {/* ---- Combinações extras: vários números e/ou vários templates ---- */}
+                {adminMode && (
+                  <div className="rounded-lg border p-4 space-y-3">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2 text-sm font-semibold">
+                          <Layers className="h-4 w-4" /> Vários números / vários templates
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Adicione até 9 combinações extras. Os contatos da lista são divididos entre elas pelo peso.
+                          Pode repetir o mesmo número com templates diferentes.
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={extraLegs.length >= 9}
+                        onClick={() =>
+                          setExtraLegs((s) => [...s, { connection_id: connectionId || "", template_id: "", weight: 1 }])
+                        }
+                      >
+                        <Plus className="mr-1.5 h-3.5 w-3.5" /> Adicionar combinação
+                      </Button>
+                    </div>
+
+                    {extraLegs.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="grid gap-2 sm:grid-cols-[1fr_1fr_90px_36px] sm:items-center rounded-md bg-muted/40 p-2">
+                          <div className="text-xs font-medium">
+                            {selectedNumber ? (selectedNumber.phone_display ?? selectedNumber.phone_masked) : "Número principal"}
+                          </div>
+                          <div className="truncate text-xs text-muted-foreground">
+                            {selectedTemplate ? selectedTemplate.name : "Template principal"}
+                          </div>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={primaryWeight}
+                            onChange={(e) => setPrimaryWeight(Math.max(1, Number(e.target.value) || 1))}
+                            className="h-8"
+                          />
+                          <span className="text-[11px] text-muted-foreground">peso</span>
+                        </div>
+
+                        {extraLegs.map((leg, i) => {
+                          const tpls = legTemplates[leg.connection_id] ?? [];
+                          return (
+                            <div key={i} className="grid gap-2 sm:grid-cols-[1fr_1fr_90px_36px] sm:items-center">
+                              <select
+                                className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+                                value={leg.connection_id}
+                                onChange={(e) =>
+                                  setExtraLegs((s) => s.map((l, j) =>
+                                    j === i ? { ...l, connection_id: e.target.value, template_id: "" } : l))
+                                }
+                              >
+                                <option value="">— Número —</option>
+                                {numbersByBm.map((g) => (
+                                  <optgroup key={g.label} label={g.label}>
+                                    {g.items.map((n) => (
+                                      <option key={n.id} value={n.id}>
+                                        {(n.phone_display ?? n.phone_masked)} — {n.display_name}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                ))}
+                              </select>
+                              <select
+                                className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+                                value={leg.template_id}
+                                disabled={!leg.connection_id}
+                                onChange={(e) =>
+                                  setExtraLegs((s) => s.map((l, j) => (j === i ? { ...l, template_id: e.target.value } : l)))
+                                }
+                              >
+                                <option value="">{leg.connection_id ? "— Template —" : "Selecione o número"}</option>
+                                {tpls.map((t) => (
+                                  <option key={t.id} value={t.id}>{t.name} ({t.language})</option>
+                                ))}
+                              </select>
+                              <Input
+                                type="number"
+                                min={1}
+                                value={leg.weight}
+                                onChange={(e) =>
+                                  setExtraLegs((s) => s.map((l, j) =>
+                                    j === i ? { ...l, weight: Math.max(1, Number(e.target.value) || 1) } : l))
+                                }
+                                className="h-9"
+                              />
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                className="h-9 w-9"
+                                onClick={() => setExtraLegs((s) => s.filter((_, j) => j !== i))}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          );
+                        })}
+                        <div className="text-[11px] text-muted-foreground">
+                          Serão criados {extraLegs.filter((l) => l.connection_id && l.template_id).length + 1} disparos
+                          vinculados, um por combinação, com os contatos divididos proporcionalmente.
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
 
 
