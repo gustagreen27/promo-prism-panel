@@ -236,31 +236,32 @@ function ListView({ onNew }: { onNew: () => void }) {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        <StatCard active={filter === "all"} onClick={() => setFilter("all")} icon={<Rocket className="h-4 w-4" />} label="Todas" value={counts.all} />
-        <StatCard active={filter === "active"} onClick={() => setFilter("active")} icon={<Play className="h-4 w-4 text-emerald-600" />} label="Ativas" value={counts.active} />
-        <StatCard active={filter === "scheduled"} onClick={() => setFilter("scheduled")} icon={<Calendar className="h-4 w-4 text-amber-600" />} label="Agendadas" value={counts.scheduled} />
-        <StatCard active={filter === "done"} onClick={() => setFilter("done")} icon={<CheckCircle2 className="h-4 w-4 text-primary" />} label="Concluídas" value={counts.done} />
-        <StatCard active={filter === "draft"} onClick={() => setFilter("draft")} icon={<Clock className="h-4 w-4 text-muted-foreground" />} label="Rascunhos" value={counts.draft} />
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+        <StatCard active={filter === "all"} onClick={() => setFilter("all")} icon={<Rocket className="h-5 w-5" />} tone="primary" label="Todas" value={counts.all} />
+        <StatCard active={filter === "active"} onClick={() => setFilter("active")} icon={<Play className="h-5 w-5" />} tone="emerald" label="Ativas" value={counts.active} />
+        <StatCard active={filter === "scheduled"} onClick={() => setFilter("scheduled")} icon={<Calendar className="h-5 w-5" />} tone="amber" label="Agendadas" value={counts.scheduled} />
+        <StatCard active={filter === "done"} onClick={() => setFilter("done")} icon={<CheckCircle2 className="h-5 w-5" />} tone="primary" label="Concluídas" value={counts.done} />
+        <StatCard active={filter === "draft"} onClick={() => setFilter("draft")} icon={<Clock className="h-5 w-5" />} tone="muted" label="Rascunhos" value={counts.draft} />
       </div>
 
       <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar por nome, cliente ou template…"
-          className="pl-9"
+          className="h-11 rounded-xl border-border/70 bg-card pl-10 shadow-xs"
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <DeliverySummaryCard icon={<Send className="h-4 w-4" />} label="Enviados" value={deliveryTotals.sent} total={deliveryTotals.total} />
-        <DeliverySummaryCard icon={<CheckCheck className="h-4 w-4" />} label="Recebidos" value={deliveryTotals.delivered} total={deliveryTotals.sent} />
-        <DeliverySummaryCard icon={<Eye className="h-4 w-4" />} label="Lidas" value={deliveryTotals.read} total={deliveryTotals.delivered} />
-        <DeliverySummaryCard icon={<MousePointerClick className="h-4 w-4" />} label="Cliques" value={deliveryTotals.clicks} total={deliveryTotals.delivered} />
-        <DeliverySummaryCard icon={<AlertTriangle className="h-4 w-4" />} label="Falhas" value={deliveryTotals.failed} total={deliveryTotals.total} tone="danger" />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+        <DeliverySummaryCard icon={<Send className="h-5 w-5" />} tone="primary" label="Enviados" value={deliveryTotals.sent} total={deliveryTotals.total} />
+        <DeliverySummaryCard icon={<CheckCheck className="h-5 w-5" />} tone="emerald" label="Recebidos" value={deliveryTotals.delivered} total={deliveryTotals.sent} />
+        <DeliverySummaryCard icon={<Eye className="h-5 w-5" />} tone="violet" label="Lidas" value={deliveryTotals.read} total={deliveryTotals.delivered} />
+        <DeliverySummaryCard icon={<MousePointerClick className="h-5 w-5" />} tone="cyan" label="Cliques" value={deliveryTotals.clicks} total={deliveryTotals.delivered} />
+        <DeliverySummaryCard icon={<AlertTriangle className="h-5 w-5" />} tone="danger" label="Falhas" value={deliveryTotals.failed} total={deliveryTotals.total} />
       </div>
+
 
       {campaignsQ.isLoading ? (
         <Card><CardContent className="p-10 text-center text-sm text-muted-foreground">Carregando disparos…</CardContent></Card>
@@ -282,20 +283,21 @@ function ListView({ onNew }: { onNew: () => void }) {
             return (
               <Card
                 key={c.id}
-                className="cursor-pointer transition-all hover:border-primary/50 hover:shadow-md"
+                className="cursor-pointer rounded-2xl border-border/60 shadow-xs transition-all hover:border-primary/50 hover:shadow-md"
                 onClick={() => nav({ to: "/admin/disparos/$id", params: { id: c.id } })}
               >
                 <CardHeader>
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <CardTitle className="truncate">{c.name}</CardTitle>
+                      <CardTitle className="truncate text-base">{c.name}</CardTitle>
                       <CardDescription className="mt-1 truncate">
                         {c.client?.name ?? "Sem cliente"} · {whenLabel}
                       </CardDescription>
                     </div>
-                    <Badge variant="secondary" className={meta.className}>{meta.label}</Badge>
+                    <Badge variant="secondary" className={`rounded-full px-3 py-1 font-medium ${meta.className}`}>{meta.label}</Badge>
                   </div>
                 </CardHeader>
+
                 <CardContent className="space-y-3">
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-1.5 min-w-0">
@@ -490,14 +492,29 @@ function getDeliveryMetrics(c: any) {
 
 }
 
-function DeliverySummaryCard({ icon, label, value, total, tone }: { icon: React.ReactNode; label: string; value: number; total: number; tone?: "danger" }) {
+type Tone = "primary" | "emerald" | "amber" | "violet" | "cyan" | "danger" | "muted";
+
+const TONE_CHIP: Record<Tone, string> = {
+  primary: "bg-primary/10 text-primary",
+  emerald: "bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-300",
+  amber: "bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-300",
+  violet: "bg-violet-100 text-violet-600 dark:bg-violet-950 dark:text-violet-300",
+  cyan: "bg-cyan-100 text-cyan-600 dark:bg-cyan-950 dark:text-cyan-300",
+  danger: "bg-destructive/10 text-destructive",
+  muted: "bg-muted text-muted-foreground",
+};
+
+function DeliverySummaryCard({ icon, label, value, total, tone = "primary" }: { icon: React.ReactNode; label: string; value: number; total: number; tone?: Tone }) {
   const pct = total > 0 ? Math.round((value / total) * 100) : 0;
   return (
-    <div className="rounded-xl border bg-card p-4">
-      <div className={`flex items-center gap-2 text-xs ${tone === "danger" ? "text-destructive" : "text-muted-foreground"}`}>{icon}{label}</div>
-      <div className="mt-1 flex items-end justify-between gap-2">
-        <div className="text-2xl font-bold tabular-nums">{value.toLocaleString("pt-BR")}</div>
-        <div className="text-xs text-muted-foreground">{pct}%</div>
+    <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-xs">
+      <div className="flex items-center gap-3">
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${TONE_CHIP[tone]}`}>{icon}</span>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-xs text-muted-foreground">{label}</div>
+          <div className="text-2xl font-bold tabular-nums leading-tight">{value.toLocaleString("pt-BR")}</div>
+        </div>
+        <div className={`text-sm font-semibold ${tone === "danger" ? "text-destructive" : "text-muted-foreground"}`}>{pct}%</div>
       </div>
     </div>
   );
@@ -512,18 +529,22 @@ function CampaignMetric({ label, value, danger }: { label: string; value: number
   );
 }
 
-function StatCard({ icon, label, value, active, onClick }: { icon: React.ReactNode; label: string; value: number; active?: boolean; onClick?: () => void }) {
+function StatCard({ icon, label, value, active, onClick, tone = "primary" }: { icon: React.ReactNode; label: string; value: number; active?: boolean; onClick?: () => void; tone?: Tone }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-xl border bg-card p-4 text-left transition-all hover:border-primary/50 hover:shadow-sm ${active ? "border-primary bg-primary/5 ring-2 ring-primary/15" : ""}`}
+      className={`flex items-center gap-3 rounded-2xl border bg-card p-4 text-left shadow-xs transition-all hover:border-primary/50 hover:shadow-sm ${active ? "border-primary bg-primary/5 ring-2 ring-primary/15" : "border-border/60"}`}
     >
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">{icon}{label}</div>
-      <div className="mt-1 text-2xl font-bold">{value}</div>
+      <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${TONE_CHIP[tone]}`}>{icon}</span>
+      <div className="min-w-0">
+        <div className="truncate text-sm text-muted-foreground">{label}</div>
+        <div className={`text-2xl font-bold tabular-nums leading-tight ${active ? "text-primary" : ""}`}>{value}</div>
+      </div>
     </button>
   );
 }
+
 
 function EmptyState({ hasAny, onNew }: { hasAny: boolean; onNew: () => void }) {
   return (
