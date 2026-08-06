@@ -164,6 +164,10 @@ function AtendimentoPage() {
 
   const convs = convsQuery.data ?? [];
 
+  const activeNumber = numbers.find((n) => n.phone_number_id === selectedNumber) ?? null;
+  const activeFilters =
+    (statusFilter !== "all" ? 1 : 0) + (windowFilter !== "all" ? 1 : 0) + (assignedFilter !== "all" ? 1 : 0);
+
   return (
     <div className="flex h-[calc(100vh-64px)] flex-col gap-3 p-3 md:p-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -178,10 +182,134 @@ function AtendimentoPage() {
         </div>
       </div>
 
-      <div className="grid flex-1 grid-cols-1 gap-3 overflow-hidden md:grid-cols-[320px_1fr_320px]">
-        {/* Coluna 1 — filtros + lista */}
+      <div className="grid flex-1 grid-cols-1 gap-3 overflow-hidden md:grid-cols-[240px_1fr] lg:grid-cols-[240px_300px_1fr] xl:grid-cols-[240px_320px_1fr_320px]">
+        {/* Coluna 0 — números de WhatsApp */}
+        <div className="flex min-h-0 flex-col rounded-lg border bg-card">
+          <div className="flex items-center gap-2 border-b px-3 py-2 text-xs font-medium text-muted-foreground">
+            <Smartphone className="h-4 w-4" /> Números
+          </div>
+          <ScrollArea className="flex-1">
+            {numbersQuery.isLoading ? (
+              <div className="flex items-center justify-center p-6 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+              </div>
+            ) : numbers.length === 0 ? (
+              <div className="p-4 text-center text-xs text-muted-foreground">
+                Nenhum número com conversas.
+              </div>
+            ) : (
+              <ul className="divide-y">
+                {numbers.map((n) => {
+                  const active = n.phone_number_id === selectedNumber;
+                  return (
+                    <li key={n.phone_number_id}>
+                      <button
+                        onClick={() => {
+                          setSelectedNumber(n.phone_number_id);
+                          setSelectedId(null);
+                        }}
+                        className={`w-full px-3 py-2 text-left hover:bg-accent ${active ? "bg-accent" : ""}`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate text-sm font-medium">
+                            {n.nome_interno || formatPhone(n.display_phone_number ?? n.phone_number_id)}
+                          </span>
+                          {n.unread > 0 && (
+                            <Badge className="h-5 shrink-0 rounded-full px-1.5 text-[10px]">{n.unread}</Badge>
+                          )}
+                        </div>
+                        <div className="truncate text-[11px] text-muted-foreground">
+                          {n.display_phone_number ? formatPhone(n.display_phone_number) : n.phone_number_id}
+                        </div>
+                        <div className="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground">
+                          <span>{n.total} conversas</span>
+                          {n.open_window > 0 && <span className="text-emerald-600">{n.open_window} em 24h</span>}
+                        </div>
+                        {n.waba_name && (
+                          <div className="truncate text-[10px] text-muted-foreground/80">{n.waba_name}</div>
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </ScrollArea>
+        </div>
+
+        {/* Coluna 1 — conversas do número selecionado */}
         <div className="flex min-h-0 flex-col rounded-lg border bg-card">
           <div className="space-y-2 border-b p-2">
+            <div className="flex items-center justify-between gap-2 px-1">
+              <span className="truncate text-xs font-medium text-muted-foreground">
+                {activeNumber
+                  ? activeNumber.nome_interno || formatPhone(activeNumber.display_phone_number ?? activeNumber.phone_number_id)
+                  : "Todas as conversas"}
+              </span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs">
+                    <ListChecks className="h-3.5 w-3.5" />
+                    Filtros
+                    {activeFilters > 0 && (
+                      <Badge className="h-4 rounded-full px-1 text-[10px]">{activeFilters}</Badge>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-64 space-y-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Status</Label>
+                    <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        <SelectItem value="open">Abertas</SelectItem>
+                        <SelectItem value="waiting">Aguardando</SelectItem>
+                        <SelectItem value="in_progress">Em andamento</SelectItem>
+                        <SelectItem value="resolved">Resolvidas</SelectItem>
+                        <SelectItem value="archived">Arquivadas</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Janela de 24h</Label>
+                    <Select value={windowFilter} onValueChange={(v) => setWindowFilter(v as any)}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas</SelectItem>
+                        <SelectItem value="open">Aberta</SelectItem>
+                        <SelectItem value="closed">Fechada</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Responsável</Label>
+                    <Select value={assignedFilter} onValueChange={(v) => setAssignedFilter(v as any)}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os agentes</SelectItem>
+                        <SelectItem value="me">Minhas</SelectItem>
+                        <SelectItem value="none">Sem responsável</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {activeFilters > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full text-xs"
+                      onClick={() => {
+                        setStatusFilter("all");
+                        setWindowFilter("all");
+                        setAssignedFilter("all");
+                      }}
+                    >
+                      Limpar filtros
+                    </Button>
+                  )}
+                </PopoverContent>
+              </Popover>
+            </div>
             <div className="relative">
               <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -191,36 +319,8 @@ function AtendimentoPage() {
                 className="pl-7 h-9"
               />
             </div>
-            <div className="grid grid-cols-3 gap-1">
-              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="open">Abertas</SelectItem>
-                  <SelectItem value="waiting">Aguardando</SelectItem>
-                  <SelectItem value="in_progress">Em andamento</SelectItem>
-                  <SelectItem value="resolved">Resolvidas</SelectItem>
-                  <SelectItem value="archived">Arquivadas</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={windowFilter} onValueChange={(v) => setWindowFilter(v as any)}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Janela: todas</SelectItem>
-                  <SelectItem value="open">24h aberta</SelectItem>
-                  <SelectItem value="closed">24h fechada</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={assignedFilter} onValueChange={(v) => setAssignedFilter(v as any)}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os agentes</SelectItem>
-                  <SelectItem value="me">Minhas</SelectItem>
-                  <SelectItem value="none">Sem responsável</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
+
           <ScrollArea className="flex-1">
             {convsQuery.isLoading ? (
               <div className="flex items-center justify-center p-6 text-muted-foreground">
