@@ -188,16 +188,15 @@ export function EmbeddedSignupButton({
     // O Embedded Signup abre um popup do Facebook. Dentro do iframe do preview
     // o navegador bloqueia esse popup (e a Meta não permite o fluxo em iframe),
     // então nada acontece ao clicar. Abrimos a página em uma aba real.
-    if (window.top !== window.self) {
-      const w = window.open(window.location.href, "_blank", "noopener,noreferrer");
+    if (inIframe) {
+      openInNewTab();
       toast.message(
-        w
-          ? "O Cadastro incorporado da Meta não funciona dentro do preview. Abrimos a página em uma nova aba — clique no botão por lá."
-          : "Abra a aplicação em uma aba separada (fora do preview) para usar o Cadastro incorporado da Meta.",
+        "O Cadastro incorporado da Meta não funciona dentro do preview. Abrimos a página em uma nova aba — conclua por lá.",
         { duration: 9000 },
       );
       return;
     }
+
 
     sessionRef.current = null;
     setLoading(true);
