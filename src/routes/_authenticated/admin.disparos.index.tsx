@@ -283,20 +283,21 @@ function ListView({ onNew }: { onNew: () => void }) {
             return (
               <Card
                 key={c.id}
-                className="cursor-pointer transition-all hover:border-primary/50 hover:shadow-md"
+                className="cursor-pointer rounded-2xl border-border/60 shadow-xs transition-all hover:border-primary/50 hover:shadow-md"
                 onClick={() => nav({ to: "/admin/disparos/$id", params: { id: c.id } })}
               >
                 <CardHeader>
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <CardTitle className="truncate">{c.name}</CardTitle>
+                      <CardTitle className="truncate text-base">{c.name}</CardTitle>
                       <CardDescription className="mt-1 truncate">
                         {c.client?.name ?? "Sem cliente"} · {whenLabel}
                       </CardDescription>
                     </div>
-                    <Badge variant="secondary" className={meta.className}>{meta.label}</Badge>
+                    <Badge variant="secondary" className={`rounded-full px-3 py-1 font-medium ${meta.className}`}>{meta.label}</Badge>
                   </div>
                 </CardHeader>
+
                 <CardContent className="space-y-3">
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-1.5 min-w-0">
