@@ -70,6 +70,7 @@ import { Route as ApiPublicCiSplatRouteImport } from './routes/api/public/ci.$'
 import { Route as AuthenticatedAdminWhatsappWebhooksRouteImport } from './routes/_authenticated/admin.whatsapp.webhooks'
 import { Route as AuthenticatedAdminWhatsappWabasRouteImport } from './routes/_authenticated/admin.whatsapp.wabas'
 import { Route as AuthenticatedAdminWhatsappTemplatesRouteImport } from './routes/_authenticated/admin.whatsapp.templates'
+import { Route as AuthenticatedAdminWhatsappSaudeRouteImport } from './routes/_authenticated/admin.whatsapp.saude'
 import { Route as AuthenticatedAdminWhatsappRelatoriosRouteImport } from './routes/_authenticated/admin.whatsapp.relatorios'
 import { Route as AuthenticatedAdminWhatsappQualidadeRouteImport } from './routes/_authenticated/admin.whatsapp.qualidade'
 import { Route as AuthenticatedAdminWhatsappLogsRouteImport } from './routes/_authenticated/admin.whatsapp.logs'
@@ -431,6 +432,12 @@ const AuthenticatedAdminWhatsappTemplatesRoute =
     path: '/templates',
     getParentRoute: () => AuthenticatedAdminWhatsappRoute,
   } as any)
+const AuthenticatedAdminWhatsappSaudeRoute =
+  AuthenticatedAdminWhatsappSaudeRouteImport.update({
+    id: '/saude',
+    path: '/saude',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
 const AuthenticatedAdminWhatsappRelatoriosRoute =
   AuthenticatedAdminWhatsappRelatoriosRouteImport.update({
     id: '/relatorios',
@@ -626,6 +633,7 @@ export interface FileRoutesByFullPath {
   '/admin/whatsapp/logs': typeof AuthenticatedAdminWhatsappLogsRoute
   '/admin/whatsapp/qualidade': typeof AuthenticatedAdminWhatsappQualidadeRoute
   '/admin/whatsapp/relatorios': typeof AuthenticatedAdminWhatsappRelatoriosRoute
+  '/admin/whatsapp/saude': typeof AuthenticatedAdminWhatsappSaudeRoute
   '/admin/whatsapp/templates': typeof AuthenticatedAdminWhatsappTemplatesRoute
   '/admin/whatsapp/wabas': typeof AuthenticatedAdminWhatsappWabasRoute
   '/admin/whatsapp/webhooks': typeof AuthenticatedAdminWhatsappWebhooksRoute
@@ -708,6 +716,7 @@ export interface FileRoutesByTo {
   '/admin/whatsapp/logs': typeof AuthenticatedAdminWhatsappLogsRoute
   '/admin/whatsapp/qualidade': typeof AuthenticatedAdminWhatsappQualidadeRoute
   '/admin/whatsapp/relatorios': typeof AuthenticatedAdminWhatsappRelatoriosRoute
+  '/admin/whatsapp/saude': typeof AuthenticatedAdminWhatsappSaudeRoute
   '/admin/whatsapp/templates': typeof AuthenticatedAdminWhatsappTemplatesRoute
   '/admin/whatsapp/wabas': typeof AuthenticatedAdminWhatsappWabasRoute
   '/admin/whatsapp/webhooks': typeof AuthenticatedAdminWhatsappWebhooksRoute
@@ -794,6 +803,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/whatsapp/logs': typeof AuthenticatedAdminWhatsappLogsRoute
   '/_authenticated/admin/whatsapp/qualidade': typeof AuthenticatedAdminWhatsappQualidadeRoute
   '/_authenticated/admin/whatsapp/relatorios': typeof AuthenticatedAdminWhatsappRelatoriosRoute
+  '/_authenticated/admin/whatsapp/saude': typeof AuthenticatedAdminWhatsappSaudeRoute
   '/_authenticated/admin/whatsapp/templates': typeof AuthenticatedAdminWhatsappTemplatesRoute
   '/_authenticated/admin/whatsapp/wabas': typeof AuthenticatedAdminWhatsappWabasRoute
   '/_authenticated/admin/whatsapp/webhooks': typeof AuthenticatedAdminWhatsappWebhooksRoute
@@ -880,6 +890,7 @@ export interface FileRouteTypes {
     | '/admin/whatsapp/logs'
     | '/admin/whatsapp/qualidade'
     | '/admin/whatsapp/relatorios'
+    | '/admin/whatsapp/saude'
     | '/admin/whatsapp/templates'
     | '/admin/whatsapp/wabas'
     | '/admin/whatsapp/webhooks'
@@ -962,6 +973,7 @@ export interface FileRouteTypes {
     | '/admin/whatsapp/logs'
     | '/admin/whatsapp/qualidade'
     | '/admin/whatsapp/relatorios'
+    | '/admin/whatsapp/saude'
     | '/admin/whatsapp/templates'
     | '/admin/whatsapp/wabas'
     | '/admin/whatsapp/webhooks'
@@ -1047,6 +1059,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/whatsapp/logs'
     | '/_authenticated/admin/whatsapp/qualidade'
     | '/_authenticated/admin/whatsapp/relatorios'
+    | '/_authenticated/admin/whatsapp/saude'
     | '/_authenticated/admin/whatsapp/templates'
     | '/_authenticated/admin/whatsapp/wabas'
     | '/_authenticated/admin/whatsapp/webhooks'
@@ -1526,6 +1539,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminWhatsappTemplatesRouteImport
       parentRoute: typeof AuthenticatedAdminWhatsappRoute
     }
+    '/_authenticated/admin/whatsapp/saude': {
+      id: '/_authenticated/admin/whatsapp/saude'
+      path: '/saude'
+      fullPath: '/admin/whatsapp/saude'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappSaudeRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
     '/_authenticated/admin/whatsapp/relatorios': {
       id: '/_authenticated/admin/whatsapp/relatorios'
       path: '/relatorios'
@@ -1712,6 +1732,7 @@ interface AuthenticatedAdminWhatsappRouteChildren {
   AuthenticatedAdminWhatsappLogsRoute: typeof AuthenticatedAdminWhatsappLogsRoute
   AuthenticatedAdminWhatsappQualidadeRoute: typeof AuthenticatedAdminWhatsappQualidadeRoute
   AuthenticatedAdminWhatsappRelatoriosRoute: typeof AuthenticatedAdminWhatsappRelatoriosRoute
+  AuthenticatedAdminWhatsappSaudeRoute: typeof AuthenticatedAdminWhatsappSaudeRoute
   AuthenticatedAdminWhatsappTemplatesRoute: typeof AuthenticatedAdminWhatsappTemplatesRoute
   AuthenticatedAdminWhatsappWabasRoute: typeof AuthenticatedAdminWhatsappWabasRoute
   AuthenticatedAdminWhatsappWebhooksRoute: typeof AuthenticatedAdminWhatsappWebhooksRoute
@@ -1739,6 +1760,7 @@ const AuthenticatedAdminWhatsappRouteChildren: AuthenticatedAdminWhatsappRouteCh
       AuthenticatedAdminWhatsappQualidadeRoute,
     AuthenticatedAdminWhatsappRelatoriosRoute:
       AuthenticatedAdminWhatsappRelatoriosRoute,
+    AuthenticatedAdminWhatsappSaudeRoute: AuthenticatedAdminWhatsappSaudeRoute,
     AuthenticatedAdminWhatsappTemplatesRoute:
       AuthenticatedAdminWhatsappTemplatesRoute,
     AuthenticatedAdminWhatsappWabasRoute: AuthenticatedAdminWhatsappWabasRoute,
