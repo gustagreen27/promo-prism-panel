@@ -996,6 +996,118 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                   />
                 )}
 
+                {/* ---- Combinações extras: vários números e/ou vários templates ---- */}
+                {adminMode && (
+                  <div className="rounded-lg border p-4 space-y-3">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2 text-sm font-semibold">
+                          <Layers className="h-4 w-4" /> Vários números / vários templates
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Adicione até 9 combinações extras. Os contatos da lista são divididos entre elas pelo peso.
+                          Pode repetir o mesmo número com templates diferentes.
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={extraLegs.length >= 9}
+                        onClick={() =>
+                          setExtraLegs((s) => [...s, { connection_id: connectionId || "", template_id: "", weight: 1 }])
+                        }
+                      >
+                        <Plus className="mr-1.5 h-3.5 w-3.5" /> Adicionar combinação
+                      </Button>
+                    </div>
+
+                    {extraLegs.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="grid gap-2 sm:grid-cols-[1fr_1fr_90px_36px] sm:items-center rounded-md bg-muted/40 p-2">
+                          <div className="text-xs font-medium">
+                            {selectedNumber ? (selectedNumber.phone_display ?? selectedNumber.phone_masked) : "Número principal"}
+                          </div>
+                          <div className="truncate text-xs text-muted-foreground">
+                            {selectedTemplate ? selectedTemplate.name : "Template principal"}
+                          </div>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={primaryWeight}
+                            onChange={(e) => setPrimaryWeight(Math.max(1, Number(e.target.value) || 1))}
+                            className="h-8"
+                          />
+                          <span className="text-[11px] text-muted-foreground">peso</span>
+                        </div>
+
+                        {extraLegs.map((leg, i) => {
+                          const tpls = legTemplates[leg.connection_id] ?? [];
+                          return (
+                            <div key={i} className="grid gap-2 sm:grid-cols-[1fr_1fr_90px_36px] sm:items-center">
+                              <select
+                                className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+                                value={leg.connection_id}
+                                onChange={(e) =>
+                                  setExtraLegs((s) => s.map((l, j) =>
+                                    j === i ? { ...l, connection_id: e.target.value, template_id: "" } : l))
+                                }
+                              >
+                                <option value="">— Número —</option>
+                                {numbersByBm.map((g) => (
+                                  <optgroup key={g.label} label={g.label}>
+                                    {g.items.map((n) => (
+                                      <option key={n.id} value={n.id}>
+                                        {(n.phone_display ?? n.phone_masked)} — {n.display_name}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                ))}
+                              </select>
+                              <select
+                                className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+                                value={leg.template_id}
+                                disabled={!leg.connection_id}
+                                onChange={(e) =>
+                                  setExtraLegs((s) => s.map((l, j) => (j === i ? { ...l, template_id: e.target.value } : l)))
+                                }
+                              >
+                                <option value="">{leg.connection_id ? "— Template —" : "Selecione o número"}</option>
+                                {tpls.map((t) => (
+                                  <option key={t.id} value={t.id}>{t.name} ({t.language})</option>
+                                ))}
+                              </select>
+                              <Input
+                                type="number"
+                                min={1}
+                                value={leg.weight}
+                                onChange={(e) =>
+                                  setExtraLegs((s) => s.map((l, j) =>
+                                    j === i ? { ...l, weight: Math.max(1, Number(e.target.value) || 1) } : l))
+                                }
+                                className="h-9"
+                              />
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                className="h-9 w-9"
+                                onClick={() => setExtraLegs((s) => s.filter((_, j) => j !== i))}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          );
+                        })}
+                        <div className="text-[11px] text-muted-foreground">
+                          Serão criados {extraLegs.filter((l) => l.connection_id && l.template_id).length + 1} disparos
+                          vinculados, um por combinação, com os contatos divididos proporcionalmente.
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
 
                 {/* Conteúdo dinâmico do template */}
                 {selectedTemplate && (tplRequiresMedia || tplBodyVarNums.length > 0 || tplUrlVarNums.length > 0) && (
