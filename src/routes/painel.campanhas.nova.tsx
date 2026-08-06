@@ -48,7 +48,26 @@ export const Route = createFileRoute("/painel/campanhas/nova")({
   component: Page,
 });
 
+/** Limite diário de conversas iniciadas (tier da Meta) para exibição na UI. */
+const TIER_LIMITS: Record<string, string> = {
+  TIER_50: "50/dia",
+  TIER_250: "250/dia",
+  TIER_1K: "1.000/dia",
+  TIER_10K: "10.000/dia",
+  TIER_100K: "100.000/dia",
+  TIER_UNLIMITED: "ilimitado",
+};
+
+function formatDailyLimit(n: any): string {
+  const tier = String(n?.messaging_limit_tier ?? "").toUpperCase().replace(/\s/g, "");
+  if (tier && TIER_LIMITS[tier]) return TIER_LIMITS[tier];
+  const cap = n?.daily_cap ?? n?.daily_limit;
+  if (cap) return `${Number(cap).toLocaleString("pt-BR")}/dia`;
+  return "não informado";
+}
+
 function Page() {
+
   const { workspaceId } = Route.useRouteContext() as { workspaceId: string };
   const { event_id, scheduled_for } = Route.useSearch();
   const navigate = useNavigate();
