@@ -57,7 +57,10 @@ export const getEmbeddedSignupConfig = createServerFn({ method: "GET" })
     if (!appId || !configId) {
       throw new Error("META_APP_ID ou META_ES_CONFIG_ID não configurados.");
     }
-    return { appId, configId, graphVersion: GRAPH_VERSION };
+    // Versão do JS SDK do Facebook (browser) é independente da versão usada
+    // nas chamadas server-side ao Graph. Padrão v26.0 conforme doc do ES.
+    const sdkVersion = (process.env.META_JS_SDK_VERSION || "v26.0").trim();
+    return { appId, configId, graphVersion: GRAPH_VERSION, sdkVersion };
   });
 
 const completeSchema = z.object({

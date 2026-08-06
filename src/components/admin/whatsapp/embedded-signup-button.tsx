@@ -64,7 +64,7 @@ export function EmbeddedSignupButton({
   const completeFn = useServerFn(completeEmbeddedSignup);
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [cfg, setCfg] = useState<{ appId: string; configId: string; graphVersion: string } | null>(null);
+  const [cfg, setCfg] = useState<{ appId: string; configId: string; graphVersion: string; sdkVersion?: string } | null>(null);
   const sessionRef = useRef<{ phone_number_id?: string; waba_id?: string; business_id?: string } | null>(null);
 
   useEffect(() => {
@@ -84,7 +84,13 @@ export function EmbeddedSignupButton({
     const initFB = () => {
       if (cancelled || !window.FB) return;
       // FB.init is idempotent per appId+version — safe to call again after HMR/remount.
-      window.FB.init({ appId: cfg.appId, cookie: true, xfbml: true, autoLogAppEvents: true, version: cfg.graphVersion });
+      window.FB.init({
+        appId: cfg.appId,
+        cookie: true,
+        xfbml: true,
+        autoLogAppEvents: true,
+        version: cfg.sdkVersion || cfg.graphVersion,
+      });
       setReady(true);
     };
     if (window.FB) {
@@ -104,7 +110,11 @@ export function EmbeddedSignupButton({
       initFB();
     };
     const id = "facebook-jssdk";
-    if (!document.getElementById(id)) {
+    // Nunca carrega duas versões do SDK: checa o id e qualquer script já presente.
+    const alreadyLoaded =
+      !!document.getElementById(id) ||
+      !!document.querySelector('script[src*="connect.facebook.net"][src*="sdk.js"]');
+    if (!alreadyLoaded) {
       const s = document.createElement("script");
       s.id = id;
       s.async = true;
