@@ -19,7 +19,7 @@ import { listNumbers, createNumber, updateNumber, deleteNumber } from "@/lib/wha
 import { updateConnectionToken, getConnectionCredentials, debugConnectionToken, getConnectionSubscribedApps, subscribeAppToWaba, getConnectionHealthStatus } from "@/lib/wa-diagnosis.functions";
 import { syncAllWabas } from "@/lib/wa-meta-sync.functions";
 import { addNumberToWaba, requestNumberCode, verifyNumberCode, registerNumberOnCloud, subscribeWabaWebhooks, listWabaNumbers } from "@/lib/wa-meta-api.functions";
-import { listWabas } from "@/lib/wa-wabas.functions";
+import { listWabas, listBusinessNames } from "@/lib/wa-wabas.functions";
 import { listClients } from "@/lib/clients.functions";
 import { listProjects } from "@/lib/projects.functions";
 
@@ -38,6 +38,7 @@ function Page() {
   const clientsFn = useServerFn(listClients);
   const projectsFn = useServerFn(listProjects);
   const wabasFn = useServerFn(listWabas);
+  const businessesFn = useServerFn(listBusinessNames);
   const qc = useQueryClient();
 
   const numbersQuery = useQuery({ queryKey: ["wa-numbers"], queryFn: () => listFn() });
@@ -45,9 +46,11 @@ function Page() {
   const clientsQuery = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
   const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: () => projectsFn() });
   const wabasQuery = useQuery({ queryKey: ["wa-wabas"], queryFn: () => wabasFn() });
+  const businessesQuery = useQuery({ queryKey: ["wa-business-names"], queryFn: () => businessesFn() });
   const clients = clientsQuery.data ?? [];
   const projects = projectsQuery.data ?? [];
   const wabas = wabasQuery.data ?? [];
+  const businesses = businessesQuery.data ?? [];
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -112,6 +115,7 @@ function Page() {
         <NumbersGrouped
           rows={rows}
           wabas={wabas}
+          businesses={businesses}
           onEdit={(r: any) => { setEditing(r); setOpen(true); }}
           onCreds={(r: any) => setCredsEditing(r)}
           onDelete={(id: string) => delMut.mutate(id)}

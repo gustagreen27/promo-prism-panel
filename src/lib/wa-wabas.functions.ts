@@ -109,3 +109,19 @@ export const getWabaChildren = createServerFn({ method: "GET" })
       campaigns: campaigns.data ?? [],
     };
   });
+
+export const listBusinessNames = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { data, error } = await context.supabase
+      .from("workspaces")
+      .select("id,name,meta_business_id,meta_business_name");
+    if (error) throw error;
+    return (data ?? [])
+      .filter((w: any) => w.meta_business_id)
+      .map((w: any) => ({
+        business_id: String(w.meta_business_id),
+        name: w.meta_business_name || w.name || null,
+      }));
+  });

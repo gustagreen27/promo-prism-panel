@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 type Props = {
   rows: any[];
   wabas: any[];
+  businesses?: { business_id: string; name: string | null }[];
   onEdit: (r: any) => void;
   onCreds: (r: any) => void;
   onDelete: (id: string) => void;
@@ -53,9 +54,18 @@ function StatCard({ icon: Icon, value, label, tone }: any) {
   );
 }
 
-export function NumbersGrouped({ rows, wabas, onEdit, onCreds, onDelete }: Props) {
+export function NumbersGrouped({ rows, wabas, businesses, onEdit, onCreds, onDelete }: Props) {
   const [openBm, setOpenBm] = useState<Record<string, boolean>>({});
   const [openWaba, setOpenWaba] = useState<Record<string, boolean>>({});
+
+  const bmNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const b of businesses ?? []) if (b.business_id && b.name) m.set(String(b.business_id), b.name);
+    return m;
+  }, [businesses]);
+
+  const bmLabel = (bmId: string) =>
+    bmId === "sem-bm" ? "Sem portfólio" : (bmNameById.get(bmId) ?? `BM ${bmId}`);
 
   const wabaByExternalId = useMemo(() => {
     const m = new Map<string, any>();
@@ -75,7 +85,7 @@ export function NumbersGrouped({ rows, wabas, onEdit, onCreds, onDelete }: Props
 
     for (const w of wabas ?? []) {
       const bmId = String(w.business_id ?? "sem-bm");
-      push(bmId, bmId === "sem-bm" ? "Sem portfólio" : `BM ${bmId}`, String(w.waba_id ?? w.id), w.nome_interno ?? `WABA ${w.waba_id ?? ""}`, null);
+      push(bmId, bmLabel(bmId), String(w.waba_id ?? w.id), w.nome_interno ?? `WABA ${w.waba_id ?? ""}`, null);
     }
 
     for (const r of rows ?? []) {
@@ -84,12 +94,13 @@ export function NumbersGrouped({ rows, wabas, onEdit, onCreds, onDelete }: Props
       const bmId = String(r.business_id ?? ref?.business_id ?? "sem-bm");
       push(
         bmId,
-        bmId === "sem-bm" ? "Sem portfólio" : `BM ${bmId}`,
+        bmLabel(bmId),
         wabaExt,
         ref?.nome_interno ?? (wabaExt === "sem-waba" ? "Sem WABA" : `WABA ${wabaExt}`),
         r,
       );
     }
+
 
     return Array.from(bms.values())
       .map((bm) => ({ ...bm, wabaList: Array.from(bm.wabas.values()) }))
@@ -98,7 +109,7 @@ export function NumbersGrouped({ rows, wabas, onEdit, onCreds, onDelete }: Props
         const nb = b.wabaList.reduce((s, w) => s + w.numbers.length, 0);
         return nb - na;
       });
-  }, [rows, wabas, wabaByExternalId]);
+  }, [rows, wabas, wabaByExternalId, bmNameById]);
 
   const totals = useMemo(() => ({
     portfolios: portfolios.length,
