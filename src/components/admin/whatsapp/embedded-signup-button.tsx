@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Loader2, MessageCircle, Smartphone, Info, ExternalLink } from "lucide-react";
+import { Loader2, MessageCircle, Smartphone, Info, ExternalLink, Copy } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { getEmbeddedSignupConfig, completeEmbeddedSignup } from "@/lib/wa-embedded-signup.functions";
 import { PostSignupDialog } from "@/components/admin/whatsapp/post-signup-dialog";
@@ -79,6 +79,20 @@ export function EmbeddedSignupButton({
       setInIframe(true);
     }
   }, []);
+
+  const [openUrl, setOpenUrl] = useState<string>("");
+  useEffect(() => {
+    setOpenUrl(window.location.href);
+  }, []);
+
+  async function copyUrl() {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success("Endereço copiado. Cole em uma nova aba do navegador.");
+    } catch {
+      toast.message(window.location.href, { duration: 12000 });
+    }
+  }
 
   function openInNewTab() {
     // Keep this call directly inside the user's click handler so popup blockers
@@ -328,17 +342,35 @@ export function EmbeddedSignupButton({
                 O Cadastro Incorporado da Meta abre uma janela do Facebook e não é permitido dentro do preview
                 (a página está em um quadro embutido). Por isso o popup é bloqueado e nada acontece ao clicar.
               </p>
-              <Button type="button" size="sm" variant="outline" onClick={openInNewTab}>
-                <ExternalLink className="mr-2 h-4 w-4" />
-                Abrir em nova aba
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button asChild type="button" size="sm" variant="outline">
+                  <a href={openUrl || "#"} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Abrir em nova aba
+                  </a>
+                </Button>
+                <Button type="button" size="sm" variant="ghost" onClick={copyUrl}>
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copiar endereço
+                </Button>
+              </div>
             </AlertDescription>
           </Alert>
         )}
-        <Button onClick={launch} disabled={disabled || (!inIframe && !ready) || loading} type="button" variant={variant}>
-          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Icon className="mr-2 h-4 w-4" />}
-          {label ?? defaultLabel}
-        </Button>
+        {inIframe ? (
+          <Button asChild type="button" variant={variant} className={disabled ? "pointer-events-none opacity-50" : ""}>
+            <a href={openUrl || "#"} target="_blank" rel="noopener noreferrer">
+              <Icon className="mr-2 h-4 w-4" />
+              {label ?? defaultLabel}
+              <ExternalLink className="ml-2 h-3.5 w-3.5 opacity-70" />
+            </a>
+          </Button>
+        ) : (
+          <Button onClick={launch} disabled={disabled || !ready || loading} type="button" variant={variant}>
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Icon className="mr-2 h-4 w-4" />}
+            {label ?? defaultLabel}
+          </Button>
+        )}
       </div>
       <PostSignupDialog
         connectionId={finishedConnectionId}
