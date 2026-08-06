@@ -66,6 +66,10 @@ export async function runCampaignPreflight(
     .maybeSingle();
   if (!camp) throw new Error("Campanha não encontrada.");
 
+  let qualityRating: string | null = null;
+  let numberStatus: string | null = null;
+  let tier: string | null = null;
+
   const finish = (): PreflightResult => {
     const hasFail = checks.some((c) => c.status === "fail");
     const hasWarn = checks.some((c) => c.status === "warn");
@@ -85,10 +89,6 @@ export async function runCampaignPreflight(
       checked_at,
     };
   };
-
-  let qualityRating: string | null = null;
-  let numberStatus: string | null = null;
-  let tier: string | null = null;
 
   if (camp.fatal_locked) {
     push({
