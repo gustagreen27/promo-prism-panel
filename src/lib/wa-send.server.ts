@@ -21,7 +21,13 @@ export type WaSendInput = {
   buttonIndex?: number;
   /** Chave opaca ecoada pela Meta em status webhooks; usada como dedup key server-side. */
   bizOpaqueCallbackData?: string | null;
+  /**
+   * Sinal externo de cancelamento (circuit breaker). Quando a conta é bloqueada
+   * pela Meta, as requisições ainda em voo são abortadas em vez de concluídas.
+   */
+  signal?: AbortSignal;
 };
+
 
 
 export type WaSendResult =
