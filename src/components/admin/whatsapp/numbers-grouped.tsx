@@ -108,11 +108,11 @@ export function NumbersGrouped({ rows, wabas, onEdit, onCreds, onDelete }: Props
   }), [portfolios, rows]);
 
   const avgQuality = (nums: any[]) => {
-    const score = nums.map((n) => (n.quality_rating ?? "").toUpperCase())
-      .map((q) => (q === "GREEN" || q === "HIGH" ? 3 : q === "YELLOW" || q === "MEDIUM" ? 2 : q === "RED" || q === "LOW" ? 1 : 0))
-      .filter(Boolean);
+    const score: number[] = nums.map((n) => (n.quality_rating ?? "").toUpperCase())
+      .map((q): number => (q === "GREEN" || q === "HIGH" ? 3 : q === "YELLOW" || q === "MEDIUM" ? 2 : q === "RED" || q === "LOW" ? 1 : 0))
+      .filter((v: number) => v > 0);
     if (!score.length) return null;
-    const avg = score.reduce((a, b) => a + b, 0) / score.length;
+    const avg = score.reduce((a: number, b: number) => a + b, 0) / score.length;
     return avg >= 2.5 ? "GREEN" : avg >= 1.5 ? "YELLOW" : "RED";
   };
 
