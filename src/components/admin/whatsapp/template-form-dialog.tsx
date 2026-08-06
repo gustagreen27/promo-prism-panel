@@ -184,12 +184,23 @@ export function TemplateFormDialog({ editing, numbers, wabas, onSubmit, saving }
             title="Conteúdo"
             description="Adicione um cabeçalho, corpo de texto e rodapé ao seu modelo. A API de Nuvem hospedada pela Meta vai analisar as variáveis e o conteúdo do modelo para proteger a segurança e a integridade dos nossos serviços."
           >
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-3">
               <div>
-                <FieldLabel>Tipo de cabeçalho</FieldLabel>
-                <Select value={form.header_type ?? ""} onValueChange={(v) => set("header_type", v)}>
-                  <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                <FieldLabel>Tipo de variável</FieldLabel>
+                <Select value={form.variable_format ?? "positional"} onValueChange={(v) => set("variable_format", v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="positional">Número</SelectItem>
+                    <SelectItem value="named">Nomeada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <FieldLabel>Amostra de mídia</FieldLabel>
+                <Select value={form.header_type || "none"} onValueChange={(v) => set("header_type", v === "none" ? "" : v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
                     <SelectItem value="text">Texto</SelectItem>
                     <SelectItem value="image">Imagem</SelectItem>
                     <SelectItem value="video">Vídeo</SelectItem>
@@ -198,7 +209,7 @@ export function TemplateFormDialog({ editing, numbers, wabas, onSubmit, saving }
                 </Select>
               </div>
               <div>
-                <FieldLabel optional>Amostra de mídia (URL)</FieldLabel>
+                <FieldLabel optional>URL da amostra de mídia</FieldLabel>
                 <Input placeholder="https://exemplo.com/midia.jpg" value={form.header_media_url ?? ""}
                   onChange={(e) => set("header_media_url", e.target.value)} disabled={!form.header_type || form.header_type === "text"} />
               </div>
@@ -217,16 +228,29 @@ export function TemplateFormDialog({ editing, numbers, wabas, onSubmit, saving }
             <div>
               <FieldLabel>Corpo</FieldLabel>
               <div className="relative">
-                <Textarea rows={6} maxLength={1024} className="resize-y pr-16"
+                <Textarea rows={8} maxLength={1024} className="resize-y pr-16"
                   placeholder={"Olá {{1}}, sua mensagem..."}
                   value={form.body ?? ""} onChange={(e) => set("body", e.target.value)} />
                 <span className="absolute right-3 top-2"><Counter value={form.body} max={1024} /></span>
               </div>
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">Variáveis detectadas:</span>
-                {detected.length === 0
-                  ? <span className="text-xs text-muted-foreground">—</span>
-                  : detected.map((d: string, i: number) => <Badge key={i} variant="secondary" className="font-mono text-[10px]">{d}</Badge>)}
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground">Variáveis detectadas:</span>
+                  {detected.length === 0
+                    ? <span className="text-xs text-muted-foreground">—</span>
+                    : detected.map((d: string, i: number) => <Badge key={i} variant="secondary" className="font-mono text-[10px]">{d}</Badge>)}
+                </div>
+                <Button
+                  type="button" size="sm" variant="outline"
+                  onClick={() => {
+                    const next = (form.variable_format ?? "positional") === "named"
+                      ? `{{variavel_${detected.length + 1}}}`
+                      : `{{${detected.length + 1}}}`;
+                    set("body", `${form.body ?? ""}${next}`);
+                  }}
+                >
+                  <Plus className="mr-1 h-3.5 w-3.5" />Adicionar variável
+                </Button>
               </div>
               <p className="mt-1.5 flex items-start gap-1 text-[11px] leading-relaxed text-muted-foreground">
                 <Info className="mt-0.5 h-3 w-3 shrink-0" />
@@ -234,10 +258,30 @@ export function TemplateFormDialog({ editing, numbers, wabas, onSubmit, saving }
               </p>
             </div>
 
-            <div>
-              <FieldLabel>Exemplos das variáveis do corpo (1 por variável, separadas por |)</FieldLabel>
-              <Input value={bodyExamples.join(" | ")} placeholder="João | Segunda-feira | 20% OFF"
-                onChange={(e) => setBodyExamples(e.target.value.split("|").map((s) => s.trim()).filter(Boolean))} />
+            <div className="rounded-md border bg-muted/30 p-3">
+              <p className="text-xs font-semibold">Amostras de variável</p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                Adicione um exemplo para cada variável. As amostras são usadas apenas na revisão da Meta — não serão enviadas ao cliente. Não inclua dados pessoais.
+              </p>
+              <p className="mt-3 text-[11px] font-medium text-muted-foreground">Corpo</p>
+              <div className="mt-1.5 space-y-1.5">
+                {detected.length === 0 && <p className="text-xs text-muted-foreground">Nenhuma variável no corpo.</p>}
+                {detected.map((d: string, i: number) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="w-32 shrink-0 rounded border bg-background px-2 py-1.5 font-mono text-[11px] text-muted-foreground">{d}</span>
+                    <Input
+                      className="bg-background" placeholder="Exemplo de conteúdo"
+                      value={bodyExamples[i] ?? ""}
+                      onChange={(e) => {
+                        const arr = [...bodyExamples];
+                        while (arr.length < detected.length) arr.push("");
+                        arr[i] = e.target.value;
+                        setBodyExamples(arr.slice(0, detected.length));
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div>
@@ -249,6 +293,7 @@ export function TemplateFormDialog({ editing, numbers, wabas, onSubmit, saving }
               </div>
             </div>
           </Section>
+
 
           <Section
             title="Botões · Opcional"
