@@ -823,7 +823,14 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                         {selectedNumber.messaging_limit_tier && (
                           <Badge variant="outline">Tier: {selectedNumber.messaging_limit_tier}</Badge>
                         )}
+                        {(selectedNumber as any).business_id && (
+                          <Badge variant="outline">BM {(selectedNumber as any).business_id}</Badge>
+                        )}
+                        {(selectedNumber as any).waba_name && (
+                          <Badge variant="outline">WABA {(selectedNumber as any).waba_name}</Badge>
+                        )}
                         {senderCode && <Badge variant="outline">DDI {formatCallingCode(senderCode)}</Badge>}
+
                       </div>
                     )}
                     {ddiDifferent && (
