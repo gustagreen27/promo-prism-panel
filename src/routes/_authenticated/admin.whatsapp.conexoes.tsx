@@ -266,7 +266,7 @@ function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId
             <div
               className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-primary"
               style={{
-                background: `conic-gradient(hsl(var(--primary)) ${(pct ?? 0) * 3.6}deg, hsl(var(--primary) / 0.12) 0deg)`,
+                background: `conic-gradient(var(--primary) ${(pct ?? 0) * 3.6}deg, color-mix(in oklab, var(--primary) 12%, transparent) 0deg)`,
               }}
             >
               <span className="flex h-16 w-16 items-center justify-center rounded-full bg-card">
