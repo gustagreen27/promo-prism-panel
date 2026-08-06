@@ -230,6 +230,7 @@ export function EmbeddedSignupButton({
           toast.success(
             `Conectado: ${result.display_phone_number ?? result.verified_name ?? "número"} (${result.status})${suffix}`,
           );
+          setFinishedConnectionId(result.connection_id);
           onCompleted?.(result);
         } catch (e: any) {
           const msg: string = e?.message ?? "Falha ao concluir onboarding";
