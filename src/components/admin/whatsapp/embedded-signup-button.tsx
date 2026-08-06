@@ -81,11 +81,20 @@ export function EmbeddedSignupButton({
   }, []);
 
   function openInNewTab() {
-    const w = window.open(window.location.href, "_blank", "noopener,noreferrer");
+    // Keep this call directly inside the user's click handler so popup blockers
+    // recognise it as a user-initiated navigation. `noopener` in the features
+    // string makes some browsers return `null` even when the tab did open.
+    const w = window.open(window.location.href, "_blank");
     if (!w) {
       toast.message("Não foi possível abrir a nova aba. Copie o endereço e abra manualmente no navegador.", {
         duration: 9000,
       });
+      return;
+    }
+    try {
+      w.opener = null;
+    } catch {
+      /* the new tab may already be cross-origin */
     }
   }
 
@@ -143,6 +152,9 @@ export function EmbeddedSignupButton({
       s.defer = true;
       s.crossOrigin = "anonymous";
       s.src = "https://connect.facebook.net/en_US/sdk.js";
+      s.onerror = () => {
+        if (!cancelled) toast.error("Não foi possível carregar o cadastro da Meta. Verifique bloqueadores de conteúdo e tente novamente.");
+      };
       document.body.appendChild(s);
     }
     return () => {
@@ -184,8 +196,6 @@ export function EmbeddedSignupButton({
   }, []);
 
   function launch() {
-    if (!window.FB || !cfg) return;
-
     // O Embedded Signup abre um popup do Facebook. Dentro do iframe do preview
     // o navegador bloqueia esse popup (e a Meta não permite o fluxo em iframe),
     // então nada acontece ao clicar. Abrimos a página em uma aba real.
@@ -198,6 +208,14 @@ export function EmbeddedSignupButton({
       return;
     }
 
+    if (!cfg) {
+      toast.error("A configuração da Meta ainda não foi carregada. Aguarde e tente novamente.");
+      return;
+    }
+    if (!window.FB || !ready) {
+      toast.error("O cadastro da Meta ainda está carregando. Verifique bloqueadores de conteúdo e tente novamente.");
+      return;
+    }
 
     sessionRef.current = null;
     setLoading(true);
@@ -317,7 +335,7 @@ export function EmbeddedSignupButton({
             </AlertDescription>
           </Alert>
         )}
-        <Button onClick={launch} disabled={disabled || !ready || loading} type="button" variant={variant}>
+        <Button onClick={launch} disabled={disabled || (!inIframe && !ready) || loading} type="button" variant={variant}>
           {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Icon className="mr-2 h-4 w-4" />}
           {label ?? defaultLabel}
         </Button>
