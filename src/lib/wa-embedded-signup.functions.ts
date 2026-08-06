@@ -88,7 +88,8 @@ export const completeEmbeddedSignup = createServerFn({ method: "POST" })
     // Non-admins are always scoped to their own workspace; admin passes client/project explicitly.
     const scopedClientId = caller.isAdmin ? (data.client_id ?? null) : null;
     const scopedProjectId = caller.isAdmin ? (data.project_id ?? null) : null;
-    const scopedWorkspaceId = caller.isAdmin ? null : caller.workspaceId;
+    // Admin: resolvido depois, a partir do Business Manager retornado pela Meta.
+    let scopedWorkspaceId: string | null = caller.isAdmin ? null : caller.workspaceId;
 
     const supabase = context.supabase;
     const appId = process.env.META_APP_ID;
@@ -144,6 +145,58 @@ export const completeEmbeddedSignup = createServerFn({ method: "POST" })
     const wabaName: string | undefined = wJson?.name;
     const businessId: string | null =
       data.business_id ?? wJson?.on_behalf_of_business_info?.id ?? null;
+
+    // 3a) Admin: garante um workspace (portfólio empresarial) para esta BM,
+    // para que a nova conexão apareça em /admin/whatsapp/conexoes.
+    if (caller.isAdmin && !scopedWorkspaceId) {
+      try {
+        let businessName: string | null = wJson?.on_behalf_of_business_info?.name ?? null;
+        if (!businessName && businessId) {
+          const bRes = await gfetch(`/${businessId}?fields=id,name`);
+          const bJson: any = await bRes.json().catch(() => ({}));
+          if (bRes.ok) businessName = bJson?.name ?? null;
+        }
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        let wsId: string | null = null;
+        if (businessId) {
+          const found = await supabaseAdmin
+            .from("workspaces")
+            .select("id")
+            .eq("meta_business_id", businessId)
+            .maybeSingle();
+          wsId = found.data?.id ?? null;
+        }
+        if (!wsId) {
+          const wsName = businessName || wabaName || `BM ${businessId ?? data.waba_id}`;
+          const slugBase = wsName
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-|-$/g, "")
+            .slice(0, 40) || "bm";
+          const created = await supabaseAdmin
+            .from("workspaces")
+            .insert({
+              name: wsName,
+              slug: `${slugBase}-${(businessId ?? data.waba_id).slice(-6)}`,
+              meta_business_id: businessId,
+              meta_business_name: businessName,
+            })
+            .select("id")
+            .single();
+          if (created.error) throw created.error;
+          wsId = created.data.id;
+        } else if (businessName) {
+          await supabaseAdmin.from("workspaces").update({ meta_business_name: businessName }).eq("id", wsId);
+        }
+        scopedWorkspaceId = wsId;
+        await logStep(supabase, baseLog, "ensure_workspace", "ok", { workspace_id: wsId, business_id: businessId });
+      } catch (e: any) {
+        await logStep(supabase, baseLog, "ensure_workspace", "error", null, e?.message ?? "falha ao criar workspace");
+      }
+    }
+
 
     // 3b) Validate that phone_number_id really belongs to the returned WABA (PHONE_ID_WRONG_WABA guard)
     const pnListRes = await gfetch(`/${data.waba_id}/phone_numbers?fields=id,display_phone_number&limit=200`);
