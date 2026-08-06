@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Save, Webhook, ListChecks, Building2, Users, Gauge, Info, RefreshCw, Link2, Phone, ShieldCheck, TrendingUp, ChevronDown } from "lucide-react";
+import { Save, Webhook, ListChecks, Building2, Users, Gauge, Info, RefreshCw, Link2, Phone, ShieldCheck, TrendingUp, ChevronDown, Unplug } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
 import { ErrorCard } from "@/components/admin/query-state";
@@ -12,6 +12,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { EmbeddedSignupButton } from "@/components/admin/whatsapp/embedded-signup-button";
 import { PostSignupDialog } from "@/components/admin/whatsapp/post-signup-dialog";
 import {
@@ -20,6 +24,7 @@ import {
   setWorkspaceDefaultConnection,
   subscribeConnectionToApp,
   recalcWorkspaceCapacity,
+  disconnectWorkspaceBM,
 } from "@/lib/wa-connections.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp/conexoes")({
@@ -84,6 +89,16 @@ function Page() {
     },
     onError: (e: any) => toast.error(e?.message ?? "Falha ao assinar app"),
   });
+  const disconnectFn = useServerFn(disconnectWorkspaceBM);
+  const disconnectMut = useMutation({
+    mutationFn: (workspace_id: string) => disconnectFn({ data: { workspace_id } }),
+    onSuccess: (r: any) => {
+      toast.success(`BM desconectada · ${r?.wabas_removed ?? 0} portfólio(s) removido(s)`);
+      refresh();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao desconectar BM"),
+  });
+
 
   return (
     <>
@@ -117,6 +132,8 @@ function Page() {
               onRecalc={() => recalcMut.mutate(w.id)}
               recalcing={recalcMut.isPending && (recalcMut.variables === w.id || recalcMut.variables === null)}
               saving={bizMut.isPending || defMut.isPending}
+              onDisconnect={() => disconnectMut.mutate(w.id)}
+              disconnecting={disconnectMut.isPending && disconnectMut.variables === w.id}
             />
           ))}
         </div>
@@ -142,7 +159,7 @@ function avgQuality(items: any[]) {
   return avg >= 2.6 ? "alta" : avg >= 1.8 ? "boa" : "baixa";
 }
 
-function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId, saving, onRecalc, recalcing }: any) {
+function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId, saving, onRecalc, recalcing, onDisconnect, disconnecting }: any) {
   const [bizId, setBizId] = useState<string>(w.meta_business_id ?? "");
   const [bizName, setBizName] = useState<string>(w.meta_business_name ?? "");
   const [defConn, setDefConn] = useState<string>(w.default_connection_id ?? "");
@@ -174,11 +191,36 @@ function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Users className="h-4 w-4" />
-          {w.wabas.length} WABA · {w.connections.length} números
+        <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+          <span className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            {w.wabas.length} WABA · {w.connections.length} números
+          </span>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 rounded-xl text-destructive hover:text-destructive" disabled={disconnecting}>
+                <Unplug className="mr-2 h-4 w-4" />
+                {disconnecting ? "Desconectando…" : "Desconectar BM"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Desconectar “{w.name}”?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Serão removidos apenas os {w.wabas.length} portfólio(s) vinculados a esta BM e os
+                  {" "}{w.connections.length} número(s) serão desvinculados. Nenhuma outra BM é afetada, e
+                  campanhas e histórico permanecem intactos.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={onDisconnect}>Desconectar</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
+
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_400px]">
         {/* Configurações do BM */}
