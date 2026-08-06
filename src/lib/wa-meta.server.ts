@@ -288,7 +288,7 @@ export async function debugAccessToken(tokenOverride?: string | null): Promise<
 }
 
 export async function listOwnedWabas(businessId: string, tokenOverride?: string | null) {
-  const url = `/${businessId}/owned_whatsapp_business_accounts?fields=id,name,timezone_id,message_template_namespace,currency,account_review_status`;
+  const url = `/${businessId}/owned_whatsapp_business_accounts?fields=id,name,timezone_id,message_template_namespace,currency,account_review_status,whatsapp_business_manager_messaging_limit`;
   const res = await metaFetch(url, { method: "GET" }, tokenOverride);
   const json: any = await res.json().catch(() => ({}));
   if (!res.ok) {
