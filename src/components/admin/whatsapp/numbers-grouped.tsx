@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 type Props = {
   rows: any[];
   wabas: any[];
+  businesses?: { business_id: string; name: string | null }[];
   onEdit: (r: any) => void;
   onCreds: (r: any) => void;
   onDelete: (id: string) => void;
