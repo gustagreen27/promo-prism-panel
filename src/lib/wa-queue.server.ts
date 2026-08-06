@@ -68,6 +68,36 @@ const FATAL_ACCOUNT_CODES: Record<string, string> = {
   "131042": "Problema de pagamento na conta comercial",
   "133010": "Número não registrado na Cloud API",
 };
+
+/**
+ * A Meta nem sempre devolve o código fatal em `error.code`: às vezes vem em
+ * `error_subcode` (com code=100/135000) ou apenas embutido na mensagem
+ * ("(#131031) Business account has been locked"). Sem cobrir os três formatos,
+ * o circuit breaker não dispara e a campanha segue tentando milhares de vezes.
+ */
+function detectFatalAccountCode(result: any): string | null {
+  const direct = result?.code != null ? String(result.code) : null;
+  if (direct && FATAL_ACCOUNT_CODES[direct]) return direct;
+
+  const err = result?.raw?.error ?? result?.raw ?? null;
+  const sub = err?.error_subcode != null ? String(err.error_subcode) : null;
+  if (sub && FATAL_ACCOUNT_CODES[sub]) return sub;
+
+  const haystack = `${result?.error ?? ""} ${err?.message ?? ""} ${err?.error_user_msg ?? ""}`;
+  for (const code of Object.keys(FATAL_ACCOUNT_CODES)) {
+    if (haystack.includes(`#${code}`) || haystack.includes(code)) return code;
+  }
+  if (/business account has been locked|account has been restricted/i.test(haystack)) return "131031";
+  return null;
+}
+
+/**
+ * Kill switch em memória: assim que um número é marcado como bloqueado, todas
+ * as lanes rodando no mesmo isolate param imediatamente, sem esperar o próximo
+ * tick nem um novo round-trip ao banco.
+ */
+const BLOCKED_CONNECTIONS = new Map<string, string>();
+
 // Lease bem curto: o processamento é seguro por reserva atômica com SKIP LOCKED,
 // então o próximo tick pode entrar em poucos segundos sem duplicar destinatário.
 // Antes 30s fazia o efeito indesejado de "bloco, pausa, bloco" quando o runtime
@@ -425,6 +455,41 @@ export async function processCampaignTick(
       return { processed: 0, done: true };
     }
 
+    // Número/rota bloqueado (por esta ou por QUALQUER outra campanha): nenhum
+    // disparo pode começar enquanto a Meta mantiver a restrição.
+    const connBlockedReason =
+      (conn as any).blocked_at
+        ? ((conn as any).blocked_reason ?? "número bloqueado pela Meta")
+        : BLOCKED_CONNECTIONS.get(String(camp.connection_id)) ?? null;
+    if (connBlockedReason) {
+      const msg = `Número bloqueado — ${connBlockedReason}`;
+      await supabaseAdmin
+        .from("wa_campaigns")
+        .update({
+          status: "paused",
+          paused_at: new Date().toISOString(),
+          pause_reason: "account_locked",
+          last_error: msg,
+          fatal_locked: true,
+          fatal_error_code: (conn as any).blocked_error_code ?? null,
+          fatal_error_message: msg,
+          fatal_locked_at: new Date().toISOString(),
+        })
+        .eq("id", campaignId);
+      await supabaseAdmin
+        .from("campaign_recipients")
+        .update({ status: "pending", failed_reason: null, error_code: null })
+        .eq("campaign_id", campaignId)
+        .eq("status", "processing")
+        .is("meta_message_id", null);
+      await logEvent(campaignId, "account_locked", `🔴 ${msg} — disparo impedido.`, {
+        connection_id: camp.connection_id,
+      });
+      return { processed: 0, done: true, reason: "account_locked" };
+    }
+
+
+
     // Pré-checagem de saúde de envio (health_status) — usa cache de 5 min.
     // BLOCKED/LIMITED impede a tentativa e pausa a campanha explicando o motivo.
     try {
@@ -638,7 +703,10 @@ export async function processCampaignTick(
       const label = FATAL_ACCOUNT_CODES[code] ?? "Erro crítico da conta";
       const message = `${label} (#${code})${rawError ? ` — ${rawError}` : ""}`;
       fatalStop = { code, message };
+      // Kill switch imediato para todas as lanes/campanhas deste número no isolate.
+      if (camp.connection_id) BLOCKED_CONNECTIONS.set(String(camp.connection_id), message);
       systemicPause = { reason: "account_locked", message: `🔴 Pausada automaticamente — ${message}` };
+
 
       // 1+2. Pausa a campanha e trava reprocessamento automático
       await supabaseAdmin
@@ -755,7 +823,15 @@ export async function processCampaignTick(
     };
 
     const sendOne = async (r: any): Promise<void> => {
+      // Kill switch de outra lane no mesmo isolate (mesmo número).
+      if (!fatalStop && camp.connection_id && BLOCKED_CONNECTIONS.has(String(camp.connection_id))) {
+        await triggerFatalStop(
+          "131031",
+          BLOCKED_CONNECTIONS.get(String(camp.connection_id)) ?? null,
+        );
+      }
       // Circuit breaker ativo: não tenta mais nada, devolve o contato à fila.
+
       if (fatalStop) {
         await supabaseAdmin
           .from("campaign_recipients")
@@ -998,8 +1074,9 @@ export async function processCampaignTick(
         /failed to fetch|fetch failed|network|econnreset|etimedout|enetunreach|socket hang up/i.test(
           result.error || "",
         );
-      const fatalCode = result.code ? String(result.code) : null;
-      if (fatalCode && FATAL_ACCOUNT_CODES[fatalCode]) {
+      const fatalCode = detectFatalAccountCode(result);
+      if (fatalCode) {
+
         lastError = result.error;
         await supabaseAdmin
           .from("campaign_recipients")
@@ -1295,11 +1372,66 @@ export async function processCampaignTick(
     await reserveNextChunk();
 
     const laneRuntimeMs = Math.max(2000, Number(opts?.maxRuntimeMs ?? MAX_TICK_RUNTIME_MS));
+
+    /**
+     * Verificação contínua durante a campanha: a Meta pode bloquear a conta
+     * depois do início. A cada 1,5s conferimos se OUTRA lane/worker (em outro
+     * isolate) já travou a campanha ou bloqueou o número — e, se sim, esta lane
+     * para na hora em vez de esperar o fim do tick.
+     */
+    let lastKillCheckAt = 0;
+    const checkExternalKill = async () => {
+      const now = Date.now();
+      if (now - lastKillCheckAt < 1500) return;
+      lastKillCheckAt = now;
+      if (fatalStop) return;
+      if (camp.connection_id && BLOCKED_CONNECTIONS.has(String(camp.connection_id))) {
+        await triggerFatalStop("131031", BLOCKED_CONNECTIONS.get(String(camp.connection_id)) ?? null);
+        return;
+      }
+      try {
+        const [{ data: c }, { data: k }] = await Promise.all([
+          supabaseAdmin
+            .from("wa_campaigns")
+            .select("fatal_locked, fatal_error_code, fatal_error_message, status")
+            .eq("id", campaignId)
+            .maybeSingle(),
+          camp.connection_id
+            ? supabaseAdmin
+                .from("whatsapp_connections")
+                .select("blocked_at, blocked_reason, blocked_error_code")
+                .eq("id", camp.connection_id)
+                .maybeSingle()
+            : Promise.resolve({ data: null } as any),
+        ]);
+        if ((c as any)?.fatal_locked) {
+          await triggerFatalStop(
+            String((c as any).fatal_error_code ?? "131031"),
+            (c as any).fatal_error_message ?? null,
+          );
+          return;
+        }
+        if ((k as any)?.blocked_at) {
+          await triggerFatalStop(
+            String((k as any).blocked_error_code ?? "131031"),
+            (k as any).blocked_reason ?? null,
+          );
+          return;
+        }
+        if (c && (c as any).status !== "running") {
+          systemicPause = { reason: (c as any).status, message: `Campanha ${(c as any).status} — lane encerrada.` };
+        }
+      } catch { /* best-effort */ }
+    };
+
     while (!systemicPause) {
       if (Date.now() - tickStart > laneRuntimeMs) break;
 
       flushTelemetryIfNeeded();
       void heartbeat();
+      await checkExternalKill();
+      if (fatalStop) break;
+
       // libera slots consumidos em batch (~1×/s)
       if (Date.now() - lastSlotFlushAt >= 1000) {
         await flushSlotReleases();

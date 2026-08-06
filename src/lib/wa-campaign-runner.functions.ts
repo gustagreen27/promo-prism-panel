@@ -10,6 +10,36 @@ async function assertAdmin(ctx: { supabase: any; userId: string }) {
   if (!data) throw new Error("Forbidden");
 }
 
+/**
+ * Impede retomar/reprocessar enquanto a campanha estiver travada por erro
+ * crítico OU enquanto o número usado continuar bloqueado pela Meta.
+ */
+async function assertCampaignUnlocked(supabase: any, campaignId: string) {
+  const { data: camp } = await supabase
+    .from("wa_campaigns")
+    .select("fatal_locked, fatal_error_code, fatal_error_message, connection_id")
+    .eq("id", campaignId)
+    .maybeSingle();
+  if (camp?.fatal_locked) {
+    throw new Error(
+      `Bloqueada por erro crítico ${camp.fatal_error_code ?? ""}: ${camp.fatal_error_message ?? "conta bloqueada pela Meta"}. Troque de WABA/número ou libere manualmente antes de reprocessar.`,
+    );
+  }
+  if (camp?.connection_id) {
+    const { data: conn } = await supabase
+      .from("whatsapp_connections")
+      .select("blocked_at, blocked_reason")
+      .eq("id", camp.connection_id)
+      .maybeSingle();
+    if (conn?.blocked_at) {
+      throw new Error(
+        `Número bloqueado pela Meta: ${conn.blocked_reason ?? "restrição ativa"}. Troque o número/WABA ou desbloqueie antes de reprocessar.`,
+      );
+    }
+  }
+}
+
+
 async function logEvent(supabase: any, campaignId: string, event_type: string, message: string, actorId: string | null = null, payload: any = {}) {
   try {
     await supabase.from("campaign_timeline").insert({
@@ -320,16 +350,8 @@ export const resumeCampaignAsync = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => idSchema.parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { data: lockRow } = await context.supabase
-      .from("wa_campaigns")
-      .select("fatal_locked, fatal_error_code, fatal_error_message")
-      .eq("id", data.id)
-      .maybeSingle();
-    if (lockRow?.fatal_locked) {
-      throw new Error(
-        `Bloqueada por erro crítico ${lockRow.fatal_error_code ?? ""}: ${lockRow.fatal_error_message ?? "conta bloqueada pela Meta"}. Troque de WABA/número ou libere manualmente antes de reprocessar.`,
-      );
-    }
+    await assertCampaignUnlocked(context.supabase, data.id);
+
     await context.supabase
       .from("wa_campaigns")
       .update({ status: "running", resumed_at: new Date().toISOString() })
@@ -366,16 +388,8 @@ export const retryFailedRecipients = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => idSchema.parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { data: lockRow } = await context.supabase
-      .from("wa_campaigns")
-      .select("fatal_locked, fatal_error_code, fatal_error_message")
-      .eq("id", data.id)
-      .maybeSingle();
-    if (lockRow?.fatal_locked) {
-      throw new Error(
-        `Bloqueada por erro crítico ${lockRow.fatal_error_code ?? ""}: ${lockRow.fatal_error_message ?? "conta bloqueada pela Meta"}. Troque de WABA/número ou libere manualmente antes de reprocessar.`,
-      );
-    }
+    await assertCampaignUnlocked(context.supabase, data.id);
+
     const { data: updated, error } = await context.supabase
       .from("campaign_recipients")
       .update({
