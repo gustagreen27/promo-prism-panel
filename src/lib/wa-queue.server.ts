@@ -1372,11 +1372,66 @@ export async function processCampaignTick(
     await reserveNextChunk();
 
     const laneRuntimeMs = Math.max(2000, Number(opts?.maxRuntimeMs ?? MAX_TICK_RUNTIME_MS));
+
+    /**
+     * Verificação contínua durante a campanha: a Meta pode bloquear a conta
+     * depois do início. A cada 1,5s conferimos se OUTRA lane/worker (em outro
+     * isolate) já travou a campanha ou bloqueou o número — e, se sim, esta lane
+     * para na hora em vez de esperar o fim do tick.
+     */
+    let lastKillCheckAt = 0;
+    const checkExternalKill = async () => {
+      const now = Date.now();
+      if (now - lastKillCheckAt < 1500) return;
+      lastKillCheckAt = now;
+      if (fatalStop) return;
+      if (camp.connection_id && BLOCKED_CONNECTIONS.has(String(camp.connection_id))) {
+        await triggerFatalStop("131031", BLOCKED_CONNECTIONS.get(String(camp.connection_id)) ?? null);
+        return;
+      }
+      try {
+        const [{ data: c }, { data: k }] = await Promise.all([
+          supabaseAdmin
+            .from("wa_campaigns")
+            .select("fatal_locked, fatal_error_code, fatal_error_message, status")
+            .eq("id", campaignId)
+            .maybeSingle(),
+          camp.connection_id
+            ? supabaseAdmin
+                .from("whatsapp_connections")
+                .select("blocked_at, blocked_reason, blocked_error_code")
+                .eq("id", camp.connection_id)
+                .maybeSingle()
+            : Promise.resolve({ data: null } as any),
+        ]);
+        if ((c as any)?.fatal_locked) {
+          await triggerFatalStop(
+            String((c as any).fatal_error_code ?? "131031"),
+            (c as any).fatal_error_message ?? null,
+          );
+          return;
+        }
+        if ((k as any)?.blocked_at) {
+          await triggerFatalStop(
+            String((k as any).blocked_error_code ?? "131031"),
+            (k as any).blocked_reason ?? null,
+          );
+          return;
+        }
+        if (c && (c as any).status !== "running") {
+          systemicPause = { reason: (c as any).status, message: `Campanha ${(c as any).status} — lane encerrada.` };
+        }
+      } catch { /* best-effort */ }
+    };
+
     while (!systemicPause) {
       if (Date.now() - tickStart > laneRuntimeMs) break;
 
       flushTelemetryIfNeeded();
       void heartbeat();
+      await checkExternalKill();
+      if (fatalStop) break;
+
       // libera slots consumidos em batch (~1×/s)
       if (Date.now() - lastSlotFlushAt >= 1000) {
         await flushSlotReleases();
