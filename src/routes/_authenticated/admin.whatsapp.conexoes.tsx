@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Save, Webhook, ListChecks, Building2, Users, Gauge, Info } from "lucide-react";
+import { Save, Webhook, ListChecks, Building2, Users, Gauge, Info, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
 import { ErrorCard } from "@/components/admin/query-state";
@@ -19,6 +19,7 @@ import {
   setWorkspaceBusinessId,
   setWorkspaceDefaultConnection,
   subscribeConnectionToApp,
+  recalcWorkspaceCapacity,
 } from "@/lib/wa-connections.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp/conexoes")({
@@ -39,6 +40,28 @@ function Page() {
   });
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["wa-workspace-conns"] });
+
+  const recalcFn = useServerFn(recalcWorkspaceCapacity);
+  const recalcMut = useMutation({
+    mutationFn: (workspace_id: string | null) => recalcFn({ data: { workspace_id } }),
+    onSuccess: (r: any) => {
+      toast.success(`Capacidade recalculada (${r?.resolved ?? 0}/${r?.wabas ?? 0} WABAs)`);
+      refresh();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao recalcular capacidade"),
+  });
+
+  // Recalcula automaticamente ao abrir quando algum workspace está sem capacidade conhecida.
+  const autoDone = useRef(false);
+  useEffect(() => {
+    if (autoDone.current || !rows) return;
+    const missing = (rows as any[]).some(
+      (w) => workspaceCapacity(w) === null && (w.connections ?? []).some((c: any) => c.waba_id),
+    );
+    if (!missing) return;
+    autoDone.current = true;
+    recalcMut.mutate(null);
+  }, [rows]);
 
   const bizMut = useMutation({
     mutationFn: (p: { workspace_id: string; meta_business_id: string | null; meta_business_name: string | null }) =>
@@ -91,6 +114,8 @@ function Page() {
               onSaveDefault={(cid: string | null) => defMut.mutate({ workspace_id: w.id, connection_id: cid })}
               onSubscribe={(cid: string) => subMut.mutate(cid)}
               subscribingId={subMut.isPending ? (subMut.variables as string | undefined) : undefined}
+              onRecalc={() => recalcMut.mutate(w.id)}
+              recalcing={recalcMut.isPending && (recalcMut.variables === w.id || recalcMut.variables === null)}
               saving={bizMut.isPending || defMut.isPending}
             />
           ))}
@@ -100,7 +125,7 @@ function Page() {
   );
 }
 
-function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId, saving }: any) {
+function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId, saving, onRecalc, recalcing }: any) {
   const [bizId, setBizId] = useState<string>(w.meta_business_id ?? "");
   const [bizName, setBizName] = useState<string>(w.meta_business_name ?? "");
   const [defConn, setDefConn] = useState<string>(w.default_connection_id ?? "");
