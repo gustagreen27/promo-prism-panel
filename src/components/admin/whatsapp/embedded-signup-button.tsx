@@ -168,10 +168,15 @@ export function EmbeddedSignupButton({
 
     // Extras: NUNCA envia setup:{} ou featureType:"" — Meta rejeita chaves vazias
     // silenciosamente e o sample oficial só inclui essas chaves quando têm valor real.
-    const extras: Record<string, any> = { sessionInfoVersion: "3", version: "v4" };
+    // Config validada no painel da Meta: version v4, sessionInfoVersion 3,
+    // features [app_only_install], featureType apenas no fluxo de coexistência.
+    const extras: Record<string, any> = {
+      sessionInfoVersion: "3",
+      version: "v4",
+      features: [{ name: "app_only_install" }],
+    };
     if (mode === "coexistence") {
       extras.featureType = "whatsapp_business_app_onboarding";
-      extras.features = [{ name: "app_only_install" }];
     }
 
     // Watchdog do popup: se o callback do FB não disparar em 5min (usuário fechou
