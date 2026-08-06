@@ -20,23 +20,41 @@ export const adminListAllNumbers = createServerFn({ method: "POST" })
     // ou sync). O admin precisa conseguir enviar/testar por qualquer conexão existente.
     const { data, error } = await supabase
       .from("whatsapp_connections")
-      .select("id, display_name, nome_interno, name, display_phone, phone, phone_number_id, waba_id, status, quality_rating, daily_cap, paused_at, visibility, code_verification_status, meta_sync_status")
+      .select("id, display_name, nome_interno, name, display_phone, phone, phone_number_id, waba_id, waba_ref_id, status, quality_rating, daily_cap, paused_at, visibility, code_verification_status, meta_sync_status")
       .order("display_name", { ascending: true });
     if (error) throw error;
-    const rows = (data ?? []).map((c: any) => ({
-      id: c.id,
-      display_name: c.display_name ?? c.nome_interno ?? c.name ?? "—",
-      phone_masked: String(c.display_phone ?? c.phone ?? "").replace(/(\d{2,4})$/, "****"),
-      phone_display: c.display_phone ?? c.phone ?? null,
-      phone_number_id: c.phone_number_id ?? null,
-      waba_id: c.waba_id ?? null,
-      phone_country_code: getCountryCallingCode(c.phone ?? c.display_phone),
-      status: c.status,
-      quality_rating: c.quality_rating ?? null,
-      messaging_limit_tier: null,
-      daily_cap: c.daily_cap ?? null,
-    }));
+
+    // Enriquecer com o portfólio empresarial (BM) de cada WABA para agrupar na UI.
+    const { data: wabas } = await supabase
+      .from("whatsapp_wabas")
+      .select("id, waba_id, nome_interno, business_id");
+    const byRef = new Map<string, any>();
+    const byWabaId = new Map<string, any>();
+    for (const w of wabas ?? []) {
+      byRef.set(w.id, w);
+      if (w.waba_id) byWabaId.set(String(w.waba_id), w);
+    }
+
+    const rows = (data ?? []).map((c: any) => {
+      const w = (c.waba_ref_id ? byRef.get(c.waba_ref_id) : null) ?? (c.waba_id ? byWabaId.get(String(c.waba_id)) : null);
+      return {
+        id: c.id,
+        display_name: c.display_name ?? c.nome_interno ?? c.name ?? "—",
+        phone_masked: String(c.display_phone ?? c.phone ?? "").replace(/(\d{2,4})$/, "****"),
+        phone_display: c.display_phone ?? c.phone ?? null,
+        phone_number_id: c.phone_number_id ?? null,
+        waba_id: c.waba_id ?? w?.waba_id ?? null,
+        waba_name: w?.nome_interno ?? null,
+        business_id: w?.business_id ?? null,
+        phone_country_code: getCountryCallingCode(c.phone ?? c.display_phone),
+        status: c.status,
+        quality_rating: c.quality_rating ?? null,
+        messaging_limit_tier: null,
+        daily_cap: c.daily_cap ?? null,
+      };
+    });
     return { numbers: rows };
+
   });
 
 /** Lista TODOS os templates aprovados (uso administrativo — ignora grants). */
