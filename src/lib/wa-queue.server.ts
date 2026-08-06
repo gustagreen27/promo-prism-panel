@@ -518,14 +518,21 @@ export async function processCampaignTick(
       Number((camp as any).max_concurrency ?? DEFAULT_MAX_CONCURRENCY),
       requiredConcurrencyForRate,
     );
+    // Pool REAL de concorrência HTTP por lane. Este é o número de chamadas à
+    // Graph API que ficam simultaneamente aguardando resposta dentro de UMA
+    // lane. 4 lanes × 10 = 40 requisições realmente em voo.
+    const laneHttpConcurrency = Math.max(
+      1,
+      Math.min(200, Number((camp as any).http_concurrency ?? 10)),
+    );
     // Concorrência GLOBAL por número (compartilhada entre campanhas do mesmo phone_number_id).
     // Aquisição atômica no Postgres via wa_acquire_slots; release em lote (1×/s).
     const globalMaxConc = Math.max(campConc, Number((conn as any).global_max_concurrency ?? 200));
-    // Mantém só ~1s de buffer local. Antes, chunks de até 500 deixavam centenas
-    // de destinatários em `processing` quando o Worker era interrompido, criando
-    // pausas de minutos. O fluxo agora reabastece continuamente, em buffers curtos.
-    const chunkSize = Math.max(20, Math.min(Math.ceil(effectiveRate), 100));
-    const queueLowWatermark = Math.max(10, Math.ceil(effectiveRate / 2));
+    // O lote reservado por lane precisa ser MAIOR que o pool HTTP, para nunca
+    // faltar trabalho quando uma requisição termina (reposição imediata).
+    const chunkSize = Math.max(laneHttpConcurrency * 5, Math.min(Math.ceil(effectiveRate), 200));
+    const queueLowWatermark = Math.max(laneHttpConcurrency * 2, Math.ceil(effectiveRate / 2));
+
     // budget = teto de reservas neste tick (não é rate!).
     const budget = Math.max(1, Math.min(reservationBudget ?? 1000, cap));
 
