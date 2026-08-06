@@ -1022,7 +1022,8 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                         </div>
                         <div className="text-xs text-muted-foreground">
                           Adicione até 9 combinações extras. Os contatos da lista são divididos entre elas pelo peso.
-                          Pode repetir o mesmo número com templates diferentes.
+                          Pode repetir o mesmo número e o mesmo template com copys diferentes — cada combinação tem
+                          suas próprias variáveis (ex.: 1 template com 3 copys, ou 3 templates com 9 copys).
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
