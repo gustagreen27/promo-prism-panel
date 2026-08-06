@@ -699,6 +699,44 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
     if (finalMode === "schedule" && conflicts.length > 0 && !forceConflict) {
       toast.error("Existe conflito de horário. Marque 'forçar' para prosseguir."); return;
     }
+    // ---- Múltiplas combinações (número + template) ----
+    const validExtras = extraLegs.filter((l) => l.connection_id && l.template_id);
+    if (validExtras.length > 0) {
+      setSubmitting(true);
+      try {
+        const legs = [
+          { connection_id: connectionId, template_id: templateId, weight: Math.max(1, primaryWeight) },
+          ...validExtras.map((l) => ({ ...l, weight: Math.max(1, Number(l.weight) || 1) })),
+        ];
+        const r: any = await fnSplit({
+          data: {
+            name: name.trim(),
+            workspace_id: workspaceId,
+            list_id: contactSel.list_id,
+            legs,
+            variables_mapping: bodyVars,
+            button_url_mapping: btnVars,
+            send_rate_per_min: Math.max(1, Math.min(2400, Math.round(dispatch.rate_per_second * 60))),
+            rate_per_second: dispatch.rate_per_second,
+            max_concurrency: dispatch.max_concurrency,
+            timezone,
+            scheduled_at: finalMode === "schedule" ? new Date(scheduledAt).toISOString() : null,
+            start_now: finalMode === "now",
+          },
+        });
+        toast.success(`${r?.campaigns?.length ?? legs.length} disparos criados — contatos divididos entre as combinações.`);
+        try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+        const first = r?.campaigns?.[0]?.id as string | undefined;
+        if (first) setCampaignId(first);
+        setStep(5); setMaxReached(5);
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "Erro ao criar disparos múltiplos");
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
     setSubmitting(true);
     try {
       const dispatchPayload = {
