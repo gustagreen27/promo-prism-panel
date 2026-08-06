@@ -206,9 +206,14 @@ export async function runSelectionPreflight(
   // 2) WABA/portfólio acessível
   const wabaId = conn.waba_id;
   if (wabaId) {
-    const waba = await graph(`${wabaId}?fields=id,name,account_review_status,business_verification_status`, token, version);
+    const waba = await graph(
+      `${wabaId}?fields=id,name,account_review_status,business_verification_status,whatsapp_business_manager_messaging_limit`,
+      token,
+      version,
+    );
     if (waba.ok) {
       const review = waba.json?.account_review_status ?? null;
+      tier = waba.json?.whatsapp_business_manager_messaging_limit ?? null;
       const restricted = review && !["APPROVED", "VERIFIED"].includes(String(review).toUpperCase());
       push({
         key: "waba",
@@ -216,6 +221,7 @@ export async function runSelectionPreflight(
         status: restricted ? "warn" : "ok",
         detail: `${waba.json?.name ?? wabaId}${review ? ` · review=${review}` : ""}`,
       });
+
     } else {
       push({ key: "waba", label: "WABA/portfólio acessível", status: "fail", detail: `Token não acessa a WABA: ${waba.error}` });
     }
