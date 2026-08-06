@@ -714,6 +714,8 @@ export async function processCampaignTick(
 
     let sent = 0;
     let failed = 0;
+    let deadLetterCount = 0;
+
     let lastError: string | null = null;
     let consecutiveNetworkErrors = 0;
     let consecutive429 = 0;
