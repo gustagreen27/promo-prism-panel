@@ -142,7 +142,14 @@ export function EmbeddedSignupButton({
             business_id: data.data?.business_id,
           };
         } else if (data.event === "CANCEL") {
+          // A Meta informa em qual etapa o usuário abandonou o fluxo.
+          const step = data.data?.current_step as string | undefined;
           sessionRef.current = null;
+          toast.message(
+            step
+              ? `Cadastro cancelado na etapa: ${step.replaceAll("_", " ").toLowerCase()}`
+              : "Cadastro incorporado cancelado.",
+          );
         } else if (data.event === "ERROR") {
           toast.error(`Meta: ${data.data?.error_message ?? "Erro no Embedded Signup"}`);
         }
