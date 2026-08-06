@@ -246,12 +246,13 @@ export async function runSelectionPreflight(
     }
   }
 
-  // 4) Limite de mensagens disponível
+  // 4) Limite de mensagens do Portfólio Empresarial (compartilhado pela BM)
   if (tier) {
     const cap = TIER_LIMITS[String(tier).toUpperCase()] ?? null;
     const total = Number(camp.total_recipients ?? 0);
     if (cap == null) {
-      push({ key: "limit", label: "Limite de mensagens", status: "ok", detail: `messaging_limit_tier=${tier}` });
+      push({ key: "limit", label: "Limite do Portfólio Empresarial", status: "ok", detail: `${tier} (limite compartilhado da BM)` });
+
     } else if (Number.isFinite(cap) && total > cap) {
       push({
         key: "limit",
