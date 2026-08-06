@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Save, Webhook } from "lucide-react";
+import { Save, Webhook, ListChecks } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
 import { ErrorCard } from "@/components/admin/query-state";
@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { EmbeddedSignupButton } from "@/components/admin/whatsapp/embedded-signup-button";
+import { PostSignupDialog } from "@/components/admin/whatsapp/post-signup-dialog";
 import {
   listWorkspaceConnections,
   setWorkspaceBusinessId,
@@ -103,6 +104,8 @@ function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId
   const [bizId, setBizId] = useState<string>(w.meta_business_id ?? "");
   const [bizName, setBizName] = useState<string>(w.meta_business_name ?? "");
   const [defConn, setDefConn] = useState<string>(w.default_connection_id ?? "");
+  const [finishId, setFinishId] = useState<string | null>(null);
+
 
   return (
     <div className="rounded-xl border bg-card p-4">
@@ -177,20 +180,32 @@ function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId
                     <span className="text-xs text-destructive"> · sem waba_id</span>
                   )}
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={!c.waba_id || subscribingId === c.id}
-                  onClick={() => onSubscribe(c.id)}
-                >
-                  <Webhook className="mr-2 h-3.5 w-3.5" />
-                  {subscribingId === c.id ? "Assinando…" : "Assinar app"}
-                </Button>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!c.waba_id || subscribingId === c.id}
+                    onClick={() => onSubscribe(c.id)}
+                  >
+                    <Webhook className="mr-2 h-3.5 w-3.5" />
+                    {subscribingId === c.id ? "Assinando…" : "Assinar app"}
+                  </Button>
+                  <Button size="sm" onClick={() => setFinishId(c.id)}>
+                    <ListChecks className="mr-2 h-3.5 w-3.5" />
+                    Finalizar integração
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
         </div>
       )}
+
+      <PostSignupDialog
+        connectionId={finishId}
+        open={!!finishId}
+        onOpenChange={(v) => !v && setFinishId(null)}
+      />
     </div>
   );
 }
