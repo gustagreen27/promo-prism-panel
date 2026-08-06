@@ -70,6 +70,7 @@ export function EmbeddedSignupButton({
   const sessionRef = useRef<{ phone_number_id?: string; waba_id?: string; business_id?: string } | null>(null);
   const [finishedConnectionId, setFinishedConnectionId] = useState<string | null>(null);
   const [inIframe, setInIframe] = useState(false);
+  const [sdkError, setSdkError] = useState(false);
 
   useEffect(() => {
     try {
@@ -126,6 +127,8 @@ export function EmbeddedSignupButton({
   useEffect(() => {
     if (!cfg) return;
     let cancelled = false;
+    let pollId: number | undefined;
+    let timeoutId: number | undefined;
     const initFB = () => {
       if (cancelled || !window.FB) return;
       // FB.init is idempotent per appId+version — safe to call again after HMR/remount.
@@ -136,6 +139,7 @@ export function EmbeddedSignupButton({
         autoLogAppEvents: true,
         version: cfg.sdkVersion || cfg.graphVersion,
       });
+      setSdkError(false);
       setReady(true);
     };
     if (window.FB) {
@@ -155,24 +159,52 @@ export function EmbeddedSignupButton({
       initFB();
     };
     const id = "facebook-jssdk";
-    // Nunca carrega duas versões do SDK: checa o id e qualquer script já presente.
-    const alreadyLoaded =
-      !!document.getElementById(id) ||
-      !!document.querySelector('script[src*="connect.facebook.net"][src*="sdk.js"]');
-    if (!alreadyLoaded) {
+    // Se outra tela já inseriu o script, acompanhe o carregamento dela. Antes o
+    // componente apenas detectava a tag e ficava eternamente com `ready=false`.
+    let script = document.querySelector<HTMLScriptElement>(
+      'script[src*="connect.facebook.net"][src*="sdk.js"]',
+    );
+    if (!script) {
       const s = document.createElement("script");
       s.id = id;
       s.async = true;
       s.defer = true;
       s.crossOrigin = "anonymous";
       s.src = "https://connect.facebook.net/en_US/sdk.js";
-      s.onerror = () => {
-        if (!cancelled) toast.error("Não foi possível carregar o cadastro da Meta. Verifique bloqueadores de conteúdo e tente novamente.");
-      };
       document.body.appendChild(s);
+      script = s;
     }
+    const handleLoad = () => initFB();
+    const handleError = () => {
+      if (!cancelled) {
+        setSdkError(true);
+        setReady(false);
+      }
+    };
+    script.addEventListener("load", handleLoad);
+    script.addEventListener("error", handleError);
+
+    // O evento load pode ter ocorrido antes deste componente montar. Uma
+    // sondagem curta cobre esse caso sem adicionar uma segunda cópia do SDK.
+    pollId = window.setInterval(() => {
+      if (window.FB) {
+        initFB();
+        if (pollId) window.clearInterval(pollId);
+      }
+    }, 250);
+    timeoutId = window.setTimeout(() => {
+      if (!cancelled && !window.FB) {
+        setSdkError(true);
+        setReady(false);
+      }
+      if (pollId) window.clearInterval(pollId);
+    }, 12_000);
     return () => {
       cancelled = true;
+      script?.removeEventListener("load", handleLoad);
+      script?.removeEventListener("error", handleError);
+      if (pollId) window.clearInterval(pollId);
+      if (timeoutId) window.clearTimeout(timeoutId);
     };
   }, [cfg]);
 
@@ -227,7 +259,12 @@ export function EmbeddedSignupButton({
       return;
     }
     if (!window.FB || !ready) {
-      toast.error("O cadastro da Meta ainda está carregando. Verifique bloqueadores de conteúdo e tente novamente.");
+      toast.error(
+        sdkError
+          ? "O navegador bloqueou o cadastro da Meta. Desative o bloqueador para este site, recarregue a página e tente novamente."
+          : "O cadastro da Meta ainda está carregando. Aguarde alguns segundos e tente novamente.",
+        { duration: 9000 },
+      );
       return;
     }
 
@@ -370,7 +407,7 @@ export function EmbeddedSignupButton({
             </a>
           </Button>
         ) : (
-          <Button onClick={launch} disabled={disabled || !ready || loading} type="button" variant={variant}>
+          <Button onClick={launch} disabled={disabled || loading} type="button" variant={variant}>
             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Icon className="mr-2 h-4 w-4" />}
             {label ?? defaultLabel}
           </Button>
