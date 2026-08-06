@@ -102,6 +102,34 @@ export function TemplateFormDialog({ editing, numbers, wabas, onSubmit, saving }
   };
   const detected = ((form.body || "").match(/\{\{\s*[a-zA-Z0-9_]+\s*\}\}/g) || []);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const mediaDisabled = !form.header_type || form.header_type === "text";
+
+  const uploadMedia = async (file: File) => {
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "bin";
+      const path = `samples/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error } = await supabase.storage.from("template-media").upload(path, file, {
+        cacheControl: "31536000",
+        contentType: file.type || undefined,
+        upsert: false,
+      });
+      if (error) throw error;
+      const { data, error: signErr } = await supabase.storage
+        .from("template-media")
+        .createSignedUrl(path, 60 * 60 * 24 * 365);
+      if (signErr || !data?.signedUrl) throw signErr ?? new Error("Falha ao gerar URL");
+      set("header_media_url", data.signedUrl);
+      toast.success("Mídia enviada");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha no upload da mídia");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <DialogContent className="max-w-6xl max-h-[92vh] overflow-y-auto p-0 gap-0">
       {/* Top bar — Meta style */}
