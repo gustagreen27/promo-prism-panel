@@ -61,9 +61,11 @@ const TIER_LIMITS: Record<string, string> = {
 function formatDailyLimit(n: any): string {
   const tier = String(n?.messaging_limit_tier ?? "").toUpperCase().replace(/\s/g, "");
   if (tier && TIER_LIMITS[tier]) return TIER_LIMITS[tier];
-  const cap = n?.daily_cap ?? n?.daily_limit;
-  if (cap) return `${Number(cap).toLocaleString("pt-BR")}/dia`;
-  return "não informado";
+  // daily_cap é um teto interno definido manualmente; daily_limit tem default 1000
+  // no banco e NÃO representa o limite real da Meta — não deve virar "1.000/dia".
+  const cap = n?.daily_cap;
+  if (cap) return `${Number(cap).toLocaleString("pt-BR")}/dia (limite interno)`;
+  return "sem dados";
 }
 
 function Page() {
