@@ -321,6 +321,15 @@ function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId
             <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct ?? 0}%` }} />
           </div>
 
+          {cap === null && (
+            <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
+              {w.connections.length === 0
+                ? "Sem limite porque esta BM ainda não tem nenhum número de WhatsApp vinculado. Registre/vincule um número na WABA e clique em Recalcular."
+                : "Não foi possível ler o limite na Meta. Verifique se o token desta BM tem permissão nas WABAs e clique em Recalcular."}
+            </div>
+          )}
+
+
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
             <span className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-primary" />
