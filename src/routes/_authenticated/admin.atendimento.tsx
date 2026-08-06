@@ -13,7 +13,9 @@ import {
   listConversationNotes,
   addConversationNote,
   listApprovedTemplates,
+  listAttendanceNumbers,
 } from "@/lib/wa-conversations.functions";
+import type { AttendanceNumber } from "@/lib/wa-conversations.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -95,6 +97,7 @@ function AtendimentoPage() {
   const notesListFn = useServerFn(listConversationNotes);
   const noteAddFn = useServerFn(addConversationNote);
   const tplListFn = useServerFn(listApprovedTemplates);
+  const numbersFn = useServerFn(listAttendanceNumbers);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedNumber, setSelectedNumber] = useState<string | null>(null);
