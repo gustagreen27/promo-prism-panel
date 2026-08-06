@@ -38,7 +38,12 @@ export const listWorkspaceConnections = createServerFn({ method: "GET" })
       }),
     );
 
-    return (workspaces ?? []).map((w: any) => ({
+    const relevant = (workspaces ?? []).filter((w: any) =>
+      (conns ?? []).some((c: any) => c.workspace_id === w.id) ||
+      (wabas ?? []).some((x: any) => x.workspace_id === w.id),
+    );
+
+    return relevant.map((w: any) => ({
       ...w,
       wabas: (wabas ?? []).filter((x: any) => x.workspace_id === w.id),
       connections: (conns ?? []).filter((c: any) => c.workspace_id === w.id),
