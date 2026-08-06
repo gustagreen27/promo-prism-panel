@@ -603,6 +603,10 @@ export function TemplateFormDialog({ editing, numbers, wabas, onSubmit, saving }
 
         <div className="lg:sticky lg:top-24 lg:self-start">
           <TemplatePreview form={form} />
+          <ReferencesPanel
+            form={form}
+            onApply={(payload) => setForm((f: any) => ({ ...f, ...payload }))}
+          />
         </div>
       </div>
 
