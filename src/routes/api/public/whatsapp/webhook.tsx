@@ -348,9 +348,10 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
 // ────────────────────────────────────────────────────────────────────
 // Handler por change (um item em entry.changes[])
 // ────────────────────────────────────────────────────────────────────
-async function handleChange(supabaseAdmin: any, change: any) {
+async function handleChange(supabaseAdmin: any, change: any, entryId: string | null = null) {
   const field: string = change?.field ?? "";
   const value: any = change?.value ?? {};
+
 
   // Campos relacionados a templates ────────────────────────────────
   if (
