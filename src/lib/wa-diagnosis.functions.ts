@@ -484,7 +484,7 @@ export const getConnectionHealthStatus = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: full } = await supabaseAdmin
       .from("whatsapp_connections")
-      .select("access_token, use_global_token, phone_number_id, waba_id, graph_version")
+      .select("access_token, use_global_token, phone_number_id, waba_id")
       .eq("id", conn.id)
       .maybeSingle();
     if (!full) throw new Error("Conexão não encontrada.");
