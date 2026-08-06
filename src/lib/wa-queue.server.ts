@@ -1091,7 +1091,10 @@ export async function processCampaignTick(
           limited_by_concurrency: rateLimitedBySecond.concurrency,
           limited_by_global_slot: rateLimitedBySecond.global_slot,
         });
+        startedLastSecond = startedThisSecond;
+        completedLastSecond = completedThisSecond;
         startedThisSecond = 0;
+        completedThisSecond = 0;
         rateLimitedBySecond = { global: 0, campaign: 0, concurrency: 0, global_slot: 0 };
         lastTelemetrySecond = nowSec;
       }
