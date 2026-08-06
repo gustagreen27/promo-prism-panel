@@ -20,16 +20,30 @@ export const listWorkspaceConnections = createServerFn({ method: "GET" })
 
     const { data: conns } = await context.supabase
       .from("whatsapp_connections")
-      .select("id,name,display_phone,workspace_id,waba_ref_id,waba_id,status,quality_rating");
+      .select("id,name,display_phone,workspace_id,waba_ref_id,waba_id,status,quality_rating,messaging_limit");
     const { data: wabas } = await context.supabase
       .from("whatsapp_wabas")
       .select("id,nome_interno,waba_id,workspace_id");
+
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const usage = new Map<string, number>();
+    await Promise.all(
+      (workspaces ?? []).map(async (w: any) => {
+        const { count } = await context.supabase
+          .from("whatsapp_messages")
+          .select("id", { count: "exact", head: true })
+          .eq("workspace_id", w.id)
+          .gte("sent_at", since);
+        usage.set(w.id, count ?? 0);
+      }),
+    );
 
     return (workspaces ?? []).map((w: any) => ({
       ...w,
       wabas: (wabas ?? []).filter((x: any) => x.workspace_id === w.id),
       connections: (conns ?? []).filter((c: any) => c.workspace_id === w.id),
       default_connection: (conns ?? []).find((c: any) => c.id === w.default_connection_id) ?? null,
+      messages_last_24h: usage.get(w.id) ?? 0,
     }));
   });
 
