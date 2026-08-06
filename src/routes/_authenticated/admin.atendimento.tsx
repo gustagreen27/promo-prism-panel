@@ -146,6 +146,7 @@ function AtendimentoPage() {
         { event: "*", schema: "public", table: "wa_conversations" },
         () => {
           qc.invalidateQueries({ queryKey: ["atd", "conversations"] });
+          qc.invalidateQueries({ queryKey: ["atd", "numbers"] });
         },
       )
       .on(
@@ -391,7 +392,7 @@ function AtendimentoPage() {
         </div>
 
         {/* Coluna 3 — contexto */}
-        <div className="hidden min-h-0 md:flex md:flex-col rounded-lg border bg-card">
+        <div className="hidden min-h-0 xl:flex xl:flex-col rounded-lg border bg-card">
           {selectedId ? (
             <ContextPanel
               conversationId={selectedId}
