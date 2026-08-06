@@ -236,31 +236,32 @@ function ListView({ onNew }: { onNew: () => void }) {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        <StatCard active={filter === "all"} onClick={() => setFilter("all")} icon={<Rocket className="h-4 w-4" />} label="Todas" value={counts.all} />
-        <StatCard active={filter === "active"} onClick={() => setFilter("active")} icon={<Play className="h-4 w-4 text-emerald-600" />} label="Ativas" value={counts.active} />
-        <StatCard active={filter === "scheduled"} onClick={() => setFilter("scheduled")} icon={<Calendar className="h-4 w-4 text-amber-600" />} label="Agendadas" value={counts.scheduled} />
-        <StatCard active={filter === "done"} onClick={() => setFilter("done")} icon={<CheckCircle2 className="h-4 w-4 text-primary" />} label="Concluídas" value={counts.done} />
-        <StatCard active={filter === "draft"} onClick={() => setFilter("draft")} icon={<Clock className="h-4 w-4 text-muted-foreground" />} label="Rascunhos" value={counts.draft} />
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+        <StatCard active={filter === "all"} onClick={() => setFilter("all")} icon={<Rocket className="h-5 w-5" />} tone="primary" label="Todas" value={counts.all} />
+        <StatCard active={filter === "active"} onClick={() => setFilter("active")} icon={<Play className="h-5 w-5" />} tone="emerald" label="Ativas" value={counts.active} />
+        <StatCard active={filter === "scheduled"} onClick={() => setFilter("scheduled")} icon={<Calendar className="h-5 w-5" />} tone="amber" label="Agendadas" value={counts.scheduled} />
+        <StatCard active={filter === "done"} onClick={() => setFilter("done")} icon={<CheckCircle2 className="h-5 w-5" />} tone="primary" label="Concluídas" value={counts.done} />
+        <StatCard active={filter === "draft"} onClick={() => setFilter("draft")} icon={<Clock className="h-5 w-5" />} tone="muted" label="Rascunhos" value={counts.draft} />
       </div>
 
       <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar por nome, cliente ou template…"
-          className="pl-9"
+          className="h-11 rounded-xl border-border/70 bg-card pl-10 shadow-xs"
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <DeliverySummaryCard icon={<Send className="h-4 w-4" />} label="Enviados" value={deliveryTotals.sent} total={deliveryTotals.total} />
-        <DeliverySummaryCard icon={<CheckCheck className="h-4 w-4" />} label="Recebidos" value={deliveryTotals.delivered} total={deliveryTotals.sent} />
-        <DeliverySummaryCard icon={<Eye className="h-4 w-4" />} label="Lidas" value={deliveryTotals.read} total={deliveryTotals.delivered} />
-        <DeliverySummaryCard icon={<MousePointerClick className="h-4 w-4" />} label="Cliques" value={deliveryTotals.clicks} total={deliveryTotals.delivered} />
-        <DeliverySummaryCard icon={<AlertTriangle className="h-4 w-4" />} label="Falhas" value={deliveryTotals.failed} total={deliveryTotals.total} tone="danger" />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+        <DeliverySummaryCard icon={<Send className="h-5 w-5" />} tone="primary" label="Enviados" value={deliveryTotals.sent} total={deliveryTotals.total} />
+        <DeliverySummaryCard icon={<CheckCheck className="h-5 w-5" />} tone="emerald" label="Recebidos" value={deliveryTotals.delivered} total={deliveryTotals.sent} />
+        <DeliverySummaryCard icon={<Eye className="h-5 w-5" />} tone="violet" label="Lidas" value={deliveryTotals.read} total={deliveryTotals.delivered} />
+        <DeliverySummaryCard icon={<MousePointerClick className="h-5 w-5" />} tone="cyan" label="Cliques" value={deliveryTotals.clicks} total={deliveryTotals.delivered} />
+        <DeliverySummaryCard icon={<AlertTriangle className="h-5 w-5" />} tone="danger" label="Falhas" value={deliveryTotals.failed} total={deliveryTotals.total} />
       </div>
+
 
       {campaignsQ.isLoading ? (
         <Card><CardContent className="p-10 text-center text-sm text-muted-foreground">Carregando disparos…</CardContent></Card>
