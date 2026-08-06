@@ -61,6 +61,7 @@ import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/publi
 import { Route as ApiPublicWhatsappSyncNumbersRouteImport } from './routes/api/public/whatsapp/sync-numbers'
 import { Route as ApiPublicWhatsappServiceTickRouteImport } from './routes/api/public/whatsapp/service-tick'
 import { Route as ApiPublicWhatsappQueueTickRouteImport } from './routes/api/public/whatsapp/queue-tick'
+import { Route as ApiPublicWhatsappHealthRefreshRouteImport } from './routes/api/public/whatsapp/health-refresh'
 import { Route as ApiPublicWhatsappHarnessRouteImport } from './routes/api/public/whatsapp/harness'
 import { Route as ApiPublicHooksWaTemplatesSyncRouteImport } from './routes/api/public/hooks/wa-templates-sync'
 import { Route as ApiPublicHooksNotifyUpcomingCampaignsRouteImport } from './routes/api/public/hooks/notify-upcoming-campaigns'
@@ -377,6 +378,12 @@ const ApiPublicWhatsappQueueTickRoute =
     path: '/api/public/whatsapp/queue-tick',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicWhatsappHealthRefreshRoute =
+  ApiPublicWhatsappHealthRefreshRouteImport.update({
+    id: '/api/public/whatsapp/health-refresh',
+    path: '/api/public/whatsapp/health-refresh',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicWhatsappHarnessRoute =
   ApiPublicWhatsappHarnessRouteImport.update({
     id: '/api/public/whatsapp/harness',
@@ -627,6 +634,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/notify-upcoming-campaigns': typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
   '/api/public/hooks/wa-templates-sync': typeof ApiPublicHooksWaTemplatesSyncRoute
   '/api/public/whatsapp/harness': typeof ApiPublicWhatsappHarnessRoute
+  '/api/public/whatsapp/health-refresh': typeof ApiPublicWhatsappHealthRefreshRoute
   '/api/public/whatsapp/queue-tick': typeof ApiPublicWhatsappQueueTickRoute
   '/api/public/whatsapp/service-tick': typeof ApiPublicWhatsappServiceTickRoute
   '/api/public/whatsapp/sync-numbers': typeof ApiPublicWhatsappSyncNumbersRoute
@@ -708,6 +716,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/notify-upcoming-campaigns': typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
   '/api/public/hooks/wa-templates-sync': typeof ApiPublicHooksWaTemplatesSyncRoute
   '/api/public/whatsapp/harness': typeof ApiPublicWhatsappHarnessRoute
+  '/api/public/whatsapp/health-refresh': typeof ApiPublicWhatsappHealthRefreshRoute
   '/api/public/whatsapp/queue-tick': typeof ApiPublicWhatsappQueueTickRoute
   '/api/public/whatsapp/service-tick': typeof ApiPublicWhatsappServiceTickRoute
   '/api/public/whatsapp/sync-numbers': typeof ApiPublicWhatsappSyncNumbersRoute
@@ -793,6 +802,7 @@ export interface FileRoutesById {
   '/api/public/hooks/notify-upcoming-campaigns': typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
   '/api/public/hooks/wa-templates-sync': typeof ApiPublicHooksWaTemplatesSyncRoute
   '/api/public/whatsapp/harness': typeof ApiPublicWhatsappHarnessRoute
+  '/api/public/whatsapp/health-refresh': typeof ApiPublicWhatsappHealthRefreshRoute
   '/api/public/whatsapp/queue-tick': typeof ApiPublicWhatsappQueueTickRoute
   '/api/public/whatsapp/service-tick': typeof ApiPublicWhatsappServiceTickRoute
   '/api/public/whatsapp/sync-numbers': typeof ApiPublicWhatsappSyncNumbersRoute
@@ -878,6 +888,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/notify-upcoming-campaigns'
     | '/api/public/hooks/wa-templates-sync'
     | '/api/public/whatsapp/harness'
+    | '/api/public/whatsapp/health-refresh'
     | '/api/public/whatsapp/queue-tick'
     | '/api/public/whatsapp/service-tick'
     | '/api/public/whatsapp/sync-numbers'
@@ -959,6 +970,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/notify-upcoming-campaigns'
     | '/api/public/hooks/wa-templates-sync'
     | '/api/public/whatsapp/harness'
+    | '/api/public/whatsapp/health-refresh'
     | '/api/public/whatsapp/queue-tick'
     | '/api/public/whatsapp/service-tick'
     | '/api/public/whatsapp/sync-numbers'
@@ -1043,6 +1055,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/notify-upcoming-campaigns'
     | '/api/public/hooks/wa-templates-sync'
     | '/api/public/whatsapp/harness'
+    | '/api/public/whatsapp/health-refresh'
     | '/api/public/whatsapp/queue-tick'
     | '/api/public/whatsapp/service-tick'
     | '/api/public/whatsapp/sync-numbers'
@@ -1076,6 +1089,7 @@ export interface RootRouteChildren {
   ApiPublicHooksNotifyUpcomingCampaignsRoute: typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
   ApiPublicHooksWaTemplatesSyncRoute: typeof ApiPublicHooksWaTemplatesSyncRoute
   ApiPublicWhatsappHarnessRoute: typeof ApiPublicWhatsappHarnessRoute
+  ApiPublicWhatsappHealthRefreshRoute: typeof ApiPublicWhatsappHealthRefreshRoute
   ApiPublicWhatsappQueueTickRoute: typeof ApiPublicWhatsappQueueTickRoute
   ApiPublicWhatsappServiceTickRoute: typeof ApiPublicWhatsappServiceTickRoute
   ApiPublicWhatsappSyncNumbersRoute: typeof ApiPublicWhatsappSyncNumbersRoute
@@ -1447,6 +1461,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/whatsapp/queue-tick'
       fullPath: '/api/public/whatsapp/queue-tick'
       preLoaderRoute: typeof ApiPublicWhatsappQueueTickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/whatsapp/health-refresh': {
+      id: '/api/public/whatsapp/health-refresh'
+      path: '/api/public/whatsapp/health-refresh'
+      fullPath: '/api/public/whatsapp/health-refresh'
+      preLoaderRoute: typeof ApiPublicWhatsappHealthRefreshRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/whatsapp/harness': {
@@ -1883,6 +1904,7 @@ const rootRouteChildren: RootRouteChildren = {
     ApiPublicHooksNotifyUpcomingCampaignsRoute,
   ApiPublicHooksWaTemplatesSyncRoute: ApiPublicHooksWaTemplatesSyncRoute,
   ApiPublicWhatsappHarnessRoute: ApiPublicWhatsappHarnessRoute,
+  ApiPublicWhatsappHealthRefreshRoute: ApiPublicWhatsappHealthRefreshRoute,
   ApiPublicWhatsappQueueTickRoute: ApiPublicWhatsappQueueTickRoute,
   ApiPublicWhatsappServiceTickRoute: ApiPublicWhatsappServiceTickRoute,
   ApiPublicWhatsappSyncNumbersRoute: ApiPublicWhatsappSyncNumbersRoute,
@@ -1892,13 +1914,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
