@@ -159,7 +159,7 @@ function avgQuality(items: any[]) {
   return avg >= 2.6 ? "alta" : avg >= 1.8 ? "boa" : "baixa";
 }
 
-function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId, saving, onRecalc, recalcing }: any) {
+function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId, saving, onRecalc, recalcing, onDisconnect, disconnecting }: any) {
   const [bizId, setBizId] = useState<string>(w.meta_business_id ?? "");
   const [bizName, setBizName] = useState<string>(w.meta_business_name ?? "");
   const [defConn, setDefConn] = useState<string>(w.default_connection_id ?? "");
