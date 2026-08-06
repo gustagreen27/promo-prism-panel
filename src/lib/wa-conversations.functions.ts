@@ -21,7 +21,83 @@ async function primaryWorkspaceId(supabase: any, userId: string): Promise<string
   return ws;
 }
 
+// ---------- Numbers (inbox grouped by WhatsApp number) ----------
+
+export type AttendanceNumber = {
+  phone_number_id: string;
+  connection_id: string | null;
+  display_phone_number: string | null;
+  nome_interno: string | null;
+  waba_name: string | null;
+  total: number;
+  unread: number;
+  open_window: number;
+  last_message_at: string | null;
+};
+
+/** Lista os números de WhatsApp que possuem conversas, com contadores agregados. */
+export const listAttendanceNumbers = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<AttendanceNumber[]> => {
+    const wsId = await primaryWorkspaceId(context.supabase, context.userId);
+    const { data: rows, error } = await context.supabase
+      .from("wa_conversations")
+      .select("phone_number_id, connection_id, unread_count, service_window_status, last_message_at")
+      .eq("workspace_id", wsId)
+      .limit(5000);
+    if (error) throw new Error(error.message);
+
+    const map = new Map<string, AttendanceNumber>();
+    for (const r of (rows ?? []) as any[]) {
+      const key = r.phone_number_id ?? r.connection_id ?? "unknown";
+      const cur =
+        map.get(key) ??
+        ({
+          phone_number_id: key,
+          connection_id: r.connection_id ?? null,
+          display_phone_number: null,
+          nome_interno: null,
+          waba_name: null,
+          total: 0,
+          unread: 0,
+          open_window: 0,
+          last_message_at: null,
+        } as AttendanceNumber);
+      cur.total += 1;
+      cur.unread += Number(r.unread_count ?? 0);
+      if (r.service_window_status === "open") cur.open_window += 1;
+      if (r.last_message_at && (!cur.last_message_at || r.last_message_at > cur.last_message_at)) {
+        cur.last_message_at = r.last_message_at;
+      }
+      if (!cur.connection_id && r.connection_id) cur.connection_id = r.connection_id;
+      map.set(key, cur);
+    }
+
+    const items = [...map.values()];
+    const ids = items.map((i) => i.phone_number_id).filter(Boolean);
+    if (ids.length) {
+      const { data: conns } = await context.supabase
+        .from("whatsapp_connections")
+        .select("id, phone_number_id, display_phone_number, nome_interno, waba_id, whatsapp_wabas:whatsapp_wabas(name)")
+        .in("phone_number_id", ids);
+      const byPni = new Map<string, any>();
+      for (const c of (conns ?? []) as any[]) byPni.set(c.phone_number_id, c);
+      for (const i of items) {
+        const c = byPni.get(i.phone_number_id);
+        if (!c) continue;
+        i.connection_id = c.id;
+        i.display_phone_number = c.display_phone_number ?? null;
+        i.nome_interno = c.nome_interno ?? null;
+        i.waba_name = (c.whatsapp_wabas as any)?.name ?? null;
+      }
+    }
+    items.sort((a, b) => (b.last_message_at ?? "").localeCompare(a.last_message_at ?? ""));
+    return items;
+  });
+
 // ---------- List conversations ----------
+
+
 
 export const listConversationsAtd = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
