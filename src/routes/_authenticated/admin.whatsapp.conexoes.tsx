@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Save, Webhook, ListChecks, Building2, Users, Gauge, Info, RefreshCw, Link2, Phone, ShieldCheck, TrendingUp, ChevronDown } from "lucide-react";
+import { Save, Webhook, ListChecks, Building2, Users, Gauge, Info, RefreshCw, Link2, Phone, ShieldCheck, TrendingUp, ChevronDown, Unplug } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
 import { ErrorCard } from "@/components/admin/query-state";
@@ -12,6 +12,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { EmbeddedSignupButton } from "@/components/admin/whatsapp/embedded-signup-button";
 import { PostSignupDialog } from "@/components/admin/whatsapp/post-signup-dialog";
 import {
@@ -20,6 +24,7 @@ import {
   setWorkspaceDefaultConnection,
   subscribeConnectionToApp,
   recalcWorkspaceCapacity,
+  disconnectWorkspaceBM,
 } from "@/lib/wa-connections.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp/conexoes")({
