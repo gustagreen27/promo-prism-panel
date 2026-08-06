@@ -95,7 +95,7 @@ export const refreshTemplateStatus = createServerFn({ method: "POST" })
     await assertAdmin(context);
     const { data: tpl, error } = await context.supabase
       .from("whatsapp_templates")
-      .select("*, waba:whatsapp_wabas(waba_id)")
+      .select("*, waba:whatsapp_wabas(waba_id,access_token)")
       .eq("id", data.template_id)
       .single();
     if (error) throw error;
@@ -104,7 +104,9 @@ export const refreshTemplateStatus = createServerFn({ method: "POST" })
     const { fetchTemplateStatusFromMeta } = await import("@/lib/wa-meta.server");
     const result = await fetchTemplateStatusFromMeta({
       wabaId: tpl.waba.waba_id, name: tpl.name, language: tpl.language,
+      accessToken: tpl.waba.access_token ?? null,
     });
+
     await logAction(context.supabase, "refresh_template", { template_id: tpl.id, result });
     if (!result.ok) throw new Error(result.error);
 
