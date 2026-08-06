@@ -177,15 +177,21 @@ function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId
                     <span className="text-xs text-destructive"> · sem waba_id</span>
                   )}
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={!c.waba_id || subscribingId === c.id}
-                  onClick={() => onSubscribe(c.id)}
-                >
-                  <Webhook className="mr-2 h-3.5 w-3.5" />
-                  {subscribingId === c.id ? "Assinando…" : "Assinar app"}
-                </Button>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!c.waba_id || subscribingId === c.id}
+                    onClick={() => onSubscribe(c.id)}
+                  >
+                    <Webhook className="mr-2 h-3.5 w-3.5" />
+                    {subscribingId === c.id ? "Assinando…" : "Assinar app"}
+                  </Button>
+                  <Button size="sm" onClick={() => setFinishId(c.id)}>
+                    <ListChecks className="mr-2 h-3.5 w-3.5" />
+                    Finalizar integração
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
