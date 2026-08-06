@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Loader2, MessageCircle, Smartphone } from "lucide-react";
 import { getEmbeddedSignupConfig, completeEmbeddedSignup } from "@/lib/wa-embedded-signup.functions";
+import { PostSignupDialog } from "@/components/admin/whatsapp/post-signup-dialog";
 
 declare global {
   interface Window {
