@@ -305,3 +305,25 @@ function groupByWaba(w: any) {
   }
   return [...groups.values()].sort((a, b) => a.label.localeCompare(b.label, "pt-BR"));
 }
+
+const TIER_LIMITS: Record<string, number> = {
+  TIER_50: 50,
+  TIER_250: 250,
+  TIER_1K: 1000,
+  TIER_2K: 2000,
+  TIER_10K: 10000,
+  TIER_100K: 100000,
+  TIER_UNLIMITED: Number.POSITIVE_INFINITY,
+  UNTIERED: Number.POSITIVE_INFINITY,
+  UNLIMITED: Number.POSITIVE_INFINITY,
+};
+
+function workspaceCapacity(w: any): number | null {
+  let cap: number | null = null;
+  for (const c of w.connections ?? []) {
+    const v = TIER_LIMITS[String(c.messaging_limit ?? "").toUpperCase()];
+    if (v === undefined) continue;
+    cap = cap === null ? v : Math.max(cap, v);
+  }
+  return cap;
+}
