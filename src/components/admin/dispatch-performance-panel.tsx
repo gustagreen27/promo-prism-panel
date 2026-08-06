@@ -78,16 +78,70 @@ export function DispatchPerformancePanel({ campaignId, live }: { campaignId: str
           <>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
               <Stat label="Na fila" value={Number(p.queued).toLocaleString("pt-BR")} hint={<><Inbox className="mr-1 inline h-3 w-3" />de {Number(p.total).toLocaleString("pt-BR")}</>} />
-              <Stat label="Em processamento" value={Number(p.processing).toLocaleString("pt-BR")} tone={p.processing > 0 ? "warn" : "neutral"} />
+              <Stat
+                label="Em processamento (HTTP)"
+                value={Number(p.http_in_flight ?? 0).toLocaleString("pt-BR")}
+                hint={`limite ${Number(p.http_concurrency_limit ?? 0)} chamadas simultâneas`}
+                tone={Number(p.http_in_flight ?? 0) > 0 ? "good" : "warn"}
+              />
+              <Stat
+                label="Reservados pelos workers"
+                value={Number(p.reserved_recipients ?? p.processing).toLocaleString("pt-BR")}
+                hint="contatos travados no banco"
+              />
               <Stat label="Aceitas pela Meta" value={Number(p.accepted).toLocaleString("pt-BR")} tone="good" hint={`${Number(p.failed).toLocaleString("pt-BR")} falhas`} />
               <Stat label="Velocidade atual" value={`${Number(p.rate_now).toFixed(1)} msg/s`} hint={<><Zap className="mr-1 inline h-3 w-3" />{Number(p.rate_last_minute).toLocaleString("pt-BR")} no último minuto</>} tone={p.rate_now > 0 ? "good" : "neutral"} />
               <Stat label="Velocidade média" value={`${Number(p.rate_avg).toFixed(1)} msg/s`} hint={<><Gauge className="mr-1 inline h-3 w-3" />pico {Number(p.rate_peak)} msg/s</>} />
+              <Stat label="Requisições iniciadas/s" value={Number(p.requests_started_last_second ?? 0)} hint={`${Number(p.requests_completed_last_second ?? 0)} concluídas/s · ${Number(p.accepted_last_second ?? 0)} aceitas/s`} />
+              <Stat label="Ociosidade do worker" value={p.worker_idle_time_ms != null ? `${Number(p.worker_idle_time_ms)} ms` : "—"} hint={p.time_between_requests_ms != null ? `${Number(p.time_between_requests_ms)} ms entre respostas` : undefined} tone={Number(p.worker_idle_time_ms ?? 0) > 5000 ? "warn" : "neutral"} />
               <Stat label="Workers ativos" value={Number(p.active_lanes)} hint={<><ServerCog className="mr-1 inline h-3 w-3" />lanes com lease vivo</>} tone={p.active_lanes > 0 ? "good" : "neutral"} />
               <Stat label="Números ativos" value={Number(p.active_numbers)} />
               <Stat label="Erros de limite" value={Number(p.rate_limit_errors).toLocaleString("pt-BR")} tone={p.rate_limit_errors > 0 ? "bad" : "neutral"} hint={`${Number(p.timeouts).toLocaleString("pt-BR")} timeouts`} />
               <Stat label="Resposta da Meta" value={p.api_latency_avg_ms != null ? `${Number(p.api_latency_avg_ms)} ms` : "—"} hint={p.api_latency_max_ms != null ? `máx ${Number(p.api_latency_max_ms)} ms` : undefined} />
               <Stat label="Previsão da fila" value={fmtEta(p.eta_seconds)} hint={<><Timer className="mr-1 inline h-3 w-3" />para zerar</>} />
             </div>
+
+            {Array.isArray(p.lanes) && p.lanes.length > 0 && (
+              <div className="mt-4 overflow-x-auto rounded-lg border">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/50 text-left text-muted-foreground">
+                    <tr>
+                      <th className="p-2 font-medium">Lane</th>
+                      <th className="p-2 font-medium">Reservados</th>
+                      <th className="p-2 font-medium">HTTP em voo</th>
+                      <th className="p-2 font-medium">Limite</th>
+                      <th className="p-2 font-medium">Enviadas (lane)</th>
+                      <th className="p-2 font-medium">Duração média</th>
+                      <th className="p-2 font-medium">Ocioso</th>
+                      <th className="p-2 font-medium">Entre respostas</th>
+                      <th className="p-2 font-medium">Lease</th>
+                      <th className="p-2 font-medium">Motivo da ociosidade</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {p.lanes.map((l: any) => (
+                      <tr key={l.lane} className="border-t">
+                        <td className="p-2 font-medium tabular-nums">#{l.lane}</td>
+                        <td className="p-2 tabular-nums">{Number(l.reserved ?? 0)}</td>
+                        <td className="p-2 tabular-nums">{Number(l.http_in_flight ?? 0)}</td>
+                        <td className="p-2 tabular-nums">{Number(l.http_concurrency_limit ?? 0)}</td>
+                        <td className="p-2 tabular-nums">{Number(l.sent_last_minute ?? 0)}</td>
+                        <td className="p-2 tabular-nums">{l.avg_request_ms != null ? `${l.avg_request_ms} ms` : "—"}</td>
+                        <td className="p-2 tabular-nums">{Number(l.idle_ms ?? 0)} ms</td>
+                        <td className="p-2 tabular-nums">{l.time_between_requests_ms != null ? `${l.time_between_requests_ms} ms` : "—"}</td>
+                        <td className="p-2 text-muted-foreground">
+                          {l.lease_started_at ? new Date(l.lease_started_at).toLocaleTimeString("pt-BR") : "—"}
+                          {" → "}
+                          {l.lease_until ? new Date(l.lease_until).toLocaleTimeString("pt-BR") : "—"}
+                        </td>
+                        <td className="p-2 text-muted-foreground">{l.idle_reason ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
 
             {p.last_meta_response && (
               <div className="mt-3 rounded-lg border bg-muted/30 p-3 text-xs">

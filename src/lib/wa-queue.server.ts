@@ -518,14 +518,21 @@ export async function processCampaignTick(
       Number((camp as any).max_concurrency ?? DEFAULT_MAX_CONCURRENCY),
       requiredConcurrencyForRate,
     );
+    // Pool REAL de concorrência HTTP por lane. Este é o número de chamadas à
+    // Graph API que ficam simultaneamente aguardando resposta dentro de UMA
+    // lane. 4 lanes × 10 = 40 requisições realmente em voo.
+    const laneHttpConcurrency = Math.max(
+      1,
+      Math.min(200, Number((camp as any).http_concurrency ?? 10)),
+    );
     // Concorrência GLOBAL por número (compartilhada entre campanhas do mesmo phone_number_id).
     // Aquisição atômica no Postgres via wa_acquire_slots; release em lote (1×/s).
     const globalMaxConc = Math.max(campConc, Number((conn as any).global_max_concurrency ?? 200));
-    // Mantém só ~1s de buffer local. Antes, chunks de até 500 deixavam centenas
-    // de destinatários em `processing` quando o Worker era interrompido, criando
-    // pausas de minutos. O fluxo agora reabastece continuamente, em buffers curtos.
-    const chunkSize = Math.max(20, Math.min(Math.ceil(effectiveRate), 100));
-    const queueLowWatermark = Math.max(10, Math.ceil(effectiveRate / 2));
+    // O lote reservado por lane precisa ser MAIOR que o pool HTTP, para nunca
+    // faltar trabalho quando uma requisição termina (reposição imediata).
+    const chunkSize = Math.max(laneHttpConcurrency * 5, Math.min(Math.ceil(effectiveRate), 200));
+    const queueLowWatermark = Math.max(laneHttpConcurrency * 2, Math.ceil(effectiveRate / 2));
+
     // budget = teto de reservas neste tick (não é rate!).
     const budget = Math.max(1, Math.min(reservationBudget ?? 1000, cap));
 
@@ -1084,11 +1091,59 @@ export async function processCampaignTick(
           limited_by_concurrency: rateLimitedBySecond.concurrency,
           limited_by_global_slot: rateLimitedBySecond.global_slot,
         });
+        startedLastSecond = startedThisSecond;
+        completedLastSecond = completedThisSecond;
         startedThisSecond = 0;
+        completedThisSecond = 0;
         rateLimitedBySecond = { global: 0, campaign: 0, concurrency: 0, global_slot: 0 };
         lastTelemetrySecond = nowSec;
       }
     };
+
+    // ---- Diagnóstico REAL de concorrência HTTP desta lane ----
+    let requestsStarted = 0;
+    let requestsCompleted = 0;
+    let acceptedTotal = 0;
+    let completedThisSecond = 0;
+    let startedLastSecond = 0;
+    let completedLastSecond = 0;
+    let durationSum = 0;
+    let durationCount = 0;
+    let lastCompletedAt = 0;
+    let gapSum = 0;
+    let gapCount = 0;
+    let idleAccumMs = 0;
+    let idleReason: string | null = null;
+    let lastHeartbeatAt = 0;
+    const markIdle = (reason: string, ms: number) => {
+      idleReason = reason;
+      idleAccumMs += ms;
+    };
+    const heartbeat = async (force = false) => {
+      const now = Date.now();
+      if (!force && now - lastHeartbeatAt < 1000) return;
+      lastHeartbeatAt = now;
+      try {
+        await supabaseAdmin.rpc("wa_lane_heartbeat" as any, {
+          _campaign_id: campaignId,
+          _lane: lane,
+          _holder: lease,
+          _reserved: localQueue.length + inflight.size,
+          _http_in_flight: inflight.size,
+          _http_concurrency_limit: laneHttpConcurrency,
+          _requests_started: requestsStarted,
+          _requests_completed: requestsCompleted,
+          _accepted_total: acceptedTotal,
+          _started_last_second: startedLastSecond,
+          _completed_last_second: completedLastSecond,
+          _avg_request_ms: durationCount ? Math.round(durationSum / durationCount) : null,
+          _idle_ms: Math.round(idleAccumMs),
+          _time_between_requests_ms: gapCount ? Math.round(gapSum / gapCount) : null,
+          _idle_reason: inflight.size >= laneHttpConcurrency ? "pool_cheio" : idleReason,
+        });
+      } catch { /* telemetria é best-effort */ }
+    };
+
 
     // Bootstrap
     await reserveNextChunk();
@@ -1098,6 +1153,7 @@ export async function processCampaignTick(
       if (Date.now() - tickStart > laneRuntimeMs) break;
 
       flushTelemetryIfNeeded();
+      void heartbeat();
       // libera slots consumidos em batch (~1×/s)
       if (Date.now() - lastSlotFlushAt >= 1000) {
         await flushSlotReleases();
@@ -1108,18 +1164,30 @@ export async function processCampaignTick(
       }
 
       if (localQueue.length === 0) {
-        if (reservingPromise) { await reservingPromise; continue; }
-        if (inflight.size === 0) break;
+        const idle0 = Date.now();
+        if (reservingPromise) {
+          await reservingPromise;
+          markIdle("aguardando_reserva", Date.now() - idle0);
+          continue;
+        }
+        if (inflight.size === 0) { markIdle("fila_vazia", 0); break; }
         await Promise.race(inflight);
+        markIdle("fila_local_vazia", Date.now() - idle0);
         continue;
       }
 
-      // Concorrência LOCAL da campanha
-      if (inflight.size >= maxConc) {
+      // Pool HTTP REAL da lane: mantém exatamente `laneHttpConcurrency`
+      // requisições aguardando resposta; assim que uma termina, a próxima
+      // começa (reposição imediata, sem await sequencial em for).
+      const laneCap = Math.min(maxConc, laneHttpConcurrency);
+      if (inflight.size >= laneCap) {
         rateLimitedBySecond.concurrency++;
+        const idle0 = Date.now();
         await Promise.race(inflight);
+        markIdle("pool_cheio", Date.now() - idle0);
         continue;
       }
+
 
       const now = Date.now();
 
@@ -1127,6 +1195,7 @@ export async function processCampaignTick(
       if (now < nextCampaignPermitAt) {
         rateLimitedBySecond.campaign++;
         const waitMs = Math.max(1, Math.min(nextCampaignPermitAt - now, 50));
+        markIdle("pacing_rate_campanha", waitMs);
         await clock.sleep(waitMs);
         continue;
       }
@@ -1134,7 +1203,7 @@ export async function processCampaignTick(
       // ------ Gate B: bucket GLOBAL do número ------
       if (localGlobalTokens < 1 && now >= lastTokenWaitUntil) {
         const wantTokens = Math.min(
-          Math.max(1, maxConc - inflight.size),
+          Math.max(1, laneCap - inflight.size),
           localQueue.length,
           Math.max(1, Math.ceil(phoneBucketRate)), // ~1s de rate por RPC; pacing local impede rajada
         );
@@ -1159,6 +1228,7 @@ export async function processCampaignTick(
           rateLimitedBySecond.global++;
           const waitMs = Math.max(1, Math.min(row?.wait_ms ?? 50, 100));
           lastTokenWaitUntil = now + waitMs;
+          markIdle("token_bucket_numero", waitMs);
           await clock.sleep(waitMs);
           continue;
         }
@@ -1175,7 +1245,7 @@ export async function processCampaignTick(
         const wantSlots = Math.max(
           1,
           Math.min(
-            Math.max(1, maxConc - inflight.size),
+            Math.max(1, laneCap - inflight.size),
             Math.max(1, localQueue.length),
             Math.max(1, Math.ceil(phoneBucketRate)), // ~1s de rate por RPC; pacing local impede rajada
           ),
@@ -1192,6 +1262,7 @@ export async function processCampaignTick(
         localGlobalSlots += grantedSlots;
         if (grantedSlots === 0) {
           rateLimitedBySecond.global_slot++;
+          markIdle("sem_slot_global_numero", 20);
           await clock.sleep(20);
           continue;
         }
@@ -1206,12 +1277,23 @@ export async function processCampaignTick(
       startedThisSecond += 1;
       dispatchTimestamps.push(now);
       const r = localQueue.shift();
+      requestsStarted += 1;
+      idleReason = null;
+      const reqStartedAt = Date.now();
       let p!: Promise<void>;
       p = sendOne(r)
+        .then(() => { acceptedTotal += 1; })
         .catch((err) => {
           console.error("[wa-queue] sendOne threw", err);
         })
         .finally(() => {
+          const doneAt = Date.now();
+          requestsCompleted += 1;
+          completedThisSecond += 1;
+          durationSum += doneAt - reqStartedAt;
+          durationCount += 1;
+          if (lastCompletedAt) { gapSum += doneAt - lastCompletedAt; gapCount += 1; }
+          lastCompletedAt = doneAt;
           inflight.delete(p);
           slotReleasePending += 1;
         }) as Promise<void>;
@@ -1224,6 +1306,7 @@ export async function processCampaignTick(
     await releaseUnusedAcquiredSlots();
 
     flushTelemetryIfNeeded();
+    await heartbeat(true);
 
     // A partir daqui não abrimos novas requisições, só esperamos respostas já
     // em voo para gravar resultado e devolver slots. Libera o lease da campanha
