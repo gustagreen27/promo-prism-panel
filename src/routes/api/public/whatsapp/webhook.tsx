@@ -348,7 +348,25 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
 // ────────────────────────────────────────────────────────────────────
 // Handler por change (um item em entry.changes[])
 // ────────────────────────────────────────────────────────────────────
+/** Converte o limite numérico do webhook em tier da Meta. */
+function numberToTier(raw: any): string | null {
+  if (raw == null || raw === "") return null;
+  const s = String(raw).toUpperCase();
+  if (s.startsWith("TIER_")) return s;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return null;
+  if (n < 0) return "TIER_UNLIMITED";
+  if (n >= 100000) return "TIER_100K";
+  if (n >= 10000) return "TIER_10K";
+  if (n >= 2000) return "TIER_2K";
+  if (n >= 1000) return "TIER_1K";
+  if (n >= 250) return "TIER_250";
+  if (n >= 50) return "TIER_50";
+  return "UNTIERED";
+}
+
 async function handleChange(supabaseAdmin: any, change: any, entryId: string | null = null) {
+
   const field: string = change?.field ?? "";
   const value: any = change?.value ?? {};
 
