@@ -107,63 +107,132 @@ function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId
   const [finishId, setFinishId] = useState<string | null>(null);
 
 
+  const cap = workspaceCapacity(w);
+  const used = Number(w.messages_last_24h ?? 0);
+  const pct = cap && Number.isFinite(cap) ? Math.min(100, (used / cap) * 100) : null;
+
   return (
-    <div className="rounded-xl border bg-card p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <h3 className="font-semibold">{w.name}</h3>
-          <div className="text-xs text-muted-foreground flex items-center gap-1">/{w.slug} · {w.plan} · <Badge variant="outline">{w.status}</Badge></div>
+    <div className="rounded-2xl border bg-card p-5 md:p-6">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-4">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <Building2 className="h-7 w-7" />
+          </div>
+          <div>
+            <h3 className="text-2xl font-bold tracking-tight">{w.name}</h3>
+            <div className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <span>{w.slug} · {w.plan}</span>
+              <Badge variant="outline" className="gap-1.5 rounded-full border-emerald-500/30 bg-emerald-500/10 text-emerald-600">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                {w.status}
+              </Badge>
+            </div>
+          </div>
         </div>
-        <div className="text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Users className="h-4 w-4" />
           {w.wabas.length} WABA · {w.connections.length} números
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div>
-          <Label className="text-xs">Business Manager ID</Label>
-          <Input value={bizId} onChange={(e) => setBizId(e.target.value)} placeholder="1234567890" />
-        </div>
-        <div>
-          <Label className="text-xs">Nome do BM (opcional)</Label>
-          <Input value={bizName} onChange={(e) => setBizName(e.target.value)} placeholder="Minha Empresa" />
-        </div>
-        <div className="flex items-end">
-          <Button
-            variant="outline"
-            disabled={saving}
-            onClick={() =>
-              onSaveBiz({ meta_business_id: bizId.trim() || null, meta_business_name: bizName.trim() || null })
-            }
-          >
-            <Save className="mr-2 h-4 w-4" />Salvar BM
-          </Button>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="rounded-xl border bg-background p-4 md:p-5">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_1fr_auto]">
+            <div>
+              <Label className="text-xs">Business Manager ID</Label>
+              <Input value={bizId} onChange={(e) => setBizId(e.target.value)} placeholder="1234567890" />
+            </div>
+            <div>
+              <Label className="text-xs">Nome do BM (opcional)</Label>
+              <Input value={bizName} onChange={(e) => setBizName(e.target.value)} placeholder="Minha Empresa" />
+            </div>
+            <div className="flex items-end">
+              <Button
+                variant="outline"
+                disabled={saving}
+                onClick={() =>
+                  onSaveBiz({ meta_business_id: bizId.trim() || null, meta_business_name: bizName.trim() || null })
+                }
+              >
+                <Save className="mr-2 h-4 w-4" />Salvar BM
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <Label className="text-xs">Número padrão de envio</Label>
+            <Select value={defConn} onValueChange={setDefConn}>
+              <SelectTrigger><SelectValue placeholder="— nenhum —" /></SelectTrigger>
+              <SelectContent>
+                {w.connections.length === 0 ? (
+                  <SelectItem value="__none" disabled>Sem números vinculados</SelectItem>
+                ) : w.connections.map((c: any) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name} · {c.display_phone ?? "—"} · {c.status}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="mt-4 flex justify-end">
+            <Button disabled={saving} onClick={() => onSaveDefault(defConn || null)}>
+              <Save className="mr-2 h-4 w-4" />Salvar padrão
+            </Button>
+          </div>
         </div>
 
-        <div className="md:col-span-2">
-          <Label className="text-xs">Número padrão de envio</Label>
-          <Select value={defConn} onValueChange={setDefConn}>
-            <SelectTrigger><SelectValue placeholder="— nenhum —" /></SelectTrigger>
-            <SelectContent>
-              {w.connections.length === 0 ? (
-                <SelectItem value="__none" disabled>Sem números vinculados</SelectItem>
-              ) : w.connections.map((c: any) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name} · {c.display_phone ?? "—"} · {c.status}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex items-end">
-          <Button
-            disabled={saving}
-            onClick={() => onSaveDefault(defConn || null)}
-          >
-            <Save className="mr-2 h-4 w-4" />Salvar padrão
-          </Button>
+        <div className="rounded-xl border bg-background p-4 md:p-5">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Gauge className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="font-semibold leading-tight">Limite de disparos</div>
+                <div className="text-xs text-muted-foreground">Portfólio empresarial</div>
+              </div>
+            </div>
+            <Info className="h-4 w-4 text-muted-foreground" />
+          </div>
+
+          <div className="mt-5 text-sm text-muted-foreground">Capacidade atual</div>
+          <div className="mt-1 flex items-end justify-between gap-2">
+            <div className="text-3xl font-bold text-primary">
+              {cap === null ? "sem dados" : cap === Infinity ? "ilimitado" : cap.toLocaleString("pt-BR")}
+              {cap !== null && cap !== Infinity && <span className="ml-1 text-xl font-semibold text-foreground">/ dia</span>}
+            </div>
+            {pct !== null && <div className="text-sm font-medium text-primary">{pct.toFixed(1).replace(".", ",")}%</div>}
+          </div>
+
+          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct ?? 0}%` }} />
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+            <span className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-primary" />
+              <span className="font-semibold">{used.toLocaleString("pt-BR")}</span>
+              <span className="text-muted-foreground">usados</span>
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-muted-foreground/40" />
+              <span className="font-semibold">
+                {cap === null || cap === Infinity ? "—" : Math.max(0, cap - used).toLocaleString("pt-BR")}
+              </span>
+              <span className="text-muted-foreground">disponíveis</span>
+            </span>
+          </div>
+
+          <div className="mt-4 flex items-center justify-between border-t pt-4 text-sm">
+            <span className="flex items-center gap-2 text-muted-foreground">
+              <Users className="h-4 w-4" /> WABAs vinculados
+            </span>
+            <span className="font-semibold">{w.wabas.length}</span>
+          </div>
         </div>
       </div>
+
 
       {w.connections.length > 0 && (
         <div className="mt-4 border-t pt-3">
