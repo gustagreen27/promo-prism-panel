@@ -31,7 +31,7 @@ export const saveTemplateReference = createServerFn({ method: "POST" })
     if (data.id) {
       const { data: row, error } = await context.supabase
         .from("wa_template_references")
-        .update({ name: data.name, description: data.description ?? null, payload: data.payload })
+        .update({ name: data.name, description: data.description ?? null, payload: data.payload as any })
         .eq("id", data.id)
         .select("id")
         .single();
@@ -43,7 +43,7 @@ export const saveTemplateReference = createServerFn({ method: "POST" })
       .insert({
         name: data.name,
         description: data.description ?? null,
-        payload: data.payload,
+        payload: data.payload as any,
         created_by: context.userId,
       })
       .select("id")
