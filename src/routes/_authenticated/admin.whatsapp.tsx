@@ -11,6 +11,7 @@ const TABS = [
   { to: "/admin/whatsapp/numeros", label: "Números" },
   { to: "/admin/whatsapp/wabas", label: "WABAs" },
   { to: "/admin/whatsapp/templates", label: "Templates" },
+  { to: "/admin/whatsapp/utility", label: "Utility por WABA" },
   { to: "/admin/whatsapp/inbox", label: "Inbox" },
   { to: "/admin/whatsapp/webhooks", label: "Webhooks" },
   { to: "/admin/whatsapp/liberacoes", label: "Liberações" },
