@@ -31,6 +31,8 @@ import {
 import { Stepper, type WizardStep } from "@/components/campaigns/wizard/Stepper";
 import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
 import { ContactsStep, type ContactSelValue } from "@/components/campaigns/wizard/ContactsStep";
+import { SelectionPreflight } from "@/components/admin/selection-preflight";
+
 import { metaVarsIn, renderMapping, buildContext } from "@/lib/wa-variables";
 import { cn } from "@/lib/utils";
 import { formatCallingCode, getCountryCallingCode } from "@/lib/phone-country";
