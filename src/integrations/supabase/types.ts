@@ -2508,6 +2508,10 @@ export type Database = {
           distribution_strategy: string
           estimated_cost: number
           failed_count: number
+          fatal_error_code: string | null
+          fatal_error_message: string | null
+          fatal_locked: boolean
+          fatal_locked_at: string | null
           final_report: Json | null
           finished_at: string | null
           google_calendar_id: string | null
@@ -2603,6 +2607,10 @@ export type Database = {
           distribution_strategy?: string
           estimated_cost?: number
           failed_count?: number
+          fatal_error_code?: string | null
+          fatal_error_message?: string | null
+          fatal_locked?: boolean
+          fatal_locked_at?: string | null
           final_report?: Json | null
           finished_at?: string | null
           google_calendar_id?: string | null
@@ -2698,6 +2706,10 @@ export type Database = {
           distribution_strategy?: string
           estimated_cost?: number
           failed_count?: number
+          fatal_error_code?: string | null
+          fatal_error_message?: string | null
+          fatal_locked?: boolean
+          fatal_locked_at?: string | null
           final_report?: Json | null
           finished_at?: string | null
           google_calendar_id?: string | null
@@ -3845,6 +3857,9 @@ export type Database = {
           api_key: string | null
           app_id: string | null
           app_secret: string | null
+          blocked_at: string | null
+          blocked_error_code: string | null
+          blocked_reason: string | null
           business_id: string | null
           client_id: string | null
           code_verification_status: string | null
@@ -3900,6 +3915,9 @@ export type Database = {
           api_key?: string | null
           app_id?: string | null
           app_secret?: string | null
+          blocked_at?: string | null
+          blocked_error_code?: string | null
+          blocked_reason?: string | null
           business_id?: string | null
           client_id?: string | null
           code_verification_status?: string | null
@@ -3955,6 +3973,9 @@ export type Database = {
           api_key?: string | null
           app_id?: string | null
           app_secret?: string | null
+          blocked_at?: string | null
+          blocked_error_code?: string | null
+          blocked_reason?: string | null
           business_id?: string | null
           client_id?: string | null
           code_verification_status?: string | null
