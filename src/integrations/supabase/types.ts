@@ -3215,6 +3215,176 @@ export type Database = {
           },
         ]
       }
+      wa_health_events: {
+        Row: {
+          additional_info: Json
+          connection_id: string | null
+          created_at: string
+          entity_type: string | null
+          errors: Json
+          id: string
+          label: string | null
+          new_status: string | null
+          node_id: string
+          node_kind: string
+          previous_status: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          additional_info?: Json
+          connection_id?: string | null
+          created_at?: string
+          entity_type?: string | null
+          errors?: Json
+          id?: string
+          label?: string | null
+          new_status?: string | null
+          node_id: string
+          node_kind: string
+          previous_status?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          additional_info?: Json
+          connection_id?: string | null
+          created_at?: string
+          entity_type?: string | null
+          errors?: Json
+          id?: string
+          label?: string | null
+          new_status?: string | null
+          node_id?: string
+          node_kind?: string
+          previous_status?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wa_health_events_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_numbers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_health_events_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_health_events_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wa_health_status: {
+        Row: {
+          additional_info: Json
+          can_send_message: string | null
+          checked_at: string
+          connection_id: string | null
+          created_at: string
+          entities: Json
+          errors: Json
+          fetch_error: string | null
+          id: string
+          label: string | null
+          node_id: string
+          node_kind: string
+          ok: boolean
+          template_ref_id: string | null
+          updated_at: string
+          waba_ref_id: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          additional_info?: Json
+          can_send_message?: string | null
+          checked_at?: string
+          connection_id?: string | null
+          created_at?: string
+          entities?: Json
+          errors?: Json
+          fetch_error?: string | null
+          id?: string
+          label?: string | null
+          node_id: string
+          node_kind: string
+          ok?: boolean
+          template_ref_id?: string | null
+          updated_at?: string
+          waba_ref_id?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          additional_info?: Json
+          can_send_message?: string | null
+          checked_at?: string
+          connection_id?: string | null
+          created_at?: string
+          entities?: Json
+          errors?: Json
+          fetch_error?: string | null
+          id?: string
+          label?: string | null
+          node_id?: string
+          node_kind?: string
+          ok?: boolean
+          template_ref_id?: string | null
+          updated_at?: string
+          waba_ref_id?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wa_health_status_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_numbers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_health_status_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_health_status_template_ref_id_fkey"
+            columns: ["template_ref_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_health_status_template_ref_id_fkey"
+            columns: ["template_ref_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_health_status_waba_ref_id_fkey"
+            columns: ["waba_ref_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_wabas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wa_health_status_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wa_internal_notes: {
         Row: {
           author_user_id: string | null

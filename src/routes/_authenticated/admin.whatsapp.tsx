@@ -15,6 +15,8 @@ const TABS = [
   { to: "/admin/whatsapp/webhooks", label: "Webhooks" },
   { to: "/admin/whatsapp/liberacoes", label: "Liberações" },
   { to: "/admin/whatsapp/qualidade", label: "Qualidade" },
+  { to: "/admin/whatsapp/saude", label: "Saúde de envio" },
+
   { to: "/admin/whatsapp/logs", label: "Logs" },
   { to: "/admin/whatsapp/configuracoes", label: "Configurações" },
 ];

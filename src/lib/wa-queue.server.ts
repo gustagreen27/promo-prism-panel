@@ -407,7 +407,37 @@ export async function processCampaignTick(
       await logEvent(campaignId, "error", msg);
       return { processed: 0, done: true };
     }
+
+    // Pré-checagem de saúde de envio (health_status) — usa cache de 5 min.
+    // BLOCKED/LIMITED impede a tentativa e pausa a campanha explicando o motivo.
+    try {
+      const { ensureSendable } = await import("@/lib/meta/wa-health.server");
+      const check = await ensureSendable(supabaseAdmin, {
+        connection_id: camp.connection_id,
+        template_ref_id: camp.template_id,
+        maxAgeSec: 300,
+      });
+      if (!check.allowed) {
+        const msg = `Envio bloqueado pela pré-checagem de saúde (${check.source}): ${check.reason}`;
+        await supabaseAdmin
+          .from("wa_campaigns")
+          .update({ status: "paused", pause_reason: "health_status", last_error: msg })
+          .eq("id", campaignId);
+        await logEvent(campaignId, "error", msg, {
+          health_status: check.status,
+          source: check.source,
+          errors: check.errors,
+          additional_info: check.additional_info,
+          checked_at: check.checked_at,
+        });
+        return { processed: 0, done: true, reason: "health_status" };
+      }
+    } catch {
+      // Falha ao checar não bloqueia o disparo (fail-open).
+    }
+
     // Load client / project / responsavel once for token context
+
     const [clientRes, projectRes, respRes] = await Promise.all([
       camp.client_id ? supabaseAdmin.from("clients").select("*").eq("id", camp.client_id).maybeSingle() : Promise.resolve({ data: null } as any),
       camp.project_id ? supabaseAdmin.from("projects").select("*").eq("id", camp.project_id).maybeSingle() : Promise.resolve({ data: null } as any),
