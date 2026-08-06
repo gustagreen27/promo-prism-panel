@@ -109,7 +109,7 @@ export function NumbersGrouped({ rows, wabas, businesses, onEdit, onCreds, onDel
         const nb = b.wabaList.reduce((s, w) => s + w.numbers.length, 0);
         return nb - na;
       });
-  }, [rows, wabas, wabaByExternalId]);
+  }, [rows, wabas, wabaByExternalId, bmNameById]);
 
   const totals = useMemo(() => ({
     portfolios: portfolios.length,
