@@ -132,6 +132,8 @@ function Page() {
               onRecalc={() => recalcMut.mutate(w.id)}
               recalcing={recalcMut.isPending && (recalcMut.variables === w.id || recalcMut.variables === null)}
               saving={bizMut.isPending || defMut.isPending}
+              onDisconnect={() => disconnectMut.mutate(w.id)}
+              disconnecting={disconnectMut.isPending && disconnectMut.variables === w.id}
             />
           ))}
         </div>
