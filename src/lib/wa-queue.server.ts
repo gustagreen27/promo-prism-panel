@@ -1108,12 +1108,22 @@ export async function processCampaignTick(
         return;
       }
 
+      // ---- Cancelamento pelo circuit breaker: não é falha do destinatário ----
+      if (result.code === "cancelled" || (fatalStop && laneAbort.signal.aborted)) {
+        await supabaseAdmin
+          .from("campaign_recipients")
+          .update({ status: "pending", failed_reason: null, error_code: null })
+          .eq("id", r.id);
+        return;
+      }
+
       // ---- Falha: distinguir rede vs Meta ----
       const isNetworkErr =
         result.code === "network_error" ||
         /failed to fetch|fetch failed|network|econnreset|etimedout|enetunreach|socket hang up/i.test(
           result.error || "",
         );
+
       const fatalCode = detectFatalAccountCode(result);
       if (fatalCode) {
 
