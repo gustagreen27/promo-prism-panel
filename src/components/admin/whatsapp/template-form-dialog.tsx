@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { Plus, Trash2, Bell, Info } from "lucide-react";
+import { useRef, useState } from "react";
+import { Plus, Trash2, Bell, Info, Upload, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -99,6 +101,34 @@ export function TemplateFormDialog({ editing, numbers, wabas, onSubmit, saving }
     set("variables_examples", [...others, { section: "body", values: arr }]);
   };
   const detected = ((form.body || "").match(/\{\{\s*[a-zA-Z0-9_]+\s*\}\}/g) || []);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const mediaDisabled = !form.header_type || form.header_type === "text";
+
+  const uploadMedia = async (file: File) => {
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "bin";
+      const path = `samples/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error } = await supabase.storage.from("template-media").upload(path, file, {
+        cacheControl: "31536000",
+        contentType: file.type || undefined,
+        upsert: false,
+      });
+      if (error) throw error;
+      const { data, error: signErr } = await supabase.storage
+        .from("template-media")
+        .createSignedUrl(path, 60 * 60 * 24 * 365);
+      if (signErr || !data?.signedUrl) throw signErr ?? new Error("Falha ao gerar URL");
+      set("header_media_url", data.signedUrl);
+      toast.success("Mídia enviada");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha no upload da mídia");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <DialogContent className="max-w-6xl max-h-[92vh] overflow-y-auto p-0 gap-0">
@@ -210,8 +240,32 @@ export function TemplateFormDialog({ editing, numbers, wabas, onSubmit, saving }
               </div>
               <div>
                 <FieldLabel optional>URL da amostra de mídia</FieldLabel>
-                <Input placeholder="https://exemplo.com/midia.jpg" value={form.header_media_url ?? ""}
-                  onChange={(e) => set("header_media_url", e.target.value)} disabled={!form.header_type || form.header_type === "text"} />
+                <div className="flex gap-2">
+                  <Input placeholder="https://exemplo.com/midia.jpg" value={form.header_media_url ?? ""}
+                    onChange={(e) => set("header_media_url", e.target.value)} disabled={mediaDisabled} />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept={
+                      form.header_type === "image" ? "image/*"
+                        : form.header_type === "video" ? "video/*"
+                        : ".pdf,application/pdf"
+                    }
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = "";
+                      if (f) void uploadMedia(f);
+                    }}
+                  />
+                  <Button type="button" variant="outline" size="icon" disabled={mediaDisabled || uploading}
+                    title="Enviar arquivo" onClick={() => fileInputRef.current?.click()}>
+                    {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {mediaDisabled ? "Selecione Imagem, Vídeo ou Documento" : "Cole uma URL ou envie um arquivo do seu computador"}
+                </p>
               </div>
             </div>
 
