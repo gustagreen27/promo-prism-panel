@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Save, Webhook, ListChecks } from "lucide-react";
+import { Save, Webhook, ListChecks, Building2, Users, Gauge, Info } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
 import { ErrorCard } from "@/components/admin/query-state";
