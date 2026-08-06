@@ -96,7 +96,7 @@ function Page() {
           <div className="font-semibold text-sm">Conectar novo WhatsApp Business</div>
           <div className="text-xs text-muted-foreground">Abre o Cadastro incorporado da Meta em um popup.</div>
         </div>
-        <EmbeddedSignupButton mode="coexistence" label="Conectar WhatsApp" />
+        <EmbeddedSignupButton mode="standard" label="Conectar WhatsApp" />
       </div>
       {isLoading ? (
         <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
