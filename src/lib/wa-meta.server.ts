@@ -70,6 +70,8 @@ export function buildTemplateComponents(t: {
   header_type?: string | null;
   header_text?: string | null;
   header_media_url?: string | null;
+  header_media_handle?: string | null;
+
   body: string;
   footer?: string | null;
   buttons?: any;
