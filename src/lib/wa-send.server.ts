@@ -171,15 +171,23 @@ export async function sendTemplateMessage(input: WaSendInput): Promise<WaSendRes
     if (!id) return { ok: false, error: "No message id returned", raw: json, httpStatus: res.status, requestStartedAt, responseReceivedAt };
     return { ok: true, metaMessageId: id, messageStatus, wamid, raw: json, httpStatus: res.status, requestStartedAt, responseReceivedAt };
   } catch (e: any) {
-    const timedOut = e?.name === "AbortError";
+    const aborted = e?.name === "AbortError";
+    // Cancelamento externo (circuit breaker) ≠ timeout: não conta como falha
+    // do destinatário, ele volta para a fila sem consumir tentativa.
+    const cancelled = aborted && input.signal?.aborted === true;
     return {
       ok: false,
-      error: timedOut ? `Meta Graph timeout após ${META_SEND_TIMEOUT_MS}ms` : (e?.message ?? "Network error"),
-      code: "network_error",
+      error: cancelled
+        ? "Envio cancelado pelo circuit breaker (conta bloqueada)"
+        : aborted
+          ? `Meta Graph timeout após ${META_SEND_TIMEOUT_MS}ms`
+          : (e?.message ?? "Network error"),
+      code: cancelled ? "cancelled" : "network_error",
       requestStartedAt,
       responseReceivedAt: new Date().toISOString(),
     };
   }
+
 }
 
 export async function syncTemplatesFromMeta(opts: {
