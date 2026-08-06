@@ -20,6 +20,7 @@ import { duplicateTemplate } from "@/lib/wa-meta-api.functions";
 import { listNumbers } from "@/lib/whatsapp-numbers.functions";
 import { listWabas } from "@/lib/wa-wabas.functions";
 import { ErrorCard } from "@/components/admin/query-state";
+import { TemplateFormDialog } from "@/components/admin/whatsapp/template-form-dialog";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp/templates")({
   head: () => ({ meta: [{ title: "Templates WhatsApp" }] }),
