@@ -38,6 +38,7 @@ function Page() {
   const clientsFn = useServerFn(listClients);
   const projectsFn = useServerFn(listProjects);
   const wabasFn = useServerFn(listWabas);
+  const businessesFn = useServerFn(listBusinessNames);
   const qc = useQueryClient();
 
   const numbersQuery = useQuery({ queryKey: ["wa-numbers"], queryFn: () => listFn() });
