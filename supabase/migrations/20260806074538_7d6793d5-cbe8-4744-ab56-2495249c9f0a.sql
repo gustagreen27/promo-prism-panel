@@ -1,0 +1,1 @@
+DELETE FROM public.whatsapp_templates WHERE waba_ref_id IS NULL;
