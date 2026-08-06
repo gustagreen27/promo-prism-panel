@@ -78,16 +78,16 @@ export const listAttendanceNumbers = createServerFn({ method: "GET" })
     if (ids.length) {
       const { data: conns } = await context.supabase
         .from("whatsapp_connections")
-        .select("id, phone_number_id, display_phone_number, nome_interno, waba_id")
+        .select("id, phone_number_id, display_phone, phone, verified_name, nome_interno, quality_rating, status, waba_ref_id")
         .in("phone_number_id", ids);
       const list = (conns ?? []) as any[];
-      const wabaIds = [...new Set(list.map((c) => c.waba_id).filter(Boolean))];
+      const wabaRefs = [...new Set(list.map((c) => c.waba_ref_id).filter(Boolean))];
       const wabaNames = new Map<string, string>();
-      if (wabaIds.length) {
+      if (wabaRefs.length) {
         const { data: wabas } = await context.supabase
           .from("whatsapp_wabas")
           .select("id, waba_id, nome_interno")
-          .in("id", wabaIds);
+          .in("id", wabaRefs);
         for (const w of (wabas ?? []) as any[]) wabaNames.set(w.id, w.nome_interno ?? w.waba_id);
       }
       const byPni = new Map<string, any>();
@@ -96,10 +96,13 @@ export const listAttendanceNumbers = createServerFn({ method: "GET" })
         const c = byPni.get(i.phone_number_id);
         if (!c) continue;
         i.connection_id = c.id;
-        i.display_phone_number = c.display_phone_number ?? null;
-        i.nome_interno = c.nome_interno ?? null;
-        i.waba_name = c.waba_id ? wabaNames.get(c.waba_id) ?? null : null;
+        i.display_phone_number = c.display_phone ?? c.phone ?? null;
+        i.nome_interno = c.nome_interno ?? c.verified_name ?? null;
+        i.quality_rating = c.quality_rating ?? null;
+        i.status = c.status ?? null;
+        i.waba_name = c.waba_ref_id ? wabaNames.get(c.waba_ref_id) ?? null : null;
       }
+
     }
 
     items.sort((a, b) => (b.last_message_at ?? "").localeCompare(a.last_message_at ?? ""));
