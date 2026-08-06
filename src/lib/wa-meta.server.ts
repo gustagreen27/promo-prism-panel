@@ -97,12 +97,13 @@ export function buildTemplateComponents(t: {
       headerComp.example = { header_text: headerExamples.slice(0, hPos) };
     }
     components.push(headerComp);
-  } else if (["image", "video", "document"].includes(ht) && t.header_media_url) {
+  } else if (["image", "video", "document"].includes(ht) && (t.header_media_handle || t.header_media_url)) {
     components.push({
       type: "HEADER",
       format: ht.toUpperCase(),
-      example: { header_handle: [t.header_media_url] },
+      example: { header_handle: [t.header_media_handle || t.header_media_url] },
     });
+
   } else if (ht === "location") {
     components.push({ type: "HEADER", format: "LOCATION" });
   }
