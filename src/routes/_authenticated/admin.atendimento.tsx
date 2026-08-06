@@ -57,6 +57,7 @@ import {
   Trash2,
   CornerUpLeft,
   Link2,
+  Smartphone,
 } from "lucide-react";
 
 
