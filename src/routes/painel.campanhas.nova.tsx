@@ -539,6 +539,7 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
     if (from === 1) return !!contactSel?.list_id;
     if (from === 2) {
       if (!connectionId || !templateId) return false;
+      if (adminMode && preflightVerdict === "red") return false;
       if (dispatch.rate_per_second <= 0 || dispatch.max_concurrency < 1) return false;
       if (dispatch.scheduled_pause_enabled && (dispatch.pause_every_messages < 1 || dispatch.pause_duration_seconds < 1)) return false;
       if (tplRequiresMedia && !headerMediaUrl.trim()) return false;
@@ -548,7 +549,8 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
     }
     if (from === 3) return !!name.trim();
     return true;
-  }, [contactSel, connectionId, templateId, dispatch, name, tplRequiresMedia, headerMediaUrl, tplBodyVarNums, bodyVars, tplUrlVarNums, btnVars]);
+  }, [contactSel, connectionId, templateId, dispatch, name, tplRequiresMedia, headerMediaUrl, tplBodyVarNums, bodyVars, tplUrlVarNums, btnVars, adminMode, preflightVerdict]);
+
 
   function goTo(id: number) { if (id <= maxReached) setStep(id); }
   function next() {
