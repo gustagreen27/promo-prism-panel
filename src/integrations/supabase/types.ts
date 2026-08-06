@@ -2513,6 +2513,7 @@ export type Database = {
           google_calendar_id: string | null
           google_event_id: string | null
           google_synced_at: string | null
+          http_concurrency: number
           id: string
           jitter_ms: number
           last_error: string | null
@@ -2607,6 +2608,7 @@ export type Database = {
           google_calendar_id?: string | null
           google_event_id?: string | null
           google_synced_at?: string | null
+          http_concurrency?: number
           id?: string
           jitter_ms?: number
           last_error?: string | null
@@ -2701,6 +2703,7 @@ export type Database = {
           google_calendar_id?: string | null
           google_event_id?: string | null
           google_synced_at?: string | null
+          http_concurrency?: number
           id?: string
           jitter_ms?: number
           last_error?: string | null
@@ -3493,27 +3496,69 @@ export type Database = {
       }
       wa_worker_lanes: {
         Row: {
+          accepted_total: number
+          avg_request_ms: number | null
           campaign_id: string
+          completed_last_second: number
           created_at: string
+          heartbeat_at: string | null
           holder: string | null
+          http_concurrency_limit: number
+          http_in_flight: number
+          idle_ms: number
+          idle_reason: string | null
           lane_index: number
+          lease_started_at: string | null
           lease_until: string | null
+          requests_completed: number
+          requests_started: number
+          reserved: number
+          started_last_second: number
+          time_between_requests_ms: number | null
           updated_at: string
         }
         Insert: {
+          accepted_total?: number
+          avg_request_ms?: number | null
           campaign_id: string
+          completed_last_second?: number
           created_at?: string
+          heartbeat_at?: string | null
           holder?: string | null
+          http_concurrency_limit?: number
+          http_in_flight?: number
+          idle_ms?: number
+          idle_reason?: string | null
           lane_index: number
+          lease_started_at?: string | null
           lease_until?: string | null
+          requests_completed?: number
+          requests_started?: number
+          reserved?: number
+          started_last_second?: number
+          time_between_requests_ms?: number | null
           updated_at?: string
         }
         Update: {
+          accepted_total?: number
+          avg_request_ms?: number | null
           campaign_id?: string
+          completed_last_second?: number
           created_at?: string
+          heartbeat_at?: string | null
           holder?: string | null
+          http_concurrency_limit?: number
+          http_in_flight?: number
+          idle_ms?: number
+          idle_reason?: string | null
           lane_index?: number
+          lease_started_at?: string | null
           lease_until?: string | null
+          requests_completed?: number
+          requests_started?: number
+          reserved?: number
+          started_last_second?: number
+          time_between_requests_ms?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -4998,6 +5043,26 @@ export type Database = {
           _seconds?: number
         }
         Returns: boolean
+      }
+      wa_lane_heartbeat: {
+        Args: {
+          _accepted_total: number
+          _avg_request_ms: number
+          _campaign_id: string
+          _completed_last_second: number
+          _holder: string
+          _http_concurrency_limit: number
+          _http_in_flight: number
+          _idle_ms: number
+          _idle_reason: string
+          _lane: number
+          _requests_completed: number
+          _requests_started: number
+          _reserved: number
+          _started_last_second: number
+          _time_between_requests_ms: number
+        }
+        Returns: undefined
       }
       wa_lane_release: {
         Args: { _campaign_id: string; _holder: string; _lane: number }
