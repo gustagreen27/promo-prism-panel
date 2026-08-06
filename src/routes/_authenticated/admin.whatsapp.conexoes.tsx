@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Save, Webhook, ListChecks, Building2, Users, Gauge, Info, RefreshCw } from "lucide-react";
+import { Save, Webhook, ListChecks, Building2, Users, Gauge, Info, RefreshCw, Link2, Phone, ShieldCheck, TrendingUp, ChevronDown } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
 import { ErrorCard } from "@/components/admin/query-state";
@@ -105,7 +105,7 @@ function Page() {
       ) : !rows || rows.length === 0 ? (
         <EmptyState title="Nenhum workspace" />
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-8">
           {rows.map((w: any) => (
             <WorkspaceCard
               key={w.id}
@@ -125,20 +125,40 @@ function Page() {
   );
 }
 
+function qualityMeta(q: any) {
+  const v = String(q ?? "").toUpperCase();
+  if (v === "GREEN" || v === "HIGH") return { label: "Alta", cls: "border-emerald-500/30 bg-emerald-500/10 text-emerald-600" };
+  if (v === "YELLOW" || v === "MEDIUM") return { label: "Média", cls: "border-amber-500/30 bg-amber-500/10 text-amber-600" };
+  if (v === "RED" || v === "LOW") return { label: "Baixa", cls: "border-red-500/30 bg-red-500/10 text-red-600" };
+  if (v) return { label: "Boa", cls: "border-emerald-500/30 bg-emerald-500/10 text-emerald-600" };
+  return { label: "sem dados", cls: "border-border bg-muted text-muted-foreground" };
+}
+
+function avgQuality(items: any[]) {
+  const score: Record<string, number> = { GREEN: 3, HIGH: 3, YELLOW: 2, MEDIUM: 2, RED: 1, LOW: 1 };
+  const vals = items.map((c) => score[String(c.quality_rating ?? "").toUpperCase()]).filter(Boolean) as number[];
+  if (!vals.length) return null;
+  const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+  return avg >= 2.6 ? "alta" : avg >= 1.8 ? "boa" : "baixa";
+}
+
 function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId, saving, onRecalc, recalcing }: any) {
   const [bizId, setBizId] = useState<string>(w.meta_business_id ?? "");
   const [bizName, setBizName] = useState<string>(w.meta_business_name ?? "");
   const [defConn, setDefConn] = useState<string>(w.default_connection_id ?? "");
   const [finishId, setFinishId] = useState<string | null>(null);
-
+  const [closed, setClosed] = useState<Record<string, boolean>>({});
 
   const cap = workspaceCapacity(w);
   const used = Number(w.messages_last_24h ?? 0);
   const pct = cap && Number.isFinite(cap) ? Math.min(100, (used / cap) * 100) : null;
+  const tplByWabaId = new Map<string, number>();
+  for (const x of w.wabas ?? []) if (x.waba_id) tplByWabaId.set(String(x.waba_id), Number(x.templates_count ?? 0));
 
   return (
-    <div className="rounded-2xl border bg-card p-5 md:p-6">
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-4">
+      {/* Cabeçalho do portfólio */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card px-5 py-4 md:px-6">
         <div className="flex items-center gap-4">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <Building2 className="h-7 w-7" />
@@ -160,20 +180,23 @@ function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="rounded-xl border bg-background p-4 md:p-5">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_400px]">
+        {/* Configurações do BM */}
+        <div className="rounded-2xl border bg-card p-5 md:p-6">
+          <div className="mb-4 text-base font-semibold">Configurações do Business Manager</div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_1fr_auto]">
-            <div>
+            <div className="space-y-1.5">
               <Label className="text-xs">Business Manager ID</Label>
-              <Input value={bizId} onChange={(e) => setBizId(e.target.value)} placeholder="1234567890" />
+              <Input className="h-11 rounded-xl" value={bizId} onChange={(e) => setBizId(e.target.value)} placeholder="1234567890" />
             </div>
-            <div>
+            <div className="space-y-1.5">
               <Label className="text-xs">Nome do BM (opcional)</Label>
-              <Input value={bizName} onChange={(e) => setBizName(e.target.value)} placeholder="Minha Empresa" />
+              <Input className="h-11 rounded-xl" value={bizName} onChange={(e) => setBizName(e.target.value)} placeholder="Minha Empresa" />
             </div>
             <div className="flex items-end">
               <Button
                 variant="outline"
+                className="h-11 rounded-xl"
                 disabled={saving}
                 onClick={() =>
                   onSaveBiz({ meta_business_id: bizId.trim() || null, meta_business_name: bizName.trim() || null })
@@ -184,10 +207,10 @@ function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId
             </div>
           </div>
 
-          <div className="mt-4">
+          <div className="mt-4 space-y-1.5">
             <Label className="text-xs">Número padrão de envio</Label>
             <Select value={defConn} onValueChange={setDefConn}>
-              <SelectTrigger><SelectValue placeholder="— nenhum —" /></SelectTrigger>
+              <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="— nenhum —" /></SelectTrigger>
               <SelectContent>
                 {w.connections.length === 0 ? (
                   <SelectItem value="__none" disabled>Sem números vinculados</SelectItem>
@@ -200,47 +223,59 @@ function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId
             </Select>
           </div>
 
-          <div className="mt-4 flex justify-end">
-            <Button disabled={saving} onClick={() => onSaveDefault(defConn || null)}>
+          <div className="mt-5 flex justify-end">
+            <Button className="h-11 rounded-xl" disabled={saving} onClick={() => onSaveDefault(defConn || null)}>
               <Save className="mr-2 h-4 w-4" />Salvar padrão
             </Button>
           </div>
         </div>
 
-        <div className="rounded-xl border bg-background p-4 md:p-5">
+        {/* Limite de disparos */}
+        <div className="rounded-2xl border bg-primary/[0.04] p-5 md:p-6">
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <Gauge className="h-5 w-5" />
               </div>
               <div>
-                <div className="font-semibold leading-tight">Limite de disparos</div>
-                <div className="text-xs text-muted-foreground">Portfólio empresarial</div>
+                <div className="text-lg font-bold leading-tight">Limite de disparos</div>
+                <div className="text-sm text-muted-foreground">Portfólio empresarial</div>
               </div>
             </div>
             <Button
               size="sm"
               variant="ghost"
-              className="h-8 gap-1.5 px-2 text-xs"
+              className="h-8 gap-1.5 px-2 text-sm text-primary hover:text-primary"
               disabled={recalcing}
               onClick={() => onRecalc?.()}
               title="Buscar o limite atual do portfólio na Meta"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${recalcing ? "animate-spin" : ""}`} />
+              <RefreshCw className={`h-4 w-4 ${recalcing ? "animate-spin" : ""}`} />
               {recalcing ? "Recalculando…" : "Recalcular"}
             </Button>
           </div>
 
-          <div className="mt-5 text-sm text-muted-foreground">Capacidade atual</div>
-          <div className="mt-1 flex items-end justify-between gap-2">
-            <div className="text-3xl font-bold text-primary">
-              {cap === null ? "sem dados" : cap === Infinity ? "ilimitado" : cap.toLocaleString("pt-BR")}
-              {cap !== null && cap !== Infinity && <span className="ml-1 text-xl font-semibold text-foreground">/ dia</span>}
+          <div className="mt-5 flex items-end justify-between gap-4">
+            <div>
+              <div className="text-sm text-muted-foreground">Capacidade atual</div>
+              <div className="mt-1 text-4xl font-extrabold tracking-tight text-primary">
+                {cap === null ? "sem dados" : cap === Infinity ? "ilimitado" : cap.toLocaleString("pt-BR")}
+                {cap !== null && cap !== Infinity && <span className="ml-1 text-xl font-semibold text-foreground">/ dia</span>}
+              </div>
             </div>
-            {pct !== null && <div className="text-sm font-medium text-primary">{pct.toFixed(1).replace(".", ",")}%</div>}
+            <div
+              className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-primary"
+              style={{
+                background: `conic-gradient(var(--primary) ${(pct ?? 0) * 3.6}deg, color-mix(in oklab, var(--primary) 12%, transparent) 0deg)`,
+              }}
+            >
+              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-card">
+                {pct === null ? "—" : `${pct.toFixed(1).replace(".", ",")}%`}
+              </span>
+            </div>
           </div>
 
-          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
+          <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-primary/15">
             <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct ?? 0}%` }} />
           </div>
 
@@ -259,59 +294,107 @@ function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId
             </span>
           </div>
 
-          <div className="mt-4 flex items-center justify-between border-t pt-4 text-sm">
-            <span className="flex items-center gap-2 text-muted-foreground">
-              <Users className="h-4 w-4" /> WABAs vinculados
-            </span>
-            <span className="font-semibold">{w.wabas.length}</span>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="flex items-center gap-3 rounded-xl border bg-card px-3 py-2.5">
+              <Link2 className="h-4 w-4 text-primary" />
+              <div className="leading-tight">
+                <div className="font-semibold">{w.wabas.length}</div>
+                <div className="text-xs text-muted-foreground">WABAs vinculados</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-xl border bg-card px-3 py-2.5">
+              <Phone className="h-4 w-4 text-primary" />
+              <div className="leading-tight">
+                <div className="font-semibold">{w.connections.length}</div>
+                <div className="text-xs text-muted-foreground">números</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-
+      {/* Números por WABA */}
       {w.connections.length > 0 && (
-        <div className="mt-4 border-t pt-3">
-          <div className="text-xs font-medium text-muted-foreground mb-2">Números por WABA (assinar app / finalizar integração)</div>
+        <div>
+          <div className="mb-2 flex flex-wrap items-baseline gap-2">
+            <span className="text-base font-semibold">Números por WABA</span>
+            <span className="text-sm text-muted-foreground">assinar app / finalizar integração</span>
+          </div>
           <div className="space-y-3">
-            {groupByWaba(w).map((g: any) => (
-              <div key={g.key} className="rounded-lg border bg-muted/30 p-2.5">
-                <div className="mb-1.5 flex items-center gap-2 text-xs">
-                  <span className="font-semibold">{g.label}</span>
-                  {g.waba_id && <Badge variant="outline" className="font-mono text-[10px]">WABA {g.waba_id}</Badge>}
-                  <span className="text-muted-foreground">{g.items.length} número(s)</span>
-                </div>
-                <div className="space-y-1.5">
-                  {g.items.map((c: any) => (
-                    <div key={c.id} className="flex items-center justify-between gap-2 text-sm">
-                      <div className="min-w-0">
-                        <span className="font-medium">{c.name}</span>
-                        <span className="text-muted-foreground"> · {c.display_phone ?? "—"}</span>
-                        {!c.waba_id && <span className="text-xs text-destructive"> · sem waba_id</span>}
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={!c.waba_id || subscribingId === c.id}
-                          onClick={() => onSubscribe(c.id)}
-                        >
-                          <Webhook className="mr-2 h-3.5 w-3.5" />
-                          {subscribingId === c.id ? "Assinando…" : "Assinar app"}
-                        </Button>
-                        <Button size="sm" onClick={() => setFinishId(c.id)}>
-                          <ListChecks className="mr-2 h-3.5 w-3.5" />
-                          Finalizar integração
-                        </Button>
-                      </div>
+            {groupByWaba(w).map((g: any) => {
+              const isClosed = !!closed[g.key];
+              const q = avgQuality(g.items);
+              const tpl = g.waba_id ? tplByWabaId.get(String(g.waba_id)) ?? 0 : 0;
+              return (
+                <div key={g.key} className="overflow-hidden rounded-2xl border bg-card">
+                  <button
+                    type="button"
+                    onClick={() => setClosed((s) => ({ ...s, [g.key]: !isClosed }))}
+                    className="flex w-full flex-wrap items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/40"
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <Building2 className="h-4.5 w-4.5" />
+                    </span>
+                    <span className="text-lg font-bold">{g.label}</span>
+                    {g.waba_id && (
+                      <Badge variant="outline" className="rounded-full bg-muted/60 font-normal">
+                        <span className="text-muted-foreground">WABA ID</span>
+                        <span className="ml-1.5 font-mono">{g.waba_id}</span>
+                      </Badge>
+                    )}
+                    <Badge variant="outline" className="gap-1.5 rounded-full bg-muted/60 font-normal">
+                      <Users className="h-3.5 w-3.5" />{g.items.length} números
+                    </Badge>
+                    <Badge variant="outline" className="gap-1.5 rounded-full border-violet-500/30 bg-violet-500/10 font-normal text-violet-600">
+                      <ShieldCheck className="h-3.5 w-3.5" />{tpl} templates
+                    </Badge>
+                    {q && (
+                      <Badge variant="outline" className="gap-1.5 rounded-full border-emerald-500/30 bg-emerald-500/10 font-normal text-emerald-600">
+                        <TrendingUp className="h-3.5 w-3.5" />Qualidade média: {q}
+                      </Badge>
+                    )}
+                    <ChevronDown className={`ml-auto h-5 w-5 text-muted-foreground transition-transform ${isClosed ? "" : "rotate-180"}`} />
+                  </button>
+
+                  {!isClosed && (
+                    <div className="divide-y border-t">
+                      {g.items.map((c: any) => {
+                        const qm = qualityMeta(c.quality_rating);
+                        return (
+                          <div key={c.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5">
+                            <span className="min-w-[180px] font-medium">{c.name}</span>
+                            <span className="min-w-[150px] text-muted-foreground">{c.display_phone ?? "—"}</span>
+                            <Badge variant="outline" className={`rounded-md font-normal ${qm.cls}`}>{qm.label}</Badge>
+                            <span className="text-sm text-muted-foreground">
+                              {c.waba_id ? "usa templates da WABA" : "sem waba_id"}
+                            </span>
+                            <div className="ml-auto flex shrink-0 items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="rounded-lg"
+                                disabled={!c.waba_id || subscribingId === c.id}
+                                onClick={() => onSubscribe(c.id)}
+                              >
+                                <Webhook className="mr-2 h-3.5 w-3.5" />
+                                {subscribingId === c.id ? "Assinando…" : "Assinar app"}
+                              </Button>
+                              <Button size="sm" className="rounded-lg" onClick={() => setFinishId(c.id)}>
+                                <ListChecks className="mr-2 h-3.5 w-3.5" />
+                                Finalizar integração
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  ))}
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
-
 
       <PostSignupDialog
         connectionId={finishId}

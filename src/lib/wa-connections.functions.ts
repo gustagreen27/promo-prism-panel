@@ -25,6 +25,16 @@ export const listWorkspaceConnections = createServerFn({ method: "GET" })
       .from("whatsapp_wabas")
       .select("id,nome_interno,waba_id,workspace_id");
 
+    // Contagem de templates aprovados por WABA (apresentação nos cards)
+    const { data: tpls } = await context.supabase
+      .from("whatsapp_templates")
+      .select("id,waba_ref_id,status");
+    const tplByWaba = new Map<string, number>();
+    for (const t of tpls ?? []) {
+      if (!t.waba_ref_id) continue;
+      tplByWaba.set(t.waba_ref_id, (tplByWaba.get(t.waba_ref_id) ?? 0) + 1);
+    }
+
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const usage = new Map<string, number>();
     await Promise.all(
@@ -45,7 +55,9 @@ export const listWorkspaceConnections = createServerFn({ method: "GET" })
 
     return relevant.map((w: any) => ({
       ...w,
-      wabas: (wabas ?? []).filter((x: any) => x.workspace_id === w.id),
+      wabas: (wabas ?? [])
+        .filter((x: any) => x.workspace_id === w.id)
+        .map((x: any) => ({ ...x, templates_count: tplByWaba.get(x.id) ?? 0 })),
       connections: (conns ?? []).filter((c: any) => c.workspace_id === w.id),
       default_connection: (conns ?? []).find((c: any) => c.id === w.default_connection_id) ?? null,
       messages_last_24h: usage.get(w.id) ?? 0,
