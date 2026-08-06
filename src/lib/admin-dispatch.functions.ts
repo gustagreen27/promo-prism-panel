@@ -20,7 +20,7 @@ export const adminListAllNumbers = createServerFn({ method: "POST" })
     // ou sync). O admin precisa conseguir enviar/testar por qualquer conexão existente.
     const { data, error } = await supabase
       .from("whatsapp_connections")
-      .select("id, display_name, nome_interno, name, display_phone, phone, phone_number_id, waba_id, waba_ref_id, status, quality_rating, daily_cap, paused_at, visibility, code_verification_status, meta_sync_status")
+      .select("id, display_name, nome_interno, name, display_phone, phone, phone_number_id, waba_id, waba_ref_id, status, quality_rating, daily_cap, daily_limit, messaging_limit, paused_at, visibility, code_verification_status, meta_sync_status")
       .order("display_name", { ascending: true });
     if (error) throw error;
 
@@ -49,8 +49,9 @@ export const adminListAllNumbers = createServerFn({ method: "POST" })
         phone_country_code: getCountryCallingCode(c.phone ?? c.display_phone),
         status: c.status,
         quality_rating: c.quality_rating ?? null,
-        messaging_limit_tier: null,
+        messaging_limit_tier: c.messaging_limit ?? null,
         daily_cap: c.daily_cap ?? null,
+        daily_limit: c.daily_limit ?? null,
       };
     });
     return { numbers: rows };

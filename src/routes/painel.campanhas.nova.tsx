@@ -48,7 +48,26 @@ export const Route = createFileRoute("/painel/campanhas/nova")({
   component: Page,
 });
 
+/** Limite diário de conversas iniciadas (tier da Meta) para exibição na UI. */
+const TIER_LIMITS: Record<string, string> = {
+  TIER_50: "50/dia",
+  TIER_250: "250/dia",
+  TIER_1K: "1.000/dia",
+  TIER_10K: "10.000/dia",
+  TIER_100K: "100.000/dia",
+  TIER_UNLIMITED: "ilimitado",
+};
+
+function formatDailyLimit(n: any): string {
+  const tier = String(n?.messaging_limit_tier ?? "").toUpperCase().replace(/\s/g, "");
+  if (tier && TIER_LIMITS[tier]) return TIER_LIMITS[tier];
+  const cap = n?.daily_cap ?? n?.daily_limit;
+  if (cap) return `${Number(cap).toLocaleString("pt-BR")}/dia`;
+  return "não informado";
+}
+
 function Page() {
+
   const { workspaceId } = Route.useRouteContext() as { workspaceId: string };
   const { event_id, scheduled_for } = Route.useSearch();
   const navigate = useNavigate();
@@ -810,10 +829,11 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                             const active = String(n.status ?? "").toLowerCase().match(/active|connected/);
                             return (
                               <option key={n.id} value={n.id}>
-                                {dot} {(n.phone_display ?? n.phone_masked)} — {n.display_name} · Qualidade: {qLabel}{active ? "" : ` · ${n.status}`}
+                                {dot} {(n.phone_display ?? n.phone_masked)} — {n.display_name} · Qualidade: {qLabel} · Limite: {formatDailyLimit(n)}{active ? "" : ` · ${n.status}`}
                               </option>
                             );
                           })}
+
 
                         </optgroup>
                       ))}
@@ -827,9 +847,8 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                         {selectedNumber.quality_rating && (
                           <Badge variant="outline" className="gap-1"><Signal className="h-3 w-3" /> {selectedNumber.quality_rating}</Badge>
                         )}
-                        {selectedNumber.messaging_limit_tier && (
-                          <Badge variant="outline">Tier: {selectedNumber.messaging_limit_tier}</Badge>
-                        )}
+                        <Badge variant="outline">Limite/dia: {formatDailyLimit(selectedNumber as any)}</Badge>
+
                         {(selectedNumber as any).business_id && (
                           <Badge variant="outline">BM {(selectedNumber as any).business_id}</Badge>
                         )}
