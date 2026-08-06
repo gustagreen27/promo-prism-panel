@@ -191,11 +191,36 @@ function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Users className="h-4 w-4" />
-          {w.wabas.length} WABA · {w.connections.length} números
+        <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+          <span className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            {w.wabas.length} WABA · {w.connections.length} números
+          </span>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 rounded-xl text-destructive hover:text-destructive" disabled={disconnecting}>
+                <Unplug className="mr-2 h-4 w-4" />
+                {disconnecting ? "Desconectando…" : "Desconectar BM"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Desconectar “{w.name}”?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Serão removidos apenas os {w.wabas.length} portfólio(s) vinculados a esta BM e os
+                  {" "}{w.connections.length} número(s) serão desvinculados. Nenhuma outra BM é afetada, e
+                  campanhas e histórico permanecem intactos.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={onDisconnect}>Desconectar</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
+
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_400px]">
         {/* Configurações do BM */}
