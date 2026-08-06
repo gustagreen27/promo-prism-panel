@@ -803,11 +803,18 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                       <option value="">— Selecione um número —</option>
                       {numbersByBm.map((g) => (
                         <optgroup key={g.label} label={g.label}>
-                          {g.items.map((n) => (
-                            <option key={n.id} value={n.id}>
-                              {(n.phone_display ?? n.phone_masked)} — {n.display_name}{n.phone_number_id ? ` · ID ${n.phone_number_id}` : ""}
-                            </option>
-                          ))}
+                          {g.items.map((n) => {
+                            const q = String(n.quality_rating ?? "").toUpperCase();
+                            const dot = q === "GREEN" ? "🟢" : q === "YELLOW" ? "🟡" : q === "RED" ? "🔴" : "⚪";
+                            const qLabel = q === "GREEN" ? "Alta" : q === "YELLOW" ? "Média" : q === "RED" ? "Baixa" : "Sem dados";
+                            const active = String(n.status ?? "").toLowerCase().match(/active|connected/);
+                            return (
+                              <option key={n.id} value={n.id}>
+                                {dot} {(n.phone_display ?? n.phone_masked)} — {n.display_name} · Qualidade: {qLabel}{active ? "" : ` · ${n.status}`}
+                              </option>
+                            );
+                          })}
+
                         </optgroup>
                       ))}
 
