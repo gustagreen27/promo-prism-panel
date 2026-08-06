@@ -167,39 +167,47 @@ function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId
 
       {w.connections.length > 0 && (
         <div className="mt-4 border-t pt-3">
-          <div className="text-xs font-medium text-muted-foreground mb-2">Webhooks (assinar app na WABA)</div>
-          <div className="space-y-1.5">
-            {w.connections.map((c: any) => (
-              <div key={c.id} className="flex items-center justify-between gap-2 text-sm">
-                <div className="min-w-0">
-                  <span className="font-medium">{c.name}</span>
-                  <span className="text-muted-foreground"> · {c.display_phone ?? "—"}</span>
-                  {c.waba_id ? (
-                    <span className="text-xs text-muted-foreground"> · WABA {c.waba_id}</span>
-                  ) : (
-                    <span className="text-xs text-destructive"> · sem waba_id</span>
-                  )}
+          <div className="text-xs font-medium text-muted-foreground mb-2">Números por WABA (assinar app / finalizar integração)</div>
+          <div className="space-y-3">
+            {groupByWaba(w).map((g: any) => (
+              <div key={g.key} className="rounded-lg border bg-muted/30 p-2.5">
+                <div className="mb-1.5 flex items-center gap-2 text-xs">
+                  <span className="font-semibold">{g.label}</span>
+                  {g.waba_id && <Badge variant="outline" className="font-mono text-[10px]">WABA {g.waba_id}</Badge>}
+                  <span className="text-muted-foreground">{g.items.length} número(s)</span>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={!c.waba_id || subscribingId === c.id}
-                    onClick={() => onSubscribe(c.id)}
-                  >
-                    <Webhook className="mr-2 h-3.5 w-3.5" />
-                    {subscribingId === c.id ? "Assinando…" : "Assinar app"}
-                  </Button>
-                  <Button size="sm" onClick={() => setFinishId(c.id)}>
-                    <ListChecks className="mr-2 h-3.5 w-3.5" />
-                    Finalizar integração
-                  </Button>
+                <div className="space-y-1.5">
+                  {g.items.map((c: any) => (
+                    <div key={c.id} className="flex items-center justify-between gap-2 text-sm">
+                      <div className="min-w-0">
+                        <span className="font-medium">{c.name}</span>
+                        <span className="text-muted-foreground"> · {c.display_phone ?? "—"}</span>
+                        {!c.waba_id && <span className="text-xs text-destructive"> · sem waba_id</span>}
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={!c.waba_id || subscribingId === c.id}
+                          onClick={() => onSubscribe(c.id)}
+                        >
+                          <Webhook className="mr-2 h-3.5 w-3.5" />
+                          {subscribingId === c.id ? "Assinando…" : "Assinar app"}
+                        </Button>
+                        <Button size="sm" onClick={() => setFinishId(c.id)}>
+                          <ListChecks className="mr-2 h-3.5 w-3.5" />
+                          Finalizar integração
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
           </div>
         </div>
       )}
+
 
       <PostSignupDialog
         connectionId={finishId}
@@ -208,4 +216,23 @@ function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId
       />
     </div>
   );
+}
+
+function groupByWaba(w: any) {
+  const wabaName = new Map<string, string>();
+  for (const x of w.wabas ?? []) if (x.waba_id) wabaName.set(String(x.waba_id), x.nome_interno);
+  const groups = new Map<string, any>();
+  for (const c of [...(w.connections ?? [])].sort((a: any, b: any) => String(a.name ?? "").localeCompare(String(b.name ?? ""), "pt-BR"))) {
+    const key = c.waba_id ? String(c.waba_id) : "__sem_waba";
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        waba_id: c.waba_id ?? null,
+        label: c.waba_id ? (wabaName.get(String(c.waba_id)) ?? "WABA sem cadastro local") : "Sem WABA vinculada",
+        items: [],
+      });
+    }
+    groups.get(key).items.push(c);
+  }
+  return [...groups.values()].sort((a, b) => a.label.localeCompare(b.label, "pt-BR"));
 }
