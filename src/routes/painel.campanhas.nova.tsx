@@ -20,6 +20,7 @@ import { adminListAllNumbers, adminListAllTemplates } from "@/lib/admin-dispatch
 import { startWaCampaign as adminStartWaCampaign, scheduleWaCampaign as adminScheduleWaCampaign } from "@/lib/wa-campaigns.functions";
 import { linkEventToCampaign } from "@/lib/calendar.functions";
 import { checkSchedulingConflict } from "@/lib/wa-schedule.functions";
+import { createSplitDispatch } from "@/lib/wa-split.functions";
 import { supabase } from "@/integrations/supabase/client";
 import {
   CalendarClock, CheckCircle2, Plus, AlertTriangle, ArrowLeft, ArrowRight,
