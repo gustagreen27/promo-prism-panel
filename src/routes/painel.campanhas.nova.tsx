@@ -227,6 +227,7 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   const fnAdminSchedule = useServerFn(adminScheduleWaCampaign);
   const fnLink = useServerFn(linkEventToCampaign);
   const fnConflict = useServerFn(checkSchedulingConflict);
+  const fnSplit = useServerFn(createSplitDispatch);
 
   const DRAFT_KEY = `wa_wizard_draft_${workspaceId}`;
 
