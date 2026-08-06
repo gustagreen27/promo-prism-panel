@@ -46,9 +46,11 @@ function Page() {
   const clientsQuery = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
   const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: () => projectsFn() });
   const wabasQuery = useQuery({ queryKey: ["wa-wabas"], queryFn: () => wabasFn() });
+  const businessesQuery = useQuery({ queryKey: ["wa-business-names"], queryFn: () => businessesFn() });
   const clients = clientsQuery.data ?? [];
   const projects = projectsQuery.data ?? [];
   const wabas = wabasQuery.data ?? [];
+  const businesses = businessesQuery.data ?? [];
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
