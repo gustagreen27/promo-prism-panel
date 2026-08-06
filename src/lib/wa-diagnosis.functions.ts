@@ -465,3 +465,67 @@ export const getCampaignErrorContext = createServerFn({ method: "POST" })
       failed_recipients: failedRecs ?? [],
     };
   });
+
+/**
+ * Messaging & Calling Health Status (Graph API).
+ * GET /<NODE_ID>?fields=health_status — retorna o status agregado (AVAILABLE /
+ * LIMITED / BLOCKED) de todas as entidades envolvidas no envio: número, WABA,
+ * portfólio de negócios, app e (opcionalmente) template.
+ * Usa SEMPRE o token da própria conexão (ou o global, se marcada assim).
+ */
+export const getConnectionHealthStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({
+    connection_id: z.string().uuid(),
+    template_id: z.string().trim().max(64).optional(),
+  }).parse(d))
+  .handler(async ({ data, context }) => {
+    const conn = await loadConnRaw(context.supabase, context.userId, data.connection_id);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: full } = await supabaseAdmin
+      .from("whatsapp_connections")
+      .select("access_token, use_global_token, phone_number_id, waba_id, graph_version")
+      .eq("id", conn.id)
+      .maybeSingle();
+    if (!full) throw new Error("Conexão não encontrada.");
+
+    const useGlobal = !!full.use_global_token;
+    const token = useGlobal ? (process.env.WHATSAPP_ACCESS_TOKEN || "") : (full.access_token || "");
+    if (!token) return { ok: false, reason: "MISSING_TOKEN", source: useGlobal ? "global" : "connection" };
+
+    const { resolveGraphVersion } = await import("@/lib/meta/graph-version");
+    const version = resolveGraphVersion((full as any).graph_version ?? null);
+
+    const nodeId = data.template_id || full.phone_number_id || full.waba_id;
+    if (!nodeId) return { ok: false, reason: "MISSING_NODE_ID" };
+
+    try {
+      const r = await fetch(
+        `https://graph.facebook.com/${version}/${nodeId}?fields=health_status`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const j: any = await r.json().catch(() => ({}));
+      if (!r.ok || j?.error) {
+        return { ok: false, node_id: nodeId, error: j?.error ?? { message: `HTTP ${r.status}` } };
+      }
+      const hs = j?.health_status ?? null;
+      const entities: any[] = Array.isArray(hs?.entities) ? hs.entities : [];
+      const blocked = entities.filter((e) => e?.can_send_message === "BLOCKED");
+      const limited = entities.filter((e) => e?.can_send_message === "LIMITED");
+      return {
+        ok: true,
+        node_id: nodeId,
+        node_kind: data.template_id ? "MESSAGE_TEMPLATE" : (full.phone_number_id ? "PHONE_NUMBER" : "WABA"),
+        graph_version: version,
+        token_source: useGlobal ? "global" : "connection",
+        can_send_message: hs?.can_send_message ?? null,
+        entities,
+        blocked_entities: blocked,
+        limited_entities: limited,
+        errors: blocked.flatMap((e) => (e.errors ?? []).map((x: any) => ({ entity: e.entity_type, ...x }))),
+        additional_info: limited.flatMap((e) => (e.additional_info ?? []).map((m: string) => ({ entity: e.entity_type, message: m }))),
+      };
+    } catch (e: any) {
+      return { ok: false, node_id: nodeId, error: { message: e?.message ?? "erro" } };
+    }
+  });
