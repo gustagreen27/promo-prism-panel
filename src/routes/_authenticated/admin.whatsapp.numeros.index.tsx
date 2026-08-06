@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { listNumbers, createNumber, updateNumber, deleteNumber } from "@/lib/whatsapp-numbers.functions";
 import { updateConnectionToken, getConnectionCredentials, debugConnectionToken, getConnectionSubscribedApps, subscribeAppToWaba, getConnectionHealthStatus } from "@/lib/wa-diagnosis.functions";
 import { syncAllWabas } from "@/lib/wa-meta-sync.functions";
-import { addNumberToWaba, requestNumberCode, verifyNumberCode, registerNumberOnCloud } from "@/lib/wa-meta-api.functions";
+import { addNumberToWaba, requestNumberCode, verifyNumberCode, registerNumberOnCloud, subscribeWabaWebhooks, listWabaNumbers } from "@/lib/wa-meta-api.functions";
 import { listWabas } from "@/lib/wa-wabas.functions";
 import { listClients } from "@/lib/clients.functions";
 import { listProjects } from "@/lib/projects.functions";
