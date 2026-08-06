@@ -38,12 +38,25 @@ export const listMyNumbers = createServerFn({ method: 'POST' })
       .eq('workspace_id', data.workspace_id)
       .or(data.project_id ? `project_id.eq.${data.project_id},project_id.is.null` : 'project_id.is.null')
     if (error) throw error
+    // Enriquece com o portfólio empresarial (BM) para agrupar na UI
+    const wabaIds = [...new Set((rows || []).map((n: any) => n.waba_id).filter(Boolean).map(String))]
+    const bmByWaba = new Map<string, any>()
+    if (wabaIds.length) {
+      const { data: wabas } = await supabase
+        .from('whatsapp_wabas')
+        .select('waba_id, nome_interno, business_id')
+        .in('waba_id', wabaIds)
+      for (const w of wabas || []) bmByWaba.set(String(w.waba_id), w)
+    }
     return { numbers: (rows || []).map((n: any) => ({
       ...n,
+      waba_name: bmByWaba.get(String(n.waba_id))?.nome_interno ?? null,
+      business_id: bmByWaba.get(String(n.waba_id))?.business_id ?? null,
       phone_display: n.display_phone ?? n.phone_masked ?? null,
       phone_country_code: getCountryCallingCode(n.phone ?? n.display_phone ?? n.phone_masked),
     })) }
   })
+
 
 // ---- Listar templates liberados ----
 export const listMyTemplates = createServerFn({ method: 'POST' })
