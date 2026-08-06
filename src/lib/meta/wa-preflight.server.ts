@@ -175,7 +175,7 @@ export async function runSelectionPreflight(
 
   // 1) Número: status + quality_rating + limite
   const num = await graph(
-    `${conn.phone_number_id}?fields=id,display_phone_number,verified_name,status,quality_rating,throughput,messaging_limit_tier`,
+    `${conn.phone_number_id}?fields=id,display_phone_number,verified_name,status,quality_rating,throughput`,
     token,
     version,
   );
@@ -187,7 +187,7 @@ export async function runSelectionPreflight(
 
   numberStatus = num.json?.status ?? null;
   qualityRating = num.json?.quality_rating ?? null;
-  tier = num.json?.messaging_limit_tier ?? null;
+
 
   if (numberStatus === "CONNECTED") {
     push({ key: "number_status", label: "Número conectado", status: "ok", detail: `status=CONNECTED (${num.json?.display_phone_number ?? conn.display_phone ?? ""})` });
