@@ -108,6 +108,7 @@ export const listConversationsAtd = createServerFn({ method: "GET" })
         window: z.enum(["all", "open", "closed"]).optional(),
         assigned: z.enum(["all", "me", "none"]).optional(),
         campaign_id: z.string().uuid().optional(),
+        phone_number_id: z.string().optional(),
         search: z.string().optional(),
         limit: z.number().int().min(1).max(200).optional(),
       })
@@ -134,6 +135,7 @@ export const listConversationsAtd = createServerFn({ method: "GET" })
     if (assigned === "me") q = q.eq("assigned_user_id", context.userId);
     if (assigned === "none") q = q.is("assigned_user_id", null);
     if (data.campaign_id) q = q.eq("campaign_id", data.campaign_id);
+    if (data.phone_number_id) q = q.eq("phone_number_id", data.phone_number_id);
     if (data.search && data.search.trim()) {
       const s = `%${data.search.trim()}%`;
       q = q.or(`contact_phone.ilike.${s},contact_name.ilike.${s},last_message_preview.ilike.${s}`);
