@@ -290,50 +290,72 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   }, [connectionId, workspaceId, fnListTemplates]);
 
   // -------- Draft persistence --------
+  const draftHasContent = (d: any) =>
+    !!d && (
+      (typeof d.name === "string" && d.name.trim() !== "") ||
+      !!d.connectionId || !!d.templateId ||
+      (d.contactSel && (d.contactSel.list_id || (Array.isArray(d.contactSel.contact_ids) && d.contactSel.contact_ids.length > 0))) ||
+      (typeof d.step === "number" && d.step > 1)
+    );
+
+  const pendingDraft = useRef<any>(null);
+  const restoreResolved = useRef(false);
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
-      if (raw) setShowRestore(true);
-    } catch { /* ignore */ }
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (draftHasContent(parsed)) {
+        pendingDraft.current = parsed;
+        setShowRestore(true);
+      } else {
+        if (raw) localStorage.removeItem(DRAFT_KEY);
+        restoreResolved.current = true;
+      }
+    } catch {
+      restoreResolved.current = true;
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function applyDraft() {
-    try {
-      const raw = localStorage.getItem(DRAFT_KEY);
-      if (!raw) return;
-      const d = JSON.parse(raw);
-      if (d.name) setName(d.name);
-      if (d.connectionId) setConnectionId(d.connectionId);
-      if (d.templateId) setTemplateId(d.templateId);
-      if (d.contactSel) setContactSel(d.contactSel);
-      if (d.dispatch && typeof d.dispatch === "object") setDispatch({ ...defaultDispatch(), ...d.dispatch });
-      if (d.responseFlow && typeof d.responseFlow === "object") setResponseFlow({ ...defaultResponseFlow(), ...d.responseFlow });
-      if (d.mode) setMode(d.mode);
-      if (d.scheduledAt) setScheduledAt(d.scheduledAt);
-      if (d.timezone) setTimezone(d.timezone);
-      if (d.step) { setStep(d.step); setMaxReached(Math.max(d.step, d.maxReached ?? 1)); }
-      setDraftRestored(true);
-      toast.success("Rascunho restaurado");
-    } catch { /* ignore */ }
+    const d = pendingDraft.current;
+    restoreResolved.current = true;
     setShowRestore(false);
+    if (!d) return;
+    if (d.name) setName(d.name);
+    if (d.connectionId) setConnectionId(d.connectionId);
+    if (d.templateId) setTemplateId(d.templateId);
+    if (d.contactSel) setContactSel(d.contactSel);
+    if (d.dispatch && typeof d.dispatch === "object") setDispatch({ ...defaultDispatch(), ...d.dispatch });
+    if (d.responseFlow && typeof d.responseFlow === "object") setResponseFlow({ ...defaultResponseFlow(), ...d.responseFlow });
+    if (d.mode) setMode(d.mode);
+    if (d.scheduledAt) setScheduledAt(d.scheduledAt);
+    if (d.timezone) setTimezone(d.timezone);
+    if (d.step) { setStep(d.step); setMaxReached(Math.max(d.step, d.maxReached ?? 1)); }
+    setDraftRestored(true);
+    toast.success("Rascunho restaurado");
   }
   function discardDraft() {
+    pendingDraft.current = null;
+    restoreResolved.current = true;
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
     setShowRestore(false);
   }
   useEffect(() => {
     if (campaignId) return;
+    // Não sobrescreve o rascunho salvo antes do usuário decidir restaurar/descartar.
+    if (!restoreResolved.current) return;
+    const snapshot = { name, connectionId, templateId, contactSel, dispatch, responseFlow, mode, scheduledAt, timezone, step, maxReached };
+    if (!draftHasContent(snapshot)) return;
     const t = setTimeout(() => {
       try {
-        localStorage.setItem(DRAFT_KEY, JSON.stringify({
-          name, connectionId, templateId, contactSel, dispatch, responseFlow, mode, scheduledAt, timezone, step, maxReached,
-          savedAt: Date.now(),
-        }));
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...snapshot, savedAt: Date.now() }));
       } catch { /* ignore */ }
     }, 400);
     return () => clearTimeout(t);
-  }, [name, connectionId, templateId, contactSel, dispatch, responseFlow, mode, scheduledAt, timezone, step, maxReached, campaignId, DRAFT_KEY]);
+  }, [name, connectionId, templateId, contactSel, dispatch, responseFlow, mode, scheduledAt, timezone, step, maxReached, campaignId, DRAFT_KEY, showRestore]);
+
 
   // -------- Conflict check --------
   useEffect(() => {
