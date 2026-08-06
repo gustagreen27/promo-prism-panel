@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { EmbeddedSignupButton } from "@/components/admin/whatsapp/embedded-signup-button";
+import { PostSignupDialog } from "@/components/admin/whatsapp/post-signup-dialog";
 import {
   listWorkspaceConnections,
   setWorkspaceBusinessId,
