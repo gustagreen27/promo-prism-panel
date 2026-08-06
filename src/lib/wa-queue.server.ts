@@ -367,6 +367,14 @@ export async function processCampaignTick(
       return { processed: 0, done: true };
     }
     if (camp.status !== "running") return { processed: 0, done: true };
+    // Travada por erro crítico de conta (ex.: 131031) — nada de reprocessamento automático.
+    if ((camp as any).fatal_locked) {
+      await supabaseAdmin
+        .from("wa_campaigns")
+        .update({ status: "paused", pause_reason: "account_locked" })
+        .eq("id", campaignId);
+      return { processed: 0, done: true, reason: "account_locked" };
+    }
 
     await resetStaleProcessing(campaignId);
 
