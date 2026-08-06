@@ -405,6 +405,20 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
 
   // -------- Derived --------
   const selectedNumber = useMemo(() => numbers.find((n) => n.id === connectionId), [numbers, connectionId]);
+  // Agrupa os números por portfólio empresarial (BM) → WABA.
+  const numbersByBm = useMemo(() => {
+    const groups = new Map<string, { label: string; items: NumberRow[] }>();
+    for (const n of numbers) {
+      const bm = (n as any).business_id ? `BM ${(n as any).business_id}` : "Sem portfólio (BM) vinculado";
+      const waba = (n as any).waba_name ?? ((n as any).waba_id ? `WABA ${(n as any).waba_id}` : null);
+      const key = `${bm}__${waba ?? ""}`;
+      const label = waba ? `${bm} · ${waba}` : bm;
+      if (!groups.has(key)) groups.set(key, { label, items: [] });
+      groups.get(key)!.items.push(n);
+    }
+    return [...groups.values()].sort((a, b) => a.label.localeCompare(b.label));
+  }, [numbers]);
+
   const selectedTemplate = useMemo(() => templates.find((t) => t.id === templateId), [templates, templateId]);
   const validContacts = contactSel?.valid ?? 0;
   const selectedAudienceCode = useMemo(() => {
@@ -787,11 +801,16 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                       onChange={(e) => { setConnectionId(e.target.value); setTemplateId(""); }}
                     >
                       <option value="">— Selecione um número —</option>
-                      {numbers.map((n) => (
-                        <option key={n.id} value={n.id}>
-                          {(n.phone_display ?? n.phone_masked)} — {n.display_name}{n.phone_number_id ? ` · ID ${n.phone_number_id}` : ""}
-                        </option>
+                      {numbersByBm.map((g) => (
+                        <optgroup key={g.label} label={g.label}>
+                          {g.items.map((n) => (
+                            <option key={n.id} value={n.id}>
+                              {(n.phone_display ?? n.phone_masked)} — {n.display_name}{n.phone_number_id ? ` · ID ${n.phone_number_id}` : ""}
+                            </option>
+                          ))}
+                        </optgroup>
                       ))}
+
                     </select>
                     {selectedNumber && (
                       <div className="mt-1.5 flex flex-wrap gap-1.5 text-[11px]">
@@ -804,7 +823,14 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                         {selectedNumber.messaging_limit_tier && (
                           <Badge variant="outline">Tier: {selectedNumber.messaging_limit_tier}</Badge>
                         )}
+                        {(selectedNumber as any).business_id && (
+                          <Badge variant="outline">BM {(selectedNumber as any).business_id}</Badge>
+                        )}
+                        {(selectedNumber as any).waba_name && (
+                          <Badge variant="outline">WABA {(selectedNumber as any).waba_name}</Badge>
+                        )}
                         {senderCode && <Badge variant="outline">DDI {formatCallingCode(senderCode)}</Badge>}
+
                       </div>
                     )}
                     {ddiDifferent && (
