@@ -403,6 +403,12 @@ function ListView({ onNew }: { onNew: () => void }) {
       )}
 
 
+      <PreflightDialog
+        campaign={preflightFor}
+        onOpenChange={(o) => { if (!o) setPreflightFor(null); }}
+        onStarted={() => qc.invalidateQueries({ queryKey: ["wa-campaigns"] })}
+      />
+
       <Dialog open={!!reschedule} onOpenChange={(o) => { if (!o) setReschedule(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>

@@ -8,6 +8,7 @@ import {
   ArrowLeft, Play, Pause, XCircle, RefreshCw, Copy, Download, Printer, ListRestart, Loader2,
   Users, Send, CheckCircle2, Eye, MessageSquare, Ban, TrendingUp, Clock, AlertTriangle, Activity, Replace, MousePointerClick, Gauge,
 } from "lucide-react";
+import { PreflightDialog } from "@/components/admin/preflight-dialog";
 import { SwapConfigDialog } from "@/components/admin/SwapConfigDialog";
 import { SpeedControlDialog } from "@/components/admin/SpeedControlDialog";
 import { PageHeader } from "@/components/admin/page-header";
@@ -407,8 +408,8 @@ function Page() {
               <Link to="/admin/disparos"><ArrowLeft className="mr-2 h-4 w-4" />Voltar</Link>
             </Button>
             {!isRunning && !isPaused && !isFinished && (
-              <Button size="sm" onClick={() => m.start.mutate()} disabled={m.start.isPending}>
-                {m.start.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+              <Button size="sm" onClick={() => setShowPreflight(true)}>
+                <Play className="mr-2 h-4 w-4" />
                 Iniciar
               </Button>
             )}
