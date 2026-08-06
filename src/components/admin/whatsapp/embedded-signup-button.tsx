@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Loader2, MessageCircle, Smartphone } from "lucide-react";
 import { getEmbeddedSignupConfig, completeEmbeddedSignup } from "@/lib/wa-embedded-signup.functions";
+import { PostSignupDialog } from "@/components/admin/whatsapp/post-signup-dialog";
 
 declare global {
   interface Window {
@@ -66,6 +67,7 @@ export function EmbeddedSignupButton({
   const [loading, setLoading] = useState(false);
   const [cfg, setCfg] = useState<{ appId: string; configId: string; graphVersion: string; sdkVersion?: string } | null>(null);
   const sessionRef = useRef<{ phone_number_id?: string; waba_id?: string; business_id?: string } | null>(null);
+  const [finishedConnectionId, setFinishedConnectionId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -230,6 +232,7 @@ export function EmbeddedSignupButton({
           toast.success(
             `Conectado: ${result.display_phone_number ?? result.verified_name ?? "número"} (${result.status})${suffix}`,
           );
+          setFinishedConnectionId(result.connection_id);
           onCompleted?.(result);
         } catch (e: any) {
           const msg: string = e?.message ?? "Falha ao concluir onboarding";
@@ -261,9 +264,16 @@ export function EmbeddedSignupButton({
   const Icon = mode === "coexistence" ? Smartphone : MessageCircle;
 
   return (
-    <Button onClick={launch} disabled={disabled || !ready || loading} type="button" variant={variant}>
-      {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Icon className="mr-2 h-4 w-4" />}
-      {label ?? defaultLabel}
-    </Button>
+    <>
+      <Button onClick={launch} disabled={disabled || !ready || loading} type="button" variant={variant}>
+        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Icon className="mr-2 h-4 w-4" />}
+        {label ?? defaultLabel}
+      </Button>
+      <PostSignupDialog
+        connectionId={finishedConnectionId}
+        open={!!finishedConnectionId}
+        onOpenChange={(v) => !v && setFinishedConnectionId(null)}
+      />
+    </>
   );
 }
