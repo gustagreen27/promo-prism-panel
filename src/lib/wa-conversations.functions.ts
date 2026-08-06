@@ -29,6 +29,9 @@ export type AttendanceNumber = {
   display_phone_number: string | null;
   nome_interno: string | null;
   waba_name: string | null;
+  quality_rating: string | null;
+  status: string | null;
+
   total: number;
   unread: number;
   open_window: number;
