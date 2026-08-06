@@ -263,9 +263,16 @@ export function EmbeddedSignupButton({
   const Icon = mode === "coexistence" ? Smartphone : MessageCircle;
 
   return (
-    <Button onClick={launch} disabled={disabled || !ready || loading} type="button" variant={variant}>
-      {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Icon className="mr-2 h-4 w-4" />}
-      {label ?? defaultLabel}
-    </Button>
+    <>
+      <Button onClick={launch} disabled={disabled || !ready || loading} type="button" variant={variant}>
+        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Icon className="mr-2 h-4 w-4" />}
+        {label ?? defaultLabel}
+      </Button>
+      <PostSignupDialog
+        connectionId={finishedConnectionId}
+        open={!!finishedConnectionId}
+        onOpenChange={(v) => !v && setFinishedConnectionId(null)}
+      />
+    </>
   );
 }
