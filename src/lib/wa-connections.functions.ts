@@ -221,6 +221,15 @@ export const recalcWorkspaceCapacity = createServerFn({ method: "POST" })
     const { data: conns, error } = await q;
     if (error) throw error;
 
+    // Tokens guardados na WABA servem de fallback quando a conexão usa token global.
+    const { data: wabaRows } = await context.supabase
+      .from("whatsapp_wabas")
+      .select("waba_id,access_token");
+    const wabaToken = new Map<string, string>();
+    for (const w of wabaRows ?? []) {
+      if (w.waba_id && w.access_token) wabaToken.set(String(w.waba_id), w.access_token);
+    }
+
     const byWaba = new Map<string, any[]>();
     for (const c of conns ?? []) {
       if (!c.waba_id) continue;
@@ -233,7 +242,8 @@ export const recalcWorkspaceCapacity = createServerFn({ method: "POST" })
     await Promise.all(
       [...byWaba.entries()].map(async ([wabaId, items]) => {
         const withToken = items.find((c: any) => !c.use_global_token && c.access_token);
-        const tier = await fetchWabaMessagingLimit(wabaId, withToken?.access_token ?? null);
+        const token = withToken?.access_token ?? wabaToken.get(wabaId) ?? null;
+        const tier = await fetchWabaMessagingLimit(wabaId, token);
         if (!tier) {
           results.push({ waba_id: wabaId, tier: null, updated: 0 });
           return;
@@ -246,6 +256,7 @@ export const recalcWorkspaceCapacity = createServerFn({ method: "POST" })
         results.push({ waba_id: wabaId, tier: String(tier), updated: ids.length });
       }),
     );
+
 
     return {
       ok: true,
