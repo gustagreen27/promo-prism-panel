@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Loader2, MessageCircle, Smartphone } from "lucide-react";
+import { Loader2, MessageCircle, Smartphone, Info, ExternalLink } from "lucide-react";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { getEmbeddedSignupConfig, completeEmbeddedSignup } from "@/lib/wa-embedded-signup.functions";
 import { PostSignupDialog } from "@/components/admin/whatsapp/post-signup-dialog";
 
@@ -68,6 +69,25 @@ export function EmbeddedSignupButton({
   const [cfg, setCfg] = useState<{ appId: string; configId: string; graphVersion: string; sdkVersion?: string } | null>(null);
   const sessionRef = useRef<{ phone_number_id?: string; waba_id?: string; business_id?: string } | null>(null);
   const [finishedConnectionId, setFinishedConnectionId] = useState<string | null>(null);
+  const [inIframe, setInIframe] = useState(false);
+
+  useEffect(() => {
+    try {
+      setInIframe(window.top !== window.self);
+    } catch {
+      // cross-origin access bloqueado => estamos em iframe
+      setInIframe(true);
+    }
+  }, []);
+
+  function openInNewTab() {
+    const w = window.open(window.location.href, "_blank", "noopener,noreferrer");
+    if (!w) {
+      toast.message("Não foi possível abrir a nova aba. Copie o endereço e abra manualmente no navegador.", {
+        duration: 9000,
+      });
+    }
+  }
 
   useEffect(() => {
     (async () => {
@@ -169,16 +189,15 @@ export function EmbeddedSignupButton({
     // O Embedded Signup abre um popup do Facebook. Dentro do iframe do preview
     // o navegador bloqueia esse popup (e a Meta não permite o fluxo em iframe),
     // então nada acontece ao clicar. Abrimos a página em uma aba real.
-    if (window.top !== window.self) {
-      const w = window.open(window.location.href, "_blank", "noopener,noreferrer");
+    if (inIframe) {
+      openInNewTab();
       toast.message(
-        w
-          ? "O Cadastro incorporado da Meta não funciona dentro do preview. Abrimos a página em uma nova aba — clique no botão por lá."
-          : "Abra a aplicação em uma aba separada (fora do preview) para usar o Cadastro incorporado da Meta.",
+        "O Cadastro incorporado da Meta não funciona dentro do preview. Abrimos a página em uma nova aba — conclua por lá.",
         { duration: 9000 },
       );
       return;
     }
+
 
     sessionRef.current = null;
     setLoading(true);
@@ -281,10 +300,28 @@ export function EmbeddedSignupButton({
 
   return (
     <>
-      <Button onClick={launch} disabled={disabled || !ready || loading} type="button" variant={variant}>
-        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Icon className="mr-2 h-4 w-4" />}
-        {label ?? defaultLabel}
-      </Button>
+      <div className="space-y-2">
+        {inIframe && (
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>Abra em uma nova aba para conectar</AlertTitle>
+            <AlertDescription className="space-y-2">
+              <p>
+                O Cadastro Incorporado da Meta abre uma janela do Facebook e não é permitido dentro do preview
+                (a página está em um quadro embutido). Por isso o popup é bloqueado e nada acontece ao clicar.
+              </p>
+              <Button type="button" size="sm" variant="outline" onClick={openInNewTab}>
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Abrir em nova aba
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+        <Button onClick={launch} disabled={disabled || !ready || loading} type="button" variant={variant}>
+          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Icon className="mr-2 h-4 w-4" />}
+          {label ?? defaultLabel}
+        </Button>
+      </div>
       <PostSignupDialog
         connectionId={finishedConnectionId}
         open={!!finishedConnectionId}
