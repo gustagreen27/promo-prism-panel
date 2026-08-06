@@ -10,6 +10,36 @@ async function assertAdmin(ctx: { supabase: any; userId: string }) {
   if (!data) throw new Error("Forbidden");
 }
 
+/**
+ * Impede retomar/reprocessar enquanto a campanha estiver travada por erro
+ * crítico OU enquanto o número usado continuar bloqueado pela Meta.
+ */
+async function assertCampaignUnlocked(supabase: any, campaignId: string) {
+  const { data: camp } = await supabase
+    .from("wa_campaigns")
+    .select("fatal_locked, fatal_error_code, fatal_error_message, connection_id")
+    .eq("id", campaignId)
+    .maybeSingle();
+  if (camp?.fatal_locked) {
+    throw new Error(
+      `Bloqueada por erro crítico ${camp.fatal_error_code ?? ""}: ${camp.fatal_error_message ?? "conta bloqueada pela Meta"}. Troque de WABA/número ou libere manualmente antes de reprocessar.`,
+    );
+  }
+  if (camp?.connection_id) {
+    const { data: conn } = await supabase
+      .from("whatsapp_connections")
+      .select("blocked_at, blocked_reason")
+      .eq("id", camp.connection_id)
+      .maybeSingle();
+    if (conn?.blocked_at) {
+      throw new Error(
+        `Número bloqueado pela Meta: ${conn.blocked_reason ?? "restrição ativa"}. Troque o número/WABA ou desbloqueie antes de reprocessar.`,
+      );
+    }
+  }
+}
+
+
 async function logEvent(supabase: any, campaignId: string, event_type: string, message: string, actorId: string | null = null, payload: any = {}) {
   try {
     await supabase.from("campaign_timeline").insert({
