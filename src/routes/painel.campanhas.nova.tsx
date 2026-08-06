@@ -296,6 +296,29 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
       .catch(() => setTemplates([]));
   }, [connectionId, workspaceId, fnListTemplates]);
 
+  // Templates das combinações extras (um fetch por conexão, com cache).
+  useEffect(() => {
+    const ids = Array.from(new Set(extraLegs.map((l) => l.connection_id).filter(Boolean)));
+    const missing = ids.filter((id) => !legTemplates[id]);
+    if (missing.length === 0) return;
+    let alive = true;
+    (async () => {
+      for (const id of missing) {
+        try {
+          const r = await fnListTemplates({ data: { workspace_id: workspaceId, connection_id: id } });
+          if (!alive) return;
+          setLegTemplates((s) => ({ ...s, [id]: r.templates }));
+        } catch {
+          if (!alive) return;
+          setLegTemplates((s) => ({ ...s, [id]: [] }));
+        }
+      }
+    })();
+    return () => { alive = false; };
+  }, [extraLegs, legTemplates, workspaceId, fnListTemplates]);
+
+
+
   // -------- Draft persistence --------
   const draftHasContent = (d: any) =>
     !!d && (
