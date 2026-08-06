@@ -89,6 +89,16 @@ function Page() {
     },
     onError: (e: any) => toast.error(e?.message ?? "Falha ao assinar app"),
   });
+  const disconnectFn = useServerFn(disconnectWorkspaceBM);
+  const disconnectMut = useMutation({
+    mutationFn: (workspace_id: string) => disconnectFn({ data: { workspace_id } }),
+    onSuccess: (r: any) => {
+      toast.success(`BM desconectada · ${r?.wabas_removed ?? 0} portfólio(s) removido(s)`);
+      refresh();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao desconectar BM"),
+  });
+
 
   return (
     <>
