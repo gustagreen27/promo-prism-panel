@@ -327,7 +327,8 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
           const changes: any[] = Array.isArray(entry?.changes) ? entry.changes : [];
           for (const change of changes) {
             try {
-              await handleChange(supabaseAdmin, change);
+              await handleChange(supabaseAdmin, change, entry?.id ? String(entry.id) : null);
+
             } catch (e: any) {
               await supabaseAdmin.from("whatsapp_webhook_logs").insert({
                 event_type: "handler_error",
