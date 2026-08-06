@@ -829,6 +829,16 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                   </div>
                 </div>
 
+                {adminMode && connectionId && templateId && (
+                  <SelectionPreflight
+                    connectionId={connectionId}
+                    templateId={templateId}
+                    totalRecipients={validContacts}
+                    onVerdict={setPreflightVerdict}
+                  />
+                )}
+
+
                 {/* Conteúdo dinâmico do template */}
                 {selectedTemplate && (tplRequiresMedia || tplBodyVarNums.length > 0 || tplUrlVarNums.length > 0) && (
                   <div className="rounded-lg border p-4 space-y-4">
