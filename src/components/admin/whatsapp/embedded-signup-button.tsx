@@ -292,7 +292,7 @@ export function EmbeddedSignupButton({
       }
     }, 20 * 1000);
 
-    const handleLoginResponse = async (resp: any) => {
+    const processLoginResponse = async (resp: any) => {
         try {
           const code = resp?.authResponse?.code;
           const sess = sessionRef.current;
