@@ -115,6 +115,7 @@ function Page() {
         <NumbersGrouped
           rows={rows}
           wabas={wabas}
+          businesses={businesses}
           onEdit={(r: any) => { setEditing(r); setOpen(true); }}
           onCreds={(r: any) => setCredsEditing(r)}
           onDelete={(id: string) => delMut.mutate(id)}
