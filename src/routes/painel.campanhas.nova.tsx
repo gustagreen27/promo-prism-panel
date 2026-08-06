@@ -405,6 +405,20 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
 
   // -------- Derived --------
   const selectedNumber = useMemo(() => numbers.find((n) => n.id === connectionId), [numbers, connectionId]);
+  // Agrupa os números por portfólio empresarial (BM) → WABA.
+  const numbersByBm = useMemo(() => {
+    const groups = new Map<string, { label: string; items: NumberRow[] }>();
+    for (const n of numbers) {
+      const bm = (n as any).business_id ? `BM ${(n as any).business_id}` : "Sem portfólio (BM) vinculado";
+      const waba = (n as any).waba_name ?? ((n as any).waba_id ? `WABA ${(n as any).waba_id}` : null);
+      const key = `${bm}__${waba ?? ""}`;
+      const label = waba ? `${bm} · ${waba}` : bm;
+      if (!groups.has(key)) groups.set(key, { label, items: [] });
+      groups.get(key)!.items.push(n);
+    }
+    return [...groups.values()].sort((a, b) => a.label.localeCompare(b.label));
+  }, [numbers]);
+
   const selectedTemplate = useMemo(() => templates.find((t) => t.id === templateId), [templates, templateId]);
   const validContacts = contactSel?.valid ?? 0;
   const selectedAudienceCode = useMemo(() => {
