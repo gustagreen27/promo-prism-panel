@@ -140,7 +140,14 @@ export function PostSignupDialog({ connectionId, open, onOpenChange, onDone }: P
                   <li key={c.key} className="flex items-start gap-2 rounded-md border p-2.5 text-sm">
                     <StateIcon state={c.state} />
                     <div className="min-w-0">
-                      <div className="font-medium">{c.label}</div>
+                      <div className="flex items-center gap-2 font-medium">
+                        {c.label}
+                        {c.optional && (
+                          <span className="rounded border px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">
+                            opcional
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs text-muted-foreground break-words">{c.detail ?? "—"}</div>
                     </div>
                     {c.key === "webhook" && c.state !== "ok" && (
