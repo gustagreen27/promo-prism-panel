@@ -88,7 +88,8 @@ export const completeEmbeddedSignup = createServerFn({ method: "POST" })
     // Non-admins are always scoped to their own workspace; admin passes client/project explicitly.
     const scopedClientId = caller.isAdmin ? (data.client_id ?? null) : null;
     const scopedProjectId = caller.isAdmin ? (data.project_id ?? null) : null;
-    const scopedWorkspaceId = caller.isAdmin ? null : caller.workspaceId;
+    // Admin: resolvido depois, a partir do Business Manager retornado pela Meta.
+    let scopedWorkspaceId: string | null = caller.isAdmin ? null : caller.workspaceId;
 
     const supabase = context.supabase;
     const appId = process.env.META_APP_ID;
