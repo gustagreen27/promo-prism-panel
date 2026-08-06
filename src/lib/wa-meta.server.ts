@@ -25,6 +25,7 @@ function humanizeMetaError(json: any, status: number): { error: string; code?: s
   if (/category/i.test(msg)) return { code, error: "Categoria inválida. Use MARKETING, UTILITY ou AUTHENTICATION." };
   if (/example/i.test(msg)) return { code, error: "Variável sem exemplo. Preencha as amostras (variables_examples) para todas as variáveis do corpo/URL." };
   if (/button/i.test(msg)) return { code, error: `Botão inválido: ${msg}${sub}` };
+  if (err?.error_subcode === 2388273) return { code, error: "Mídia do cabeçalho inválida: a Meta rejeitou o arquivo de amostra. Envie novamente a imagem/vídeo (JPG, PNG ou MP4, até 5 MB)." };
   if (/media/i.test(msg) || /header.*url/i.test(msg)) return { code, error: `Mídia do cabeçalho inválida: ${msg}${sub}` };
   return { code, error: `${msg}${sub}` };
 }
@@ -70,6 +71,8 @@ export function buildTemplateComponents(t: {
   header_type?: string | null;
   header_text?: string | null;
   header_media_url?: string | null;
+  header_media_handle?: string | null;
+
   body: string;
   footer?: string | null;
   buttons?: any;
@@ -97,12 +100,13 @@ export function buildTemplateComponents(t: {
       headerComp.example = { header_text: headerExamples.slice(0, hPos) };
     }
     components.push(headerComp);
-  } else if (["image", "video", "document"].includes(ht) && t.header_media_url) {
+  } else if (["image", "video", "document"].includes(ht) && (t.header_media_handle || t.header_media_url)) {
     components.push({
       type: "HEADER",
       format: ht.toUpperCase(),
-      example: { header_handle: [t.header_media_url] },
+      example: { header_handle: [t.header_media_handle || t.header_media_url] },
     });
+
   } else if (ht === "location") {
     components.push({ type: "HEADER", format: "LOCATION" });
   }
@@ -392,4 +396,50 @@ export async function registerPhone(input: {
   const json: any = await res.json().catch(() => ({}));
   if (!res.ok) return { ok: false, ...humanizeMetaError(json, res.status), raw: json, httpStatus: res.status };
   return { ok: true, data: json, raw: json };
+}
+
+/**
+ * Faz upload da mídia do cabeçalho para a Resumable Upload API da Meta e
+ * retorna o handle (h:...) exigido em example.header_handle ao criar templates.
+ * A API de templates NÃO aceita URL direta (erro subcode 2388273).
+ */
+export async function uploadHeaderHandle(input: {
+  mediaUrl: string;
+  accessToken?: string | null;
+}): Promise<string> {
+  const token = input.accessToken || process.env.WHATSAPP_ACCESS_TOKEN;
+  if (!token) throw new Error("WHATSAPP_ACCESS_TOKEN não configurado.");
+  const appId = process.env.META_APP_ID;
+  if (!appId) throw new Error("META_APP_ID não configurado — necessário para enviar a mídia do cabeçalho.");
+
+  const fileRes = await fetch(input.mediaUrl);
+  if (!fileRes.ok) throw new Error("Não foi possível baixar a mídia do cabeçalho a partir da URL informada.");
+  const buf = new Uint8Array(await fileRes.arrayBuffer());
+  const fileType = fileRes.headers.get("content-type")?.split(";")[0] || "application/octet-stream";
+  if (!buf.byteLength) throw new Error("Arquivo de mídia vazio.");
+
+  const startUrl = new URL(`${GRAPH}/${appId}/uploads`);
+  startUrl.searchParams.set("file_length", String(buf.byteLength));
+  startUrl.searchParams.set("file_type", fileType);
+  startUrl.searchParams.set("access_token", token);
+  const startRes = await fetch(startUrl.toString(), { method: "POST" });
+  const startJson: any = await startRes.json().catch(() => ({}));
+  if (!startRes.ok || !startJson?.id) {
+    throw new Error(`Falha ao iniciar upload da mídia: ${startJson?.error?.message ?? startRes.status}`);
+  }
+
+  const upRes = await fetch(`${GRAPH}/${startJson.id}`, {
+    method: "POST",
+    headers: {
+      Authorization: `OAuth ${token}`,
+      file_offset: "0",
+      "Content-Type": "application/octet-stream",
+    },
+    body: buf,
+  });
+  const upJson: any = await upRes.json().catch(() => ({}));
+  if (!upRes.ok || !upJson?.h) {
+    throw new Error(`Falha ao enviar a mídia do cabeçalho: ${upJson?.error?.message ?? upRes.status}`);
+  }
+  return upJson.h as string;
 }

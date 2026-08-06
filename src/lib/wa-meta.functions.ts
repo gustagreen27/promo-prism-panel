@@ -37,13 +37,26 @@ export const submitTemplateForApproval = createServerFn({ method: "POST" })
       throw new Error("Categoria inválida. Selecione MARKETING, UTILITY ou AUTHENTICATION.");
     }
 
-    const { buildTemplateComponents, submitTemplateToMeta } = await import("@/lib/wa-meta.server");
+    const { buildTemplateComponents, submitTemplateToMeta, uploadHeaderHandle } = await import("@/lib/wa-meta.server");
+
+    // Mídia de cabeçalho: a Meta exige um handle da Resumable Upload API,
+    // não uma URL (erro "Invalid parameter" subcode 2388273).
+    let headerMediaHandle: string | null = null;
+    const ht = String(tpl.header_type || "").toLowerCase();
+    if (["image", "video", "document"].includes(ht) && tpl.header_media_url) {
+      const url = String(tpl.header_media_url).trim();
+      headerMediaHandle = /^https?:\/\//i.test(url)
+        ? await uploadHeaderHandle({ mediaUrl: url, accessToken: tpl.waba.access_token ?? null })
+        : url;
+    }
+
     let components;
     try {
-      components = buildTemplateComponents(tpl);
+      components = buildTemplateComponents({ ...tpl, header_media_handle: headerMediaHandle });
     } catch (e: any) {
       throw new Error(e?.message ?? "Falha ao montar componentes do template.");
     }
+
 
     const result = await submitTemplateToMeta({
       wabaId: tpl.waba.waba_id,
