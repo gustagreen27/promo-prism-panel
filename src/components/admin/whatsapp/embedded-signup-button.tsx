@@ -66,6 +66,7 @@ export function EmbeddedSignupButton({
   const [loading, setLoading] = useState(false);
   const [cfg, setCfg] = useState<{ appId: string; configId: string; graphVersion: string; sdkVersion?: string } | null>(null);
   const sessionRef = useRef<{ phone_number_id?: string; waba_id?: string; business_id?: string } | null>(null);
+  const [finishedConnectionId, setFinishedConnectionId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
