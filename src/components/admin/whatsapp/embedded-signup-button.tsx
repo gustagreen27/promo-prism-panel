@@ -259,8 +259,7 @@ export function EmbeddedSignupButton({
       }
     }, 5 * 60 * 1000);
 
-    window.FB.login(
-      async (resp: any) => {
+    const handleLoginResponse = async (resp: any) => {
         try {
           const code = resp?.authResponse?.code;
           const sess = sessionRef.current;
@@ -316,14 +315,22 @@ export function EmbeddedSignupButton({
           window.clearTimeout(watchdog);
           setLoading(false);
         }
-      },
-      {
+      };
+
+    try {
+      window.FB.login(handleLoginResponse, {
         config_id: cfg.configId,
         response_type: "code",
         override_default_response_type: true,
         extras,
-      },
-    );
+      });
+    } catch (error: any) {
+      done = true;
+      window.clearTimeout(watchdog);
+      setLoading(false);
+      const message = error?.message ?? "O popup da Meta não pôde ser aberto.";
+      toast.error(`Meta: ${message}`, { duration: 10000 });
+    }
   }
 
 
