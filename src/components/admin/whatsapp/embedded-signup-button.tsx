@@ -95,24 +95,6 @@ export function EmbeddedSignupButton({
     }
   }
 
-  function openInNewTab() {
-    // Keep this call directly inside the user's click handler so popup blockers
-    // recognise it as a user-initiated navigation. `noopener` in the features
-    // string makes some browsers return `null` even when the tab did open.
-    const w = window.open(window.location.href, "_blank");
-    if (!w) {
-      toast.message("Não foi possível abrir a nova aba. Copie o endereço e abra manualmente no navegador.", {
-        duration: 9000,
-      });
-      return;
-    }
-    try {
-      w.opener = null;
-    } catch {
-      /* the new tab may already be cross-origin */
-    }
-  }
-
   useEffect(() => {
     (async () => {
       try {
@@ -242,15 +224,11 @@ export function EmbeddedSignupButton({
   }, []);
 
   function launch() {
-    // O Embedded Signup abre um popup do Facebook. Dentro do iframe do preview
-    // o navegador bloqueia esse popup (e a Meta não permite o fluxo em iframe),
-    // então nada acontece ao clicar. Abrimos a página em uma aba real.
+    // Este ramo é apenas uma proteção para chamadas programáticas. No preview,
+    // o controle renderizado abaixo é um link target=_top, pois o contêiner pode
+    // bloquear tanto window.open quanto links target=_blank.
     if (inIframe) {
-      openInNewTab();
-      toast.message(
-        "O Cadastro incorporado da Meta não funciona dentro do preview. Abrimos a página em uma nova aba — conclua por lá.",
-        { duration: 9000 },
-      );
+      window.top?.location.assign(window.location.href);
       return;
     }
 
@@ -380,14 +358,14 @@ export function EmbeddedSignupButton({
             <AlertTitle>Abra em uma nova aba para conectar</AlertTitle>
             <AlertDescription className="space-y-2">
               <p>
-                O Cadastro Incorporado da Meta abre uma janela do Facebook e não é permitido dentro do preview
-                (a página está em um quadro embutido). Por isso o popup é bloqueado e nada acontece ao clicar.
+                A Meta não permite abrir o cadastro dentro do preview. Clique abaixo para sair do preview na mesma
+                aba; depois clique em Conectar WhatsApp novamente para abrir o cadastro.
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button asChild type="button" size="sm" variant="outline">
-                  <a href={openUrl || "#"} target="_blank" rel="noopener noreferrer">
+                  <a href={openUrl || "#"} target="_top">
                     <ExternalLink className="mr-2 h-4 w-4" />
-                    Abrir em nova aba
+                    Sair do preview
                   </a>
                 </Button>
                 <Button type="button" size="sm" variant="ghost" onClick={copyUrl}>
@@ -400,9 +378,9 @@ export function EmbeddedSignupButton({
         )}
         {inIframe ? (
           <Button asChild type="button" variant={variant} className={disabled ? "pointer-events-none opacity-50" : ""}>
-            <a href={openUrl || "#"} target="_blank" rel="noopener noreferrer">
+            <a href={openUrl || "#"} target="_top">
               <Icon className="mr-2 h-4 w-4" />
-              {label ?? defaultLabel}
+              Sair do preview e conectar
               <ExternalLink className="ml-2 h-3.5 w-3.5 opacity-70" />
             </a>
           </Button>
