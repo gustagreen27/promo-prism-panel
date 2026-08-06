@@ -235,29 +235,26 @@ export function EmbeddedSignupButton({
     setLoading(true);
 
 
-    // Extras: NUNCA envia setup:{} ou featureType:"" — Meta rejeita chaves vazias
-    // silenciosamente e o sample oficial só inclui essas chaves quando têm valor real.
-    // Config validada no painel da Meta: version v4, sessionInfoVersion 3,
-    // features [app_only_install], featureType apenas no fluxo de coexistência.
-    const extras: Record<string, any> = {
-      sessionInfoVersion: "3",
-      version: "v4",
-      features: [{ name: "app_only_install" }],
-    };
+    // Mantenha os extras exatamente no formato suportado pelo fluxo escolhido.
+    // `app_only_install` pertence a outro fluxo e faz algumas configurações de
+    // Embedded Signup encerrarem silenciosamente antes de abrir o popup.
+    const extras: Record<string, string> = { sessionInfoVersion: "3" };
     if (mode === "coexistence") {
       extras.featureType = "whatsapp_business_app_onboarding";
     }
 
-    // Watchdog do popup: se o callback do FB não disparar em 5min (usuário fechou
-    // a janela sem CANCEL, bloqueador de popup, extensão etc.), libera o botão.
+    // Watchdog: se nem o popup nem um callback responderem, libera o botão
+    // rapidamente em vez de deixá-lo girando por vários minutos.
     // NÃO cancela nem interfere no callback real: apenas destrava o `loading`.
     let done = false;
     const watchdog = window.setTimeout(() => {
       if (!done) {
         setLoading(false);
-        toast.message("O popup do Facebook não respondeu em 5 minutos. Tente novamente.");
+        toast.error("A Meta não abriu o cadastro. Libere popups para este site e tente novamente.", {
+          duration: 10000,
+        });
       }
-    }, 5 * 60 * 1000);
+    }, 20 * 1000);
 
     const handleLoginResponse = async (resp: any) => {
         try {
