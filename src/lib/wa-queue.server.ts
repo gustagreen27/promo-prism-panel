@@ -721,6 +721,13 @@ export async function processCampaignTick(
     let fatalStop: { code: string; message: string } | null = null;
 
     /**
+     * Cancela as requisições HTTP JÁ EM VOO quando o circuit breaker dispara.
+     * Sem isso, mesmo parando o loop, dezenas de chamadas em andamento ainda
+     * chegariam à Meta depois do bloqueio da conta.
+     */
+    const laneAbort = new AbortController();
+
+    /**
      * Circuit breaker de conta (ex.: 131031 — Business account locked).
      * Na PRIMEIRA ocorrência: pausa a campanha, trava reprocessamento,
      * devolve os contatos reservados, marca o número como bloqueado
@@ -733,7 +740,10 @@ export async function processCampaignTick(
       fatalStop = { code, message };
       // Kill switch imediato para todas as lanes/campanhas deste número no isolate.
       if (camp.connection_id) BLOCKED_CONNECTIONS.set(String(camp.connection_id), message);
+      // Aborta o pool HTTP desta lane imediatamente.
+      try { laneAbort.abort(); } catch { /* noop */ }
       systemicPause = { reason: "account_locked", message: `🔴 Pausada automaticamente — ${message}` };
+
 
 
       // 1+2. Pausa a campanha e trava reprocessamento automático
