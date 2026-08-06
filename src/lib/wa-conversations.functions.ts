@@ -61,6 +61,9 @@ export const listAttendanceNumbers = createServerFn({ method: "GET" })
           display_phone_number: null,
           nome_interno: null,
           waba_name: null,
+          quality_rating: null,
+          status: null,
+
           total: 0,
           unread: 0,
           open_window: 0,
