@@ -1008,6 +1008,8 @@ export async function processCampaignTick(
         // Dedupe determinístico: Meta ecoa em cada webhook e trata callback_data repetido
         // como idempotente em janela curta — fecha o gap "Meta aceitou, DB caiu, retry duplicou".
         bizOpaqueCallbackData: r.id,
+        signal: laneAbort.signal,
+
       });
 
       const attempts = (r.attempt ?? 0) + 1;
