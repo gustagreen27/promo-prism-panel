@@ -134,14 +134,20 @@ export async function sendTemplateMessage(input: WaSendInput): Promise<WaSendRes
 
   const requestStartedAt = new Date().toISOString();
   try {
-    const res = await fetchWithTimeout(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${input.accessToken}`,
+    const res = await fetchWithTimeout(
+      url,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${input.accessToken}`,
+        },
+        body: JSON.stringify(body),
       },
-      body: JSON.stringify(body),
-    });
+      META_SEND_TIMEOUT_MS,
+      input.signal,
+    );
+
     const json: any = await res.json().catch(() => ({}));
     const responseReceivedAt = new Date().toISOString();
     if (!res.ok) {
