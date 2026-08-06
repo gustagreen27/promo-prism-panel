@@ -27,7 +27,7 @@ import {
   Phone, MessageSquareText, Save, Clock, Signal, Wifi, WifiOff, Loader2,
   Send, Pause, Play, Ban, XOctagon, Timer, Users2, Activity, PhoneCall, Sliders,
   BarChart3, Image as ImageIcon, Video as VideoIcon, FileText, Upload, X, Link2,
-  Info, Zap,
+  Info, Zap, Layers,
 } from "lucide-react";
 import { Stepper, type WizardStep } from "@/components/campaigns/wizard/Stepper";
 import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
