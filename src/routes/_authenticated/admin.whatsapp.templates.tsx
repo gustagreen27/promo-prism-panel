@@ -20,6 +20,7 @@ import { duplicateTemplate } from "@/lib/wa-meta-api.functions";
 import { listNumbers } from "@/lib/whatsapp-numbers.functions";
 import { listWabas } from "@/lib/wa-wabas.functions";
 import { ErrorCard } from "@/components/admin/query-state";
+import { TemplateFormDialog } from "@/components/admin/whatsapp/template-form-dialog";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp/templates")({
   head: () => ({ meta: [{ title: "Templates WhatsApp" }] }),
@@ -92,7 +93,7 @@ function Page() {
             </Button>
             <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
               <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Novo</Button></DialogTrigger>
-              <FormDialog editing={editing} numbers={numbers} wabas={wabas} onSubmit={(p: any) => save.mutate(p)} saving={save.isPending} />
+              <TemplateFormDialog key={editing?.id ?? "new"} editing={editing} numbers={numbers} wabas={wabas} onSubmit={(p: any) => save.mutate(p)} saving={save.isPending} />
             </Dialog>
           </div>
         }
@@ -133,132 +134,3 @@ function Page() {
   );
 }
 
-function FormDialog({ editing, numbers, wabas, onSubmit, saving }: any) {
-  const [form, setForm] = useState<any>(() => editing ?? {
-    connection_id: "", waba_ref_id: "", name: "", language: "pt_BR", category: "MARKETING",
-    status: "pending", header_type: "", header_text: "", header_media_url: "", body: "", footer: "",
-    variables: [], variables_examples: [], buttons: [],
-  });
-  const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
-  const bodyExamples = (Array.isArray(form.variables_examples) ? form.variables_examples : []).find((e: any) => e?.section === "body")?.values ?? [];
-  const setBodyExamples = (arr: string[]) => {
-    const others = (Array.isArray(form.variables_examples) ? form.variables_examples : []).filter((e: any) => e?.section !== "body");
-    set("variables_examples", [...others, { section: "body", values: arr }]);
-  };
-  return (
-    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-      <DialogHeader><DialogTitle>{editing ? "Editar template" : "Novo template"}</DialogTitle></DialogHeader>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div><Label>WABA *</Label>
-          <Select value={form.waba_ref_id ?? ""} onValueChange={(v) => set("waba_ref_id", v)}>
-            <SelectTrigger><SelectValue placeholder="Selecione a WABA" /></SelectTrigger>
-            <SelectContent>{wabas.map((w: any) => <SelectItem key={w.id} value={w.id}>{w.nome_interno}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-        <div><Label>Número (opcional)</Label>
-          <Select value={form.connection_id ?? ""} onValueChange={(v) => set("connection_id", v)}>
-            <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-            <SelectContent>{numbers.map((n: any) => <SelectItem key={n.id} value={n.id}>{n.name}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-        <div><Label>Nome (exato Meta) *</Label><Input value={form.name} onChange={(e) => set("name", e.target.value)} /></div>
-        <div><Label>Idioma</Label><Input value={form.language} onChange={(e) => set("language", e.target.value)} /></div>
-        <div><Label>Categoria</Label>
-          <Select value={form.category ?? ""} onValueChange={(v) => set("category", v)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="MARKETING">Marketing</SelectItem>
-              <SelectItem value="UTILITY">Utility</SelectItem>
-              <SelectItem value="AUTHENTICATION">Authentication</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div><Label>Status</Label>
-          <Select value={form.status} onValueChange={(v) => set("status", v)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {["approved","pending","rejected","paused","disabled"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div><Label>Tipo de cabeçalho</Label>
-          <Select value={form.header_type ?? ""} onValueChange={(v) => set("header_type", v)}>
-            <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="text">Texto</SelectItem>
-              <SelectItem value="image">Imagem</SelectItem>
-              <SelectItem value="video">Vídeo</SelectItem>
-              <SelectItem value="document">Documento</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="sm:col-span-2"><Label>Cabeçalho — texto</Label><Input value={form.header_text ?? ""} onChange={(e) => set("header_text", e.target.value)} placeholder="(apenas se tipo = texto)" /></div>
-        <div className="sm:col-span-2"><Label>Cabeçalho — URL de mídia (image/video/document)</Label><Input value={form.header_media_url ?? ""} onChange={(e) => set("header_media_url", e.target.value)} placeholder="https://exemplo.com/mídia.jpg" /></div>
-        <div className="sm:col-span-2"><Label>Corpo *</Label><Textarea rows={4} value={form.body ?? ""} onChange={(e) => set("body", e.target.value)} placeholder="Olá {{1}}, sua mensagem..." /></div>
-        <div className="sm:col-span-2"><Label>Exemplos das variáveis do corpo (obrigatório na Meta — 1 por variável, separadas por |)</Label>
-          <Input value={bodyExamples.join(" | ")} onChange={(e) => setBodyExamples(e.target.value.split("|").map((s) => s.trim()).filter(Boolean))} placeholder="João | Segunda-feira | 20% OFF" />
-        </div>
-        <div className="sm:col-span-2"><Label>Variáveis detectadas</Label>
-          <Input readOnly value={((form.body || "").match(/\{\{\s*[a-z0-9_]+\s*\}\}/g) || []).join(", ") || "—"} className="font-mono text-xs" />
-          <p className="mt-1 text-xs text-muted-foreground">
-            Aceita posicionais (<span className="font-mono">{"{{1}}"}</span>) ou nomeadas (<span className="font-mono">{"{{nome_cliente}}"}</span>, minúsculas e underscore). Os exemplos acima seguem a mesma ordem.
-          </p>
-        </div>
-
-        <div className="sm:col-span-2"><Label>Rodapé (máx. 60 caracteres)</Label><Input maxLength={60} value={form.footer ?? ""} onChange={(e) => set("footer", e.target.value)} /></div>
-        <div className="sm:col-span-2 space-y-2">
-          <div className="flex items-center justify-between">
-            <Label>Botões (até 10)</Label>
-            <Button type="button" size="sm" variant="outline" disabled={(form.buttons ?? []).length >= 10}
-              onClick={() => set("buttons", [...(form.buttons ?? []), { type: "QUICK_REPLY", text: "" }])}>
-              <Plus className="mr-1 h-3 w-3" />Adicionar botão
-            </Button>
-          </div>
-          {(form.buttons ?? []).map((b: any, i: number) => (
-            <div key={i} className="rounded-md border p-2 space-y-2">
-              <div className="flex gap-2">
-                <Select value={b.type} onValueChange={(v) => {
-                  const arr = [...form.buttons]; arr[i] = { ...arr[i], type: v }; set("buttons", arr);
-                }}>
-                  <SelectTrigger className="w-[170px]"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="QUICK_REPLY">Resposta rápida</SelectItem>
-                    <SelectItem value="URL">URL</SelectItem>
-                    <SelectItem value="PHONE_NUMBER">Telefone</SelectItem>
-                    <SelectItem value="COPY_CODE">Copiar código</SelectItem>
-                    <SelectItem value="VOICE_CALL">Solicitar ligação</SelectItem>
-                  </SelectContent>
-                </Select>
-                {b.type !== "COPY_CODE" && (
-                  <Input maxLength={25} placeholder="Rótulo (máx. 25)" value={b.text ?? ""}
-                    onChange={(e) => { const arr = [...form.buttons]; arr[i] = { ...arr[i], text: e.target.value }; set("buttons", arr); }} />
-                )}
-                <Button type="button" size="icon" variant="ghost"
-                  onClick={() => { const arr = [...form.buttons]; arr.splice(i, 1); set("buttons", arr); }}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-              {b.type === "URL" && (
-                <div className="grid grid-cols-2 gap-2">
-                  <Input placeholder="https://exemplo.com/{{1}}" value={b.url ?? ""}
-                    onChange={(e) => { const arr = [...form.buttons]; arr[i] = { ...arr[i], url: e.target.value }; set("buttons", arr); }} />
-                  <Input placeholder="Exemplo da variável (se URL tem {{1}})" value={b.example ?? ""}
-                    onChange={(e) => { const arr = [...form.buttons]; arr[i] = { ...arr[i], example: e.target.value }; set("buttons", arr); }} />
-                </div>
-              )}
-              {b.type === "PHONE_NUMBER" && (
-                <Input placeholder="+5511999999999" value={b.phone_number ?? ""}
-                  onChange={(e) => { const arr = [...form.buttons]; arr[i] = { ...arr[i], phone_number: e.target.value }; set("buttons", arr); }} />
-              )}
-              {b.type === "COPY_CODE" && (
-                <Input placeholder="Código de exemplo (ex.: 250FF)" value={b.example ?? ""}
-                  onChange={(e) => { const arr = [...form.buttons]; arr[i] = { ...arr[i], example: e.target.value }; set("buttons", arr); }} />
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-      <DialogFooter><Button disabled={saving} onClick={() => onSubmit(form)}>Salvar</Button></DialogFooter>
-    </DialogContent>
-  );
-}
