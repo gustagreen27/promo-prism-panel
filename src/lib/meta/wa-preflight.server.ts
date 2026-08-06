@@ -55,16 +55,49 @@ export async function runCampaignPreflight(
   db: any,
   campaignId: string,
 ): Promise<PreflightResult> {
-  const checks: PreflightCheck[] = [];
-  const checked_at = new Date().toISOString();
-  const push = (c: PreflightCheck) => checks.push(c);
-
   const { data: camp } = await db
     .from("wa_campaigns")
     .select("id, name, connection_id, template_id, total_recipients, fatal_locked, fatal_error_code, fatal_error_message")
     .eq("id", campaignId)
     .maybeSingle();
   if (!camp) throw new Error("Campanha não encontrada.");
+
+  return runSelectionPreflight(db, {
+    connection_id: camp.connection_id,
+    template_id: camp.template_id,
+    total_recipients: camp.total_recipients,
+    fatal_locked: camp.fatal_locked,
+    fatal_error_code: camp.fatal_error_code,
+    fatal_error_message: camp.fatal_error_message,
+    require_queue: true,
+  });
+}
+
+/**
+ * Mesmo pré-check, porém sobre uma seleção avulsa (número + template),
+ * usado no wizard antes mesmo de a campanha existir.
+ */
+export async function runSelectionPreflight(
+  db: any,
+  opts: {
+    connection_id: string | null;
+    template_id: string | null;
+    total_recipients?: number | null;
+    fatal_locked?: boolean | null;
+    fatal_error_code?: string | null;
+    fatal_error_message?: string | null;
+    require_queue?: boolean;
+  },
+): Promise<PreflightResult> {
+  const checks: PreflightCheck[] = [];
+  const checked_at = new Date().toISOString();
+  const push = (c: PreflightCheck) => checks.push(c);
+
+  const camp = {
+    connection_id: opts.connection_id,
+    template_id: opts.template_id,
+    total_recipients: opts.total_recipients ?? 0,
+  };
 
   let qualityRating: string | null = null;
   let numberStatus: string | null = null;
@@ -90,12 +123,12 @@ export async function runCampaignPreflight(
     };
   };
 
-  if (camp.fatal_locked) {
+  if (opts.fatal_locked) {
     push({
       key: "fatal_lock",
       label: "Restrição crítica registrada",
       status: "fail",
-      detail: `Campanha travada por erro crítico ${camp.fatal_error_code ?? ""}: ${camp.fatal_error_message ?? "conta bloqueada pela Meta"}. Troque de WABA/número ou libere manualmente.`,
+      detail: `Campanha travada por erro crítico ${opts.fatal_error_code ?? ""}: ${opts.fatal_error_message ?? "conta bloqueada pela Meta"}. Troque de WABA/número ou libere manualmente.`,
     });
     return finish();
   }
@@ -104,10 +137,11 @@ export async function runCampaignPreflight(
     push({ key: "config", label: "Configuração", status: "fail", detail: "Selecione número e template antes de iniciar." });
     return finish();
   }
-  if (!camp.total_recipients) {
+  if (opts.require_queue && !camp.total_recipients) {
     push({ key: "queue", label: "Fila de destinatários", status: "fail", detail: "Gere a fila de destinatários antes de iniciar." });
     return finish();
   }
+
 
   const { data: conn } = await db
     .from("whatsapp_connections")
