@@ -299,10 +299,28 @@ export function EmbeddedSignupButton({
 
   return (
     <>
-      <Button onClick={launch} disabled={disabled || !ready || loading} type="button" variant={variant}>
-        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Icon className="mr-2 h-4 w-4" />}
-        {label ?? defaultLabel}
-      </Button>
+      <div className="space-y-2">
+        {inIframe && (
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>Abra em uma nova aba para conectar</AlertTitle>
+            <AlertDescription className="space-y-2">
+              <p>
+                O Cadastro Incorporado da Meta abre uma janela do Facebook e não é permitido dentro do preview
+                (a página está em um quadro embutido). Por isso o popup é bloqueado e nada acontece ao clicar.
+              </p>
+              <Button type="button" size="sm" variant="outline" onClick={openInNewTab}>
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Abrir em nova aba
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+        <Button onClick={launch} disabled={disabled || !ready || loading} type="button" variant={variant}>
+          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Icon className="mr-2 h-4 w-4" />}
+          {label ?? defaultLabel}
+        </Button>
+      </div>
       <PostSignupDialog
         connectionId={finishedConnectionId}
         open={!!finishedConnectionId}
