@@ -823,7 +823,15 @@ export async function processCampaignTick(
     };
 
     const sendOne = async (r: any): Promise<void> => {
+      // Kill switch de outra lane no mesmo isolate (mesmo número).
+      if (!fatalStop && camp.connection_id && BLOCKED_CONNECTIONS.has(String(camp.connection_id))) {
+        await triggerFatalStop(
+          "131031",
+          BLOCKED_CONNECTIONS.get(String(camp.connection_id)) ?? null,
+        );
+      }
       // Circuit breaker ativo: não tenta mais nada, devolve o contato à fila.
+
       if (fatalStop) {
         await supabaseAdmin
           .from("campaign_recipients")
