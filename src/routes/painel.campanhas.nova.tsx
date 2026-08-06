@@ -801,11 +801,16 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                       onChange={(e) => { setConnectionId(e.target.value); setTemplateId(""); }}
                     >
                       <option value="">— Selecione um número —</option>
-                      {numbers.map((n) => (
-                        <option key={n.id} value={n.id}>
-                          {(n.phone_display ?? n.phone_masked)} — {n.display_name}{n.phone_number_id ? ` · ID ${n.phone_number_id}` : ""}
-                        </option>
+                      {numbersByBm.map((g) => (
+                        <optgroup key={g.label} label={g.label}>
+                          {g.items.map((n) => (
+                            <option key={n.id} value={n.id}>
+                              {(n.phone_display ?? n.phone_masked)} — {n.display_name}{n.phone_number_id ? ` · ID ${n.phone_number_id}` : ""}
+                            </option>
+                          ))}
+                        </optgroup>
                       ))}
+
                     </select>
                     {selectedNumber && (
                       <div className="mt-1.5 flex flex-wrap gap-1.5 text-[11px]">
