@@ -10,7 +10,6 @@ import {
   Phone,
   Building2,
   FileText,
-  Inbox,
   MessageSquare,
   Webhook,
   ShieldCheck,
@@ -92,12 +91,11 @@ const GROUPS: NavGroup[] = [
     label: "Atendimento",
     items: [
       {
-        title: "Inbox",
-        to: "/admin/whatsapp/inbox",
-        icon: Inbox,
-        matches: ["/admin/whatsapp/conversas"],
+        title: "Atendimento",
+        to: "/admin/atendimento",
+        icon: MessageSquare,
+        matches: ["/admin/whatsapp/inbox", "/admin/whatsapp/conversas"],
       },
-      { title: "Atendimento", to: "/admin/atendimento", icon: MessageSquare },
     ],
   },
   {
