@@ -199,6 +199,12 @@ function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId
           </div>
         </div>
       )}
+
+      <PostSignupDialog
+        connectionId={finishId}
+        open={!!finishId}
+        onOpenChange={(v) => !v && setFinishId(null)}
+      />
     </div>
   );
 }
