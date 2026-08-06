@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, Pencil, RefreshCw, Cloud, PhoneCall, ShieldCheck, KeyRound, UserCog } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
+import { NumbersGrouped } from "@/components/admin/whatsapp/numbers-grouped";
 import { ErrorCard } from "@/components/admin/query-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -101,41 +102,21 @@ function Page() {
           onRetry={() => { clientsQuery.refetch(); projectsQuery.refetch(); wabasQuery.refetch(); }}
         />
       )}
-      <div className="rounded-xl border bg-card">
-        {isLoading ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
-        : rowsError ? <div className="p-4"><ErrorCard error={rowsError} onRetry={() => refetchRows()} /></div>
-        : !rows || rows.length === 0 ? <EmptyState title="Nenhum número cadastrado" />
-        : <Table>
-          <TableHeader><TableRow>
-            <TableHead>Nome</TableHead><TableHead>Telefone</TableHead><TableHead>Phone Number ID</TableHead>
-            <TableHead>WABA</TableHead><TableHead>Cliente / Projeto</TableHead><TableHead>Qualidade</TableHead>
-            <TableHead>Status</TableHead><TableHead />
-          </TableRow></TableHeader>
-          <TableBody>
-            {rows.map((r: any) => (
-              <TableRow key={r.id}>
-                <TableCell className="font-medium">{r.name}</TableCell>
-                <TableCell className="font-mono text-xs">{r.display_phone ?? r.phone ?? "—"}</TableCell>
-                <TableCell className="font-mono text-xs">{r.phone_number_id ?? "—"}</TableCell>
-                <TableCell className="font-mono text-xs">{r.waba_id ?? "—"}</TableCell>
-                <TableCell className="text-sm">{[r.client?.name, r.project?.name].filter(Boolean).join(" · ") || "—"}</TableCell>
-                <TableCell><Badge variant="outline">{r.quality_rating ?? "—"}</Badge></TableCell>
-                <TableCell><Badge variant={r.status === "ativa" ? "default" : "secondary"}>{r.status}</Badge></TableCell>
-                <TableCell className="text-right">
-                  <Button asChild size="icon" variant="ghost" title="Gerenciar perfil">
-                    <Link to="/admin/whatsapp/numeros/$id/perfil" params={{ id: r.id }}><UserCog className="h-4 w-4" /></Link>
-                  </Button>
-                  <Button size="icon" variant="ghost" title="Trocar credenciais Meta (token, App ID, App Secret) sem alterar outros dados" onClick={() => setCredsEditing(r)}>
-                    <KeyRound className="h-4 w-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost" onClick={() => { setEditing(r); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-                  <Button size="icon" variant="ghost" onClick={() => confirm("Remover este número?") && delMut.mutate(r.id)}><Trash2 className="h-4 w-4" /></Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>}
-      </div>
+      {isLoading ? (
+        <div className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">Carregando…</div>
+      ) : rowsError ? (
+        <div className="rounded-xl border bg-card p-4"><ErrorCard error={rowsError} onRetry={() => refetchRows()} /></div>
+      ) : !rows || rows.length === 0 ? (
+        <div className="rounded-xl border bg-card"><EmptyState title="Nenhum número cadastrado" /></div>
+      ) : (
+        <NumbersGrouped
+          rows={rows}
+          wabas={wabas}
+          onEdit={(r: any) => { setEditing(r); setOpen(true); }}
+          onCreds={(r: any) => setCredsEditing(r)}
+          onDelete={(id: string) => delMut.mutate(id)}
+        />
+      )}
 
       <Dialog open={apiOpen} onOpenChange={setApiOpen}>
         <AddNumberWizard wabas={wabas} onDone={() => { setApiOpen(false); refresh(); }} />
