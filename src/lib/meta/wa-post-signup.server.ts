@@ -11,6 +11,8 @@ export type ChecklistItem = {
   label: string;
   state: CheckState;
   detail?: string | null;
+  /** Item informativo: não impede o uso do número. */
+  optional?: boolean;
 };
 
 export function graphFetch(token: string, path: string, init?: RequestInit) {
