@@ -217,3 +217,22 @@ function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId
     </div>
   );
 }
+
+function groupByWaba(w: any) {
+  const wabaName = new Map<string, string>();
+  for (const x of w.wabas ?? []) if (x.waba_id) wabaName.set(String(x.waba_id), x.nome_interno);
+  const groups = new Map<string, any>();
+  for (const c of [...(w.connections ?? [])].sort((a: any, b: any) => String(a.name ?? "").localeCompare(String(b.name ?? ""), "pt-BR"))) {
+    const key = c.waba_id ? String(c.waba_id) : "__sem_waba";
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        waba_id: c.waba_id ?? null,
+        label: c.waba_id ? (wabaName.get(String(c.waba_id)) ?? "WABA sem cadastro local") : "Sem WABA vinculada",
+        items: [],
+      });
+    }
+    groups.get(key).items.push(c);
+  }
+  return [...groups.values()].sort((a, b) => a.label.localeCompare(b.label, "pt-BR"));
+}
