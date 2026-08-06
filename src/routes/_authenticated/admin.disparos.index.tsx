@@ -9,6 +9,7 @@ import {
   Send, CheckCheck, MousePointerClick, Layers,
 } from "lucide-react";
 
+import { PreflightDialog } from "@/components/admin/preflight-dialog";
 import { PageHeader } from "@/components/admin/page-header";
 import { ErrorCard } from "@/components/admin/query-state";
 import { Button } from "@/components/ui/button";
@@ -103,6 +104,7 @@ function ListView({ onNew }: { onNew: () => void }) {
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<StatusFilter>("all");
+  const [preflightFor, setPreflightFor] = useState<{ id: string; name?: string | null } | null>(null);
   const [reschedule, setReschedule] = useState<{ id: string; name: string; scheduled_at?: string | null } | null>(null);
   const [rescheduleAt, setRescheduleAt] = useState<string>("");
 
@@ -338,7 +340,7 @@ function ListView({ onNew }: { onNew: () => void }) {
                       <Eye className="h-4 w-4" />
                     </Button>
                     {["draft", "scheduled"].includes(c.status) && (
-                      <Button variant="ghost" size="icon" title="Enviar agora" onClick={() => startMut.mutate(c.id)}>
+                      <Button variant="ghost" size="icon" title="Enviar agora" onClick={() => setPreflightFor({ id: c.id, name: (c as any).name })}>
                         <Play className="h-4 w-4 text-emerald-600" />
                       </Button>
                     )}
