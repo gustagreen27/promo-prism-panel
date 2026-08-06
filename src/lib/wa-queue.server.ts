@@ -1443,10 +1443,27 @@ export async function processCampaignTick(
     };
 
 
+    // ---- Defasagem entre lanes (anti-colisão) ----
+    // Lane 0 começa imediatamente, lane 1 após 1s, lane 2 após 2s… Assim os
+    // workers nunca reservam, checam ou disparam no mesmo segundo.
+    const lanePhaseMs = Math.max(0, lane) * LANE_PHASE_MS;
+    if (lanePhaseMs > 0) {
+      markIdle("defasagem_lane", lanePhaseMs);
+      await clock.sleep(lanePhaseMs);
+    }
+    // Re-fasa os relógios locais desta lane (heartbeat, liberação de slots,
+    // pacing) para que caiam em momentos distintos das outras lanes.
+    lastSlotFlushAt = Date.now();
+    lastHeartbeatAt = Date.now() - LANE_PHASE_MS;
+    // Dentro do mesmo segundo, cada lane dispara em um "slot" próprio do
+    // espaçamento (lane × spacing), intercalando os envios.
+    nextCampaignPermitAt = Date.now() + Math.round((lane % Math.max(1, laneCount)) * spacingMs);
+
     // Bootstrap
     await reserveNextChunk();
 
-    const laneRuntimeMs = Math.max(2000, Number(opts?.maxRuntimeMs ?? MAX_TICK_RUNTIME_MS));
+    const laneRuntimeMs =
+      Math.max(2000, Number(opts?.maxRuntimeMs ?? MAX_TICK_RUNTIME_MS)) + lanePhaseMs;
 
     /**
      * Verificação contínua durante a campanha: a Meta pode bloquear a conta
