@@ -141,15 +141,65 @@ export const buildRecipients = createServerFn({ method: "POST" })
     return { total: Number(total ?? 0) };
   });
 
-export const startWaCampaign = createServerFn({ method: "POST" })
+/** Pré-check obrigatório: número CONNECTED, qualidade, WABA, template, token, limites e restrições. */
+export const preflightWaCampaign = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { runCampaignPreflight } = await import("@/lib/meta/wa-preflight.server");
+    return await runCampaignPreflight(supabaseAdmin, data.id);
+  });
+
+/** Libera manualmente uma campanha travada por erro crítico (ex.: 131031). */
+export const clearCampaignFatalLock = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    await context.supabase
+      .from("wa_campaigns")
+      .update({ fatal_locked: false, fatal_error_code: null, fatal_error_message: null, fatal_locked_at: null })
+      .eq("id", data.id);
+    return { ok: true };
+  });
+
+export const startWaCampaign = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ id: z.string().uuid(), confirm_warnings: z.boolean().optional() }).parse(d),
+  )
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { data: camp } = await context.supabase.from("wa_campaigns").select("*").eq("id", data.id).single();
     if (!camp) throw new Error("Campanha não encontrada");
     if (!camp.connection_id || !camp.template_id) throw new Error("Configure número e template antes de iniciar.");
     if (!camp.total_recipients) throw new Error("Gere a fila de destinatários antes de iniciar.");
+    if ((camp as any).fatal_locked) {
+      throw new Error(
+        `Campanha travada por erro crítico ${(camp as any).fatal_error_code ?? ""}: ${(camp as any).fatal_error_message ?? "conta bloqueada pela Meta"}. Troque de WABA/número ou libere manualmente.`,
+      );
+    }
+
+    // Pré-check obrigatório de saúde da conta antes de liberar o disparo.
+    let preflight: any = null;
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { runCampaignPreflight } = await import("@/lib/meta/wa-preflight.server");
+      preflight = await runCampaignPreflight(supabaseAdmin, data.id);
+    } catch {
+      // Falha de consulta não bloqueia (fail-open) — o runner refaz a checagem.
+    }
+    if (preflight?.verdict === "red") {
+      const fails = (preflight.checks as any[]).filter((c) => c.status === "fail").map((c) => `${c.label}: ${c.detail}`);
+      throw new Error(`⛔ Disparo bloqueado pelo pré-check.\n${fails.join("\n")}`);
+    }
+    if (preflight?.verdict === "yellow" && !data.confirm_warnings) {
+      const warns = (preflight.checks as any[]).filter((c) => c.status === "warn").map((c) => `${c.label}: ${c.detail}`);
+      throw new Error(`NEEDS_CONFIRMATION::⚠️ Qualidade média — confirme para continuar.\n${warns.join("\n")}`);
+    }
+
     // Admin dispatch bypasses stock — não há débito automático de estoque neste fluxo.
     await context.supabase
       .from("wa_campaigns")
@@ -159,8 +209,9 @@ export const startWaCampaign = createServerFn({ method: "POST" })
       const url = new URL("/api/public/whatsapp/queue-tick", process.env.SUPABASE_URL?.replace(".supabase.co", ".lovable.app") ?? "https://project--9c7682d6-edcd-4388-a36c-36249d4d6ab8.lovable.app");
       fetch(url.toString(), { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).catch(() => {});
     } catch {}
-    return { ok: true };
+    return { ok: true, preflight };
   });
+
 
 export const scheduleWaCampaign = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
