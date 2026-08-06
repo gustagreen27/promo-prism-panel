@@ -810,10 +810,11 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                             const active = String(n.status ?? "").toLowerCase().match(/active|connected/);
                             return (
                               <option key={n.id} value={n.id}>
-                                {dot} {(n.phone_display ?? n.phone_masked)} — {n.display_name} · Qualidade: {qLabel}{active ? "" : ` · ${n.status}`}
+                                {dot} {(n.phone_display ?? n.phone_masked)} — {n.display_name} · Qualidade: {qLabel} · Limite: {formatDailyLimit(n)}{active ? "" : ` · ${n.status}`}
                               </option>
                             );
                           })}
+
 
                         </optgroup>
                       ))}
