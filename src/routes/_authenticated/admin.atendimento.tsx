@@ -97,14 +97,28 @@ function AtendimentoPage() {
   const tplListFn = useServerFn(listApprovedTemplates);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedNumber, setSelectedNumber] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | "open" | "waiting" | "in_progress" | "resolved" | "archived">("all");
   const [windowFilter, setWindowFilter] = useState<"all" | "open" | "closed">("all");
   const [assignedFilter, setAssignedFilter] = useState<"all" | "me" | "none">("all");
   const [search, setSearch] = useState("");
 
+  // Números com conversas (coluna 1)
+  const numbersQuery = useQuery({
+    queryKey: ["atd", "numbers"],
+    queryFn: () => numbersFn() as Promise<AttendanceNumber[]>,
+    refetchInterval: 30000,
+  });
+  const numbers = numbersQuery.data ?? [];
+
+  // Seleciona automaticamente o primeiro número assim que a lista carrega.
+  useEffect(() => {
+    if (!selectedNumber && numbers.length) setSelectedNumber(numbers[0].phone_number_id);
+  }, [numbers, selectedNumber]);
+
   // Lista de conversas (SWR + realtime)
   const convsQuery = useQuery({
-    queryKey: ["atd", "conversations", { statusFilter, windowFilter, assignedFilter, search }],
+    queryKey: ["atd", "conversations", { selectedNumber, statusFilter, windowFilter, assignedFilter, search }],
     queryFn: () =>
       listFn({
         data: {
@@ -112,10 +126,13 @@ function AtendimentoPage() {
           window: windowFilter,
           assigned: assignedFilter,
           search,
+          ...(selectedNumber ? { phone_number_id: selectedNumber } : {}),
         },
       }) as Promise<ConversationRow[]>,
+    enabled: !!selectedNumber || numbersQuery.isFetched,
     refetchInterval: 15000,
   });
+
 
   useEffect(() => {
     const ch = supabase
