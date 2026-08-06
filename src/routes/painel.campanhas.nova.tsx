@@ -240,7 +240,15 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   const [connectionId, setConnectionId] = useState<string>("");
   const [templateId, setTemplateId] = useState<string>("");
   /** Combinações extras (número + template). Vazio = disparo simples. */
-  const [extraLegs, setExtraLegs] = useState<Array<{ connection_id: string; template_id: string; weight: number }>>([]);
+  const [extraLegs, setExtraLegs] = useState<Array<{
+    connection_id: string;
+    template_id: string;
+    weight: number;
+    /** Copy própria desta combinação (variáveis do corpo). Vazio = herda a copy principal. */
+    vars?: Record<string, string>;
+    /** Variáveis da URL do botão desta combinação. */
+    btn?: Record<string, string>;
+  }>>([]);
   const [primaryWeight, setPrimaryWeight] = useState<number>(1);
   /** Cache de templates por conexão, usado pelas combinações extras. */
   const [legTemplates, setLegTemplates] = useState<Record<string, TemplateRow[]>>({});
