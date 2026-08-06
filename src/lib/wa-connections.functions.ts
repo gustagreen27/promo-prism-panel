@@ -132,3 +132,58 @@ export const subscribeConnectionToApp = createServerFn({ method: "POST" })
       }>,
     };
   });
+
+/**
+ * Recalcula a capacidade (limite de disparos) buscando na Meta o
+ * `whatsapp_business_manager_messaging_limit` de cada WABA do workspace
+ * e gravando o tier em todas as conexões daquela WABA.
+ */
+export const recalcWorkspaceCapacity = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ workspace_id: z.string().uuid().nullable().optional() }).parse(d ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { fetchWabaMessagingLimit } = await import("@/lib/wa-meta.server");
+
+    let q = context.supabase
+      .from("whatsapp_connections")
+      .select("id,workspace_id,waba_id,access_token,use_global_token,messaging_limit");
+    if (data?.workspace_id) q = q.eq("workspace_id", data.workspace_id);
+    const { data: conns, error } = await q;
+    if (error) throw error;
+
+    const byWaba = new Map<string, any[]>();
+    for (const c of conns ?? []) {
+      if (!c.waba_id) continue;
+      const k = String(c.waba_id);
+      if (!byWaba.has(k)) byWaba.set(k, []);
+      byWaba.get(k)!.push(c);
+    }
+
+    const results: Array<{ waba_id: string; tier: string | null; updated: number }> = [];
+    await Promise.all(
+      [...byWaba.entries()].map(async ([wabaId, items]) => {
+        const withToken = items.find((c: any) => !c.use_global_token && c.access_token);
+        const tier = await fetchWabaMessagingLimit(wabaId, withToken?.access_token ?? null);
+        if (!tier) {
+          results.push({ waba_id: wabaId, tier: null, updated: 0 });
+          return;
+        }
+        const ids = items.map((c: any) => c.id);
+        await context.supabase
+          .from("whatsapp_connections")
+          .update({ messaging_limit: String(tier), last_meta_sync_at: new Date().toISOString() })
+          .in("id", ids);
+        results.push({ waba_id: wabaId, tier: String(tier), updated: ids.length });
+      }),
+    );
+
+    return {
+      ok: true,
+      wabas: results.length,
+      resolved: results.filter((r) => r.tier).length,
+      results,
+    };
+  });
