@@ -193,7 +193,17 @@ function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId
                 <div className="text-xs text-muted-foreground">Portfólio empresarial</div>
               </div>
             </div>
-            <Info className="h-4 w-4 text-muted-foreground" />
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 gap-1.5 px-2 text-xs"
+              disabled={recalcing}
+              onClick={() => onRecalc?.()}
+              title="Buscar o limite atual do portfólio na Meta"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${recalcing ? "animate-spin" : ""}`} />
+              {recalcing ? "Recalculando…" : "Recalcular"}
+            </Button>
           </div>
 
           <div className="mt-5 text-sm text-muted-foreground">Capacidade atual</div>
