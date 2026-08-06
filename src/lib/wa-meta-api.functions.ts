@@ -106,6 +106,29 @@ export const createWabaViaApi = createServerFn({ method: "POST" })
   });
 
 // ── Add / verify / register a phone number ─────────────────────────────────
+
+/** Carrega a WABA + token próprio (fallback: token global do sistema). */
+async function loadWaba(ctx: any, waba_ref_id: string) {
+  const { data: waba } = await ctx.supabase.from("whatsapp_wabas")
+    .select("id,waba_id,business_id,workspace_id,client_id,project_id,access_token")
+    .eq("id", waba_ref_id).single();
+  if (!waba?.waba_id) throw new Error("WABA não encontrada.");
+  return waba;
+}
+
+/** Token da conexão (se houver) ou da WABA dona dela. */
+async function loadConnForOnboarding(ctx: any, connection_id: string) {
+  const { data: conn } = await ctx.supabase.from("whatsapp_connections")
+    .select("id,phone_number_id,waba_id,waba_ref_id,access_token").eq("id", connection_id).single();
+  if (!conn?.phone_number_id) throw new Error("Phone Number ID ausente.");
+  let token: string | null = conn.access_token ?? null;
+  if (!token && conn.waba_ref_id) {
+    const { data: w } = await ctx.supabase.from("whatsapp_wabas").select("access_token").eq("id", conn.waba_ref_id).maybeSingle();
+    token = w?.access_token ?? null;
+  }
+  return { conn, token };
+}
+
 export const addNumberToWaba = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
@@ -117,23 +140,43 @@ export const addNumberToWaba = createServerFn({ method: "POST" })
     }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { data: waba } = await context.supabase.from("whatsapp_wabas")
-      .select("id,waba_id,business_id,workspace_id,client_id,project_id").eq("id", data.waba_ref_id).single();
-    if (!waba?.waba_id) throw new Error("WABA não encontrada.");
-    const { addPhoneToWaba } = await import("@/lib/wa-meta.server");
-    const r = await addPhoneToWaba({
-      wabaId: waba.waba_id,
-      cc: data.cc,
-      phone_number: data.phone_number,
-      verified_name: data.verified_name,
-    });
-    if (!r.ok) throw new Error(r.error);
+    const waba = await loadWaba(context, data.waba_ref_id);
+    const token = waba.access_token ?? null;
+    const { addPhoneToWaba, listWabaPhoneNumbers } = await import("@/lib/wa-meta.server");
+
+    // 0) Se o número já existe na WABA, reaproveita o PHONE_NUMBER_ID.
+    const digits = `${data.cc}${data.phone_number}`.replace(/\D/g, "");
+    let phoneNumberId: string | null = null;
+    let reused = false;
+    const existing = await listWabaPhoneNumbers({ wabaId: waba.waba_id, tokenOverride: token });
+    if (existing.ok) {
+      const match = existing.data.find((p: any) => String(p?.display_phone_number ?? "").replace(/\D/g, "") === digits);
+      if (match?.id) { phoneNumberId = String(match.id); reused = true; }
+    }
+
+    // 1) POST /{WABA_ID}/phone_numbers
+    if (!phoneNumberId) {
+      const r = await addPhoneToWaba({
+        wabaId: waba.waba_id,
+        cc: data.cc,
+        phone_number: data.phone_number,
+        verified_name: data.verified_name,
+        tokenOverride: token,
+      });
+      if (!r.ok) throw new Error(r.error);
+      phoneNumberId = r.data.id;
+    }
+
     const display = `+${data.cc} ${data.phone_number}`;
+    const { data: already } = await context.supabase.from("whatsapp_connections")
+      .select("*").eq("phone_number_id", phoneNumberId).maybeSingle();
+    if (already) return { phone_number_id: phoneNumberId, connection: already, reused: true };
+
     const { data: conn, error } = await context.supabase.from("whatsapp_connections").insert({
       name: data.verified_name,
       display_phone: display,
       phone: display,
-      phone_number_id: r.data.id,
+      phone_number_id: phoneNumberId,
       waba_id: waba.waba_id,
       waba_ref_id: waba.id,
       business_id: waba.business_id,
@@ -148,7 +191,7 @@ export const addNumberToWaba = createServerFn({ method: "POST" })
       last_synced_at: new Date().toISOString(),
     }).select().single();
     if (error) throw error;
-    return { phone_number_id: r.data.id, connection: conn };
+    return { phone_number_id: phoneNumberId, connection: conn, reused };
   });
 
 export const requestNumberCode = createServerFn({ method: "POST" })
@@ -161,12 +204,11 @@ export const requestNumberCode = createServerFn({ method: "POST" })
     }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { data: conn } = await context.supabase.from("whatsapp_connections")
-      .select("phone_number_id").eq("id", data.connection_id).single();
-    if (!conn?.phone_number_id) throw new Error("Phone Number ID ausente.");
+    const { conn, token } = await loadConnForOnboarding(context, data.connection_id);
     const { requestPhoneCode } = await import("@/lib/wa-meta.server");
     const r = await requestPhoneCode({
       phoneNumberId: conn.phone_number_id, code_method: data.code_method, language: data.language,
+      tokenOverride: token,
     });
     if (!r.ok) throw new Error(r.error);
     return { ok: true };
@@ -178,11 +220,9 @@ export const verifyNumberCode = createServerFn({ method: "POST" })
     z.object({ connection_id: z.string().uuid(), code: z.string().trim().min(3) }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { data: conn } = await context.supabase.from("whatsapp_connections")
-      .select("phone_number_id").eq("id", data.connection_id).single();
-    if (!conn?.phone_number_id) throw new Error("Phone Number ID ausente.");
+    const { conn, token } = await loadConnForOnboarding(context, data.connection_id);
     const { verifyPhoneCode } = await import("@/lib/wa-meta.server");
-    const r = await verifyPhoneCode({ phoneNumberId: conn.phone_number_id, code: data.code });
+    const r = await verifyPhoneCode({ phoneNumberId: conn.phone_number_id, code: data.code, tokenOverride: token });
     if (!r.ok) throw new Error(r.error);
     await context.supabase.from("whatsapp_connections")
       .update({ code_verification_status: "VERIFIED" }).eq("id", data.connection_id);
@@ -195,16 +235,49 @@ export const registerNumberOnCloud = createServerFn({ method: "POST" })
     z.object({ connection_id: z.string().uuid(), pin: z.string().trim().regex(/^\d{6}$/, "PIN deve ter 6 dígitos") }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { data: conn } = await context.supabase.from("whatsapp_connections")
-      .select("phone_number_id").eq("id", data.connection_id).single();
-    if (!conn?.phone_number_id) throw new Error("Phone Number ID ausente.");
+    const { conn, token } = await loadConnForOnboarding(context, data.connection_id);
     const { registerPhone } = await import("@/lib/wa-meta.server");
-    const r = await registerPhone({ phoneNumberId: conn.phone_number_id, pin: data.pin });
+    const r = await registerPhone({ phoneNumberId: conn.phone_number_id, pin: data.pin, tokenOverride: token });
     if (!r.ok) throw new Error(r.error);
     await context.supabase.from("whatsapp_connections")
       .update({ status: "ativa", meta_sync_status: "ok" }).eq("id", data.connection_id);
     return { ok: true };
   });
+
+/** Passo 5 — POST /{WABA_ID}/subscribed_apps */
+export const subscribeWabaWebhooks = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ waba_ref_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const waba = await loadWaba(context, data.waba_ref_id);
+    const { subscribeWabaApps } = await import("@/lib/wa-meta.server");
+    const r = await subscribeWabaApps({ wabaId: waba.waba_id, tokenOverride: waba.access_token ?? null });
+    if (!r.ok) throw new Error(r.error);
+    return { ok: true };
+  });
+
+/** Passo 6 — GET /{WABA_ID}/phone_numbers */
+export const listWabaNumbers = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ waba_ref_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const waba = await loadWaba(context, data.waba_ref_id);
+    const { listWabaPhoneNumbers } = await import("@/lib/wa-meta.server");
+    const r = await listWabaPhoneNumbers({ wabaId: waba.waba_id, tokenOverride: waba.access_token ?? null });
+    if (!r.ok) throw new Error(r.error);
+    return r.data.map((p: any) => ({
+      id: String(p.id),
+      display_phone_number: p.display_phone_number ?? null,
+      verified_name: p.verified_name ?? null,
+      code_verification_status: p.code_verification_status ?? null,
+      platform_type: p.platform_type ?? null,
+      quality_rating: p.quality_rating ?? null,
+      status: p.status ?? null,
+    }));
+  });
+
 
 // ── Duplicate a template locally (creates copy with `_copy` suffix) ────────
 export const duplicateTemplate = createServerFn({ method: "POST" })

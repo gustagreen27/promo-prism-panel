@@ -330,14 +330,38 @@ export async function requestPhoneCode(input: {
   language?: string;
   tokenOverride?: string | null;
 }): Promise<MetaOk<any> | MetaError> {
+  const locale = input.language ?? "pt_BR";
   const res = await metaFetch(`/${input.phoneNumberId}/request_code`, {
     method: "POST",
-    body: JSON.stringify({ code_method: input.code_method, language: input.language ?? "pt_BR" }),
+    // A Graph aceita `language`; versões recentes documentam `locale`. Enviamos ambos.
+    body: JSON.stringify({ code_method: input.code_method, language: locale, locale }),
   }, input.tokenOverride);
   const json: any = await res.json().catch(() => ({}));
   if (!res.ok) return { ok: false, ...humanizeMetaError(json, res.status), raw: json, httpStatus: res.status };
   return { ok: true, data: json, raw: json };
 }
+
+/** POST /{WABA_ID}/subscribed_apps — assina o app aos webhooks da WABA. */
+export async function subscribeWabaApps(input: {
+  wabaId: string; tokenOverride?: string | null;
+}): Promise<MetaOk<any> | MetaError> {
+  const res = await metaFetch(`/${input.wabaId}/subscribed_apps`, { method: "POST" }, input.tokenOverride);
+  const json: any = await res.json().catch(() => ({}));
+  if (!res.ok) return { ok: false, ...humanizeMetaError(json, res.status), raw: json, httpStatus: res.status };
+  return { ok: true, data: json, raw: json };
+}
+
+/** GET /{WABA_ID}/phone_numbers — lista números da WABA com status de verificação. */
+export async function listWabaPhoneNumbers(input: {
+  wabaId: string; tokenOverride?: string | null;
+}): Promise<MetaOk<any[]> | MetaError> {
+  const fields = "id,display_phone_number,verified_name,code_verification_status,platform_type,quality_rating,status";
+  const res = await metaFetch(`/${input.wabaId}/phone_numbers?limit=100&fields=${fields}`, { method: "GET" }, input.tokenOverride);
+  const json: any = await res.json().catch(() => ({}));
+  if (!res.ok) return { ok: false, ...humanizeMetaError(json, res.status), raw: json, httpStatus: res.status };
+  return { ok: true, data: Array.isArray(json?.data) ? json.data : [], raw: json };
+}
+
 
 export async function verifyPhoneCode(input: {
   phoneNumberId: string; code: string; tokenOverride?: string | null;
