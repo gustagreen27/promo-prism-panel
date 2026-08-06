@@ -22,6 +22,7 @@ import {
   Settings,
   LogOut,
   ChevronDown,
+  MessageCircle,
 } from "lucide-react";
 import {
   Sidebar,
@@ -62,7 +63,7 @@ type NavGroup = {
 // URLs preservadas; onde havia colisão semântica ("Campanhas") o rótulo foi rebatizado.
 const GROUPS: NavGroup[] = [
   {
-    label: "Operação",
+    label: "Principal",
     items: [
       { title: "Visão geral", to: "/admin", icon: LayoutDashboard },
       { title: "Disparos", to: "/admin/disparos", icon: Megaphone },
@@ -88,26 +89,15 @@ const GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: "WhatsApp",
+    label: "Atendimento",
     items: [
-      { title: "Atendimento", to: "/admin/atendimento", icon: MessageSquare },
-      { title: "Conexões", to: "/admin/whatsapp/conexoes", icon: Link2 },
-      {
-        title: "Números",
-        to: "/admin/whatsapp/numeros",
-        icon: Phone,
-        matches: ["/admin/whatsapp/qualidade"],
-      },
-      { title: "WABAs", to: "/admin/whatsapp/wabas", icon: Building2 },
-      { title: "Templates", to: "/admin/whatsapp/templates", icon: FileText },
       {
         title: "Inbox",
         to: "/admin/whatsapp/inbox",
         icon: Inbox,
         matches: ["/admin/whatsapp/conversas"],
       },
-      { title: "Webhooks", to: "/admin/whatsapp/webhooks", icon: Webhook },
-      { title: "Liberações", to: "/admin/whatsapp/liberacoes", icon: ShieldCheck },
+      { title: "Atendimento", to: "/admin/atendimento", icon: MessageSquare },
     ],
   },
   {
@@ -154,21 +144,42 @@ const GROUPS: NavGroup[] = [
   },
 ];
 
+// Bloco destacado "Configuração do WhatsApp" (colapsável), como no design.
+const WHATSAPP_ITEMS: NavLeaf[] = [
+  { title: "Conexões", to: "/admin/whatsapp/conexoes", icon: Link2 },
+  { title: "WABAs", to: "/admin/whatsapp/wabas", icon: Building2 },
+  {
+    title: "Números",
+    to: "/admin/whatsapp/numeros",
+    icon: Phone,
+    matches: ["/admin/whatsapp/qualidade"],
+  },
+  {
+    title: "Templates",
+    to: "/admin/whatsapp/templates",
+    icon: FileText,
+    matches: ["/admin/whatsapp/utility"],
+  },
+  { title: "Webhooks", to: "/admin/whatsapp/webhooks", icon: Webhook },
+  { title: "Liberações", to: "/admin/whatsapp/liberacoes", icon: ShieldCheck },
+];
+
+const ALL_ITEMS: NavLeaf[] = [...GROUPS.flatMap((g) => g.items), ...WHATSAPP_ITEMS];
+
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
+  const waOpen = pathname.startsWith("/admin/whatsapp");
 
   const isActive = (item: NavLeaf) => {
     if (item.to === "/admin") return pathname === "/admin";
     if (pathname === item.to || pathname.startsWith(item.to + "/")) {
       // avoid parent stealing highlight from a longer sibling
-      const hasLonger = GROUPS.some((g) =>
-        g.items.some(
-          (o) =>
-            o !== item &&
-            o.to.length > item.to.length &&
-            (pathname === o.to || pathname.startsWith(o.to + "/")),
-        ),
+      const hasLonger = ALL_ITEMS.some(
+        (o) =>
+          o !== item &&
+          o.to.length > item.to.length &&
+          (pathname === o.to || pathname.startsWith(o.to + "/")),
       );
       return !hasLonger;
     }
@@ -203,27 +214,92 @@ export function AppSidebar() {
       <SidebarContent>
         {GROUPS.map((group) => (
           <SidebarGroup key={group.label}>
-            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              {group.label}
+            </SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu>
-                {group.items.map((item) => (
-                  <SidebarMenuItem key={item.to}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive(item)}
-                      tooltip={item.title}
-                    >
-                      <Link to={item.to} className="flex items-center gap-2">
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+              <SidebarMenu className="gap-1">
+                {group.items.map((item) => {
+                  const active = isActive(item);
+                  return (
+                    <SidebarMenuItem key={item.to}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={active}
+                        tooltip={item.title}
+                        className="h-10 rounded-xl"
+                      >
+                        <Link to={item.to} className="flex items-center gap-3">
+                          <span
+                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                              active ? "bg-primary/10 text-primary" : "text-foreground/70"
+                            }`}
+                          >
+                            <item.icon className="h-4.5 w-4.5" />
+                          </span>
+                          <span className={active ? "font-semibold" : ""}>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
         ))}
+
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <Collapsible defaultOpen={waOpen} className="group/wa">
+              <div className="rounded-2xl border bg-muted/30 p-1.5 group-data-[collapsible=icon]:border-0 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0">
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/5"
+                  >
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <MessageCircle className="h-4.5 w-4.5" />
+                    </span>
+                    <span className="flex-1 text-left group-data-[collapsible=icon]:hidden">
+                      Configuração do WhatsApp
+                    </span>
+                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-data-[state=closed]/wa:-rotate-90 group-data-[collapsible=icon]:hidden" />
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <SidebarMenu className="mt-1 gap-0.5">
+                    {WHATSAPP_ITEMS.map((item) => {
+                      const active = isActive(item);
+                      return (
+                        <SidebarMenuItem key={item.to}>
+                          <SidebarMenuButton
+                            asChild
+                            isActive={active}
+                            tooltip={item.title}
+                            className="h-9 rounded-xl"
+                          >
+                            <Link to={item.to} className="flex items-center gap-3">
+                              <span
+                                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
+                                  active ? "text-primary" : "text-foreground/70"
+                                }`}
+                              >
+                                <item.icon className="h-4 w-4" />
+                              </span>
+                              <span className={active ? "font-semibold text-primary" : ""}>
+                                {item.title}
+                              </span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    })}
+                  </SidebarMenu>
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter className="border-t border-border p-2">
