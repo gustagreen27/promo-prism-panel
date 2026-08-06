@@ -1017,17 +1017,37 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                           Pode repetir o mesmo número com templates diferentes.
                         </div>
                       </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={extraLegs.length >= 9}
-                        onClick={() =>
-                          setExtraLegs((s) => [...s, { connection_id: connectionId || "", template_id: "", weight: 1 }])
-                        }
-                      >
-                        <Plus className="mr-1.5 h-3.5 w-3.5" /> Adicionar combinação
-                      </Button>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          disabled={extraLegs.length >= 9 || !connectionId || !templateId}
+                          onClick={() =>
+                            setExtraLegs((s) => [...s, {
+                              connection_id: connectionId,
+                              template_id: templateId,
+                              weight: 1,
+                              vars: { ...bodyVars },
+                              btn: { ...btnVars },
+                            }])
+                          }
+                        >
+                          <Plus className="mr-1.5 h-3.5 w-3.5" /> Nova copy (mesmo template)
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={extraLegs.length >= 9}
+                          onClick={() =>
+                            setExtraLegs((s) => [...s, { connection_id: connectionId || "", template_id: "", weight: 1, vars: {}, btn: {} }])
+                          }
+                        >
+                          <Plus className="mr-1.5 h-3.5 w-3.5" /> Adicionar combinação
+                        </Button>
+                      </div>
+
                     </div>
 
                     {extraLegs.length > 0 && (
