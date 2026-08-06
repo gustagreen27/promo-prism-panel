@@ -364,7 +364,7 @@ function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId
           </div>
           <div className="space-y-3">
             {groupByWaba(w).map((g: any) => {
-              const isClosed = !!closed[g.key];
+              const isClosed = closed[g.key] !== false; // fechado por padrão
               const q = avgQuality(g.items);
               const tpl = g.waba_id ? tplByWabaId.get(String(g.waba_id)) ?? 0 : 0;
               return (
