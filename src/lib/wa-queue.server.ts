@@ -1074,8 +1074,9 @@ export async function processCampaignTick(
         /failed to fetch|fetch failed|network|econnreset|etimedout|enetunreach|socket hang up/i.test(
           result.error || "",
         );
-      const fatalCode = result.code ? String(result.code) : null;
-      if (fatalCode && FATAL_ACCOUNT_CODES[fatalCode]) {
+      const fatalCode = detectFatalAccountCode(result);
+      if (fatalCode) {
+
         lastError = result.error;
         await supabaseAdmin
           .from("campaign_recipients")
