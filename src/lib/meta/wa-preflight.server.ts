@@ -37,9 +37,11 @@ const TIER_LIMITS: Record<string, number> = {
   TIER_50: 50,
   TIER_250: 250,
   TIER_1K: 1000,
+  TIER_2K: 2000,
   TIER_10K: 10000,
   TIER_100K: 100000,
   TIER_UNLIMITED: Number.POSITIVE_INFINITY,
+
   UNLIMITED: Number.POSITIVE_INFINITY,
 };
 
@@ -173,7 +175,7 @@ export async function runSelectionPreflight(
 
   // 1) Número: status + quality_rating + limite
   const num = await graph(
-    `${conn.phone_number_id}?fields=id,display_phone_number,verified_name,status,quality_rating,throughput,messaging_limit_tier`,
+    `${conn.phone_number_id}?fields=id,display_phone_number,verified_name,status,quality_rating,throughput`,
     token,
     version,
   );
@@ -185,7 +187,7 @@ export async function runSelectionPreflight(
 
   numberStatus = num.json?.status ?? null;
   qualityRating = num.json?.quality_rating ?? null;
-  tier = num.json?.messaging_limit_tier ?? null;
+
 
   if (numberStatus === "CONNECTED") {
     push({ key: "number_status", label: "Número conectado", status: "ok", detail: `status=CONNECTED (${num.json?.display_phone_number ?? conn.display_phone ?? ""})` });
@@ -204,9 +206,14 @@ export async function runSelectionPreflight(
   // 2) WABA/portfólio acessível
   const wabaId = conn.waba_id;
   if (wabaId) {
-    const waba = await graph(`${wabaId}?fields=id,name,account_review_status,business_verification_status`, token, version);
+    const waba = await graph(
+      `${wabaId}?fields=id,name,account_review_status,business_verification_status,whatsapp_business_manager_messaging_limit`,
+      token,
+      version,
+    );
     if (waba.ok) {
       const review = waba.json?.account_review_status ?? null;
+      tier = waba.json?.whatsapp_business_manager_messaging_limit ?? null;
       const restricted = review && !["APPROVED", "VERIFIED"].includes(String(review).toUpperCase());
       push({
         key: "waba",
@@ -214,6 +221,7 @@ export async function runSelectionPreflight(
         status: restricted ? "warn" : "ok",
         detail: `${waba.json?.name ?? wabaId}${review ? ` · review=${review}` : ""}`,
       });
+
     } else {
       push({ key: "waba", label: "WABA/portfólio acessível", status: "fail", detail: `Token não acessa a WABA: ${waba.error}` });
     }
@@ -238,12 +246,13 @@ export async function runSelectionPreflight(
     }
   }
 
-  // 4) Limite de mensagens disponível
+  // 4) Limite de mensagens do Portfólio Empresarial (compartilhado pela BM)
   if (tier) {
     const cap = TIER_LIMITS[String(tier).toUpperCase()] ?? null;
     const total = Number(camp.total_recipients ?? 0);
     if (cap == null) {
-      push({ key: "limit", label: "Limite de mensagens", status: "ok", detail: `messaging_limit_tier=${tier}` });
+      push({ key: "limit", label: "Limite do Portfólio Empresarial", status: "ok", detail: `${tier} (limite compartilhado da BM)` });
+
     } else if (Number.isFinite(cap) && total > cap) {
       push({
         key: "limit",

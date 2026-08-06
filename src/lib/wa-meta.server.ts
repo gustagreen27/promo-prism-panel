@@ -212,9 +212,33 @@ export async function fetchTemplateStatusFromMeta(input: {
   return { ok: true, data: match, raw: json };
 }
 
+/**
+ * Limite de mensagens do Portfólio Empresarial/BM.
+ * A Meta aplica o limite no nível do portfólio (não por número) e o expõe
+ * no objeto da WABA via `whatsapp_business_manager_messaging_limit`.
+ * O antigo `messaging_limit_tier` do phone_number está descontinuado.
+ */
+export async function fetchWabaMessagingLimit(
+  wabaId: string,
+  tokenOverride?: string | null,
+): Promise<string | null> {
+  try {
+    const res = await metaFetch(
+      `/${wabaId}?fields=id,name,whatsapp_business_manager_messaging_limit`,
+      { method: "GET" },
+      tokenOverride,
+    );
+    const json: any = await res.json().catch(() => ({}));
+    if (!res.ok) return null;
+    return json?.whatsapp_business_manager_messaging_limit ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchWabaPhoneNumbers(wabaId: string, tokenOverride?: string | null) {
   const res = await metaFetch(
-    `/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating,messaging_limit_tier,code_verification_status,status,name_status`,
+    `/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating,code_verification_status,status,name_status`,
     { method: "GET" },
     tokenOverride,
   );
@@ -225,30 +249,14 @@ export async function fetchWabaPhoneNumbers(wabaId: string, tokenOverride?: stri
   }
   const list = (json.data ?? []) as any[];
 
-  // A listagem da Meta frequentemente OMITE messaging_limit_tier; o nó individual
-  // do número retorna o valor. Faz o fallback só para os que vieram sem tier.
-  await Promise.all(
-    list.map(async (n) => {
-      if (!n?.id || n.messaging_limit_tier) return;
-      try {
-        const r = await metaFetch(
-          `/${n.id}?fields=messaging_limit_tier,throughput,quality_rating`,
-          { method: "GET" },
-          tokenOverride,
-        );
-        const j: any = await r.json().catch(() => ({}));
-        if (r.ok) {
-          if (j?.messaging_limit_tier) n.messaging_limit_tier = j.messaging_limit_tier;
-          if (!n.quality_rating && j?.quality_rating) n.quality_rating = j.quality_rating;
-        }
-      } catch {
-        /* mantém sem tier — a UI mostra "sem dados" */
-      }
-    }),
-  );
+  // O limite é compartilhado pelo portfólio: consulta uma vez na WABA e
+  // aplica a todos os números dela.
+  const tier = await fetchWabaMessagingLimit(wabaId, tokenOverride);
+  if (tier) for (const n of list) n.messaging_limit_tier = tier;
 
   return list;
 }
+
 
 // ── Token diagnostics ────────────────────────────────────────────────────────
 export async function debugAccessToken(tokenOverride?: string | null): Promise<
@@ -280,7 +288,7 @@ export async function debugAccessToken(tokenOverride?: string | null): Promise<
 }
 
 export async function listOwnedWabas(businessId: string, tokenOverride?: string | null) {
-  const url = `/${businessId}/owned_whatsapp_business_accounts?fields=id,name,timezone_id,message_template_namespace,currency,account_review_status`;
+  const url = `/${businessId}/owned_whatsapp_business_accounts?fields=id,name,timezone_id,message_template_namespace,currency,account_review_status,whatsapp_business_manager_messaging_limit`;
   const res = await metaFetch(url, { method: "GET" }, tokenOverride);
   const json: any = await res.json().catch(() => ({}));
   if (!res.ok) {

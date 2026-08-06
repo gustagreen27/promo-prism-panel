@@ -327,7 +327,8 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
           const changes: any[] = Array.isArray(entry?.changes) ? entry.changes : [];
           for (const change of changes) {
             try {
-              await handleChange(supabaseAdmin, change);
+              await handleChange(supabaseAdmin, change, entry?.id ? String(entry.id) : null);
+
             } catch (e: any) {
               await supabaseAdmin.from("whatsapp_webhook_logs").insert({
                 event_type: "handler_error",
@@ -347,9 +348,28 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
 // ────────────────────────────────────────────────────────────────────
 // Handler por change (um item em entry.changes[])
 // ────────────────────────────────────────────────────────────────────
-async function handleChange(supabaseAdmin: any, change: any) {
+/** Converte o limite numérico do webhook em tier da Meta. */
+function numberToTier(raw: any): string | null {
+  if (raw == null || raw === "") return null;
+  const s = String(raw).toUpperCase();
+  if (s.startsWith("TIER_")) return s;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return null;
+  if (n < 0) return "TIER_UNLIMITED";
+  if (n >= 100000) return "TIER_100K";
+  if (n >= 10000) return "TIER_10K";
+  if (n >= 2000) return "TIER_2K";
+  if (n >= 1000) return "TIER_1K";
+  if (n >= 250) return "TIER_250";
+  if (n >= 50) return "TIER_50";
+  return "UNTIERED";
+}
+
+async function handleChange(supabaseAdmin: any, change: any, entryId: string | null = null) {
+
   const field: string = change?.field ?? "";
   const value: any = change?.value ?? {};
+
 
   // Campos relacionados a templates ────────────────────────────────
   if (
@@ -385,11 +405,30 @@ async function handleChange(supabaseAdmin: any, change: any) {
     return;
   }
 
+  // Limite de mensagens do Portfólio Empresarial (compartilhado pela BM) ──
+  // business_capability_update chega no nível da WABA (entry.id) e informa
+  // o limite numericamente (250, 2000, 10000, 100000, -1 = ilimitado).
+  if (field === "business_capability_update") {
+    const raw =
+      value?.max_daily_conversation_per_phone ??
+      value?.messaging_limit ??
+      value?.current_limit ??
+      null;
+    const tier = numberToTier(raw);
+    const wabaId = value?.waba_id ?? value?.whatsapp_business_account_id ?? entryId;
+    if (tier && wabaId) {
+      await supabaseAdmin
+        .from("whatsapp_connections")
+        .update({ messaging_limit: tier, last_meta_sync_at: new Date().toISOString() })
+        .eq("waba_id", String(wabaId));
+    }
+    return;
+  }
+
   // Qualidade / limites / alertas por número ───────────────────────
   if (
     field === "phone_number_quality_update" ||
     field === "account_alerts" ||
-    field === "business_capability_update" ||
     field === "account_update"
   ) {
     const phoneNumberId =
@@ -407,6 +446,7 @@ async function handleChange(supabaseAdmin: any, change: any) {
     }
     return;
   }
+
 
   // Nome de exibição do número (phone_number_name_update) ──────────
   if (field === "phone_number_name_update") {

@@ -48,14 +48,20 @@ export const Route = createFileRoute("/painel/campanhas/nova")({
   component: Page,
 });
 
-/** Limite diário de conversas iniciadas (tier da Meta) para exibição na UI. */
+/**
+ * Limite de destinatários únicos em 24h — compartilhado pelo Portfólio
+ * Empresarial (BM), retornado pela WABA em
+ * `whatsapp_business_manager_messaging_limit`.
+ */
 const TIER_LIMITS: Record<string, string> = {
-  TIER_50: "50/dia",
-  TIER_250: "250/dia",
-  TIER_1K: "1.000/dia",
-  TIER_10K: "10.000/dia",
-  TIER_100K: "100.000/dia",
+  TIER_50: "50/24h",
+  TIER_250: "250/24h",
+  TIER_1K: "1.000/24h",
+  TIER_2K: "2.000/24h",
+  TIER_10K: "10.000/24h",
+  TIER_100K: "100.000/24h",
   TIER_UNLIMITED: "ilimitado",
+  UNTIERED: "sem nível definido",
 };
 
 function formatDailyLimit(n: any): string {
@@ -67,6 +73,7 @@ function formatDailyLimit(n: any): string {
   if (cap) return `${Number(cap).toLocaleString("pt-BR")}/dia (limite interno)`;
   return "sem dados";
 }
+
 
 function Page() {
 
