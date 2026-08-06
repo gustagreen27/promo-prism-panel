@@ -94,7 +94,9 @@ async function syncOneWaba(supabase: any, wabaRow: {
       verified_name: n.verified_name ?? null,
       phone: (n.display_phone_number || "").replace(/\D/g, "") || null,
       quality_rating: n.quality_rating ?? null,
-      messaging_limit: n.messaging_limit_tier ?? null,
+      // Só sobrescreve o tier quando a Meta devolveu um valor — evita apagar
+      // um tier já conhecido quando a resposta vem sem o campo.
+      ...(n.messaging_limit_tier ? { messaging_limit: n.messaging_limit_tier } : {}),
       code_verification_status: n.code_verification_status ?? null,
       last_seen_at: now,
       last_synced_at: now,
