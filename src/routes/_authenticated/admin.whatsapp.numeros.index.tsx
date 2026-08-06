@@ -159,7 +159,9 @@ function AddNumberWizard({ wabas, onDone }: { wabas: any[]; onDone: () => void }
   const reqFn = useServerFn(requestNumberCode);
   const verFn = useServerFn(verifyNumberCode);
   const regFn = useServerFn(registerNumberOnCloud);
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const subFn = useServerFn(subscribeWabaWebhooks);
+  const listFn = useServerFn(listWabaNumbers);
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6>(1);
   const [waba_ref_id, setWaba] = useState<string>("");
   const [cc, setCc] = useState("55");
   const [phone, setPhone] = useState("");
@@ -168,8 +170,18 @@ function AddNumberWizard({ wabas, onDone }: { wabas: any[]; onDone: () => void }
   const [code_method, setMethod] = useState<"SMS" | "VOICE">("SMS");
   const [code, setCode] = useState("");
   const [pin, setPin] = useState("");
+  const [numbers, setNumbers] = useState<any[]>([]);
 
   const [loading, setLoading] = useState(false);
+
+  const STEPS = [
+    "Adicionar número à WABA",
+    "Solicitar código",
+    "Confirmar código",
+    "Registrar na Cloud API",
+    "Assinar webhooks",
+    "Conferir números",
+  ];
 
   async function step1() {
     if (!waba_ref_id || !cc || !phone || !verified_name) return toast.error("Preencha WABA, DDI, número e nome.");
@@ -177,7 +189,9 @@ function AddNumberWizard({ wabas, onDone }: { wabas: any[]; onDone: () => void }
     try {
       const r: any = await addFn({ data: { waba_ref_id, cc, phone_number: phone, verified_name } });
       setConnId(r.connection.id);
-      toast.success(`Número criado (phone_number_id ${r.phone_number_id})`);
+      toast.success(r.reused
+        ? `Número já existia na WABA — reutilizando ${r.phone_number_id}`
+        : `Número criado (phone_number_id ${r.phone_number_id})`);
       setStep(2);
     } catch (e: any) { toast.error(e?.message ?? "Erro"); } finally { setLoading(false); }
   }
@@ -205,17 +219,40 @@ function AddNumberWizard({ wabas, onDone }: { wabas: any[]; onDone: () => void }
     try {
       await regFn({ data: { connection_id, pin } });
       toast.success("Registrado na Cloud API!");
-      onDone();
+      setStep(5);
     } catch (e: any) { toast.error(e?.message ?? "Erro"); } finally { setLoading(false); }
+  }
+  async function step5() {
+    setLoading(true);
+    try {
+      await subFn({ data: { waba_ref_id } });
+      toast.success("Webhooks assinados na WABA");
+      await loadNumbers();
+      setStep(6);
+    } catch (e: any) { toast.error(e?.message ?? "Erro"); } finally { setLoading(false); }
+  }
+  async function loadNumbers() {
+    try {
+      const r: any = await listFn({ data: { waba_ref_id } });
+      setNumbers(Array.isArray(r) ? r : []);
+    } catch (e: any) { toast.error(e?.message ?? "Erro ao listar números"); }
   }
 
   return (
-    <DialogContent className="max-w-lg">
+    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
       <DialogHeader>
-        <DialogTitle className="flex items-center gap-2">
-          Adicionar número via API — passo {step}/4
-        </DialogTitle>
+        <DialogTitle>Adicionar número via API — passo {step}/6</DialogTitle>
+        <DialogDescription>{STEPS[step - 1]}</DialogDescription>
       </DialogHeader>
+
+      <ol className="mb-2 flex flex-wrap gap-1.5 text-[11px]">
+        {STEPS.map((s, i) => (
+          <li key={s}
+            className={`rounded-full border px-2 py-0.5 ${i + 1 < step ? "border-primary/40 bg-primary/10 text-primary" : i + 1 === step ? "border-foreground/30 font-medium" : "text-muted-foreground"}`}>
+            {i + 1}. {s}
+          </li>
+        ))}
+      </ol>
 
       {step === 1 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -228,7 +265,15 @@ function AddNumberWizard({ wabas, onDone }: { wabas: any[]; onDone: () => void }
           <div><Label>DDI *</Label><Input value={cc} onChange={(e) => setCc(e.target.value)} placeholder="55" /></div>
           <div><Label>Número (sem DDI) *</Label><Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="11999999999" /></div>
           <div className="sm:col-span-2"><Label>Nome de exibição *</Label><Input value={verified_name} onChange={(e) => setName(e.target.value)} placeholder="Minha Empresa" /></div>
-          <DialogFooter className="sm:col-span-2"><Button disabled={loading} onClick={step1}><Plus className="mr-2 h-4 w-4" />Criar número na WABA</Button></DialogFooter>
+          <p className="sm:col-span-2 text-xs text-muted-foreground">
+            Se o número já estiver na WABA, o cadastro reutiliza o Phone Number ID existente e segue direto para a verificação.
+          </p>
+          <DialogFooter className="sm:col-span-2">
+            <Button variant="ghost" disabled={!waba_ref_id || loading} onClick={async () => { await loadNumbers(); setStep(6); }}>
+              Já existe — ver números da WABA
+            </Button>
+            <Button disabled={loading} onClick={step1}><Plus className="mr-2 h-4 w-4" />Adicionar número à WABA</Button>
+          </DialogFooter>
         </div>
       )}
 
@@ -250,7 +295,10 @@ function AddNumberWizard({ wabas, onDone }: { wabas: any[]; onDone: () => void }
         <div className="space-y-3">
           <Label>Código recebido *</Label>
           <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="123456" />
-          <DialogFooter><Button disabled={loading} onClick={step3}><ShieldCheck className="mr-2 h-4 w-4" />Verificar</Button></DialogFooter>
+          <DialogFooter>
+            <Button variant="ghost" disabled={loading} onClick={() => setStep(2)}>Reenviar código</Button>
+            <Button disabled={loading} onClick={step3}><ShieldCheck className="mr-2 h-4 w-4" />Verificar</Button>
+          </DialogFooter>
         </div>
       )}
 
@@ -262,9 +310,53 @@ function AddNumberWizard({ wabas, onDone }: { wabas: any[]; onDone: () => void }
           <DialogFooter><Button disabled={loading} onClick={step4}><KeyRound className="mr-2 h-4 w-4" />Registrar na Cloud API</Button></DialogFooter>
         </div>
       )}
+
+      {step === 5 && (
+        <div className="space-y-3">
+          <p className="text-sm">
+            Último passo obrigatório: assinar o aplicativo aos webhooks da WABA para receber status de entrega e mensagens recebidas.
+          </p>
+          <DialogFooter>
+            <Button variant="ghost" disabled={loading} onClick={async () => { await loadNumbers(); setStep(6); }}>Pular</Button>
+            <Button disabled={loading} onClick={step5}><ShieldCheck className="mr-2 h-4 w-4" />Assinar webhooks</Button>
+          </DialogFooter>
+        </div>
+      )}
+
+      {step === 6 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium">Números da WABA</p>
+            <Button size="sm" variant="outline" onClick={loadNumbers}><RefreshCw className="mr-2 h-4 w-4" />Atualizar</Button>
+          </div>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>Número</TableHead><TableHead>Nome</TableHead>
+                <TableHead>Verificação</TableHead><TableHead>Qualidade</TableHead><TableHead>Phone Number ID</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {numbers.length === 0 ? (
+                  <TableRow><TableCell colSpan={5} className="text-sm text-muted-foreground">Nenhum número retornado.</TableCell></TableRow>
+                ) : numbers.map((n) => (
+                  <TableRow key={n.id}>
+                    <TableCell className="font-medium">{n.display_phone_number ?? "—"}</TableCell>
+                    <TableCell>{n.verified_name ?? "—"}</TableCell>
+                    <TableCell><Badge variant={n.code_verification_status === "VERIFIED" ? "default" : "secondary"}>{n.code_verification_status ?? "—"}</Badge></TableCell>
+                    <TableCell>{n.quality_rating ?? "—"}</TableCell>
+                    <TableCell className="font-mono text-xs">{n.id}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <DialogFooter><Button onClick={onDone}>Concluir</Button></DialogFooter>
+        </div>
+      )}
     </DialogContent>
   );
 }
+
 
 
 function initialNumberForm(editing: any) {
