@@ -292,7 +292,7 @@ export function EmbeddedSignupButton({
       }
     }, 20 * 1000);
 
-    const handleLoginResponse = async (resp: any) => {
+    const processLoginResponse = async (resp: any) => {
         try {
           const code = resp?.authResponse?.code;
           const sess = sessionRef.current;
@@ -349,6 +349,12 @@ export function EmbeddedSignupButton({
           setLoading(false);
         }
       };
+
+    // O SDK da Meta valida o callback com typeof estrito e rejeita funções
+    // async ("Expression is of type asyncfunction, not function").
+    function handleLoginResponse(resp: any) {
+      void processLoginResponse(resp);
+    }
 
     try {
       window.FB.login(handleLoginResponse, {
