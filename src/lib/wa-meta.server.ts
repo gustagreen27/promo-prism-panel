@@ -200,9 +200,11 @@ export async function fetchTemplateStatusFromMeta(input: {
   wabaId: string;
   name: string;
   language: string;
+  accessToken?: string | null;
 }): Promise<MetaOk<any> | MetaError> {
   const url = `/${input.wabaId}/message_templates?name=${encodeURIComponent(input.name)}&limit=50`;
-  const res = await metaFetch(url, { method: "GET" });
+  const res = await metaFetch(url, { method: "GET" }, input.accessToken);
+
   const json: any = await res.json().catch(() => ({}));
   if (!res.ok) return { ok: false, ...humanizeMetaError(json, res.status), raw: json, httpStatus: res.status };
   const match = (json.data || []).find((t: any) => t.name === input.name && t.language === input.language);
