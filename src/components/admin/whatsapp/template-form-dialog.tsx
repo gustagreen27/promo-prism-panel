@@ -437,11 +437,15 @@ export function TemplateFormDialog({ editing, numbers, wabas, onSubmit, saving }
         </div>
       </div>
 
-      <DialogFooter className="sticky bottom-0 border-t bg-card px-5 py-3">
+      <DialogFooter className="sticky bottom-0 flex-row items-center justify-between gap-2 border-t bg-card px-5 py-3 sm:justify-between">
+        <DialogClose asChild>
+          <Button variant="outline" type="button">Descartar</Button>
+        </DialogClose>
         <Button disabled={saving || !form.name || !form.body} onClick={() => onSubmit(form)}>
-          {saving ? "Salvando…" : editing ? "Salvar alterações" : "Salvar modelo"}
+          {saving ? "Salvando…" : editing ? "Salvar alterações" : "Enviar para análise"}
         </Button>
       </DialogFooter>
+
     </DialogContent>
   );
 }
