@@ -350,6 +350,12 @@ export function EmbeddedSignupButton({
         }
       };
 
+    // O SDK da Meta valida o callback com typeof estrito e rejeita funções
+    // async ("Expression is of type asyncfunction, not function").
+    function handleLoginResponse(resp: any) {
+      void processLoginResponse(resp);
+    }
+
     try {
       window.FB.login(handleLoginResponse, {
         config_id: cfg.configId,
