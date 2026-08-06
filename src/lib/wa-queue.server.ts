@@ -1202,20 +1202,39 @@ export async function processCampaignTick(
         return;
       }
 
+      // Dead-letter: falha temporária que esgotou as tentativas sai da fila
+      // de vez, com motivo explícito, em vez de voltar a circular.
+      const isDeadLetter = isRetryable && attempts >= MAX_ATTEMPTS;
+      if (isDeadLetter) {
+        deadLetterCount++;
+        if (deadLetterCount === 1 || deadLetterCount % 25 === 0) {
+          void logEvent(
+            campaignId,
+            "dead_letter",
+            `${deadLetterCount} destinatário(s) encerrados após ${MAX_ATTEMPTS} tentativas — último motivo: ${result.error}`,
+            { count: deadLetterCount, last_error: result.error, error_code: result.code ?? null },
+          );
+        }
+      }
+
       failed++;
       await supabaseAdmin
         .from("campaign_recipients")
         .update({
           status: "failed",
           failed_at: new Date().toISOString(),
-          failed_reason: result.error,
+          failed_reason: isDeadLetter
+            ? `Dead-letter após ${MAX_ATTEMPTS} tentativas: ${result.error}`
+            : result.error,
           error_code: result.code,
           attempt: attempts,
+          next_attempt_at: null,
           request_started_at: (result as any).requestStartedAt ?? null,
           response_received_at: (result as any).responseReceivedAt ?? null,
           permit_granted_at: permitGrantedAt,
         })
         .eq("id", r.id);
+
       if ((camp as any).reservation_id) {
         await supabaseAdmin.rpc("wallet_release_reservation" as any, {
           _reservation_id: (camp as any).reservation_id,
