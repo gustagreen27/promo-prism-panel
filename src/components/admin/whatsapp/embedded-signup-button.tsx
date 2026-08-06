@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Loader2, MessageCircle, Smartphone, Info, ExternalLink, Copy } from "lucide-react";
+import { Loader2, MessageCircle, Smartphone, Info, ExternalLink, Copy, RefreshCw, TriangleAlert } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { getEmbeddedSignupConfig, completeEmbeddedSignup } from "@/lib/wa-embedded-signup.functions";
 import { PostSignupDialog } from "@/components/admin/whatsapp/post-signup-dialog";
@@ -71,6 +71,7 @@ export function EmbeddedSignupButton({
   const [finishedConnectionId, setFinishedConnectionId] = useState<string | null>(null);
   const [inIframe, setInIframe] = useState(false);
   const [sdkError, setSdkError] = useState(false);
+  const [launchError, setLaunchError] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -93,6 +94,24 @@ export function EmbeddedSignupButton({
     } catch {
       toast.message(window.location.href, { duration: 12000 });
     }
+  }
+
+  function openFallbackTab() {
+    const tab = window.open(window.location.href, "_blank");
+    if (!tab) {
+      toast.error("A nova aba também foi bloqueada. Libere popups para este site e tente novamente.", {
+        duration: 10000,
+      });
+      return;
+    }
+    try {
+      tab.opener = null;
+    } catch {
+      /* a nova aba pode ter mudado de origem */
+    }
+    toast.message("A conexão foi aberta em uma nova aba. Clique em Conectar WhatsApp por lá.", {
+      duration: 9000,
+    });
   }
 
   useEffect(() => {
@@ -224,6 +243,7 @@ export function EmbeddedSignupButton({
   }, []);
 
   function launch() {
+    setLaunchError(null);
     // Este ramo é apenas uma proteção para chamadas programáticas. No preview,
     // o controle renderizado abaixo é um link target=_top, pois o contêiner pode
     // bloquear tanto window.open quanto links target=_blank.
@@ -265,6 +285,7 @@ export function EmbeddedSignupButton({
     const watchdog = window.setTimeout(() => {
       if (!done) {
         setLoading(false);
+        setLaunchError("A Meta não abriu o cadastro. O navegador pode ter bloqueado o popup.");
         toast.error("A Meta não abriu o cadastro. Libere popups para este site e tente novamente.", {
           duration: 10000,
         });
@@ -341,6 +362,7 @@ export function EmbeddedSignupButton({
       window.clearTimeout(watchdog);
       setLoading(false);
       const message = error?.message ?? "O popup da Meta não pôde ser aberto.";
+      setLaunchError(message);
       toast.error(`Meta: ${message}`, { duration: 10000 });
     }
   }
@@ -389,6 +411,29 @@ export function EmbeddedSignupButton({
             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Icon className="mr-2 h-4 w-4" />}
             {label ?? defaultLabel}
           </Button>
+        )}
+        {!inIframe && launchError && (
+          <Alert variant="destructive">
+            <TriangleAlert className="h-4 w-4" />
+            <AlertTitle>Não foi possível abrir o cadastro</AlertTitle>
+            <AlertDescription className="space-y-3">
+              <p>{launchError}</p>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" size="sm" variant="outline" onClick={launch} disabled={loading}>
+                  {loading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                  )}
+                  Tentar novamente
+                </Button>
+                <Button type="button" size="sm" variant="outline" onClick={openFallbackTab}>
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Abrir em nova aba
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
         )}
       </div>
       <PostSignupDialog
