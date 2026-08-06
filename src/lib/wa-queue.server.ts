@@ -703,7 +703,10 @@ export async function processCampaignTick(
       const label = FATAL_ACCOUNT_CODES[code] ?? "Erro crítico da conta";
       const message = `${label} (#${code})${rawError ? ` — ${rawError}` : ""}`;
       fatalStop = { code, message };
+      // Kill switch imediato para todas as lanes/campanhas deste número no isolate.
+      if (camp.connection_id) BLOCKED_CONNECTIONS.set(String(camp.connection_id), message);
       systemicPause = { reason: "account_locked", message: `🔴 Pausada automaticamente — ${message}` };
+
 
       // 1+2. Pausa a campanha e trava reprocessamento automático
       await supabaseAdmin
