@@ -396,3 +396,49 @@ export async function registerPhone(input: {
   if (!res.ok) return { ok: false, ...humanizeMetaError(json, res.status), raw: json, httpStatus: res.status };
   return { ok: true, data: json, raw: json };
 }
+
+/**
+ * Faz upload da mídia do cabeçalho para a Resumable Upload API da Meta e
+ * retorna o handle (h:...) exigido em example.header_handle ao criar templates.
+ * A API de templates NÃO aceita URL direta (erro subcode 2388273).
+ */
+export async function uploadHeaderHandle(input: {
+  mediaUrl: string;
+  accessToken?: string | null;
+}): Promise<string> {
+  const token = input.accessToken || process.env.WHATSAPP_ACCESS_TOKEN;
+  if (!token) throw new Error("WHATSAPP_ACCESS_TOKEN não configurado.");
+  const appId = process.env.META_APP_ID;
+  if (!appId) throw new Error("META_APP_ID não configurado — necessário para enviar a mídia do cabeçalho.");
+
+  const fileRes = await fetch(input.mediaUrl);
+  if (!fileRes.ok) throw new Error("Não foi possível baixar a mídia do cabeçalho a partir da URL informada.");
+  const buf = new Uint8Array(await fileRes.arrayBuffer());
+  const fileType = fileRes.headers.get("content-type")?.split(";")[0] || "application/octet-stream";
+  if (!buf.byteLength) throw new Error("Arquivo de mídia vazio.");
+
+  const startUrl = new URL(`${GRAPH}/${appId}/uploads`);
+  startUrl.searchParams.set("file_length", String(buf.byteLength));
+  startUrl.searchParams.set("file_type", fileType);
+  startUrl.searchParams.set("access_token", token);
+  const startRes = await fetch(startUrl.toString(), { method: "POST" });
+  const startJson: any = await startRes.json().catch(() => ({}));
+  if (!startRes.ok || !startJson?.id) {
+    throw new Error(`Falha ao iniciar upload da mídia: ${startJson?.error?.message ?? startRes.status}`);
+  }
+
+  const upRes = await fetch(`${GRAPH.replace(/\/v[\d.]+$/, "")}/${startJson.id}`, {
+    method: "POST",
+    headers: {
+      Authorization: `OAuth ${token}`,
+      file_offset: "0",
+      "Content-Type": "application/octet-stream",
+    },
+    body: buf,
+  });
+  const upJson: any = await upRes.json().catch(() => ({}));
+  if (!upRes.ok || !upJson?.h) {
+    throw new Error(`Falha ao enviar a mídia do cabeçalho: ${upJson?.error?.message ?? upRes.status}`);
+  }
+  return upJson.h as string;
+}
