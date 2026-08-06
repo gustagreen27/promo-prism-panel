@@ -162,7 +162,31 @@ export async function fetchWabaPhoneNumbers(wabaId: string, tokenOverride?: stri
     const h = humanizeMetaError(json, res.status);
     throw new Error(h.error);
   }
-  return (json.data ?? []) as any[];
+  const list = (json.data ?? []) as any[];
+
+  // A listagem da Meta frequentemente OMITE messaging_limit_tier; o nó individual
+  // do número retorna o valor. Faz o fallback só para os que vieram sem tier.
+  await Promise.all(
+    list.map(async (n) => {
+      if (!n?.id || n.messaging_limit_tier) return;
+      try {
+        const r = await metaFetch(
+          `/${n.id}?fields=messaging_limit_tier,throughput,quality_rating`,
+          { method: "GET" },
+          tokenOverride,
+        );
+        const j: any = await r.json().catch(() => ({}));
+        if (r.ok) {
+          if (j?.messaging_limit_tier) n.messaging_limit_tier = j.messaging_limit_tier;
+          if (!n.quality_rating && j?.quality_rating) n.quality_rating = j.quality_rating;
+        }
+      } catch {
+        /* mantém sem tier — a UI mostra "sem dados" */
+      }
+    }),
+  );
+
+  return list;
 }
 
 // ── Token diagnostics ────────────────────────────────────────────────────────
