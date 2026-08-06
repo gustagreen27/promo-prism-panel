@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { listNumbers, createNumber, updateNumber, deleteNumber } from "@/lib/whatsapp-numbers.functions";
-import { updateConnectionToken, getConnectionCredentials, debugConnectionToken, getConnectionSubscribedApps, subscribeAppToWaba } from "@/lib/wa-diagnosis.functions";
+import { updateConnectionToken, getConnectionCredentials, debugConnectionToken, getConnectionSubscribedApps, subscribeAppToWaba, getConnectionHealthStatus } from "@/lib/wa-diagnosis.functions";
 import { syncAllWabas } from "@/lib/wa-meta-sync.functions";
 import { addNumberToWaba, requestNumberCode, verifyNumberCode, registerNumberOnCloud } from "@/lib/wa-meta-api.functions";
 import { listWabas } from "@/lib/wa-wabas.functions";
@@ -343,6 +343,7 @@ function CredentialsDialog({ connection, onClose, onSaved }: { connection: any; 
   const debugFn = useServerFn(debugConnectionToken);
   const subAppsFn = useServerFn(getConnectionSubscribedApps);
   const subscribeFn = useServerFn(subscribeAppToWaba);
+  const healthFn = useServerFn(getConnectionHealthStatus);
 
   const credsQuery = useQuery({
     queryKey: ["wa-conn-creds", connection.id],
@@ -367,6 +368,7 @@ function CredentialsDialog({ connection, onClose, onSaved }: { connection: any; 
 
   const [debugResult, setDebugResult] = useState<any>(null);
   const [subResult, setSubResult] = useState<any>(null);
+  const [healthResult, setHealthResult] = useState<any>(null);
 
   const saveMut = useMutation({
     mutationFn: () => updateCreds({ data: {
@@ -394,6 +396,11 @@ function CredentialsDialog({ connection, onClose, onSaved }: { connection: any; 
     mutationFn: () => subAppsFn({ data: { connection_id: connection.id } }),
     onSuccess: (r: any) => { setSubResult(r); },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao consultar apps inscritos"),
+  });
+  const healthMut = useMutation({
+    mutationFn: () => healthFn({ data: { connection_id: connection.id } }),
+    onSuccess: (r: any) => { setHealthResult(r); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao consultar health_status"),
   });
   const subscribeMut = useMutation({
     mutationFn: () => subscribeFn({ data: { connection_id: connection.id } }),
@@ -483,6 +490,9 @@ function CredentialsDialog({ connection, onClose, onSaved }: { connection: any; 
             <Button size="sm" variant="outline" onClick={() => subscribeMut.mutate()} disabled={subscribeMut.isPending}>
               {subscribeMut.isPending ? "Inscrevendo…" : "Inscrever app no webhook"}
             </Button>
+            <Button size="sm" variant="outline" onClick={() => healthMut.mutate()} disabled={healthMut.isPending}>
+              {healthMut.isPending ? "Verificando…" : "Saúde de envio (health_status)"}
+            </Button>
           </div>
 
           {debugResult && (
@@ -499,6 +509,44 @@ function CredentialsDialog({ connection, onClose, onSaved }: { connection: any; 
                 <div className="text-destructive">Erro: {debugResult.error?.message ?? JSON.stringify(debugResult.error)}</div>
               )}
               {debugResult.reason && <div className="text-destructive">{debugResult.reason}{debugResult.hint ? ` — ${debugResult.hint}` : ""}</div>}
+            </div>
+          )}
+
+          {healthResult && (
+            <div className="rounded-md border p-3 text-xs space-y-2 bg-muted/40">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold">Saúde de envio — {healthResult.node_kind ?? "nó"} <span className="font-mono">{healthResult.node_id ?? "—"}</span></span>
+                {healthResult.can_send_message && <HealthPill value={healthResult.can_send_message} />}
+              </div>
+              {healthResult.ok === false && (
+                <div className="text-destructive">
+                  {healthResult.reason ?? healthResult.error?.message ?? "Falha ao consultar"}
+                </div>
+              )}
+              {(healthResult.entities ?? []).length > 0 && (
+                <div className="space-y-1">
+                  {(healthResult.entities as any[]).map((e, i) => (
+                    <div key={i} className="flex items-center justify-between gap-2 rounded border bg-background/60 px-2 py-1">
+                      <span className="truncate">{e.entity_type} <span className="font-mono text-muted-foreground">{e.id}</span></span>
+                      <HealthPill value={e.can_send_message} />
+                    </div>
+                  ))}
+                </div>
+              )}
+              {(healthResult.errors ?? []).length > 0 && (
+                <ul className="list-disc pl-5 space-y-0.5 text-destructive">
+                  {(healthResult.errors as any[]).map((er, i) => (
+                    <li key={i}>[{er.entity} · {er.error_code}] {er.error_description}{er.possible_solution ? ` — ${er.possible_solution}` : ""}</li>
+                  ))}
+                </ul>
+              )}
+              {(healthResult.additional_info ?? []).length > 0 && (
+                <ul className="list-disc pl-5 space-y-0.5 text-amber-600 dark:text-amber-400">
+                  {(healthResult.additional_info as any[]).map((a, i) => (
+                    <li key={i}>[{a.entity}] {a.message}</li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
 
@@ -530,4 +578,13 @@ function CredentialsDialog({ connection, onClose, onSaved }: { connection: any; 
       </DialogFooter>
     </DialogContent>
   );
+}
+
+function HealthPill({ value }: { value: string | null }) {
+  if (!value) return null;
+  const cls =
+    value === "AVAILABLE" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
+    : value === "LIMITED" ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200"
+    : "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200";
+  return <span className={`rounded px-1.5 py-0.5 font-medium ${cls}`}>{value}</span>;
 }
