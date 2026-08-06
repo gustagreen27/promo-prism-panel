@@ -1195,6 +1195,7 @@ export async function processCampaignTick(
       if (now < nextCampaignPermitAt) {
         rateLimitedBySecond.campaign++;
         const waitMs = Math.max(1, Math.min(nextCampaignPermitAt - now, 50));
+        markIdle("pacing_rate_campanha", waitMs);
         await clock.sleep(waitMs);
         continue;
       }
@@ -1202,7 +1203,7 @@ export async function processCampaignTick(
       // ------ Gate B: bucket GLOBAL do número ------
       if (localGlobalTokens < 1 && now >= lastTokenWaitUntil) {
         const wantTokens = Math.min(
-          Math.max(1, maxConc - inflight.size),
+          Math.max(1, laneCap - inflight.size),
           localQueue.length,
           Math.max(1, Math.ceil(phoneBucketRate)), // ~1s de rate por RPC; pacing local impede rajada
         );
@@ -1227,6 +1228,7 @@ export async function processCampaignTick(
           rateLimitedBySecond.global++;
           const waitMs = Math.max(1, Math.min(row?.wait_ms ?? 50, 100));
           lastTokenWaitUntil = now + waitMs;
+          markIdle("token_bucket_numero", waitMs);
           await clock.sleep(waitMs);
           continue;
         }
@@ -1243,7 +1245,7 @@ export async function processCampaignTick(
         const wantSlots = Math.max(
           1,
           Math.min(
-            Math.max(1, maxConc - inflight.size),
+            Math.max(1, laneCap - inflight.size),
             Math.max(1, localQueue.length),
             Math.max(1, Math.ceil(phoneBucketRate)), // ~1s de rate por RPC; pacing local impede rajada
           ),
@@ -1260,6 +1262,7 @@ export async function processCampaignTick(
         localGlobalSlots += grantedSlots;
         if (grantedSlots === 0) {
           rateLimitedBySecond.global_slot++;
+          markIdle("sem_slot_global_numero", 20);
           await clock.sleep(20);
           continue;
         }
@@ -1274,12 +1277,23 @@ export async function processCampaignTick(
       startedThisSecond += 1;
       dispatchTimestamps.push(now);
       const r = localQueue.shift();
+      requestsStarted += 1;
+      idleReason = null;
+      const reqStartedAt = Date.now();
       let p!: Promise<void>;
       p = sendOne(r)
+        .then(() => { acceptedTotal += 1; })
         .catch((err) => {
           console.error("[wa-queue] sendOne threw", err);
         })
         .finally(() => {
+          const doneAt = Date.now();
+          requestsCompleted += 1;
+          completedThisSecond += 1;
+          durationSum += doneAt - reqStartedAt;
+          durationCount += 1;
+          if (lastCompletedAt) { gapSum += doneAt - lastCompletedAt; gapCount += 1; }
+          lastCompletedAt = doneAt;
           inflight.delete(p);
           slotReleasePending += 1;
         }) as Promise<void>;
@@ -1292,6 +1306,7 @@ export async function processCampaignTick(
     await releaseUnusedAcquiredSlots();
 
     flushTelemetryIfNeeded();
+    await heartbeat(true);
 
     // A partir daqui não abrimos novas requisições, só esperamos respostas já
     // em voo para gravar resultado e devolver slots. Libera o lease da campanha
