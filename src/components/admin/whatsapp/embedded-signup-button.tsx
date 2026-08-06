@@ -68,6 +68,25 @@ export function EmbeddedSignupButton({
   const [cfg, setCfg] = useState<{ appId: string; configId: string; graphVersion: string; sdkVersion?: string } | null>(null);
   const sessionRef = useRef<{ phone_number_id?: string; waba_id?: string; business_id?: string } | null>(null);
   const [finishedConnectionId, setFinishedConnectionId] = useState<string | null>(null);
+  const [inIframe, setInIframe] = useState(false);
+
+  useEffect(() => {
+    try {
+      setInIframe(window.top !== window.self);
+    } catch {
+      // cross-origin access bloqueado => estamos em iframe
+      setInIframe(true);
+    }
+  }, []);
+
+  function openInNewTab() {
+    const w = window.open(window.location.href, "_blank", "noopener,noreferrer");
+    if (!w) {
+      toast.message("Não foi possível abrir a nova aba. Copie o endereço e abra manualmente no navegador.", {
+        duration: 9000,
+      });
+    }
+  }
 
   useEffect(() => {
     (async () => {
