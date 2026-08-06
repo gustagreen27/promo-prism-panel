@@ -713,8 +713,16 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
       setSubmitting(true);
       try {
         const legs = [
-          { connection_id: connectionId, template_id: templateId, weight: Math.max(1, primaryWeight) },
-          ...validExtras.map((l) => ({ ...l, weight: Math.max(1, Number(l.weight) || 1) })),
+          { connection_id: connectionId, template_id: templateId, weight: Math.max(1, primaryWeight),
+            variables_mapping: bodyVars, button_url_mapping: btnVars },
+          ...validExtras.map((l) => ({
+            connection_id: l.connection_id,
+            template_id: l.template_id,
+            weight: Math.max(1, Number(l.weight) || 1),
+            // Copy própria da combinação; se não preenchida, herda a principal.
+            variables_mapping: { ...bodyVars, ...(l.vars ?? {}) },
+            button_url_mapping: { ...btnVars, ...(l.btn ?? {}) },
+          })),
         ];
         const r: any = await fnSplit({
           data: {
