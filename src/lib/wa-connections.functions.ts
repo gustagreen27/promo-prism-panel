@@ -109,6 +109,56 @@ export const bindConnectionToWorkspace = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/**
+ * Desconecta uma BM específica: remove apenas os portfólios (WABAs) vinculados
+ * a este workspace e desvincula seus números. Nenhuma outra BM é afetada.
+ */
+export const disconnectWorkspaceBM = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ workspace_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+
+    const { data: conns } = await context.supabase
+      .from("whatsapp_connections")
+      .select("id")
+      .eq("workspace_id", data.workspace_id);
+
+    const { data: wabas } = await context.supabase
+      .from("whatsapp_wabas")
+      .select("id")
+      .eq("workspace_id", data.workspace_id);
+
+    // Limpa vínculo do workspace antes de remover os portfólios
+    const { error: wsErr } = await context.supabase
+      .from("workspaces")
+      .update({ meta_business_id: null, meta_business_name: null, default_connection_id: null })
+      .eq("id", data.workspace_id);
+    if (wsErr) throw wsErr;
+
+    if ((conns ?? []).length) {
+      const { error } = await context.supabase
+        .from("whatsapp_connections")
+        .update({ workspace_id: null, waba_ref_id: null })
+        .eq("workspace_id", data.workspace_id);
+      if (error) throw error;
+    }
+
+    if ((wabas ?? []).length) {
+      const { error } = await context.supabase
+        .from("whatsapp_wabas")
+        .delete()
+        .eq("workspace_id", data.workspace_id);
+      if (error) throw error;
+    }
+
+    return {
+      ok: true,
+      wabas_removed: (wabas ?? []).length,
+      connections_unlinked: (conns ?? []).length,
+    };
+  });
+
 /** Assina o app da Meta na WABA desta conexão para começar a receber webhooks (statuses, replies). */
 export const subscribeConnectionToApp = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
