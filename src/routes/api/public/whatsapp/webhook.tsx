@@ -387,11 +387,30 @@ async function handleChange(supabaseAdmin: any, change: any, entryId: string | n
     return;
   }
 
+  // Limite de mensagens do Portfólio Empresarial (compartilhado pela BM) ──
+  // business_capability_update chega no nível da WABA (entry.id) e informa
+  // o limite numericamente (250, 2000, 10000, 100000, -1 = ilimitado).
+  if (field === "business_capability_update") {
+    const raw =
+      value?.max_daily_conversation_per_phone ??
+      value?.messaging_limit ??
+      value?.current_limit ??
+      null;
+    const tier = numberToTier(raw);
+    const wabaId = value?.waba_id ?? value?.whatsapp_business_account_id ?? entryId;
+    if (tier && wabaId) {
+      await supabaseAdmin
+        .from("whatsapp_connections")
+        .update({ messaging_limit: tier, last_meta_sync_at: new Date().toISOString() })
+        .eq("waba_id", String(wabaId));
+    }
+    return;
+  }
+
   // Qualidade / limites / alertas por número ───────────────────────
   if (
     field === "phone_number_quality_update" ||
     field === "account_alerts" ||
-    field === "business_capability_update" ||
     field === "account_update"
   ) {
     const phoneNumberId =
@@ -409,6 +428,7 @@ async function handleChange(supabaseAdmin: any, change: any, entryId: string | n
     }
     return;
   }
+
 
   // Nome de exibição do número (phone_number_name_update) ──────────
   if (field === "phone_number_name_update") {
