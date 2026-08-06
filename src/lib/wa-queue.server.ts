@@ -107,6 +107,10 @@ const PROCESSING_STALE_MS = 20 * 1000;
 // Ticks curtos + self-chain contínuo. Evita a arquitetura “um blocão por minuto”
 // e limita o blast radius de qualquer request travada.
 const MAX_TICK_RUNTIME_MS = 10 * 1000;
+// Defasagem mínima entre lanes paralelas: cada worker entra em operação (e
+// executa suas checagens periódicas) com pelo menos 1s de diferença do
+// anterior, para nunca reservar/checar/disparar no mesmo instante.
+const LANE_PHASE_MS = 1000;
 // Rate limiter defaults (used to bootstrap wa_rate_limits on first call).
 // The real values live in wa_rate_limits per phone_number_id and are shared
 // by every campaign using the same número.
@@ -1439,10 +1443,27 @@ export async function processCampaignTick(
     };
 
 
+    // ---- Defasagem entre lanes (anti-colisão) ----
+    // Lane 0 começa imediatamente, lane 1 após 1s, lane 2 após 2s… Assim os
+    // workers nunca reservam, checam ou disparam no mesmo segundo.
+    const lanePhaseMs = Math.max(0, lane) * LANE_PHASE_MS;
+    if (lanePhaseMs > 0) {
+      markIdle("defasagem_lane", lanePhaseMs);
+      await clock.sleep(lanePhaseMs);
+    }
+    // Re-fasa os relógios locais desta lane (heartbeat, liberação de slots,
+    // pacing) para que caiam em momentos distintos das outras lanes.
+    lastSlotFlushAt = Date.now();
+    lastHeartbeatAt = Date.now() - LANE_PHASE_MS;
+    // Dentro do mesmo segundo, cada lane dispara em um "slot" próprio do
+    // espaçamento (lane × spacing), intercalando os envios.
+    nextCampaignPermitAt = Date.now() + Math.round((lane % Math.max(1, laneCount)) * spacingMs);
+
     // Bootstrap
     await reserveNextChunk();
 
-    const laneRuntimeMs = Math.max(2000, Number(opts?.maxRuntimeMs ?? MAX_TICK_RUNTIME_MS));
+    const laneRuntimeMs =
+      Math.max(2000, Number(opts?.maxRuntimeMs ?? MAX_TICK_RUNTIME_MS)) + lanePhaseMs;
 
     /**
      * Verificação contínua durante a campanha: a Meta pode bloquear a conta
