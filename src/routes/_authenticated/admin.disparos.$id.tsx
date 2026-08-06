@@ -69,6 +69,7 @@ function Page() {
   const [previewSearch, setPreviewSearch] = useState("");
   const [swapOpen, setSwapOpen] = useState(false);
   const [speedOpen, setSpeedOpen] = useState(false);
+  const [showPreflight, setShowPreflight] = useState(false);
 
   const campQ = useQuery({
     queryKey: ["wa-camp", id],
@@ -778,6 +779,12 @@ function Page() {
         currentJitter={(camp as any)?.jitter_ms}
         onSaved={invalidate}
       />
+      <PreflightDialog
+        campaign={showPreflight ? { id, name: (camp as any)?.name } : null}
+        onOpenChange={(o) => setShowPreflight(o)}
+        onStarted={invalidate}
+      />
+
       <SwapConfigDialog
         open={swapOpen}
         onOpenChange={setSwapOpen}
