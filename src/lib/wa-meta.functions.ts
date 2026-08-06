@@ -26,7 +26,7 @@ export const submitTemplateForApproval = createServerFn({ method: "POST" })
 
     const { data: tpl, error: tErr } = await context.supabase
       .from("whatsapp_templates")
-      .select("*, waba:whatsapp_wabas(id,waba_id,nome_interno)")
+      .select("*, waba:whatsapp_wabas(id,waba_id,nome_interno,access_token)")
       .eq("id", data.template_id)
       .single();
     if (tErr) throw tErr;
@@ -51,7 +51,10 @@ export const submitTemplateForApproval = createServerFn({ method: "POST" })
       category: cat as any,
       language: tpl.language,
       components,
+      parameterFormat: (components as any).parameterFormat,
+      accessToken: tpl.waba.access_token ?? null,
     });
+
 
     await logAction(context.supabase, "submit_template", { template_id: tpl.id, result });
 
