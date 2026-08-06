@@ -59,6 +59,15 @@ const RETRYABLE_CODES = new Set([
   "368", "500", "502", "503", "504",
 ]);
 const MAX_ATTEMPTS = 5;
+// Erros FATAIS de conta: nunca reprocessar, parar tudo na primeira ocorrência.
+// 131031 = Business account has been locked (bloqueio da conta comercial pela Meta)
+// 131042 = problema de pagamento/método de cobrança na conta
+// 133010 = número não registrado na Cloud API
+const FATAL_ACCOUNT_CODES: Record<string, string> = {
+  "131031": "Conta comercial bloqueada pela Meta",
+  "131042": "Problema de pagamento na conta comercial",
+  "133010": "Número não registrado na Cloud API",
+};
 // Lease bem curto: o processamento é seguro por reserva atômica com SKIP LOCKED,
 // então o próximo tick pode entrar em poucos segundos sem duplicar destinatário.
 // Antes 30s fazia o efeito indesejado de "bloco, pausa, bloco" quando o runtime
@@ -415,7 +424,9 @@ export async function processCampaignTick(
       const check = await ensureSendable(supabaseAdmin, {
         connection_id: camp.connection_id,
         template_ref_id: camp.template_id,
-        maxAgeSec: 300,
+        // Re-checagem contínua durante a campanha: no máx. 45s de cache,
+        // então cada tick revalida a saúde da conta/template.
+        maxAgeSec: 45,
       });
       if (!check.allowed) {
         const msg = `Envio bloqueado pela pré-checagem de saúde (${check.source}): ${check.reason}`;
@@ -606,6 +617,83 @@ export async function processCampaignTick(
     let consecutiveNetworkErrors = 0;
     let consecutive429 = 0;
     let systemicPause: { reason: string; message: string } | null = null;
+    let fatalStop: { code: string; message: string } | null = null;
+
+    /**
+     * Circuit breaker de conta (ex.: 131031 — Business account locked).
+     * Na PRIMEIRA ocorrência: pausa a campanha, trava reprocessamento,
+     * devolve os contatos reservados, marca o número como bloqueado
+     * e emite alerta crítico. Nenhum outro contato é tentado.
+     */
+    const triggerFatalStop = async (code: string, rawError: string | null) => {
+      if (fatalStop) return;
+      const label = FATAL_ACCOUNT_CODES[code] ?? "Erro crítico da conta";
+      const message = `${label} (#${code})${rawError ? ` — ${rawError}` : ""}`;
+      fatalStop = { code, message };
+      systemicPause = { reason: "account_locked", message: `🔴 Pausada automaticamente — ${message}` };
+
+      // 1+2. Pausa a campanha e trava reprocessamento automático
+      await supabaseAdmin
+        .from("wa_campaigns")
+        .update({
+          status: "paused",
+          paused_at: new Date().toISOString(),
+          pause_reason: "account_locked",
+          last_error: message,
+          fatal_locked: true,
+          fatal_error_code: code,
+          fatal_error_message: message,
+          fatal_locked_at: new Date().toISOString(),
+        })
+        .eq("id", campaignId);
+
+      // 3. Libera contatos reservados (processing → pending, sem consumir tentativa)
+      await supabaseAdmin
+        .from("campaign_recipients")
+        .update({ status: "pending", failed_reason: null, error_code: null })
+        .eq("campaign_id", campaignId)
+        .eq("status", "processing")
+        .is("meta_message_id", null);
+
+      // 4. Marca o número/rota como bloqueado
+      try {
+        if (camp.connection_id) {
+          await supabaseAdmin
+            .from("whatsapp_connections")
+            .update({
+              blocked_at: new Date().toISOString(),
+              blocked_reason: message,
+              blocked_error_code: code,
+              status: "bloqueada",
+            })
+            .eq("id", camp.connection_id);
+        }
+        await supabaseAdmin
+          .from("wa_campaign_routes")
+          .update({ status: "disabled" })
+          .eq("campaign_id", campaignId);
+      } catch { /* best-effort */ }
+
+      // 5. Alerta crítico
+      await logEvent(campaignId, "account_locked", `🔴 ${message} — campanha pausada na primeira ocorrência, workers interrompidos.`, {
+        error_code: code,
+        raw_error: rawError,
+        connection_id: camp.connection_id,
+      });
+      try {
+        if ((camp as any).workspace_id) {
+          await supabaseAdmin.rpc("notify_workspace" as any, {
+            _ws: (camp as any).workspace_id,
+            _kind: "wa_account_locked",
+            _title: `Disparo pausado: ${label}`,
+            _body: `${camp.name ?? "Campanha"}: ${message}. Troque de WABA/número ou libere manualmente antes de retomar.`,
+            _link: `/admin/disparos/${campaignId}`,
+            _severity: "error",
+            _metadata: { error_code: code, campaign_id: campaignId },
+          });
+        }
+      } catch { /* best-effort */ }
+    };
     let lastCampaignTouchAt = 0;
     let touchCampaignPromise: Promise<void> | null = null;
 
@@ -659,6 +747,15 @@ export async function processCampaignTick(
     };
 
     const sendOne = async (r: any): Promise<void> => {
+      // Circuit breaker ativo: não tenta mais nada, devolve o contato à fila.
+      if (fatalStop) {
+        await supabaseAdmin
+          .from("campaign_recipients")
+          .update({ status: "pending", failed_reason: null, error_code: null })
+          .eq("id", r.id)
+          .eq("status", "processing");
+        return;
+      }
       // Opt-out/contact são pré-carregados por chunk para não fazer 2 consultas
       // por destinatário no hot path.
       if ((r as any)._optedOut) {
@@ -893,6 +990,17 @@ export async function processCampaignTick(
         /failed to fetch|fetch failed|network|econnreset|etimedout|enetunreach|socket hang up/i.test(
           result.error || "",
         );
+      const fatalCode = result.code ? String(result.code) : null;
+      if (fatalCode && FATAL_ACCOUNT_CODES[fatalCode]) {
+        lastError = result.error;
+        await supabaseAdmin
+          .from("campaign_recipients")
+          .update({ status: "pending", failed_reason: result.error, error_code: fatalCode })
+          .eq("id", r.id);
+        await triggerFatalStop(fatalCode, result.error ?? null);
+        return;
+      }
+
       const isTokenErr = result.code === "190" || /token|OAuthException/i.test(result.error || "");
       const isRateLimit = result.code === "130429";
       const isPausedTemplate = result.code === "132015" || /template .*paused|temporarily unavailable/i.test(result.error || "");
@@ -1420,6 +1528,10 @@ export async function processCampaignTick(
 
     const sp = systemicPause as { reason: string; message: string } | null;
     if (sp) {
+      if (fatalStop) {
+        // Já pausada e travada pelo circuit breaker — não sobrescrever.
+        return { processed: sent + failed, done: true, reason: "account_locked" };
+      }
       await markPaused(campaignId, sp.reason, sp.message);
       return { processed: sent + failed, done: false, reason: sp.reason };
     }
