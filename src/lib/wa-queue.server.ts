@@ -597,6 +597,34 @@ export async function processCampaignTick(
     const numberMaxRate = Math.max(1, Number((conn as any).maximum_rate_per_second ?? 80));
     const numberGlobalRate = Math.max(1, Number((conn as any).global_rate_per_second ?? numberMaxRate));
     let phoneBucketRate = Math.min(numberGlobalRate, numberMaxRate);
+    // Qualidade em alerta: a Meta reduz entrega e aumenta risco de bloqueio
+    // quando o número está YELLOW/RED. Em vez de só avisar, reduzimos a
+    // velocidade automaticamente enquanto a qualidade não voltar a GREEN.
+    const qualityRating = String((conn as any).quality_rating ?? "").toUpperCase();
+    if (qualityRating === "YELLOW" || qualityRating === "MEDIUM") {
+      const capped = Math.max(1, Math.floor(phoneBucketRate * 0.5));
+      if (capped < phoneBucketRate) {
+        phoneBucketRate = capped;
+        void logEvent(
+          campaignId,
+          "quality_throttle",
+          `Qualidade do número em ${qualityRating} — velocidade reduzida automaticamente para ${capped} msg/s`,
+          { quality_rating: qualityRating, rate: capped },
+        );
+      }
+    } else if (qualityRating === "RED" || qualityRating === "LOW") {
+      const capped = Math.max(1, Math.floor(phoneBucketRate * 0.2));
+      if (capped < phoneBucketRate) {
+        phoneBucketRate = capped;
+        void logEvent(
+          campaignId,
+          "quality_throttle",
+          `Qualidade do número em ${qualityRating} — velocidade reduzida automaticamente para ${capped} msg/s`,
+          { quality_rating: qualityRating, rate: capped },
+        );
+      }
+    }
+
     // Throttle adaptativo POR NÚMERO: se este número levou 130429/timeout há
     // pouco, ele (e só ele) trabalha com rate reduzido até expirar.
     try {
@@ -686,11 +714,20 @@ export async function processCampaignTick(
 
     let sent = 0;
     let failed = 0;
+    let deadLetterCount = 0;
+
     let lastError: string | null = null;
     let consecutiveNetworkErrors = 0;
     let consecutive429 = 0;
     let systemicPause: { reason: string; message: string } | null = null;
     let fatalStop: { code: string; message: string } | null = null;
+
+    /**
+     * Cancela as requisições HTTP JÁ EM VOO quando o circuit breaker dispara.
+     * Sem isso, mesmo parando o loop, dezenas de chamadas em andamento ainda
+     * chegariam à Meta depois do bloqueio da conta.
+     */
+    const laneAbort = new AbortController();
 
     /**
      * Circuit breaker de conta (ex.: 131031 — Business account locked).
@@ -705,7 +742,10 @@ export async function processCampaignTick(
       fatalStop = { code, message };
       // Kill switch imediato para todas as lanes/campanhas deste número no isolate.
       if (camp.connection_id) BLOCKED_CONNECTIONS.set(String(camp.connection_id), message);
+      // Aborta o pool HTTP desta lane imediatamente.
+      try { laneAbort.abort(); } catch { /* noop */ }
       systemicPause = { reason: "account_locked", message: `🔴 Pausada automaticamente — ${message}` };
+
 
 
       // 1+2. Pausa a campanha e trava reprocessamento automático
@@ -970,6 +1010,8 @@ export async function processCampaignTick(
         // Dedupe determinístico: Meta ecoa em cada webhook e trata callback_data repetido
         // como idempotente em janela curta — fecha o gap "Meta aceitou, DB caiu, retry duplicou".
         bizOpaqueCallbackData: r.id,
+        signal: laneAbort.signal,
+
       });
 
       const attempts = (r.attempt ?? 0) + 1;
@@ -1068,12 +1110,22 @@ export async function processCampaignTick(
         return;
       }
 
+      // ---- Cancelamento pelo circuit breaker: não é falha do destinatário ----
+      if (result.code === "cancelled" || (fatalStop && laneAbort.signal.aborted)) {
+        await supabaseAdmin
+          .from("campaign_recipients")
+          .update({ status: "pending", failed_reason: null, error_code: null })
+          .eq("id", r.id);
+        return;
+      }
+
       // ---- Falha: distinguir rede vs Meta ----
       const isNetworkErr =
         result.code === "network_error" ||
         /failed to fetch|fetch failed|network|econnreset|etimedout|enetunreach|socket hang up/i.test(
           result.error || "",
         );
+
       const fatalCode = detectFatalAccountCode(result);
       if (fatalCode) {
 
@@ -1152,20 +1204,39 @@ export async function processCampaignTick(
         return;
       }
 
+      // Dead-letter: falha temporária que esgotou as tentativas sai da fila
+      // de vez, com motivo explícito, em vez de voltar a circular.
+      const isDeadLetter = isRetryable && attempts >= MAX_ATTEMPTS;
+      if (isDeadLetter) {
+        deadLetterCount++;
+        if (deadLetterCount === 1 || deadLetterCount % 25 === 0) {
+          void logEvent(
+            campaignId,
+            "dead_letter",
+            `${deadLetterCount} destinatário(s) encerrados após ${MAX_ATTEMPTS} tentativas — último motivo: ${result.error}`,
+            { count: deadLetterCount, last_error: result.error, error_code: result.code ?? null },
+          );
+        }
+      }
+
       failed++;
       await supabaseAdmin
         .from("campaign_recipients")
         .update({
           status: "failed",
           failed_at: new Date().toISOString(),
-          failed_reason: result.error,
+          failed_reason: isDeadLetter
+            ? `Dead-letter após ${MAX_ATTEMPTS} tentativas: ${result.error}`
+            : result.error,
           error_code: result.code,
           attempt: attempts,
+          next_attempt_at: null,
           request_started_at: (result as any).requestStartedAt ?? null,
           response_received_at: (result as any).responseReceivedAt ?? null,
           permit_granted_at: permitGrantedAt,
         })
         .eq("id", r.id);
+
       if ((camp as any).reservation_id) {
         await supabaseAdmin.rpc("wallet_release_reservation" as any, {
           _reservation_id: (camp as any).reservation_id,

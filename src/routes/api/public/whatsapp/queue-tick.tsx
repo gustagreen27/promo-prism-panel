@@ -234,6 +234,37 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
             .not("worker_lease_until", "is", null)
             .lt("worker_lease_until", leaseCutoff);
 
+          // Watchdog de lane morta: worker que morreu (isolate encerrado, deploy,
+          // exceção) deixa o lease em pé e ninguém assume aquela trilha até
+          // expirar. Se não há heartbeat há mais de 60s, a lane é liberada na
+          // hora — o fan-out abaixo já reocupa a trilha neste mesmo tick.
+          const heartbeatCutoff = new Date(Date.now() - 60 * 1000).toISOString();
+          const { data: deadLanes } = await supabaseAdmin
+            .from("wa_worker_lanes")
+            .update({ lease_until: null, holder: null, http_in_flight: 0, reserved: 0, idle_reason: "lane_morta_watchdog" })
+            .not("lease_until", "is", null)
+            .lt("heartbeat_at", heartbeatCutoff)
+            .select("campaign_id, lane_index");
+          if (deadLanes && deadLanes.length > 0) {
+            const perCamp = new Map<string, number[]>();
+            for (const l of deadLanes as any[]) {
+              const arr = perCamp.get(l.campaign_id) ?? [];
+              arr.push(l.lane_index);
+              perCamp.set(l.campaign_id, arr);
+            }
+            for (const [cid, lanes] of perCamp) {
+              try {
+                await supabaseAdmin.from("campaign_timeline").insert({
+                  campaign_id: cid,
+                  event_type: "lane_watchdog",
+                  message: `Lane(s) ${lanes.join(", ")} sem heartbeat há >60s — lease liberado e trilha reiniciada automaticamente`,
+                  payload: { lanes, heartbeat_cutoff: heartbeatCutoff },
+                });
+              } catch { /* ignore */ }
+            }
+          }
+
+
           const staleCutoff = new Date(Date.now() - 60 * 1000).toISOString();
           const nowIso2 = new Date().toISOString();
           // Campanhas com alguma lane ativa não entram no auto-heal (podem ter

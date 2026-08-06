@@ -21,7 +21,13 @@ export type WaSendInput = {
   buttonIndex?: number;
   /** Chave opaca ecoada pela Meta em status webhooks; usada como dedup key server-side. */
   bizOpaqueCallbackData?: string | null;
+  /**
+   * Sinal externo de cancelamento (circuit breaker). Quando a conta é bloqueada
+   * pela Meta, as requisições ainda em voo são abortadas em vez de concluídas.
+   */
+  signal?: AbortSignal;
 };
+
 
 
 export type WaSendResult =
@@ -30,15 +36,27 @@ export type WaSendResult =
 
 const META_SEND_TIMEOUT_MS = 8000;
 
-async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = META_SEND_TIMEOUT_MS) {
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs = META_SEND_TIMEOUT_MS,
+  external?: AbortSignal,
+) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const onExternalAbort = () => controller.abort(new Error("cancelled"));
+  if (external) {
+    if (external.aborted) controller.abort(new Error("cancelled"));
+    else external.addEventListener("abort", onExternalAbort, { once: true });
+  }
   try {
     return await fetch(url, { ...init, signal: controller.signal });
   } finally {
     clearTimeout(timer);
+    external?.removeEventListener("abort", onExternalAbort);
   }
 }
+
 
 
 function buildBodyComponents(variables?: Record<string, string>) {
@@ -116,14 +134,20 @@ export async function sendTemplateMessage(input: WaSendInput): Promise<WaSendRes
 
   const requestStartedAt = new Date().toISOString();
   try {
-    const res = await fetchWithTimeout(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${input.accessToken}`,
+    const res = await fetchWithTimeout(
+      url,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${input.accessToken}`,
+        },
+        body: JSON.stringify(body),
       },
-      body: JSON.stringify(body),
-    });
+      META_SEND_TIMEOUT_MS,
+      input.signal,
+    );
+
     const json: any = await res.json().catch(() => ({}));
     const responseReceivedAt = new Date().toISOString();
     if (!res.ok) {
@@ -147,15 +171,23 @@ export async function sendTemplateMessage(input: WaSendInput): Promise<WaSendRes
     if (!id) return { ok: false, error: "No message id returned", raw: json, httpStatus: res.status, requestStartedAt, responseReceivedAt };
     return { ok: true, metaMessageId: id, messageStatus, wamid, raw: json, httpStatus: res.status, requestStartedAt, responseReceivedAt };
   } catch (e: any) {
-    const timedOut = e?.name === "AbortError";
+    const aborted = e?.name === "AbortError";
+    // Cancelamento externo (circuit breaker) ≠ timeout: não conta como falha
+    // do destinatário, ele volta para a fila sem consumir tentativa.
+    const cancelled = aborted && input.signal?.aborted === true;
     return {
       ok: false,
-      error: timedOut ? `Meta Graph timeout após ${META_SEND_TIMEOUT_MS}ms` : (e?.message ?? "Network error"),
-      code: "network_error",
+      error: cancelled
+        ? "Envio cancelado pelo circuit breaker (conta bloqueada)"
+        : aborted
+          ? `Meta Graph timeout após ${META_SEND_TIMEOUT_MS}ms`
+          : (e?.message ?? "Network error"),
+      code: cancelled ? "cancelled" : "network_error",
       requestStartedAt,
       responseReceivedAt: new Date().toISOString(),
     };
   }
+
 }
 
 export async function syncTemplatesFromMeta(opts: {
