@@ -152,6 +152,30 @@ export const preflightWaCampaign = createServerFn({ method: "POST" })
     return await runCampaignPreflight(supabaseAdmin, data.id);
   });
 
+/** Pré-check de uma seleção avulsa (número + template) no wizard, antes de criar a campanha. */
+export const preflightSelection = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      connection_id: z.string().uuid().nullable().optional(),
+      template_id: z.string().uuid().nullable().optional(),
+      total_recipients: z.number().int().min(0).nullable().optional(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { runSelectionPreflight } = await import("@/lib/meta/wa-preflight.server");
+    return await runSelectionPreflight(supabaseAdmin, {
+      connection_id: data.connection_id ?? null,
+      template_id: data.template_id ?? null,
+      total_recipients: data.total_recipients ?? 0,
+      require_queue: false,
+    });
+  });
+
+
+
 /** Libera manualmente uma campanha travada por erro crítico (ex.: 131031). */
 export const clearCampaignFatalLock = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
