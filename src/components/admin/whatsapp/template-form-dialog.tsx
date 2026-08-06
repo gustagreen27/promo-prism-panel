@@ -210,8 +210,32 @@ export function TemplateFormDialog({ editing, numbers, wabas, onSubmit, saving }
               </div>
               <div>
                 <FieldLabel optional>URL da amostra de mídia</FieldLabel>
-                <Input placeholder="https://exemplo.com/midia.jpg" value={form.header_media_url ?? ""}
-                  onChange={(e) => set("header_media_url", e.target.value)} disabled={!form.header_type || form.header_type === "text"} />
+                <div className="flex gap-2">
+                  <Input placeholder="https://exemplo.com/midia.jpg" value={form.header_media_url ?? ""}
+                    onChange={(e) => set("header_media_url", e.target.value)} disabled={mediaDisabled} />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept={
+                      form.header_type === "image" ? "image/*"
+                        : form.header_type === "video" ? "video/*"
+                        : ".pdf,application/pdf"
+                    }
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = "";
+                      if (f) void uploadMedia(f);
+                    }}
+                  />
+                  <Button type="button" variant="outline" size="icon" disabled={mediaDisabled || uploading}
+                    title="Enviar arquivo" onClick={() => fileInputRef.current?.click()}>
+                    {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {mediaDisabled ? "Selecione Imagem, Vídeo ou Documento" : "Cole uma URL ou envie um arquivo do seu computador"}
+                </p>
               </div>
             </div>
 
