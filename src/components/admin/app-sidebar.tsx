@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
@@ -191,61 +192,7 @@ export function AppSidebar() {
     navigate({ to: "/auth" });
   }
 
-  return (
-    <Sidebar collapsible="icon" className="border-r bg-sidebar">
-      <SidebarHeader className="border-b px-4 py-4">
-        <div className="flex items-center gap-2">
-          <img
-            src={logoAsset.url}
-            alt="Disparos FR"
-            className="h-8 w-auto object-contain group-data-[collapsible=icon]:hidden"
-          />
-          <img
-            src={logoAsset.url}
-            alt="Disparos FR"
-            className="hidden h-7 w-7 shrink-0 object-contain object-left group-data-[collapsible=icon]:block"
-            style={{ objectPosition: "left center" }}
-          />
-        </div>
-      </SidebarHeader>
-
-      <SidebarContent>
-        {GROUPS.map((group) => (
-          <SidebarGroup key={group.label}>
-            <SidebarGroupLabel className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              {group.label}
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-1">
-                {group.items.map((item) => {
-                  const active = isActive(item);
-                  return (
-                    <SidebarMenuItem key={item.to}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={active}
-                        tooltip={item.title}
-                        className="h-10 rounded-xl"
-                      >
-                        <Link to={item.to} className="flex items-center gap-3">
-                          <span
-                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
-                              active ? "bg-primary/10 text-primary" : "text-foreground/70"
-                            }`}
-                          >
-                            <item.icon className="h-4.5 w-4.5" />
-                          </span>
-                          <span className={active ? "font-semibold" : ""}>{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
-
+  const waBlock = (
         <SidebarGroup>
           <SidebarGroupContent>
             <Collapsible defaultOpen={waOpen} className="group/wa">
@@ -298,6 +245,66 @@ export function AppSidebar() {
             </Collapsible>
           </SidebarGroupContent>
         </SidebarGroup>
+  );
+
+  return (
+    <Sidebar collapsible="icon" className="border-r bg-sidebar">
+      <SidebarHeader className="border-b px-4 py-4">
+        <div className="flex items-center gap-2">
+          <img
+            src={logoAsset.url}
+            alt="Disparos FR"
+            className="h-8 w-auto object-contain group-data-[collapsible=icon]:hidden"
+          />
+          <img
+            src={logoAsset.url}
+            alt="Disparos FR"
+            className="hidden h-7 w-7 shrink-0 object-contain object-left group-data-[collapsible=icon]:block"
+            style={{ objectPosition: "left center" }}
+          />
+        </div>
+      </SidebarHeader>
+
+      <SidebarContent>
+        {GROUPS.map((group) => (
+          <Fragment key={group.label}>
+          {group.label === "Atendimento" ? waBlock : null}
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              {group.label}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-1">
+                {group.items.map((item) => {
+                  const active = isActive(item);
+                  return (
+                    <SidebarMenuItem key={item.to}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={active}
+                        tooltip={item.title}
+                        className="h-10 rounded-xl"
+                      >
+                        <Link to={item.to} className="flex items-center gap-3">
+                          <span
+                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                              active ? "bg-primary/10 text-primary" : "text-foreground/70"
+                            }`}
+                          >
+                            <item.icon className="h-4.5 w-4.5" />
+                          </span>
+                          <span className={active ? "font-semibold" : ""}>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+          </Fragment>
+        ))}
+
       </SidebarContent>
 
       <SidebarFooter className="border-t border-border p-2">
