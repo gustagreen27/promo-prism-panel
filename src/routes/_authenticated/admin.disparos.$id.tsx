@@ -19,7 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { getWaCampaign } from "@/lib/wa-campaigns.functions";
+import { getWaCampaign, clearCampaignFatalLock } from "@/lib/wa-campaigns.functions";
 import { DispatchPerformancePanel } from "@/components/admin/dispatch-performance-panel";
 import {
   getCampaignProgress, getCampaignTimeline, getCampaignRecipients,
@@ -203,6 +203,13 @@ function Page() {
       supabase.removeChannel(channel);
     };
   }, [id, qc]);
+
+  const clearLockFn = useServerFn(clearCampaignFatalLock);
+  const unlockMut = useMutation({
+    mutationFn: () => clearLockFn({ data: { id } }),
+    onSuccess: () => { toast.success("Trava crítica removida — revise a conta antes de retomar"); invalidate(); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao liberar"),
+  });
 
   const m = {
     start: useMutation({
@@ -455,6 +462,41 @@ function Page() {
           </div>
         }
       />
+
+      {(camp as any)?.fatal_locked && (
+        <Card className="border-destructive/50 bg-destructive/5">
+          <CardContent className="pt-6 space-y-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-5 w-5 text-destructive" />
+              <div>
+                <p className="font-semibold text-destructive">
+                  🔴 Pausada automaticamente — {(camp as any).fatal_error_message ?? "conta comercial bloqueada pela Meta"}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  O disparo foi interrompido na primeira ocorrência do erro crítico
+                  {(camp as any).fatal_error_code ? ` #${(camp as any).fatal_error_code}` : ""}. Os contatos reservados
+                  voltaram para a fila e o reprocessamento automático está proibido. Troque de WABA/número ou libere
+                  manualmente após resolver com a Meta.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="secondary" onClick={() => setSwapOpen(true)}>
+                <Replace className="mr-2 h-4 w-4" />Trocar número/template
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => unlockMut.mutate()}
+                disabled={unlockMut.isPending}
+              >
+                {unlockMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Liberar manualmente
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Progress hero */}
       {progQ.error && <ErrorCard error={progQ.error} onRetry={() => progQ.refetch()} />}
