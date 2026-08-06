@@ -1097,6 +1097,51 @@ export async function processCampaignTick(
       }
     };
 
+    // ---- Diagnóstico REAL de concorrência HTTP desta lane ----
+    let requestsStarted = 0;
+    let requestsCompleted = 0;
+    let acceptedTotal = 0;
+    let completedThisSecond = 0;
+    let startedLastSecond = 0;
+    let completedLastSecond = 0;
+    let durationSum = 0;
+    let durationCount = 0;
+    let lastCompletedAt = 0;
+    let gapSum = 0;
+    let gapCount = 0;
+    let idleAccumMs = 0;
+    let idleReason: string | null = null;
+    let lastHeartbeatAt = 0;
+    const markIdle = (reason: string, ms: number) => {
+      idleReason = reason;
+      idleAccumMs += ms;
+    };
+    const heartbeat = async (force = false) => {
+      const now = Date.now();
+      if (!force && now - lastHeartbeatAt < 1000) return;
+      lastHeartbeatAt = now;
+      try {
+        await supabaseAdmin.rpc("wa_lane_heartbeat" as any, {
+          _campaign_id: campaignId,
+          _lane: lane,
+          _holder: lease,
+          _reserved: localQueue.length + inflight.size,
+          _http_in_flight: inflight.size,
+          _http_concurrency_limit: laneHttpConcurrency,
+          _requests_started: requestsStarted,
+          _requests_completed: requestsCompleted,
+          _accepted_total: acceptedTotal,
+          _started_last_second: startedLastSecond,
+          _completed_last_second: completedLastSecond,
+          _avg_request_ms: durationCount ? Math.round(durationSum / durationCount) : null,
+          _idle_ms: Math.round(idleAccumMs),
+          _time_between_requests_ms: gapCount ? Math.round(gapSum / gapCount) : null,
+          _idle_reason: inflight.size >= laneHttpConcurrency ? "pool_cheio" : idleReason,
+        });
+      } catch { /* telemetria é best-effort */ }
+    };
+
+
     // Bootstrap
     await reserveNextChunk();
 
