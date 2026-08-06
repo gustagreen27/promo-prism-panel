@@ -42,7 +42,30 @@ async function metaFetch(path: string, init: RequestInit, tokenOverride?: string
   });
 }
 
-// Build components payload from template row
+const POSITIONAL_RE = /\{\{\s*\d+\s*\}\}/g;
+const NAMED_RE = /\{\{\s*([a-z0-9_]+)\s*\}\}/g;
+
+function namedParams(text: string): string[] {
+  const out: string[] = [];
+  for (const m of text.matchAll(NAMED_RE)) {
+    const n = m[1];
+    if (/^\d+$/.test(n)) continue;
+    if (!out.includes(n)) out.push(n);
+  }
+  return out;
+}
+
+function examplesFor(variables_examples: any, section: string): any[] {
+  return Array.isArray(variables_examples)
+    ? (variables_examples as any[]).find((e: any) => e?.section === section)?.values ?? []
+    : [];
+}
+
+/**
+ * Monta os components no formato da API de Modelos de Mensagens.
+ * Suporta variáveis posicionais ({{1}}) e nomeadas ({{nome_do_param}}).
+ * Retorna também o parameter_format detectado.
+ */
 export function buildTemplateComponents(t: {
   header_type?: string | null;
   header_text?: string | null;
@@ -51,18 +74,27 @@ export function buildTemplateComponents(t: {
   footer?: string | null;
   buttons?: any;
   variables_examples?: any;
-}) {
+}): any[] & { parameterFormat?: "NAMED" | "POSITIONAL" } {
   const components: any[] = [];
   const ht = (t.header_type || "").toLowerCase();
 
+  const bodyNamed = namedParams(t.body || "");
+  const usesNamed = bodyNamed.length > 0;
+
   if (ht === "text" && t.header_text) {
     const headerComp: any = { type: "HEADER", format: "TEXT", text: t.header_text };
-    const hVars = (t.header_text.match(/\{\{\d+\}\}/g) || []).length;
-    if (hVars > 0) {
-      const headerExamples = Array.isArray(t.variables_examples)
-        ? (t.variables_examples as any[]).find((e: any) => e?.section === "header")?.values ?? []
-        : [];
-      headerComp.example = { header_text: headerExamples.slice(0, hVars) };
+    const headerExamples = examplesFor(t.variables_examples, "header");
+    const hNamed = namedParams(t.header_text);
+    const hPos = (t.header_text.match(POSITIONAL_RE) || []).length;
+    if (hNamed.length > 0) {
+      headerComp.example = {
+        header_text_named_params: hNamed.map((param_name, i) => ({
+          param_name,
+          example: String(headerExamples[i] ?? param_name),
+        })),
+      };
+    } else if (hPos > 0) {
+      headerComp.example = { header_text: headerExamples.slice(0, hPos) };
     }
     components.push(headerComp);
   } else if (["image", "video", "document"].includes(ht) && t.header_media_url) {
@@ -71,18 +103,30 @@ export function buildTemplateComponents(t: {
       format: ht.toUpperCase(),
       example: { header_handle: [t.header_media_url] },
     });
+  } else if (ht === "location") {
+    components.push({ type: "HEADER", format: "LOCATION" });
   }
 
   const bodyComp: any = { type: "BODY", text: t.body };
-  const bVars = (t.body.match(/\{\{\d+\}\}/g) || []).length;
-  if (bVars > 0) {
-    const bodyExamples = Array.isArray(t.variables_examples)
-      ? (t.variables_examples as any[]).find((e: any) => e?.section === "body")?.values ?? []
-      : [];
-    if (bodyExamples.length < bVars) {
-      throw new Error(`Preencha ${bVars} exemplo(s) para as variáveis do corpo.`);
+  const bodyExamples = examplesFor(t.variables_examples, "body");
+  if (usesNamed) {
+    if (bodyExamples.length < bodyNamed.length) {
+      throw new Error(`Preencha ${bodyNamed.length} exemplo(s) para as variáveis do corpo (${bodyNamed.join(", ")}).`);
     }
-    bodyComp.example = { body_text: [bodyExamples.slice(0, bVars)] };
+    bodyComp.example = {
+      body_text_named_params: bodyNamed.map((param_name, i) => ({
+        param_name,
+        example: String(bodyExamples[i]),
+      })),
+    };
+  } else {
+    const bVars = (t.body.match(POSITIONAL_RE) || []).length;
+    if (bVars > 0) {
+      if (bodyExamples.length < bVars) {
+        throw new Error(`Preencha ${bVars} exemplo(s) para as variáveis do corpo.`);
+      }
+      bodyComp.example = { body_text: [bodyExamples.slice(0, bVars)] };
+    }
   }
   components.push(bodyComp);
 
@@ -90,13 +134,16 @@ export function buildTemplateComponents(t: {
 
   const btns = Array.isArray(t.buttons) ? t.buttons : [];
   if (btns.length) {
+    if (btns.length > 10) throw new Error("Máximo de 10 botões por template.");
     components.push({
       type: "BUTTONS",
-      buttons: btns.map((b: any) => {
+      buttons: btns.slice(0, 10).map((b: any) => {
         const type = (b.type || "").toUpperCase();
         if (type === "URL") {
           const btn: any = { type: "URL", text: b.text, url: b.url };
-          if ((b.url || "").includes("{{1}}") && b.example) btn.example = [b.example];
+          const url = String(b.url || "");
+          if ((POSITIONAL_RE.test(url) || namedParams(url).length > 0) && b.example) btn.example = [b.example];
+          POSITIONAL_RE.lastIndex = 0;
           return btn;
         }
         if (type === "PHONE_NUMBER") return { type: "PHONE_NUMBER", text: b.text, phone_number: b.phone_number };
@@ -112,7 +159,10 @@ export function buildTemplateComponents(t: {
       }),
     });
   }
-  return components;
+
+  const result = components as any;
+  result.parameterFormat = usesNamed ? "NAMED" : "POSITIONAL";
+  return result;
 }
 
 export async function submitTemplateToMeta(input: {
@@ -121,29 +171,40 @@ export async function submitTemplateToMeta(input: {
   category: "MARKETING" | "UTILITY" | "AUTHENTICATION";
   language: string;
   components: any[];
+  parameterFormat?: "NAMED" | "POSITIONAL" | null;
+  allowCategoryChange?: boolean;
+  accessToken?: string | null;
 }): Promise<MetaOk<{ id: string; status: string; category: string }> | MetaError> {
-  const res = await metaFetch(`/${input.wabaId}/message_templates`, {
-    method: "POST",
-    body: JSON.stringify({
-      name: input.name,
-      category: input.category,
-      language: input.language,
-      components: input.components,
-      allow_category_change: true,
-    }),
-  });
+  const payload: any = {
+    name: input.name,
+    category: input.category,
+    language: input.language,
+    components: input.components,
+    allow_category_change: input.allowCategoryChange !== false,
+  };
+  const fmt = input.parameterFormat ?? (input.components as any)?.parameterFormat;
+  if (fmt) payload.parameter_format = fmt;
+
+  const res = await metaFetch(
+    `/${input.wabaId}/message_templates`,
+    { method: "POST", body: JSON.stringify(payload) },
+    input.accessToken,
+  );
   const json: any = await res.json().catch(() => ({}));
   if (!res.ok) return { ok: false, ...humanizeMetaError(json, res.status), raw: json, httpStatus: res.status };
   return { ok: true, data: { id: json.id, status: json.status, category: json.category }, raw: json };
 }
 
+
 export async function fetchTemplateStatusFromMeta(input: {
   wabaId: string;
   name: string;
   language: string;
+  accessToken?: string | null;
 }): Promise<MetaOk<any> | MetaError> {
   const url = `/${input.wabaId}/message_templates?name=${encodeURIComponent(input.name)}&limit=50`;
-  const res = await metaFetch(url, { method: "GET" });
+  const res = await metaFetch(url, { method: "GET" }, input.accessToken);
+
   const json: any = await res.json().catch(() => ({}));
   if (!res.ok) return { ok: false, ...humanizeMetaError(json, res.status), raw: json, httpStatus: res.status };
   const match = (json.data || []).find((t: any) => t.name === input.name && t.language === input.language);

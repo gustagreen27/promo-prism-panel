@@ -199,8 +199,12 @@ function FormDialog({ editing, numbers, wabas, onSubmit, saving }: any) {
           <Input value={bodyExamples.join(" | ")} onChange={(e) => setBodyExamples(e.target.value.split("|").map((s) => s.trim()).filter(Boolean))} placeholder="João | Segunda-feira | 20% OFF" />
         </div>
         <div className="sm:col-span-2"><Label>Variáveis detectadas</Label>
-          <Input readOnly value={((form.body || "").match(/\{\{\d+\}\}/g) || []).join(", ") || "—"} className="font-mono text-xs" />
+          <Input readOnly value={((form.body || "").match(/\{\{\s*[a-z0-9_]+\s*\}\}/g) || []).join(", ") || "—"} className="font-mono text-xs" />
+          <p className="mt-1 text-xs text-muted-foreground">
+            Aceita posicionais (<span className="font-mono">{"{{1}}"}</span>) ou nomeadas (<span className="font-mono">{"{{nome_cliente}}"}</span>, minúsculas e underscore). Os exemplos acima seguem a mesma ordem.
+          </p>
         </div>
+
         <div className="sm:col-span-2"><Label>Rodapé (máx. 60 caracteres)</Label><Input maxLength={60} value={form.footer ?? ""} onChange={(e) => set("footer", e.target.value)} /></div>
         <div className="sm:col-span-2 space-y-2">
           <div className="flex items-center justify-between">

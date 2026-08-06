@@ -61,18 +61,35 @@ async function fetchWithTimeout(
 
 function buildBodyComponents(variables?: Record<string, string>) {
   if (!variables) return [];
-  // Ignore reserved meta keys (e.g. _header_image_url) and non-numeric keys.
-  const keys = Object.keys(variables)
+  // Ignore reserved meta keys (e.g. _header_image_url).
+  const positional = Object.keys(variables)
     .filter((k) => /^\d+$/.test(k))
     .sort((a, b) => Number(a) - Number(b));
-  if (!keys.length) return [];
+
+  if (positional.length) {
+    return [
+      {
+        type: "body",
+        parameters: positional.map((k) => ({ type: "text", text: String(variables[k] ?? "") })),
+      },
+    ];
+  }
+
+  // Parâmetros nomeados (parameter_format: NAMED) — ex.: { day: "Sábado" }
+  const named = Object.keys(variables).filter((k) => /^[a-z0-9_]+$/.test(k) && !k.startsWith("_"));
+  if (!named.length) return [];
   return [
     {
       type: "body",
-      parameters: keys.map((k) => ({ type: "text", text: String(variables[k] ?? "") })),
+      parameters: named.map((k) => ({
+        type: "text",
+        parameter_name: k,
+        text: String(variables[k] ?? ""),
+      })),
     },
   ];
 }
+
 
 function buildHeaderComponent(headerType?: string | null, value?: string | null) {
   if (!headerType || !value) return [];
