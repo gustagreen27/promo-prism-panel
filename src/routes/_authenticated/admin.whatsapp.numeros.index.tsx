@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, Pencil, RefreshCw, Cloud, PhoneCall, ShieldCheck, KeyRound, UserCog } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
+import { NumbersGrouped } from "@/components/admin/whatsapp/numbers-grouped";
 import { ErrorCard } from "@/components/admin/query-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
