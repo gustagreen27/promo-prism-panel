@@ -491,14 +491,29 @@ function getDeliveryMetrics(c: any) {
 
 }
 
-function DeliverySummaryCard({ icon, label, value, total, tone }: { icon: React.ReactNode; label: string; value: number; total: number; tone?: "danger" }) {
+type Tone = "primary" | "emerald" | "amber" | "violet" | "cyan" | "danger" | "muted";
+
+const TONE_CHIP: Record<Tone, string> = {
+  primary: "bg-primary/10 text-primary",
+  emerald: "bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-300",
+  amber: "bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-300",
+  violet: "bg-violet-100 text-violet-600 dark:bg-violet-950 dark:text-violet-300",
+  cyan: "bg-cyan-100 text-cyan-600 dark:bg-cyan-950 dark:text-cyan-300",
+  danger: "bg-destructive/10 text-destructive",
+  muted: "bg-muted text-muted-foreground",
+};
+
+function DeliverySummaryCard({ icon, label, value, total, tone = "primary" }: { icon: React.ReactNode; label: string; value: number; total: number; tone?: Tone }) {
   const pct = total > 0 ? Math.round((value / total) * 100) : 0;
   return (
-    <div className="rounded-xl border bg-card p-4">
-      <div className={`flex items-center gap-2 text-xs ${tone === "danger" ? "text-destructive" : "text-muted-foreground"}`}>{icon}{label}</div>
-      <div className="mt-1 flex items-end justify-between gap-2">
-        <div className="text-2xl font-bold tabular-nums">{value.toLocaleString("pt-BR")}</div>
-        <div className="text-xs text-muted-foreground">{pct}%</div>
+    <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-xs">
+      <div className="flex items-center gap-3">
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${TONE_CHIP[tone]}`}>{icon}</span>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-xs text-muted-foreground">{label}</div>
+          <div className="text-2xl font-bold tabular-nums leading-tight">{value.toLocaleString("pt-BR")}</div>
+        </div>
+        <div className={`text-sm font-semibold ${tone === "danger" ? "text-destructive" : "text-muted-foreground"}`}>{pct}%</div>
       </div>
     </div>
   );
@@ -513,18 +528,22 @@ function CampaignMetric({ label, value, danger }: { label: string; value: number
   );
 }
 
-function StatCard({ icon, label, value, active, onClick }: { icon: React.ReactNode; label: string; value: number; active?: boolean; onClick?: () => void }) {
+function StatCard({ icon, label, value, active, onClick, tone = "primary" }: { icon: React.ReactNode; label: string; value: number; active?: boolean; onClick?: () => void; tone?: Tone }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-xl border bg-card p-4 text-left transition-all hover:border-primary/50 hover:shadow-sm ${active ? "border-primary bg-primary/5 ring-2 ring-primary/15" : ""}`}
+      className={`flex items-center gap-3 rounded-2xl border bg-card p-4 text-left shadow-xs transition-all hover:border-primary/50 hover:shadow-sm ${active ? "border-primary bg-primary/5 ring-2 ring-primary/15" : "border-border/60"}`}
     >
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">{icon}{label}</div>
-      <div className="mt-1 text-2xl font-bold">{value}</div>
+      <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${TONE_CHIP[tone]}`}>{icon}</span>
+      <div className="min-w-0">
+        <div className="truncate text-sm text-muted-foreground">{label}</div>
+        <div className={`text-2xl font-bold tabular-nums leading-tight ${active ? "text-primary" : ""}`}>{value}</div>
+      </div>
     </button>
   );
 }
+
 
 function EmptyState({ hasAny, onNew }: { hasAny: boolean; onNew: () => void }) {
   return (
