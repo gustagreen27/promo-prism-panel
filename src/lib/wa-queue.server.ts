@@ -68,6 +68,36 @@ const FATAL_ACCOUNT_CODES: Record<string, string> = {
   "131042": "Problema de pagamento na conta comercial",
   "133010": "Número não registrado na Cloud API",
 };
+
+/**
+ * A Meta nem sempre devolve o código fatal em `error.code`: às vezes vem em
+ * `error_subcode` (com code=100/135000) ou apenas embutido na mensagem
+ * ("(#131031) Business account has been locked"). Sem cobrir os três formatos,
+ * o circuit breaker não dispara e a campanha segue tentando milhares de vezes.
+ */
+function detectFatalAccountCode(result: any): string | null {
+  const direct = result?.code != null ? String(result.code) : null;
+  if (direct && FATAL_ACCOUNT_CODES[direct]) return direct;
+
+  const err = result?.raw?.error ?? result?.raw ?? null;
+  const sub = err?.error_subcode != null ? String(err.error_subcode) : null;
+  if (sub && FATAL_ACCOUNT_CODES[sub]) return sub;
+
+  const haystack = `${result?.error ?? ""} ${err?.message ?? ""} ${err?.error_user_msg ?? ""}`;
+  for (const code of Object.keys(FATAL_ACCOUNT_CODES)) {
+    if (haystack.includes(`#${code}`) || haystack.includes(code)) return code;
+  }
+  if (/business account has been locked|account has been restricted/i.test(haystack)) return "131031";
+  return null;
+}
+
+/**
+ * Kill switch em memória: assim que um número é marcado como bloqueado, todas
+ * as lanes rodando no mesmo isolate param imediatamente, sem esperar o próximo
+ * tick nem um novo round-trip ao banco.
+ */
+const BLOCKED_CONNECTIONS = new Map<string, string>();
+
 // Lease bem curto: o processamento é seguro por reserva atômica com SKIP LOCKED,
 // então o próximo tick pode entrar em poucos segundos sem duplicar destinatário.
 // Antes 30s fazia o efeito indesejado de "bloco, pausa, bloco" quando o runtime
