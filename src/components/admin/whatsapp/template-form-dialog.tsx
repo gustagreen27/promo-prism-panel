@@ -1,7 +1,14 @@
 import { useRef, useState } from "react";
-import { Plus, Trash2, Bell, Info, Upload, Loader2 } from "lucide-react";
+import { Plus, Trash2, Bell, Info, Upload, Loader2, BookmarkPlus, Wand2 } from "lucide-react";
 import { toast } from "sonner";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  listTemplateReferences,
+  saveTemplateReference,
+  deleteTemplateReference,
+} from "@/lib/wa-template-references.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -84,6 +91,114 @@ function TemplatePreview({ form }: { form: any }) {
     </aside>
   );
 }
+
+/** Campos de conteúdo que uma referência guarda (não inclui WABA/número) */
+const REFERENCE_FIELDS = [
+  "name", "language", "category", "variable_format",
+  "header_type", "header_text", "header_media_url",
+  "body", "footer", "variables", "variables_examples", "buttons",
+  "ttl_enabled", "ttl_seconds",
+] as const;
+
+function pickReferencePayload(form: any) {
+  const out: Record<string, unknown> = {};
+  for (const k of REFERENCE_FIELDS) if (form[k] !== undefined) out[k] = form[k];
+  return out;
+}
+
+/** Biblioteca de referências: salvar o modelo atual e reaproveitar depois */
+function ReferencesPanel({ form, onApply }: { form: any; onApply: (payload: any) => void }) {
+  const qc = useQueryClient();
+  const listFn = useServerFn(listTemplateReferences);
+  const saveFn = useServerFn(saveTemplateReference);
+  const delFn = useServerFn(deleteTemplateReference);
+  const [refName, setRefName] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const { data: refs = [], isLoading } = useQuery({
+    queryKey: ["wa-template-references"],
+    queryFn: () => listFn({}),
+  });
+
+  const save = async () => {
+    const name = (refName || form.name || "").trim();
+    if (!name) { toast.error("Dê um nome à referência"); return; }
+    setBusy(true);
+    try {
+      await saveFn({ data: { name, description: (form.body ?? "").slice(0, 120), payload: pickReferencePayload(form) } });
+      setRefName("");
+      await qc.invalidateQueries({ queryKey: ["wa-template-references"] });
+      toast.success("Referência salva");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao salvar referência");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async (id: string) => {
+    try {
+      await delFn({ data: { id } });
+      await qc.invalidateQueries({ queryKey: ["wa-template-references"] });
+      toast.success("Referência removida");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao remover");
+    }
+  };
+
+  return (
+    <aside className="mt-4 rounded-lg border bg-card">
+      <div className="border-b px-4 py-3">
+        <h3 className="text-sm font-semibold">Referências</h3>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          Salve modelos prontos e reutilize com um clique. Depois é só trocar nome, destino e variáveis.
+        </p>
+      </div>
+      <div className="space-y-3 p-4">
+        <div className="flex gap-2">
+          <Input
+            className="h-8 text-xs"
+            placeholder={form.name ? `Salvar como “${form.name}”` : "Nome da referência"}
+            value={refName}
+            onChange={(e) => setRefName(e.target.value)}
+          />
+          <Button type="button" size="sm" variant="outline" disabled={busy} onClick={save} title="Salvar referência">
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookmarkPlus className="h-4 w-4" />}
+          </Button>
+        </div>
+
+        <div className="space-y-2">
+          {isLoading && <p className="text-xs text-muted-foreground">Carregando…</p>}
+          {!isLoading && refs.length === 0 && (
+            <p className="text-xs text-muted-foreground">Nenhuma referência salva ainda.</p>
+          )}
+          {refs.map((r: any) => (
+            <div key={r.id} className="rounded-md border bg-background p-2.5">
+              <div className="flex items-start gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-medium">{r.name}</p>
+                  {r.description && (
+                    <p className="line-clamp-2 text-[11px] leading-snug text-muted-foreground">{r.description}</p>
+                  )}
+                </div>
+                <Button type="button" size="icon" variant="ghost" className="h-7 w-7" title="Excluir"
+                  onClick={() => void remove(r.id)}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              <Button type="button" size="sm" variant="secondary" className="mt-2 h-7 w-full text-xs"
+                onClick={() => { onApply(r.payload ?? {}); toast.success(`Referência “${r.name}” aplicada`); }}>
+                <Wand2 className="mr-1 h-3.5 w-3.5" />Usar referência
+              </Button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+
 
 export function TemplateFormDialog({ editing, numbers, wabas, onSubmit, saving }: any) {
   const [form, setForm] = useState<any>(() => editing ?? {
@@ -488,6 +603,10 @@ export function TemplateFormDialog({ editing, numbers, wabas, onSubmit, saving }
 
         <div className="lg:sticky lg:top-24 lg:self-start">
           <TemplatePreview form={form} />
+          <ReferencesPanel
+            form={form}
+            onApply={(payload) => setForm((f: any) => ({ ...f, ...payload }))}
+          />
         </div>
       </div>
 
