@@ -103,6 +103,8 @@ function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId
   const [bizId, setBizId] = useState<string>(w.meta_business_id ?? "");
   const [bizName, setBizName] = useState<string>(w.meta_business_name ?? "");
   const [defConn, setDefConn] = useState<string>(w.default_connection_id ?? "");
+  const [finishId, setFinishId] = useState<string | null>(null);
+
 
   return (
     <div className="rounded-xl border bg-card p-4">
