@@ -828,9 +828,8 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                         {selectedNumber.quality_rating && (
                           <Badge variant="outline" className="gap-1"><Signal className="h-3 w-3" /> {selectedNumber.quality_rating}</Badge>
                         )}
-                        {selectedNumber.messaging_limit_tier && (
-                          <Badge variant="outline">Tier: {selectedNumber.messaging_limit_tier}</Badge>
-                        )}
+                        <Badge variant="outline">Limite/dia: {formatDailyLimit(selectedNumber as any)}</Badge>
+
                         {(selectedNumber as any).business_id && (
                           <Badge variant="outline">BM {(selectedNumber as any).business_id}</Badge>
                         )}
