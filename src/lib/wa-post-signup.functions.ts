@@ -67,9 +67,10 @@ export const getPostSignupStatus = createServerFn({ method: "POST" })
       {
         key: "profile",
         label: "Perfil comercial preenchido",
-        state: profile.ok ? (completeness.missing.length === 0 ? "ok" : "pending") : "error",
+        optional: true,
+        state: profile.ok ? "ok" : "pending",
         detail: profile.ok
-          ? `${completeness.filled}/${completeness.total} campos${completeness.missing.length ? ` • falta: ${completeness.missing.join(", ")}` : ""}`
+          ? `${completeness.filled}/${completeness.total} campos${completeness.missing.length ? ` • sugestão de preenchimento: ${completeness.missing.join(", ")}` : ""}`
           : graphError(profile.json, "Falha ao consultar o perfil"),
       },
       {
