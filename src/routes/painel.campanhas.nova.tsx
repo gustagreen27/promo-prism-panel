@@ -221,6 +221,8 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   const [headerMediaUrl, setHeaderMediaUrl] = useState<string>("");
   const [headerMediaMeta, setHeaderMediaMeta] = useState<{ name?: string; size?: number; contentType?: string } | null>(null);
   const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [preflightVerdict, setPreflightVerdict] = useState<"green" | "yellow" | "red" | null>(null);
+
 
   // Data
   const [numbers, setNumbers] = useState<NumberRow[]>([]);
