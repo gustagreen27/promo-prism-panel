@@ -427,7 +427,7 @@ export async function uploadHeaderHandle(input: {
     throw new Error(`Falha ao iniciar upload da mídia: ${startJson?.error?.message ?? startRes.status}`);
   }
 
-  const upRes = await fetch(`${GRAPH.replace(/\/v[\d.]+$/, "")}/${startJson.id}`, {
+  const upRes = await fetch(`${GRAPH}/${startJson.id}`, {
     method: "POST",
     headers: {
       Authorization: `OAuth ${token}`,
