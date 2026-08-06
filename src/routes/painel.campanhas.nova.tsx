@@ -1071,15 +1071,24 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
 
                         {extraLegs.map((leg, i) => {
                           const tpls = legTemplates[leg.connection_id] ?? [];
+                          const legTpl = tpls.find((t) => t.id === leg.template_id);
+                          const legBodyNums = legTpl ? metaVarsIn(legTpl.body ?? "") : [];
+                          const legUrlBtn = ((legTpl?.buttons ?? []) as any[]).find(
+                            (b) => (b?.type || "").toString().toLowerCase() === "url" && b?.url,
+                          );
+                          const legUrlNums = legUrlBtn?.url ? metaVarsIn(String(legUrlBtn.url)) : [];
+                          const legVars = leg.vars ?? {};
+                          const legBtn = leg.btn ?? {};
+                          const setLeg = (patch: any) =>
+                            setExtraLegs((s) => s.map((l, j) => (j === i ? { ...l, ...patch } : l)));
+                          const legPreview = (legTpl?.body ?? "").replace(/\{\{(\d+)\}\}/g, (_m, n) => legVars[String(n)] || `{{${n}}}`);
                           return (
-                            <div key={i} className="grid gap-2 sm:grid-cols-[1fr_1fr_90px_36px] sm:items-center">
+                            <div key={i} className="space-y-2 rounded-md border p-2">
+                              <div className="grid gap-2 sm:grid-cols-[1fr_1fr_90px_36px] sm:items-center">
                               <select
                                 className="h-9 w-full rounded-md border bg-background px-2 text-sm"
                                 value={leg.connection_id}
-                                onChange={(e) =>
-                                  setExtraLegs((s) => s.map((l, j) =>
-                                    j === i ? { ...l, connection_id: e.target.value, template_id: "" } : l))
-                                }
+                                onChange={(e) => setLeg({ connection_id: e.target.value, template_id: "", vars: {}, btn: {} })}
                               >
                                 <option value="">— Número —</option>
                                 {numbersByBm.map((g) => (
@@ -1096,9 +1105,7 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                                 className="h-9 w-full rounded-md border bg-background px-2 text-sm"
                                 value={leg.template_id}
                                 disabled={!leg.connection_id}
-                                onChange={(e) =>
-                                  setExtraLegs((s) => s.map((l, j) => (j === i ? { ...l, template_id: e.target.value } : l)))
-                                }
+                                onChange={(e) => setLeg({ template_id: e.target.value, vars: {}, btn: {} })}
                               >
                                 <option value="">{leg.connection_id ? "— Template —" : "Selecione o número"}</option>
                                 {tpls.map((t) => (
@@ -1109,10 +1116,7 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                                 type="number"
                                 min={1}
                                 value={leg.weight}
-                                onChange={(e) =>
-                                  setExtraLegs((s) => s.map((l, j) =>
-                                    j === i ? { ...l, weight: Math.max(1, Number(e.target.value) || 1) } : l))
-                                }
+                                onChange={(e) => setLeg({ weight: Math.max(1, Number(e.target.value) || 1) })}
                                 className="h-9"
                               />
                               <Button
@@ -1124,9 +1128,44 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
                               >
                                 <X className="h-4 w-4" />
                               </Button>
+                              </div>
+
+                              {legTpl && (legBodyNums.length > 0 || legUrlNums.length > 0) && (
+                                <div className="space-y-2 rounded-md bg-muted/30 p-2">
+                                  <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                                    Copy desta combinação
+                                  </div>
+                                  <div className="grid gap-2 sm:grid-cols-2">
+                                    {legBodyNums.map((n) => (
+                                      <Input
+                                        key={`leg-${i}-b-${n}`}
+                                        className="h-8 text-sm"
+                                        placeholder={`Corpo {{${n}}}`}
+                                        value={legVars[String(n)] ?? ""}
+                                        onChange={(e) => setLeg({ vars: { ...legVars, [String(n)]: e.target.value } })}
+                                      />
+                                    ))}
+                                    {legUrlNums.map((n) => (
+                                      <Input
+                                        key={`leg-${i}-u-${n}`}
+                                        className="h-8 text-sm"
+                                        placeholder={`URL do botão {{${n}}}`}
+                                        value={legBtn[String(n)] ?? ""}
+                                        onChange={(e) => setLeg({ btn: { ...legBtn, [String(n)]: e.target.value } })}
+                                      />
+                                    ))}
+                                  </div>
+                                  {legPreview && (
+                                    <div className="whitespace-pre-wrap rounded bg-background p-2 text-[11px] text-muted-foreground">
+                                      {legPreview}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           );
                         })}
+
                         <div className="text-[11px] text-muted-foreground">
                           Serão criados {extraLegs.filter((l) => l.connection_id && l.template_id).length + 1} disparos
                           vinculados, um por combinação, com os contatos divididos proporcionalmente.
