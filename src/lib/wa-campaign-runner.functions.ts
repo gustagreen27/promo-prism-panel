@@ -358,16 +358,8 @@ export const retryFailedRecipients = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => idSchema.parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { data: lockRow } = await context.supabase
-      .from("wa_campaigns")
-      .select("fatal_locked, fatal_error_code, fatal_error_message")
-      .eq("id", data.id)
-      .maybeSingle();
-    if (lockRow?.fatal_locked) {
-      throw new Error(
-        `Bloqueada por erro crítico ${lockRow.fatal_error_code ?? ""}: ${lockRow.fatal_error_message ?? "conta bloqueada pela Meta"}. Troque de WABA/número ou libere manualmente antes de reprocessar.`,
-      );
-    }
+    await assertCampaignUnlocked(context.supabase, data.id);
+
     const { data: updated, error } = await context.supabase
       .from("campaign_recipients")
       .update({
