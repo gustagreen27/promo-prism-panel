@@ -455,6 +455,41 @@ export async function processCampaignTick(
       return { processed: 0, done: true };
     }
 
+    // Número/rota bloqueado (por esta ou por QUALQUER outra campanha): nenhum
+    // disparo pode começar enquanto a Meta mantiver a restrição.
+    const connBlockedReason =
+      (conn as any).blocked_at
+        ? ((conn as any).blocked_reason ?? "número bloqueado pela Meta")
+        : BLOCKED_CONNECTIONS.get(String(camp.connection_id)) ?? null;
+    if (connBlockedReason) {
+      const msg = `Número bloqueado — ${connBlockedReason}`;
+      await supabaseAdmin
+        .from("wa_campaigns")
+        .update({
+          status: "paused",
+          paused_at: new Date().toISOString(),
+          pause_reason: "account_locked",
+          last_error: msg,
+          fatal_locked: true,
+          fatal_error_code: (conn as any).blocked_error_code ?? null,
+          fatal_error_message: msg,
+          fatal_locked_at: new Date().toISOString(),
+        })
+        .eq("id", campaignId);
+      await supabaseAdmin
+        .from("campaign_recipients")
+        .update({ status: "pending", failed_reason: null, error_code: null })
+        .eq("campaign_id", campaignId)
+        .eq("status", "processing")
+        .is("meta_message_id", null);
+      await logEvent(campaignId, "account_locked", `🔴 ${msg} — disparo impedido.`, {
+        connection_id: camp.connection_id,
+      });
+      return { processed: 0, done: true, reason: "account_locked" };
+    }
+
+
+
     // Pré-checagem de saúde de envio (health_status) — usa cache de 5 min.
     // BLOCKED/LIMITED impede a tentativa e pausa a campanha explicando o motivo.
     try {
