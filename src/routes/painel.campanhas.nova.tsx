@@ -2011,10 +2011,12 @@ function DispatchConfigCard({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="economico">{DISPATCH_PRESETS.economico.label}</SelectItem>
-            <SelectItem value="intermediario">{DISPATCH_PRESETS.intermediario.label}</SelectItem>
-            <SelectItem value="alto_volume">{DISPATCH_PRESETS.alto_volume.label}</SelectItem>
-            <SelectItem value="muito_alto">{DISPATCH_PRESETS.muito_alto.label}</SelectItem>
+            {(Object.keys(DISPATCH_PRESETS) as Array<keyof typeof DISPATCH_PRESETS>)
+              .filter((k) => k !== "maximo")
+              .map((k) => (
+                <SelectItem key={k} value={k}>{DISPATCH_PRESETS[k].label}</SelectItem>
+              ))}
+
             <SelectItem value="maximo">{DISPATCH_PRESETS.maximo.label}</SelectItem>
             <SelectItem value="custom">Personalizado</SelectItem>
           </SelectContent>
