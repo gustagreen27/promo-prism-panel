@@ -500,15 +500,58 @@ async function handleChange(supabaseAdmin: any, change: any, entryId: string | n
   let workspaceId: string | null = null;
   let wabaId: string | null = null;
   if (phoneNumberId) {
-    const { data: conn } = await supabaseAdmin
+    const { data: conns } = await supabaseAdmin
       .from("whatsapp_connections")
       .select("id, workspace_id, waba_id")
       .eq("phone_number_id", phoneNumberId)
-      .maybeSingle();
+      .order("created_at", { ascending: true })
+      .limit(1);
+    const conn = (conns ?? [])[0];
     connectionId = conn?.id ?? null;
     workspaceId = conn?.workspace_id ?? null;
-    wabaId = conn?.waba_id ?? null;
+    wabaId = conn?.waba_id ?? entryId ?? null;
+
+    // Fallback: workspace pela WABA (conexões antigas podem estar sem workspace).
+    if (!workspaceId && wabaId) {
+      const { data: waba } = await supabaseAdmin
+        .from("whatsapp_wabas")
+        .select("workspace_id")
+        .eq("waba_id", String(wabaId))
+        .limit(1)
+        .maybeSingle();
+      workspaceId = waba?.workspace_id ?? null;
+      if (workspaceId && connectionId) {
+        await supabaseAdmin
+          .from("whatsapp_connections")
+          .update({ workspace_id: workspaceId })
+          .eq("id", connectionId);
+      }
+    }
+
+    // Número ainda não cadastrado: cria a conexão para que o Atendimento
+    // receba as mensagens de qualquer número conectado à nossa WABA.
+    if (!connectionId && workspaceId) {
+      const label = value?.metadata?.display_phone_number ?? String(phoneNumberId);
+      const { data: created } = await supabaseAdmin
+        .from("whatsapp_connections")
+        .insert({
+          workspace_id: workspaceId,
+          name: label,
+          phone_number_id: String(phoneNumberId),
+          waba_id: wabaId ? String(wabaId) : null,
+          display_phone: value?.metadata?.display_phone_number ?? null,
+          nome_interno: label,
+          provider: "meta_cloud",
+          status: "ativo",
+          use_global_token: true,
+        })
+
+        .select("id")
+        .maybeSingle();
+      connectionId = created?.id ?? null;
+    }
   }
+
 
   // ── statuses[] ─────────────────────────────────────────────────
   const statuses: any[] = Array.isArray(value?.statuses) ? value.statuses : [];

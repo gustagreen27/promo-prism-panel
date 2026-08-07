@@ -107,18 +107,15 @@ function AtendimentoPage() {
   const [assignedFilter, setAssignedFilter] = useState<"all" | "me" | "none">("all");
   const [search, setSearch] = useState("");
 
-  // Números com conversas (coluna 1)
+  // Todos os números conectados (coluna 1), com ou sem conversas
   const numbersQuery = useQuery({
     queryKey: ["atd", "numbers"],
     queryFn: () => numbersFn() as Promise<AttendanceNumber[]>,
-    refetchInterval: 30000,
+    refetchInterval: 20000,
   });
   const numbers = numbersQuery.data ?? [];
+  const totalUnread = numbers.reduce((a, n) => a + n.unread, 0);
 
-  // Seleciona automaticamente o primeiro número assim que a lista carrega.
-  useEffect(() => {
-    if (!selectedNumber && numbers.length) setSelectedNumber(numbers[0].phone_number_id);
-  }, [numbers, selectedNumber]);
 
   // Lista de conversas (SWR + realtime)
   const convsQuery = useQuery({
@@ -197,10 +194,31 @@ function AtendimentoPage() {
               </div>
             ) : numbers.length === 0 ? (
               <div className="p-4 text-center text-xs text-muted-foreground">
-                Nenhum número com conversas.
+                Nenhum número conectado.
               </div>
+
             ) : (
               <ul className="divide-y">
+                <li>
+                  <button
+                    onClick={() => {
+                      setSelectedNumber(null);
+                      setSelectedId(null);
+                    }}
+                    className={`w-full px-3 py-2 text-left hover:bg-accent ${!selectedNumber ? "bg-accent" : ""}`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate text-sm font-medium">Todos os números</span>
+                      {totalUnread > 0 && (
+                        <Badge className="h-5 shrink-0 rounded-full px-1.5 text-[10px]">{totalUnread}</Badge>
+                      )}
+                    </div>
+                    <div className="truncate text-[11px] text-muted-foreground">
+                      Chat ao vivo de todas as conexões
+                    </div>
+                  </button>
+                </li>
+
                 {numbers.map((n) => {
                   const active = n.phone_number_id === selectedNumber;
                   return (

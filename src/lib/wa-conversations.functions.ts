@@ -8,18 +8,46 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 // ---------- Helpers ----------
 
-async function primaryWorkspaceId(supabase: any, userId: string): Promise<string> {
-  const { data } = await supabase
+/**
+ * Workspaces visíveis para o usuário. Staff interno (admin) enxerga todos —
+ * assim o Atendimento cobre TODOS os números conectados, não só o workspace
+ * principal do usuário.
+ */
+async function accessibleWorkspaceIds(supabase: any, userId: string): Promise<string[]> {
+  const { data: staff } = await supabase.rpc("is_internal_staff", { _user: userId });
+  if (staff) {
+    const { data } = await supabase.from("workspaces").select("id").limit(500);
+    const ids = (data ?? []).map((w: any) => w.id);
+    if (ids.length) return ids;
+  }
+  const { data: mem } = await supabase
     .from("workspace_members")
-    .select("workspace_id, workspaces:workspaces(created_at)")
-    .eq("user_id", userId)
-    .order("workspaces(created_at)", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  const ws = (data as any)?.workspace_id;
-  if (!ws) throw new Error("Sem workspace vinculado");
-  return ws;
+    .select("workspace_id")
+    .eq("user_id", userId);
+  const ids = (mem ?? []).map((m: any) => m.workspace_id).filter(Boolean);
+  if (!ids.length) throw new Error("Sem workspace vinculado");
+  return ids;
 }
+
+/** Resolve o workspace de uma conversa garantindo que o usuário tem acesso. */
+async function conversationScope(
+  supabase: any,
+  userId: string,
+  conversationId: string,
+): Promise<{ wsId: string; ids: string[] }> {
+  const ids = await accessibleWorkspaceIds(supabase, userId);
+  const { data } = await supabase
+    .from("wa_conversations")
+    .select("workspace_id")
+    .eq("id", conversationId)
+    .in("workspace_id", ids)
+    .maybeSingle();
+  if (!data?.workspace_id) throw new Error("Conversa não encontrada");
+  return { wsId: data.workspace_id as string, ids };
+}
+
+
+
 
 // ---------- Numbers (inbox grouped by WhatsApp number) ----------
 
@@ -42,11 +70,11 @@ export type AttendanceNumber = {
 export const listAttendanceNumbers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<AttendanceNumber[]> => {
-    const wsId = await primaryWorkspaceId(context.supabase, context.userId);
+    const wsIds = await accessibleWorkspaceIds(context.supabase, context.userId);
     const { data: rows, error } = await context.supabase
       .from("wa_conversations")
       .select("phone_number_id, connection_id, unread_count, service_window_status, last_message_at")
-      .eq("workspace_id", wsId)
+      .in("workspace_id", wsIds)
       .limit(5000);
     if (error) throw new Error(error.message);
 
@@ -80,36 +108,64 @@ export const listAttendanceNumbers = createServerFn({ method: "GET" })
     }
 
     const items = [...map.values()];
-    const ids = items.map((i) => i.phone_number_id).filter(Boolean);
-    if (ids.length) {
-      const { data: conns } = await context.supabase
-        .from("whatsapp_connections")
-        .select("id, phone_number_id, display_phone, phone, verified_name, nome_interno, quality_rating, status, waba_ref_id")
-        .in("phone_number_id", ids);
-      const list = (conns ?? []) as any[];
-      const wabaRefs = [...new Set(list.map((c) => c.waba_ref_id).filter(Boolean))];
-      const wabaNames = new Map<string, string>();
-      if (wabaRefs.length) {
-        const { data: wabas } = await context.supabase
-          .from("whatsapp_wabas")
-          .select("id, waba_id, nome_interno")
-          .in("id", wabaRefs);
-        for (const w of (wabas ?? []) as any[]) wabaNames.set(w.id, w.nome_interno ?? w.waba_id);
-      }
-      const byPni = new Map<string, any>();
-      for (const c of list) byPni.set(c.phone_number_id, c);
-      for (const i of items) {
-        const c = byPni.get(i.phone_number_id);
-        if (!c) continue;
-        i.connection_id = c.id;
-        i.display_phone_number = c.display_phone ?? c.phone ?? null;
-        i.nome_interno = c.nome_interno ?? c.verified_name ?? null;
-        i.quality_rating = c.quality_rating ?? null;
-        i.status = c.status ?? null;
-        i.waba_name = c.waba_ref_id ? wabaNames.get(c.waba_ref_id) ?? null : null;
-      }
 
+    // Todos os números conectados (mesmo sem nenhuma conversa ainda) —
+    // o chat ao vivo precisa listar qualquer número que possa receber mensagem.
+    const { data: conns } = await context.supabase
+      .from("whatsapp_connections")
+      .select(
+        "id, workspace_id, phone_number_id, display_phone, phone, verified_name, nome_interno, quality_rating, status, waba_ref_id",
+      )
+      .not("phone_number_id", "is", null)
+      .limit(1000);
+    const list = ((conns ?? []) as any[]).filter(
+      (c) => !c.workspace_id || wsIds.includes(c.workspace_id),
+    );
+
+    const wabaRefs = [...new Set(list.map((c) => c.waba_ref_id).filter(Boolean))];
+    const wabaNames = new Map<string, string>();
+    if (wabaRefs.length) {
+      const { data: wabas } = await context.supabase
+        .from("whatsapp_wabas")
+        .select("id, waba_id, nome_interno")
+        .in("id", wabaRefs);
+      for (const w of (wabas ?? []) as any[]) wabaNames.set(w.id, w.nome_interno ?? w.waba_id);
     }
+
+    const byPni = new Map<string, any>();
+    for (const c of list) byPni.set(c.phone_number_id, c);
+
+    // Garante uma entrada para cada número conectado.
+    for (const c of list) {
+      if (map.has(c.phone_number_id)) continue;
+      const empty: AttendanceNumber = {
+        phone_number_id: c.phone_number_id,
+        connection_id: c.id,
+        display_phone_number: null,
+        nome_interno: null,
+        waba_name: null,
+        quality_rating: null,
+        status: null,
+        total: 0,
+        unread: 0,
+        open_window: 0,
+        last_message_at: null,
+      };
+      map.set(c.phone_number_id, empty);
+      items.push(empty);
+    }
+
+    for (const i of items) {
+      const c = byPni.get(i.phone_number_id);
+      if (!c) continue;
+      i.connection_id = c.id;
+      i.display_phone_number = c.display_phone ?? c.phone ?? null;
+      i.nome_interno = c.nome_interno ?? c.verified_name ?? null;
+      i.quality_rating = c.quality_rating ?? null;
+      i.status = c.status ?? null;
+      i.waba_name = c.waba_ref_id ? wabaNames.get(c.waba_ref_id) ?? null : null;
+    }
+
 
     items.sort((a, b) => (b.last_message_at ?? "").localeCompare(a.last_message_at ?? ""));
     return items;
@@ -135,7 +191,7 @@ export const listConversationsAtd = createServerFn({ method: "GET" })
       .parse(d ?? {}),
   )
   .handler(async ({ data, context }) => {
-    const wsId = await primaryWorkspaceId(context.supabase, context.userId);
+    const wsIds = await accessibleWorkspaceIds(context.supabase, context.userId);
     const status = data.status ?? "all";
     const windowF = data.window ?? "all";
     const assigned = data.assigned ?? "all";
@@ -145,7 +201,7 @@ export const listConversationsAtd = createServerFn({ method: "GET" })
       .select(
         "id, contact_phone, contact_name, wa_id, connection_id, phone_number_id, campaign_id, assigned_user_id, last_message_at, last_message_preview, unread_count, conversation_status, service_window_status, service_window_expires_at, tags, updated_at",
       )
-      .eq("workspace_id", wsId)
+      .in("workspace_id", wsIds)
       .order("last_message_at", { ascending: false, nullsFirst: false })
       .order("updated_at", { ascending: false })
       .limit(limit);
@@ -171,7 +227,7 @@ export const getConversation = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const wsId = await primaryWorkspaceId(context.supabase, context.userId);
+    const { wsId } = await conversationScope(context.supabase, context.userId, data.id);
     const { data: conv, error } = await context.supabase
       .from("wa_conversations")
       .select(
@@ -216,7 +272,7 @@ export const listConversationMessages = createServerFn({ method: "GET" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const wsId = await primaryWorkspaceId(context.supabase, context.userId);
+    const { wsId } = await conversationScope(context.supabase, context.userId, data.conversation_id);
     const { data: rows, error } = await context.supabase
       .from("wa_conversation_messages")
       .select(
@@ -236,7 +292,7 @@ export const markConversationRead = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ conversation_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const wsId = await primaryWorkspaceId(context.supabase, context.userId);
+    const { wsId } = await conversationScope(context.supabase, context.userId, data.conversation_id);
     const { error } = await context.supabase
       .from("wa_conversations")
       .update({ unread_count: 0 })
@@ -259,7 +315,7 @@ export const setConversationAssignee = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const wsId = await primaryWorkspaceId(context.supabase, context.userId);
+    const { wsId } = await conversationScope(context.supabase, context.userId, data.conversation_id);
     const { error } = await context.supabase
       .from("wa_conversations")
       .update({ assigned_user_id: data.assigned_user_id })
@@ -287,7 +343,7 @@ export const setConversationStatus = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const wsId = await primaryWorkspaceId(context.supabase, context.userId);
+    const { wsId } = await conversationScope(context.supabase, context.userId, data.conversation_id);
     const { error } = await context.supabase
       .from("wa_conversations")
       .update({ conversation_status: data.status })
@@ -380,7 +436,7 @@ export const sendConversationMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => OutboundSchema.parse(d))
   .handler(async ({ data, context }) => {
-    const wsId = await primaryWorkspaceId(context.supabase, context.userId);
+    const { wsId } = await conversationScope(context.supabase, context.userId, data.conversation_id);
 
     const { data: conv, error: convErr } = await context.supabase
       .from("wa_conversations")
@@ -566,11 +622,11 @@ export const listApprovedTemplates = createServerFn({ method: "GET" })
     z.object({ connection_id: z.string().uuid().optional() }).parse(d ?? {}),
   )
   .handler(async ({ data, context }) => {
-    const wsId = await primaryWorkspaceId(context.supabase, context.userId);
+    const wsIds = await accessibleWorkspaceIds(context.supabase, context.userId);
     let q = context.supabase
       .from("whatsapp_templates")
       .select("id, name, language, status, category, waba_ref_id, connection_id")
-      .eq("workspace_id", wsId)
+      .in("workspace_id", wsIds)
       .eq("status", "approved")
       .order("name", { ascending: true })
       .limit(500);
@@ -601,7 +657,7 @@ export const listConversationNotes = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ conversation_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const wsId = await primaryWorkspaceId(context.supabase, context.userId);
+    const { wsId } = await conversationScope(context.supabase, context.userId, data.conversation_id);
     const { data: rows, error } = await context.supabase
       .from("wa_internal_notes")
       .select("id, body, author_user_id, created_at")
@@ -618,7 +674,7 @@ export const addConversationNote = createServerFn({ method: "POST" })
     z.object({ conversation_id: z.string().uuid(), body: z.string().min(1).max(4000) }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    const wsId = await primaryWorkspaceId(context.supabase, context.userId);
+    const { wsId } = await conversationScope(context.supabase, context.userId, data.conversation_id);
     const { error } = await context.supabase.from("wa_internal_notes").insert({
       workspace_id: wsId,
       conversation_id: data.conversation_id,
