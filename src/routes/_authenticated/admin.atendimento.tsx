@@ -205,10 +205,25 @@ function AtendimentoPage() {
           <MessageCircle className="h-5 w-5" />
         </span>
         <h1 className="text-xl font-semibold tracking-tight">Atendimento WhatsApp</h1>
-        <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+        <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 transition-all dark:text-emerald-300">
           {countAll} conversas
         </span>
+        <span
+          className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+            live
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300"
+              : "border-border bg-muted text-muted-foreground"
+          }`}
+          title={live ? "Atualizações em tempo real ativas" : "Reconectando… usando atualização periódica"}
+        >
+          <span className="relative flex h-2 w-2">
+            {live && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />}
+            <span className={`relative inline-flex h-2 w-2 rounded-full ${live ? "bg-emerald-500" : "bg-muted-foreground/50"}`} />
+          </span>
+          {live ? "Ao vivo" : "Reconectando"}
+        </span>
         <div className="ml-auto flex items-center gap-2">
+
           <AttendanceSettingsDialog />
           <Button variant="ghost" size="icon" className="rounded-xl text-muted-foreground" title="Notificações">
             <Bell className="h-4 w-4" />
