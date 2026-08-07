@@ -558,9 +558,11 @@ function ChatPanel(props: {
   sendFn: any;
   setStatusFn: any;
   tplListFn: any;
+  onBack?: () => void;
+  onToggleContext?: () => void;
 }) {
   const qc = useQueryClient();
-  const { conversationId, getFn, msgsFn, sendFn, setStatusFn, tplListFn } = props;
+  const { conversationId, getFn, msgsFn, sendFn, setStatusFn, tplListFn, onBack, onToggleContext } = props;
   const [text, setText] = useState("");
   const [tplOpen, setTplOpen] = useState(false);
   const [tplId, setTplId] = useState<string>("");
