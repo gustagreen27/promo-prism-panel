@@ -1402,10 +1402,17 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
         <div className="mt-1 text-[10px] opacity-70">Selecionado: {msg.interactive_list_title}</div>
       )}
 
+      {failed && msg.error_message && (
+        <div className="mt-1 rounded-md bg-destructive/10 px-2 py-1 text-[10px] text-destructive">
+          Falha no envio · {msg.error_message}
+        </div>
+      )}
+
       <div className={`mt-1 flex items-center gap-1 text-[10px] ${out ? "text-foreground/60 dark:text-emerald-100/90" : "text-muted-foreground"}`}>
         <span>{formatTime(msg.created_at)}</span>
         {out && <StatusTick status={msg.status} />}
-        {msg.error_message && <span className="text-destructive">· {msg.error_message}</span>}
+        {!failed && msg.error_message && <span className="text-destructive">· {msg.error_message}</span>}
+
         {onReply && (
           <button
             className={`ml-auto opacity-0 transition group-hover:opacity-100 ${out ? "text-foreground/60 dark:text-emerald-100" : "text-muted-foreground"}`}
