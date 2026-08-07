@@ -844,14 +844,25 @@ function ChatPanel(props: {
 
   return (
     <>
-      <div className="flex items-center justify-between gap-2 border-b bg-card px-4 py-3">
-        <div className="flex min-w-0 items-center gap-3">
+      <div className="flex items-center justify-between gap-2 border-b bg-card/80 px-3 py-2.5 backdrop-blur-sm md:px-4">
+        <div className="flex min-w-0 items-center gap-2.5">
+          {onBack && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 shrink-0 rounded-full md:hidden"
+              onClick={onBack}
+              title="Voltar"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          )}
           <ContactAvatar name={conv?.contact_name} phone={conv?.contact_phone} />
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold">
               {conv?.contact_name || formatPhone(conv?.contact_phone)}
             </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
               <span className="truncate">
                 {conv?.contact_name ? formatPhone(conv?.contact_phone) : "Clique para adicionar nome"}
               </span>
@@ -864,13 +875,13 @@ function ChatPanel(props: {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {windowOpen ? (
-            <span className="hidden items-center gap-1 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 sm:inline-flex dark:text-emerald-300">
+            <span className="hidden items-center gap-1 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 lg:inline-flex dark:text-emerald-300">
               <Clock className="h-3 w-3" /> 24h aberta {remaining ? `• ${remaining}` : ""}
             </span>
           ) : (
-            <span className="hidden items-center gap-1 rounded-full bg-destructive/10 px-3 py-1 text-xs font-medium text-destructive sm:inline-flex">
+            <span className="hidden items-center gap-1 rounded-full bg-destructive/10 px-3 py-1 text-xs font-medium text-destructive lg:inline-flex">
               <Clock className="h-3 w-3" /> Janela fechada
             </span>
           )}
@@ -886,7 +897,7 @@ function ChatPanel(props: {
               }
             }}
           >
-            <SelectTrigger className="h-9 w-36 rounded-xl text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-9 w-32 rounded-full text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="open">Aberta</SelectItem>
               <SelectItem value="waiting">Aguardando</SelectItem>
@@ -895,40 +906,67 @@ function ChatPanel(props: {
               <SelectItem value="archived">Arquivada</SelectItem>
             </SelectContent>
           </Select>
+          {onToggleContext && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden h-9 w-9 rounded-full text-muted-foreground xl:inline-flex"
+              onClick={onToggleContext}
+              title="Painel do contato"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 
       <div
         ref={scrollRef}
-        className="flex-1 space-y-2 overflow-y-auto bg-[oklch(0.96_0.015_95)] p-4 dark:bg-[oklch(0.22_0.01_150)]"
+        className="bg-wa-chat flex-1 space-y-1.5 overflow-y-auto p-4"
       >
-        <div className="mx-auto mb-3 flex max-w-md items-center justify-center gap-2 rounded-lg bg-amber-100/80 px-3 py-1.5 text-center text-[11px] text-amber-900 dark:bg-amber-950/60 dark:text-amber-200">
+        <div className="mx-auto mb-3 flex max-w-md items-center justify-center gap-2 rounded-xl bg-amber-100/80 px-3 py-1.5 text-center text-[11px] text-amber-900 shadow-sm dark:bg-amber-950/60 dark:text-amber-200">
           <Lock className="h-3 w-3 shrink-0" />
           As mensagens são protegidas com criptografia de ponta a ponta.
         </div>
-        {(msgsQuery.data as any[] | undefined)?.map((m) => (
-          <MessageBubble
-            key={m.id}
-            msg={m}
-            onReply={(mm) => {
-              const preview =
-                mm.body ??
-                (mm.message_type ? `[${mm.message_type}]` : "Mensagem");
-              const wamid = mm.wamid || null;
-              if (!wamid) {
-                toast.error("Sem identificador da mensagem para citar.");
-                return;
-              }
-              setReplyTo({ wamid, preview: String(preview).slice(0, 120) });
-            }}
-          />
-        )) ?? null}
+        {(() => {
+          const list = (msgsQuery.data as any[] | undefined) ?? [];
+          let lastDay = "";
+          return list.map((m) => {
+            const day = dayLabel(m.created_at);
+            const showDay = day !== lastDay;
+            lastDay = day;
+            return (
+              <div key={m.id} className="space-y-1.5">
+                {showDay && (
+                  <div className="flex justify-center py-2">
+                    <span className="rounded-full bg-background/90 px-3 py-1 text-[11px] font-medium text-muted-foreground shadow-sm">
+                      {day}
+                    </span>
+                  </div>
+                )}
+                <MessageBubble
+                  msg={m}
+                  onReply={(mm) => {
+                    const preview = mm.body ?? (mm.message_type ? `[${mm.message_type}]` : "Mensagem");
+                    const wamid = mm.wamid || null;
+                    if (!wamid) {
+                      toast.error("Sem identificador da mensagem para citar.");
+                      return;
+                    }
+                    setReplyTo({ wamid, preview: String(preview).slice(0, 120) });
+                  }}
+                />
+              </div>
+            );
+          });
+        })()}
         {msgsQuery.isLoading && (
           <div className="flex justify-center">
             <Loader2 className="h-4 w-4 animate-spin" />
           </div>
         )}
       </div>
+
 
 
       <div className="space-y-2 border-t p-3">
