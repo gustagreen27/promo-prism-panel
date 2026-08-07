@@ -127,6 +127,8 @@ function AtendimentoPage() {
   const totalUnread = numbers.reduce((a, n) => a + n.unread, 0);
 
 
+  const [live, setLive] = useState(false);
+
   // Lista de conversas (SWR + realtime)
   const convsQuery = useQuery({
     queryKey: ["atd", "conversations", { selectedNumber, statusFilter, windowFilter, assignedFilter, search }],
@@ -141,35 +143,42 @@ function AtendimentoPage() {
         },
       }) as Promise<ConversationRow[]>,
     enabled: !!selectedNumber || numbersQuery.isFetched,
-    refetchInterval: 15000,
+    placeholderData: (prev) => prev,
+    refetchInterval: live ? 30000 : 5000,
   });
 
 
   useEffect(() => {
+    const bumpLists = () => {
+      qc.invalidateQueries({ queryKey: ["atd", "conversations"] });
+      qc.invalidateQueries({ queryKey: ["atd", "numbers"] });
+    };
     const ch = supabase
       .channel("atd-conversations")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "wa_conversations" },
-        () => {
-          qc.invalidateQueries({ queryKey: ["atd", "conversations"] });
-          qc.invalidateQueries({ queryKey: ["atd", "numbers"] });
-        },
+        bumpLists,
       )
       .on(
+        // INSERT (nova mensagem) e UPDATE (status de envio/entrega/erro)
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "wa_conversation_messages" },
+        { event: "*", schema: "public", table: "wa_conversation_messages" },
         (payload) => {
-          const convId = (payload.new as any)?.conversation_id;
+          const convId = (payload.new as any)?.conversation_id ?? (payload.old as any)?.conversation_id;
           if (convId) qc.invalidateQueries({ queryKey: ["atd", "messages", convId] });
-          qc.invalidateQueries({ queryKey: ["atd", "conversations"] });
+          bumpLists();
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        setLive(status === "SUBSCRIBED");
+      });
     return () => {
+      setLive(false);
       supabase.removeChannel(ch);
     };
   }, [qc]);
+
 
   const convs = convsQuery.data ?? [];
 
