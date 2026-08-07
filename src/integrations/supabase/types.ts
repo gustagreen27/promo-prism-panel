@@ -2508,6 +2508,9 @@ export type Database = {
       wa_campaigns: {
         Row: {
           abort_on_failure_rate: number | null
+          adaptive_last_step_at: string | null
+          adaptive_rate_current: number | null
+          adaptive_rate_enabled: boolean
           approval_mode: string
           approval_status: string
           approved_at: string | null
@@ -2607,6 +2610,9 @@ export type Database = {
         }
         Insert: {
           abort_on_failure_rate?: number | null
+          adaptive_last_step_at?: string | null
+          adaptive_rate_current?: number | null
+          adaptive_rate_enabled?: boolean
           approval_mode?: string
           approval_status?: string
           approved_at?: string | null
@@ -2706,6 +2712,9 @@ export type Database = {
         }
         Update: {
           abort_on_failure_rate?: number | null
+          adaptive_last_step_at?: string | null
+          adaptive_rate_current?: number | null
+          adaptive_rate_enabled?: boolean
           approval_mode?: string
           approval_status?: string
           approved_at?: string | null

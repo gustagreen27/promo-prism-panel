@@ -55,10 +55,20 @@ const OPT_OUT_REGEX = /\b(parar|sair|cancelar|cancela|remover|descadastrar|n[ãa
 // 131000 = "Something went wrong" (transient generic error, isolado por recipient)
 // 131016 = Service overloaded; 131026 = Message undeliverable (retry tenta re-rota); 368 = temporarily blocked
 const RETRYABLE_CODES = new Set([
-  "130429", "131000", "131016", "131026", "131056", "131048", "131047",
+  "130429", "80007", "131000", "131016", "131026", "131056", "131048", "131047",
   "368", "500", "502", "503", "504",
 ]);
+// Erros de throughput/rate limit tratados pelo controlador adaptativo.
+// 130429 = throughput do número excedido; 80007 = rate limit da API (WABA).
+const THROUGHPUT_ERROR_CODES = new Set(["130429", "80007"]);
+// Modo adaptativo: rampa 20 → 30 → 40 → ... até o teto configurado.
+const ADAPTIVE_START_RATE = 20;
+const ADAPTIVE_MIN_RATE = 5;
+const ADAPTIVE_STEP = 10;
+const ADAPTIVE_STEP_INTERVAL_MS = 60_000;
+const ADAPTIVE_BACKOFF_FACTOR = 0.8;
 const MAX_ATTEMPTS = 5;
+
 // Erros FATAIS de conta: nunca reprocessar, parar tudo na primeira ocorrência.
 // 131031 = Business account has been locked (bloqueio da conta comercial pela Meta)
 // 131042 = problema de pagamento/método de cobrança na conta
@@ -649,8 +659,25 @@ export async function processCampaignTick(
       campRateRaw == null
         ? Math.max(phoneBucketRate, DEFAULT_RATE_PER_SECOND)
         : Math.max(1, Number(campRateRaw));
-    // Rate efetivo desta campanha = min(campanha, bucket global do número).
-    const effectiveRate = Math.min(rawCampRate, phoneBucketRate);
+
+    // --------------------------------------------------------------------
+    // Modo ADAPTATIVO (por campanha)
+    // --------------------------------------------------------------------
+    // Começa em ADAPTIVE_START_RATE msg/s e sobe em degraus (+10) enquanto a
+    // API estiver saudável (sem 130429/80007 no tick). Ao detectar throughput
+    // error, cai para 80% do valor atual e só volta a subir depois do
+    // período de estabilização.
+    const adaptiveEnabled = !!(camp as any).adaptive_rate_enabled;
+    let adaptiveRate = adaptiveEnabled
+      ? Math.max(
+          ADAPTIVE_MIN_RATE,
+          Math.min(rawCampRate, Number((camp as any).adaptive_rate_current ?? ADAPTIVE_START_RATE)),
+        )
+      : rawCampRate;
+
+    // Rate efetivo desta campanha = min(campanha/adaptativo, bucket global do número).
+    const effectiveRate = Math.min(adaptiveEnabled ? adaptiveRate : rawCampRate, phoneBucketRate);
+
     // Número de trilhas paralelas desta campanha (workers simultâneos).
     const laneCount = Math.max(1, Number((camp as any).worker_lanes ?? 4));
 
@@ -723,6 +750,8 @@ export async function processCampaignTick(
     let lastError: string | null = null;
     let consecutiveNetworkErrors = 0;
     let consecutive429 = 0;
+    let throughputErrors = 0;
+
     let systemicPause: { reason: string; message: string } | null = null;
     let fatalStop: { code: string; message: string } | null = null;
 
@@ -1143,7 +1172,8 @@ export async function processCampaignTick(
       }
 
       const isTokenErr = result.code === "190" || /token|OAuthException/i.test(result.error || "");
-      const isRateLimit = result.code === "130429";
+      const codeStr = result.code ? String(result.code) : "";
+      const isRateLimit = THROUGHPUT_ERROR_CODES.has(codeStr);
       const isPausedTemplate = result.code === "132015" || /template .*paused|temporarily unavailable/i.test(result.error || "");
       const isRetryable = isNetworkErr || isRateLimit ||
         (result.code ? RETRYABLE_CODES.has(String(result.code)) : false);
@@ -1166,6 +1196,7 @@ export async function processCampaignTick(
 
       if (isRateLimit) {
         consecutive429++;
+        throughputErrors++;
         // NÃO pausa a campanha: reduz temporariamente APENAS este número.
         // Depois do throttle expirar, o número volta ao teto progressivamente.
         if (consecutive429 === 1 || consecutive429 % SYSTEMIC_RATE_LIMIT_STREAK === 0) {
@@ -1174,19 +1205,20 @@ export async function processCampaignTick(
               _phone_number_id: phoneNumberId,
               _factor: 0.6,
               _seconds: 20,
-              _reason: `130429 x${consecutive429}`,
+              _reason: `${codeStr} x${consecutive429}`,
             });
             await logEvent(
               campaignId,
               "number_throttled",
-              `130429 no número ${phoneNumberId} — reduzindo temporariamente para ${newRate ?? "?"} msg/s (campanha segue ativa)`,
-              { phone_number_id: phoneNumberId, streak: consecutive429, new_rate: newRate },
+              `${codeStr} no número ${phoneNumberId} — reduzindo temporariamente para ${newRate ?? "?"} msg/s (campanha segue ativa)`,
+              { phone_number_id: phoneNumberId, streak: consecutive429, new_rate: newRate, error_code: codeStr },
             );
           } catch { /* best-effort */ }
         }
       } else {
         consecutive429 = 0;
       }
+
 
 
       if (isTokenErr) {
@@ -1815,14 +1847,55 @@ export async function processCampaignTick(
       const mins = Math.max((Date.now() - startedAt) / 60000, 0.1);
       speed = +((doneCount / mins).toFixed(2));
     }
+    // Controlador adaptativo: recua em caso de throughput error, sobe em degraus
+    // quando o tick terminou saudável (respeitando o intervalo de estabilização).
+    const adaptivePatch: Record<string, any> = {};
+    if (adaptiveEnabled) {
+      const lastStep = (camp as any).adaptive_last_step_at
+        ? new Date((camp as any).adaptive_last_step_at as string).getTime()
+        : 0;
+      if (throughputErrors > 0) {
+        const reduced = Math.max(ADAPTIVE_MIN_RATE, Math.floor(adaptiveRate * ADAPTIVE_BACKOFF_FACTOR));
+        if (reduced < adaptiveRate) {
+          adaptiveRate = reduced;
+          adaptivePatch["adaptive_rate_current"] = reduced;
+          adaptivePatch["adaptive_last_step_at"] = new Date().toISOString();
+          void logEvent(
+            campaignId,
+            "adaptive_rate_down",
+            `Throughput error detectado — velocidade adaptativa reduzida para ${reduced} msg/s`,
+            { rate: reduced, throughput_errors: throughputErrors },
+          );
+        }
+      } else if (sent > 0 && adaptiveRate < rawCampRate && Date.now() - lastStep >= ADAPTIVE_STEP_INTERVAL_MS) {
+        const next = Math.min(rawCampRate, adaptiveRate + ADAPTIVE_STEP);
+        if (next > adaptiveRate) {
+          adaptiveRate = next;
+          adaptivePatch["adaptive_rate_current"] = next;
+          adaptivePatch["adaptive_last_step_at"] = new Date().toISOString();
+          void logEvent(
+            campaignId,
+            "adaptive_rate_up",
+            `API estável — velocidade adaptativa aumentada para ${next} msg/s (teto ${rawCampRate})`,
+            { rate: next, target: rawCampRate },
+          );
+        }
+      } else if ((camp as any).adaptive_rate_current == null) {
+        adaptivePatch["adaptive_rate_current"] = adaptiveRate;
+        adaptivePatch["adaptive_last_step_at"] = new Date().toISOString();
+      }
+    }
+
     await supabaseAdmin
       .from("wa_campaigns")
       .update({
         last_sent_at: sent > 0 ? new Date().toISOString() : camp.last_sent_at,
         last_error: lastError ?? camp.last_error,
         avg_speed_per_min: speed,
+        ...adaptivePatch,
       })
       .eq("id", campaignId);
+
 
     if (!pending) {
       await finalizeCampaign(campaignId);
