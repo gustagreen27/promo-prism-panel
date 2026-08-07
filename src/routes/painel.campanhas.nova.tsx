@@ -2024,7 +2024,49 @@ function DispatchConfigCard({
             <SelectItem value="custom">Personalizado</SelectItem>
           </SelectContent>
         </Select>
+        {value.preset !== "custom" && (
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {DISPATCH_PRESETS[value.preset as Exclude<DispatchPreset, "custom">]?.hint}
+          </p>
+        )}
       </div>
+
+      <div className="rounded-md border p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-sm font-medium">Modo adaptativo</div>
+            <div className="text-[11px] text-muted-foreground">
+              Começa em 20 msg/s e sobe em degraus de 10 a cada minuto saudável, até o teto
+              configurado. Ao detectar erro de throughput (130429) ou rate limit da API (80007),
+              reduz automaticamente para 80% e só volta a subir depois de estabilizar.
+            </div>
+          </div>
+          <Switch
+            checked={value.adaptive_enabled}
+            onCheckedChange={(v) => patch({ preset: "custom", adaptive_enabled: !!v })}
+          />
+        </div>
+      </div>
+
+      <div className="rounded-md border bg-muted/30 p-3">
+        <div className="mb-1.5 text-xs font-semibold">Proteção automática</div>
+        <ul className="space-y-1 text-[11px] text-muted-foreground">
+          {[
+            "Rate limiter global por número — teto compartilhado entre campanhas e workers",
+            "130429 (throughput excedido) — reduz apenas o número afetado, sem pausar a campanha",
+            "80007 (rate limit da API) — recuo adaptativo e retry com backoff",
+            "131056 (excesso para o mesmo destinatário) — reagenda a mensagem",
+            "Retry com backoff e dead-letter após 5 tentativas",
+            "131031 / 131042 / 133010 — parada imediata para proteger a conta",
+          ].map((t) => (
+            <li key={t} className="flex items-start gap-1.5">
+              <Check className="mt-0.5 h-3 w-3 flex-none text-emerald-600" />
+              <span>{t}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
 
       {isMaxPreset && (
         <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-[11px] text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
