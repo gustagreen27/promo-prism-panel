@@ -805,7 +805,10 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
       await supabase.from("wa_campaigns").update({
         timezone,
         ...dispatchPayload,
+        adaptive_rate_enabled: dispatch.adaptive_enabled,
+        adaptive_rate_current: dispatch.adaptive_enabled ? 20 : null,
       } as any).eq("id", campaign.id);
+
 
       if (finalMode === "now") {
         if (adminMode) {
