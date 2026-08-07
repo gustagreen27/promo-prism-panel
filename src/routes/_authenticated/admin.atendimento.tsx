@@ -58,6 +58,15 @@ import {
   CornerUpLeft,
   Link2,
   Smartphone,
+  Bell,
+  MoreVertical,
+  SlidersHorizontal,
+  Phone,
+  Hash,
+  Megaphone,
+  MessageCircle,
+  Lock,
+  Smile,
 } from "lucide-react";
 
 
@@ -106,6 +115,7 @@ function AtendimentoPage() {
   const [windowFilter, setWindowFilter] = useState<"all" | "open" | "closed">("all");
   const [assignedFilter, setAssignedFilter] = useState<"all" | "me" | "none">("all");
   const [search, setSearch] = useState("");
+  const [quickTab, setQuickTab] = useState<"all" | "open" | "pending">("all");
 
   // Todos os números conectados (coluna 1), com ou sem conversas
   const numbersQuery = useQuery({
@@ -167,25 +177,47 @@ function AtendimentoPage() {
   const activeFilters =
     (statusFilter !== "all" ? 1 : 0) + (windowFilter !== "all" ? 1 : 0) + (assignedFilter !== "all" ? 1 : 0);
 
+  const isWindowOpen = (c: ConversationRow) =>
+    c.service_window_status === "open" &&
+    (!c.service_window_expires_at || new Date(c.service_window_expires_at).getTime() > Date.now());
+  const countAll = convs.length;
+  const countOpen = convs.filter(isWindowOpen).length;
+  const countPending = convs.filter((c) => c.unread_count > 0).length;
+  const visibleConvs =
+    quickTab === "open" ? convs.filter(isWindowOpen)
+    : quickTab === "pending" ? convs.filter((c) => c.unread_count > 0)
+    : convs;
+
   return (
     <div className="flex h-[calc(100vh-64px)] flex-col gap-3 p-3 md:p-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-xl font-semibold flex items-center gap-2">
-          <MessageSquare className="h-5 w-5" /> Atendimento WhatsApp
-        </h1>
-        <Badge variant="secondary" className="ml-2">
-          {convs.length} conversas
-        </Badge>
-        <div className="ml-auto">
+      {/* Barra superior */}
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border bg-card px-4 py-3 shadow-sm">
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
+          <MessageCircle className="h-5 w-5" />
+        </span>
+        <h1 className="text-xl font-semibold tracking-tight">Atendimento WhatsApp</h1>
+        <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+          {countAll} conversas
+        </span>
+        <div className="ml-auto flex items-center gap-2">
           <AttendanceSettingsDialog />
+          <Button variant="ghost" size="icon" className="rounded-xl text-muted-foreground" title="Notificações">
+            <Bell className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="rounded-xl text-muted-foreground" title="Mais">
+            <MoreVertical className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
-      <div className="grid flex-1 grid-cols-1 gap-3 overflow-hidden md:grid-cols-[240px_1fr] lg:grid-cols-[240px_300px_1fr] xl:grid-cols-[240px_320px_1fr_320px]">
-        {/* Coluna 0 — números de WhatsApp */}
-        <div className="flex min-h-0 flex-col rounded-lg border bg-card">
-          <div className="flex items-center gap-2 border-b px-3 py-2 text-xs font-medium text-muted-foreground">
-            <Smartphone className="h-4 w-4" /> Números
+      <div className="grid flex-1 grid-cols-1 gap-3 overflow-hidden md:grid-cols-[250px_1fr] lg:grid-cols-[250px_320px_1fr] xl:grid-cols-[250px_340px_1fr_320px]">
+        {/* Coluna 0 — conexões */}
+        <div className="flex min-h-0 flex-col rounded-2xl border bg-card shadow-sm">
+          <div className="flex items-center justify-between gap-2 px-4 py-3">
+            <span className="text-sm font-semibold">Conexões</span>
+            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground">
+              <Plus className="h-4 w-4" />
+            </Button>
           </div>
           <ScrollArea className="flex-1">
             {numbersQuery.isLoading ? (
@@ -198,24 +230,33 @@ function AtendimentoPage() {
               </div>
 
             ) : (
-              <ul className="divide-y">
+              <ul className="space-y-1.5 px-2 pb-3">
                 <li>
                   <button
                     onClick={() => {
                       setSelectedNumber(null);
                       setSelectedId(null);
                     }}
-                    className={`w-full px-3 py-2 text-left hover:bg-accent ${!selectedNumber ? "bg-accent" : ""}`}
+                    className={`flex w-full items-center gap-3 rounded-xl border p-2.5 text-left transition-colors ${
+                      !selectedNumber
+                        ? "border-emerald-500/40 bg-emerald-500/10"
+                        : "border-transparent hover:bg-accent"
+                    }`}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="truncate text-sm font-medium">Todos os números</span>
-                      {totalUnread > 0 && (
-                        <Badge className="h-5 shrink-0 rounded-full px-1.5 text-[10px]">{totalUnread}</Badge>
-                      )}
-                    </div>
-                    <div className="truncate text-[11px] text-muted-foreground">
-                      Chat ao vivo de todas as conexões
-                    </div>
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white">
+                      <MessageSquare className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium">Todos os números</span>
+                      <span className="block truncate text-[11px] text-muted-foreground">
+                        Chats ao vivo de todas as conexões
+                      </span>
+                    </span>
+                    {totalUnread > 0 && (
+                      <Badge className="h-5 shrink-0 rounded-full bg-emerald-600 px-1.5 text-[10px] hover:bg-emerald-600">
+                        {totalUnread}
+                      </Badge>
+                    )}
                   </button>
                 </li>
 
@@ -228,14 +269,20 @@ function AtendimentoPage() {
                           setSelectedNumber(n.phone_number_id);
                           setSelectedId(null);
                         }}
-                        className={`w-full px-3 py-2 text-left hover:bg-accent ${active ? "bg-accent" : ""}`}
+                        className={`w-full rounded-xl border p-2.5 text-left transition-colors ${
+                          active
+                            ? "border-emerald-500/40 bg-emerald-500/10"
+                            : "border-transparent hover:bg-accent"
+                        }`}
                       >
                         <div className="flex items-center justify-between gap-2">
                           <span className="truncate text-sm font-medium">
                             {n.nome_interno || formatPhone(n.display_phone_number ?? n.phone_number_id)}
                           </span>
                           {n.unread > 0 && (
-                            <Badge className="h-5 shrink-0 rounded-full px-1.5 text-[10px]">{n.unread}</Badge>
+                            <Badge className="h-5 shrink-0 rounded-full bg-emerald-600 px-1.5 text-[10px] hover:bg-emerald-600">
+                              {n.unread}
+                            </Badge>
                           )}
                         </div>
                         <div className="truncate text-[11px] text-muted-foreground">
@@ -243,7 +290,7 @@ function AtendimentoPage() {
                         </div>
                         <div className="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground">
                           <span>{n.total} conversas</span>
-                          {n.open_window > 0 && <span className="text-emerald-600">{n.open_window} em 24h</span>}
+                          {n.open_window > 0 && <span className="text-emerald-600">• {n.open_window} em 24h</span>}
                         </div>
                         {n.waba_name && (
                           <div className="truncate text-[10px] text-muted-foreground/80">{n.waba_name}</div>
@@ -258,21 +305,26 @@ function AtendimentoPage() {
         </div>
 
         {/* Coluna 1 — conversas do número selecionado */}
-        <div className="flex min-h-0 flex-col rounded-lg border bg-card">
-          <div className="space-y-2 border-b p-2">
-            <div className="flex items-center justify-between gap-2 px-1">
-              <span className="truncate text-xs font-medium text-muted-foreground">
-                {activeNumber
-                  ? activeNumber.nome_interno || formatPhone(activeNumber.display_phone_number ?? activeNumber.phone_number_id)
-                  : "Todas as conversas"}
-              </span>
+        <div className="flex min-h-0 flex-col rounded-2xl border bg-card shadow-sm">
+          <div className="space-y-3 p-3">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome ou telefone"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="h-10 rounded-xl border-muted bg-muted/40 pl-9"
+                />
+              </div>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs">
-                    <ListChecks className="h-3.5 w-3.5" />
-                    Filtros
+                  <Button variant="outline" size="icon" className="relative h-10 w-10 shrink-0 rounded-xl">
+                    <SlidersHorizontal className="h-4 w-4" />
                     {activeFilters > 0 && (
-                      <Badge className="h-4 rounded-full px-1 text-[10px]">{activeFilters}</Badge>
+                      <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] text-white">
+                        {activeFilters}
+                      </span>
                     )}
                   </Button>
                 </PopoverTrigger>
@@ -330,14 +382,31 @@ function AtendimentoPage() {
                 </PopoverContent>
               </Popover>
             </div>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome, telefone…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-7 h-9"
-              />
+
+            <div className="flex items-center gap-1 border-b">
+              {([
+                { id: "all", label: "Todas", count: countAll },
+                { id: "open", label: "Abertas", count: countOpen },
+                { id: "pending", label: "Pendentes", count: countPending },
+              ] as const).map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setQuickTab(t.id)}
+                  className={`-mb-px flex items-center gap-1.5 border-b-2 px-2.5 pb-2 text-sm transition-colors ${
+                    quickTab === t.id
+                      ? "border-emerald-600 font-medium text-emerald-700 dark:text-emerald-300"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {t.label}
+                  <span className="text-xs opacity-70">{t.count}</span>
+                </button>
+              ))}
+              <span className="ml-auto pb-2 text-xs text-muted-foreground">
+                {activeNumber
+                  ? activeNumber.nome_interno || formatPhone(activeNumber.display_phone_number ?? activeNumber.phone_number_id)
+                  : "Todas"}
+              </span>
             </div>
           </div>
 
@@ -346,13 +415,13 @@ function AtendimentoPage() {
               <div className="flex items-center justify-center p-6 text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
               </div>
-            ) : convs.length === 0 ? (
+            ) : visibleConvs.length === 0 ? (
               <div className="p-4 text-center text-sm text-muted-foreground">
                 Nenhuma conversa ainda.
               </div>
             ) : (
-              <ul className="divide-y">
-                {convs.map((c) => (
+              <ul>
+                {visibleConvs.map((c) => (
                   <li key={c.id}>
                     <button
                       onClick={() => {
@@ -361,27 +430,36 @@ function AtendimentoPage() {
                           .then(() => qc.invalidateQueries({ queryKey: ["atd", "conversations"] }))
                           .catch(() => {});
                       }}
-                      className={`flex w-full flex-col gap-1 px-3 py-2 text-left hover:bg-accent ${
-                        selectedId === c.id ? "bg-accent" : ""
+                      className={`flex w-full items-start gap-3 border-l-2 px-3 py-3 text-left transition-colors ${
+                        selectedId === c.id
+                          ? "border-emerald-600 bg-emerald-500/10"
+                          : "border-transparent hover:bg-accent"
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="truncate text-sm font-medium">
-                          {c.contact_name || formatPhone(c.contact_phone)}
-                        </span>
-                        {c.unread_count > 0 && (
-                          <Badge className="h-5 shrink-0 rounded-full px-1.5 text-[10px]">
-                            {c.unread_count}
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="truncate">{c.last_message_preview || "—"}</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-[10px]">
-                        <WindowBadge conv={c} />
-                        <StatusBadge status={c.conversation_status} />
-                        <span className="ml-auto text-muted-foreground">{formatRelative(c.last_message_at)}</span>
+                      <ContactAvatar name={c.contact_name} phone={c.contact_phone} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate text-sm font-medium">
+                            {c.contact_name || formatPhone(c.contact_phone)}
+                          </span>
+                          <span className="shrink-0 text-[11px] text-muted-foreground">
+                            {formatTime(c.last_message_at)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate text-xs text-muted-foreground">
+                            {c.last_message_preview || "—"}
+                          </span>
+                          {c.unread_count > 0 && (
+                            <Badge className="h-5 shrink-0 rounded-full bg-emerald-600 px-1.5 text-[10px] hover:bg-emerald-600">
+                              {c.unread_count}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="mt-1.5 flex items-center gap-1">
+                          <WindowBadge conv={c} />
+                          <StatusBadge status={c.conversation_status} />
+                        </div>
                       </div>
                     </button>
                   </li>
@@ -392,7 +470,7 @@ function AtendimentoPage() {
         </div>
 
         {/* Coluna 2 — chat */}
-        <div className="flex min-h-0 flex-col rounded-lg border bg-card">
+        <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
           {selectedId ? (
             <ChatPanel
               conversationId={selectedId}
@@ -403,14 +481,17 @@ function AtendimentoPage() {
               tplListFn={tplListFn}
             />
           ) : (
-            <div className="flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground">
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-sm text-muted-foreground">
+              <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600">
+                <MessageCircle className="h-7 w-7" />
+              </span>
               Selecione uma conversa
             </div>
           )}
         </div>
 
         {/* Coluna 3 — contexto */}
-        <div className="hidden min-h-0 xl:flex xl:flex-col rounded-lg border bg-card">
+        <div className="hidden min-h-0 xl:flex xl:flex-col rounded-2xl border bg-card shadow-sm">
           {selectedId ? (
             <ContextPanel
               conversationId={selectedId}
@@ -428,6 +509,28 @@ function AtendimentoPage() {
     </div>
   );
 }
+
+function ContactAvatar({
+  name,
+  phone,
+  size = "md",
+}: {
+  name?: string | null;
+  phone?: string | null;
+  size?: "md" | "lg";
+}) {
+  const initials = (name?.trim()?.[0] ?? phone?.replace(/\D/g, "").slice(-2, -1) ?? "?").toUpperCase();
+  return (
+    <span
+      className={`flex shrink-0 items-center justify-center rounded-full bg-muted font-medium text-muted-foreground ${
+        size === "lg" ? "h-16 w-16 text-xl" : "h-10 w-10 text-sm"
+      }`}
+    >
+      {name ? initials : <User className={size === "lg" ? "h-7 w-7" : "h-5 w-5"} />}
+    </span>
+  );
+}
+
 
 function ChatPanel(props: {
   conversationId: string;
@@ -687,30 +790,35 @@ function ChatPanel(props: {
 
   return (
     <>
-      <div className="flex items-center justify-between gap-2 border-b p-3">
-        <div className="min-w-0">
-          <div className="truncate text-sm font-medium">
-            {conv?.contact_name || formatPhone(conv?.contact_phone)}
-          </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>{formatPhone(conv?.contact_phone)}</span>
-            {connection?.phone_number && (
-              <>
-                <span>•</span>
-                <span>via {connection.phone_number}</span>
-              </>
-            )}
+      <div className="flex items-center justify-between gap-2 border-b bg-card px-4 py-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <ContactAvatar name={conv?.contact_name} phone={conv?.contact_phone} />
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold">
+              {conv?.contact_name || formatPhone(conv?.contact_phone)}
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="truncate">
+                {conv?.contact_name ? formatPhone(conv?.contact_phone) : "Clique para adicionar nome"}
+              </span>
+              {connection?.phone_number && (
+                <>
+                  <span>•</span>
+                  <span className="truncate">via {connection.phone_number}</span>
+                </>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {windowOpen ? (
-            <Badge variant="secondary" className="gap-1">
+            <span className="hidden items-center gap-1 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 sm:inline-flex dark:text-emerald-300">
               <Clock className="h-3 w-3" /> 24h aberta {remaining ? `• ${remaining}` : ""}
-            </Badge>
+            </span>
           ) : (
-            <Badge variant="destructive" className="gap-1">
+            <span className="hidden items-center gap-1 rounded-full bg-destructive/10 px-3 py-1 text-xs font-medium text-destructive sm:inline-flex">
               <Clock className="h-3 w-3" /> Janela fechada
-            </Badge>
+            </span>
           )}
           <Select
             value={conv?.conversation_status ?? "open"}
@@ -724,7 +832,7 @@ function ChatPanel(props: {
               }
             }}
           >
-            <SelectTrigger className="h-8 w-40 text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-9 w-36 rounded-xl text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="open">Aberta</SelectItem>
               <SelectItem value="waiting">Aguardando</SelectItem>
@@ -736,7 +844,14 @@ function ChatPanel(props: {
         </div>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-2 bg-muted/30 p-3">
+      <div
+        ref={scrollRef}
+        className="flex-1 space-y-2 overflow-y-auto bg-[oklch(0.96_0.015_95)] p-4 dark:bg-[oklch(0.22_0.01_150)]"
+      >
+        <div className="mx-auto mb-3 flex max-w-md items-center justify-center gap-2 rounded-lg bg-amber-100/80 px-3 py-1.5 text-center text-[11px] text-amber-900 dark:bg-amber-950/60 dark:text-amber-200">
+          <Lock className="h-3 w-3 shrink-0" />
+          As mensagens são protegidas com criptografia de ponta a ponta.
+        </div>
         {(msgsQuery.data as any[] | undefined)?.map((m) => (
           <MessageBubble
             key={m.id}
@@ -760,6 +875,7 @@ function ChatPanel(props: {
           </div>
         )}
       </div>
+
 
       <div className="space-y-2 border-t p-3">
         {!windowOpen && !tplOpen && (
@@ -815,12 +931,13 @@ function ChatPanel(props: {
             </Button>
           </div>
         ) : (
-          <div className="flex items-end gap-2">
+          <div className="flex items-end gap-2 rounded-3xl border bg-muted/40 p-1.5">
             <Popover open={attachOpen} onOpenChange={setAttachOpen}>
               <PopoverTrigger asChild>
                 <Button
-                  size="sm"
-                  variant="outline"
+                  size="icon"
+                  variant="ghost"
+                  className="h-10 w-10 shrink-0 rounded-full text-muted-foreground"
                   disabled={!windowOpen}
                   title="Anexar mídia, botões ou lista"
                 >
@@ -1086,10 +1203,10 @@ function ChatPanel(props: {
             <Textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder={windowOpen ? "Escreva uma mensagem…" : "Janela fechada — envie um template"}
+              placeholder={windowOpen ? "Digite uma mensagem…" : "Janela fechada — envie um template"}
               disabled={!windowOpen || sendText.isPending}
-              rows={2}
-              className="resize-none"
+              rows={1}
+              className="max-h-32 min-h-10 resize-none border-0 bg-transparent py-2.5 shadow-none focus-visible:ring-0"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -1097,27 +1214,27 @@ function ChatPanel(props: {
                 }
               }}
             />
-            <div className="flex flex-col gap-1">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setTplOpen(true)}
-                title="Enviar template"
-              >
-                <FileText className="h-4 w-4" />
-              </Button>
-              <Button
-                size="sm"
-                disabled={!windowOpen || !text.trim() || sendText.isPending}
-                onClick={() => sendText.mutate()}
-              >
-                {sendText.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-10 w-10 shrink-0 rounded-full text-muted-foreground"
+              onClick={() => setTplOpen(true)}
+              title="Enviar template"
+            >
+              <FileText className="h-4 w-4" />
+            </Button>
+            <Button
+              size="icon"
+              className="h-10 w-10 shrink-0 rounded-full bg-emerald-600 text-white hover:bg-emerald-700"
+              disabled={!windowOpen || !text.trim() || sendText.isPending}
+              onClick={() => sendText.mutate()}
+            >
+              {sendText.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
           </div>
         )}
       </div>
@@ -1129,8 +1246,8 @@ function ChatPanel(props: {
 function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void }) {
   const out = msg.direction === "outbound";
   const bubble = out
-    ? "ml-auto bg-emerald-600 text-white"
-    : "mr-auto bg-white dark:bg-neutral-800 text-foreground";
+    ? "ml-auto bg-[oklch(0.93_0.06_150)] text-foreground dark:bg-emerald-800 dark:text-white rounded-br-md"
+    : "mr-auto bg-card text-foreground rounded-bl-md";
   const payload = msg.payload ?? {};
   const isMedia =
     msg.message_type === "image" ||
@@ -1146,9 +1263,9 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
   const footer = isInteractive ? payload?.footer : null;
 
   return (
-    <div className={`group max-w-[75%] rounded-lg px-3 py-2 shadow-sm ${bubble}`}>
+    <div className={`group max-w-[75%] rounded-2xl px-3 py-2 shadow-sm ${bubble}`}>
       {msg.template_name && (
-        <div className={`mb-1 text-[10px] font-medium ${out ? "text-emerald-100" : "text-muted-foreground"}`}>
+        <div className={`mb-1 text-[10px] font-medium ${out ? "text-foreground/60 dark:text-emerald-100" : "text-muted-foreground"}`}>
           Template · {msg.template_name}
         </div>
       )}
@@ -1176,7 +1293,7 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
           href={msg.media_url}
           target="_blank"
           rel="noreferrer"
-          className={`mb-1 flex items-center gap-2 rounded border px-2 py-1 text-xs ${out ? "border-emerald-400/40 bg-emerald-700/40" : "border-border bg-muted/50"}`}
+          className={`mb-1 flex items-center gap-2 rounded border px-2 py-1 text-xs ${out ? "border-emerald-600/30 bg-emerald-600/10" : "border-border bg-muted/50"}`}
         >
           <FileIcon className="h-4 w-4" />
           <span className="truncate">{msg.media_filename ?? "Documento"}</span>
@@ -1189,11 +1306,11 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
       {msg.body && <div className="whitespace-pre-wrap break-words text-sm">{msg.body}</div>}
 
       {buttons.length > 0 && (
-        <div className={`mt-2 space-y-1 border-t pt-2 ${out ? "border-emerald-400/40" : "border-border/60"}`}>
+        <div className={`mt-2 space-y-1 border-t pt-2 ${out ? "border-emerald-600/30" : "border-border/60"}`}>
           {buttons.map((b) => (
             <div
               key={b.id}
-              className={`rounded px-2 py-1 text-center text-xs ${out ? "bg-emerald-700/40" : "bg-muted"}`}
+              className={`rounded px-2 py-1 text-center text-xs ${out ? "bg-emerald-600/10" : "bg-muted"}`}
             >
               {b.title}
             </div>
@@ -1201,9 +1318,9 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
         </div>
       )}
       {listSections.length > 0 && (
-        <div className={`mt-2 space-y-1 border-t pt-2 ${out ? "border-emerald-400/40" : "border-border/60"}`}>
+        <div className={`mt-2 space-y-1 border-t pt-2 ${out ? "border-emerald-600/30" : "border-border/60"}`}>
           {listSections.flatMap((s) => s.rows).map((r) => (
-            <div key={r.id} className={`rounded px-2 py-1 text-xs ${out ? "bg-emerald-700/40" : "bg-muted"}`}>
+            <div key={r.id} className={`rounded px-2 py-1 text-xs ${out ? "bg-emerald-600/10" : "bg-muted"}`}>
               <div className="font-medium">{r.title}</div>
               {r.description && <div className="opacity-80">{r.description}</div>}
             </div>
@@ -1220,13 +1337,13 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
         <div className="mt-1 text-[10px] opacity-70">Selecionado: {msg.interactive_list_title}</div>
       )}
 
-      <div className={`mt-1 flex items-center gap-1 text-[10px] ${out ? "text-emerald-100/90" : "text-muted-foreground"}`}>
+      <div className={`mt-1 flex items-center gap-1 text-[10px] ${out ? "text-foreground/60 dark:text-emerald-100/90" : "text-muted-foreground"}`}>
         <span>{formatTime(msg.created_at)}</span>
         {out && <StatusTick status={msg.status} />}
-        {msg.error_message && <span className="text-red-200">· {msg.error_message}</span>}
+        {msg.error_message && <span className="text-destructive">· {msg.error_message}</span>}
         {onReply && (
           <button
-            className={`ml-auto opacity-0 transition group-hover:opacity-100 ${out ? "text-emerald-100" : "text-muted-foreground"}`}
+            className={`ml-auto opacity-0 transition group-hover:opacity-100 ${out ? "text-foreground/60 dark:text-emerald-100" : "text-muted-foreground"}`}
             onClick={() => onReply(msg)}
             title="Responder"
           >
@@ -1265,37 +1382,56 @@ function ContextPanel(props: { conversationId: string; getFn: any; notesListFn: 
   const connection = (convQuery.data as any)?.connection;
 
   return (
-    <Tabs defaultValue="contact" className="flex flex-1 flex-col">
-      <TabsList className="m-2 grid grid-cols-2">
-        <TabsTrigger value="contact"><User className="mr-1 h-3 w-3" /> Contato</TabsTrigger>
-        <TabsTrigger value="notes"><StickyNote className="mr-1 h-3 w-3" /> Notas</TabsTrigger>
+    <Tabs defaultValue="contact" className="flex min-h-0 flex-1 flex-col">
+      <TabsList className="h-auto w-full justify-start gap-0 rounded-none border-b bg-transparent p-0">
+        <TabsTrigger
+          value="contact"
+          className="flex-1 rounded-none border-b-2 border-transparent bg-transparent py-3 text-sm shadow-none data-[state=active]:border-emerald-600 data-[state=active]:bg-transparent data-[state=active]:font-medium data-[state=active]:text-emerald-700 data-[state=active]:shadow-none dark:data-[state=active]:text-emerald-300"
+        >
+          Contato
+        </TabsTrigger>
+        <TabsTrigger
+          value="notes"
+          className="flex-1 rounded-none border-b-2 border-transparent bg-transparent py-3 text-sm shadow-none data-[state=active]:border-emerald-600 data-[state=active]:bg-transparent data-[state=active]:font-medium data-[state=active]:text-emerald-700 data-[state=active]:shadow-none dark:data-[state=active]:text-emerald-300"
+        >
+          Notas
+        </TabsTrigger>
       </TabsList>
-      <TabsContent value="contact" className="flex-1 overflow-y-auto space-y-3 p-3">
-        <div>
-          <div className="text-xs text-muted-foreground">Nome</div>
-          <div className="text-sm">{conv?.contact_name || "—"}</div>
-        </div>
-        <div>
-          <div className="text-xs text-muted-foreground">Telefone</div>
-          <div className="text-sm">{formatPhone(conv?.contact_phone)}</div>
-        </div>
-        <div>
-          <div className="text-xs text-muted-foreground">Número de origem</div>
-          <div className="text-sm">{connection?.phone_number ?? "—"}</div>
-        </div>
-        <div>
-          <div className="text-xs text-muted-foreground">Campanha</div>
-          <div className="text-sm">{campaign?.name ?? "—"}</div>
-        </div>
-        <div>
-          <div className="text-xs text-muted-foreground">Janela 24h</div>
-          <div className="text-sm">
-            {conv?.service_window_expires_at
-              ? new Date(conv.service_window_expires_at).toLocaleString("pt-BR")
-              : "—"}
+      <TabsContent value="contact" className="flex-1 overflow-y-auto p-4">
+        <div className="flex flex-col items-center gap-2 pb-5 text-center">
+          <ContactAvatar name={conv?.contact_name} phone={conv?.contact_phone} size="lg" />
+          <div className="text-base font-semibold">
+            {conv?.contact_name || formatPhone(conv?.contact_phone)}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {conv?.contact_name ? formatPhone(conv?.contact_phone) : "Clique para adicionar nome"}
           </div>
         </div>
+        <dl className="divide-y border-t">
+          {[
+            { icon: User, label: "Nome", value: conv?.contact_name || "—" },
+            { icon: Phone, label: "Telefone", value: formatPhone(conv?.contact_phone) || "—" },
+            { icon: Hash, label: "Número de origem", value: connection?.phone_number ?? "—" },
+            { icon: Megaphone, label: "Campanha", value: campaign?.name ?? "—" },
+            {
+              icon: Clock,
+              label: "Janela 24h",
+              value: conv?.service_window_expires_at
+                ? new Date(conv.service_window_expires_at).toLocaleString("pt-BR")
+                : "—",
+            },
+          ].map((row) => (
+            <div key={row.label} className="flex items-start gap-3 py-3">
+              <row.icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <div className="min-w-0">
+                <dt className="text-xs text-muted-foreground">{row.label}</dt>
+                <dd className="break-words text-sm">{row.value}</dd>
+              </div>
+            </div>
+          ))}
+        </dl>
       </TabsContent>
+
       <TabsContent value="notes" className="flex-1 overflow-y-auto space-y-2 p-3">
         <div className="space-y-2">
           <Textarea
