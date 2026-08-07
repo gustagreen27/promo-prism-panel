@@ -649,8 +649,25 @@ export async function processCampaignTick(
       campRateRaw == null
         ? Math.max(phoneBucketRate, DEFAULT_RATE_PER_SECOND)
         : Math.max(1, Number(campRateRaw));
-    // Rate efetivo desta campanha = min(campanha, bucket global do número).
-    const effectiveRate = Math.min(rawCampRate, phoneBucketRate);
+
+    // --------------------------------------------------------------------
+    // Modo ADAPTATIVO (por campanha)
+    // --------------------------------------------------------------------
+    // Começa em ADAPTIVE_START_RATE msg/s e sobe em degraus (+10) enquanto a
+    // API estiver saudável (sem 130429/80007 no tick). Ao detectar throughput
+    // error, cai para 80% do valor atual e só volta a subir depois do
+    // período de estabilização.
+    const adaptiveEnabled = !!(camp as any).adaptive_rate_enabled;
+    let adaptiveRate = adaptiveEnabled
+      ? Math.max(
+          ADAPTIVE_MIN_RATE,
+          Math.min(rawCampRate, Number((camp as any).adaptive_rate_current ?? ADAPTIVE_START_RATE)),
+        )
+      : rawCampRate;
+
+    // Rate efetivo desta campanha = min(campanha/adaptativo, bucket global do número).
+    const effectiveRate = Math.min(adaptiveEnabled ? adaptiveRate : rawCampRate, phoneBucketRate);
+
     // Número de trilhas paralelas desta campanha (workers simultâneos).
     const laneCount = Math.max(1, Number((camp as any).worker_lanes ?? 4));
 
