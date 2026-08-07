@@ -261,7 +261,7 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
   /** Cache de templates por conexão, usado pelas combinações extras. */
   const [legTemplates, setLegTemplates] = useState<Record<string, TemplateRow[]>>({});
   const [contactSel, setContactSel] = useState<ContactSelValue | null>(null);
-  const [dispatch, setDispatch] = useState<DispatchConfig>(defaultDispatch("economico"));
+  const [dispatch, setDispatch] = useState<DispatchConfig>(defaultDispatch("adaptativo"));
   const [responseFlow, setResponseFlow] = useState<ResponseFlowConfig>(defaultResponseFlow());
   const [mode, setMode] = useState<Mode>(scheduled_for ? "schedule" : "now");
   const [scheduledAt, setScheduledAt] = useState<string>(toLocal(scheduled_for));
