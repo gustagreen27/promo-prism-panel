@@ -204,336 +204,324 @@ function AtendimentoPage() {
     : convs;
 
   return (
-    <div className="flex h-[calc(100vh-64px)] flex-col gap-3 p-3 md:p-4">
-      {/* Barra superior */}
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl border bg-card px-4 py-3 shadow-sm">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
-          <MessageCircle className="h-5 w-5" />
-        </span>
-        <h1 className="text-xl font-semibold tracking-tight">Atendimento WhatsApp</h1>
-        <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 transition-all dark:text-emerald-300">
-          {countAll} conversas
-        </span>
-        <span
-          className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
-            live
-              ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300"
-              : "border-border bg-muted text-muted-foreground"
-          }`}
-          title={live ? "Atualizações em tempo real ativas" : "Reconectando… usando atualização periódica"}
-        >
-          <span className="relative flex h-2 w-2">
-            {live && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />}
-            <span className={`relative inline-flex h-2 w-2 rounded-full ${live ? "bg-emerald-500" : "bg-muted-foreground/50"}`} />
+    <div className="h-[calc(100vh-72px)] p-2 md:p-3">
+      <div className="flex h-full overflow-hidden rounded-3xl border bg-card shadow-elegant-lg">
+        {/* Rail de ícones */}
+        <nav className="hidden w-[68px] shrink-0 flex-col items-center gap-1 border-r bg-muted/30 py-4 lg:flex">
+          <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-md shadow-emerald-600/30">
+            <MessageCircle className="h-5 w-5" />
           </span>
-          {live ? "Ao vivo" : "Reconectando"}
-        </span>
-        <div className="ml-auto flex items-center gap-2">
+          {[
+            { icon: MessageSquare, label: "Conversas", active: true },
+            { icon: Users, label: "Contatos" },
+            { icon: BarChart3, label: "Relatórios" },
+            { icon: Settings, label: "Configurações" },
+          ].map((it) => (
+            <button
+              key={it.label}
+              title={it.label}
+              className={`flex h-11 w-11 items-center justify-center rounded-2xl transition-all duration-200 ${
+                it.active
+                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+              }`}
+            >
+              <it.icon className="h-[18px] w-[18px]" />
+            </button>
+          ))}
+          <div className="flex-1" />
+          <button className="flex h-11 w-11 items-center justify-center rounded-2xl text-muted-foreground transition hover:bg-accent hover:text-foreground" title="Notificações">
+            <Bell className="h-[18px] w-[18px]" />
+          </button>
+          <button className="flex h-11 w-11 items-center justify-center rounded-2xl text-muted-foreground transition hover:bg-accent hover:text-foreground" title="Ajuda">
+            <HelpCircle className="h-[18px] w-[18px]" />
+          </button>
+        </nav>
 
-          <AttendanceSettingsDialog />
-          <Button variant="ghost" size="icon" className="rounded-xl text-muted-foreground" title="Notificações">
-            <Bell className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="rounded-xl text-muted-foreground" title="Mais">
-            <MoreVertical className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+        <div className="flex min-w-0 flex-1 flex-col">
+          {/* Barra superior */}
+          <header className="flex items-center gap-3 border-b px-4 py-3 md:px-5">
+            <h1 className="text-lg font-semibold tracking-tight md:text-xl">Atendimento WhatsApp</h1>
+            <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+              {countAll} {countAll === 1 ? "conversa" : "conversas"}
+            </span>
+            <span
+              className={`hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors sm:inline-flex ${
+                live
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300"
+                  : "border-border bg-muted text-muted-foreground"
+              }`}
+              title={live ? "Atualizações em tempo real ativas" : "Reconectando… usando atualização periódica"}
+            >
+              <span className="relative flex h-2 w-2">
+                {live && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />}
+                <span className={`relative inline-flex h-2 w-2 rounded-full ${live ? "bg-emerald-500" : "bg-muted-foreground/50"}`} />
+              </span>
+              {live ? "Ao vivo" : "Reconectando"}
+            </span>
+            <div className="ml-auto flex items-center gap-1.5">
+              <AttendanceSettingsDialog />
+              <Button variant="ghost" size="icon" className="rounded-xl text-muted-foreground" title="Notificações">
+                <Bell className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="rounded-xl text-muted-foreground" title="Mais">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </div>
+          </header>
 
-      <div className="grid flex-1 grid-cols-1 gap-3 overflow-hidden md:grid-cols-[250px_1fr] lg:grid-cols-[250px_320px_1fr] xl:grid-cols-[250px_340px_1fr_320px]">
-        {/* Coluna 0 — conexões */}
-        <div className="flex min-h-0 flex-col rounded-2xl border bg-card shadow-sm">
-          <div className="flex items-center justify-between gap-2 px-4 py-3">
-            <span className="text-sm font-semibold">Conexões</span>
-            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground">
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-          <ScrollArea className="flex-1">
-            {numbersQuery.isLoading ? (
-              <div className="flex items-center justify-center p-6 text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-              </div>
-            ) : numbers.length === 0 ? (
-              <div className="p-4 text-center text-xs text-muted-foreground">
-                Nenhum número conectado.
-              </div>
+          <div
+            className={`grid min-h-0 flex-1 ${
+              contextOpen && selectedId
+                ? "grid-cols-1 md:grid-cols-[320px_1fr] xl:grid-cols-[340px_1fr_320px]"
+                : "grid-cols-1 md:grid-cols-[320px_1fr]"
+            }`}
+          >
+            {/* Coluna 1 — conversas */}
+            <div className={`flex min-h-0 flex-col border-r bg-background/40 ${selectedId ? "hidden md:flex" : "flex"}`}>
+              <div className="space-y-3 p-3">
+                {/* Seletor de conexão */}
+                <Select
+                  value={selectedNumber ?? "__all"}
+                  onValueChange={(v) => {
+                    setSelectedNumber(v === "__all" ? null : v);
+                    setSelectedId(null);
+                  }}
+                >
+                  <SelectTrigger className="h-11 w-full rounded-2xl border-muted bg-muted/40 text-sm font-medium">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-80">
+                    <SelectItem value="__all">
+                      Todos os números{totalUnread > 0 ? ` · ${totalUnread}` : ""}
+                    </SelectItem>
+                    {numbers.map((n) => (
+                      <SelectItem key={n.phone_number_id} value={n.phone_number_id}>
+                        {(n.nome_interno || formatPhone(n.display_phone_number ?? n.phone_number_id)) +
+                          (n.unread > 0 ? ` · ${n.unread}` : "")}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-            ) : (
-              <ul className="space-y-1.5 px-2 pb-3">
-                <li>
-                  <button
-                    onClick={() => {
-                      setSelectedNumber(null);
-                      setSelectedId(null);
-                    }}
-                    className={`flex w-full items-center gap-3 rounded-xl border p-2.5 text-left transition-colors ${
-                      !selectedNumber
-                        ? "border-emerald-500/40 bg-emerald-500/10"
-                        : "border-transparent hover:bg-accent"
-                    }`}
-                  >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white">
-                      <MessageSquare className="h-4 w-4" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">Todos os números</span>
-                      <span className="block truncate text-[11px] text-muted-foreground">
-                        Chats ao vivo de todas as conexões
-                      </span>
-                    </span>
-                    {totalUnread > 0 && (
-                      <Badge className="h-5 shrink-0 rounded-full bg-emerald-600 px-1.5 text-[10px] hover:bg-emerald-600">
-                        {totalUnread}
-                      </Badge>
-                    )}
-                  </button>
-                </li>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar por nome ou telefone"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="h-11 rounded-2xl border-muted bg-background pl-10"
+                    />
+                  </div>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="icon" className="relative h-11 w-11 shrink-0 rounded-2xl">
+                        <SlidersHorizontal className="h-4 w-4" />
+                        {activeFilters > 0 && (
+                          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] text-white">
+                            {activeFilters}
+                          </span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-64 space-y-3 rounded-2xl">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Status</Label>
+                        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Todos</SelectItem>
+                            <SelectItem value="open">Abertas</SelectItem>
+                            <SelectItem value="waiting">Aguardando</SelectItem>
+                            <SelectItem value="in_progress">Em andamento</SelectItem>
+                            <SelectItem value="resolved">Resolvidas</SelectItem>
+                            <SelectItem value="archived">Arquivadas</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Janela de 24h</Label>
+                        <Select value={windowFilter} onValueChange={(v) => setWindowFilter(v as any)}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Todas</SelectItem>
+                            <SelectItem value="open">Aberta</SelectItem>
+                            <SelectItem value="closed">Fechada</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Responsável</Label>
+                        <Select value={assignedFilter} onValueChange={(v) => setAssignedFilter(v as any)}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Todos os agentes</SelectItem>
+                            <SelectItem value="me">Minhas</SelectItem>
+                            <SelectItem value="none">Sem responsável</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {activeFilters > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full text-xs"
+                          onClick={() => {
+                            setStatusFilter("all");
+                            setWindowFilter("all");
+                            setAssignedFilter("all");
+                          }}
+                        >
+                          Limpar filtros
+                        </Button>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                </div>
 
-                {numbers.map((n) => {
-                  const active = n.phone_number_id === selectedNumber;
-                  return (
-                    <li key={n.phone_number_id}>
+                {/* Chips rápidos */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {([
+                    { id: "all", label: "Todas", count: countAll },
+                    { id: "unread", label: "Não lidas", count: countPending },
+                    { id: "open", label: "Abertas", count: countOpen },
+                    { id: "pending", label: "Pendentes", count: countPending },
+                  ] as const).map((t) => {
+                    const id = t.id === "unread" ? "pending" : t.id;
+                    const active = quickTab === id && (t.id !== "unread" || quickTab === "pending");
+                    return (
                       <button
-                        onClick={() => {
-                          setSelectedNumber(n.phone_number_id);
-                          setSelectedId(null);
-                        }}
-                        className={`w-full rounded-xl border p-2.5 text-left transition-colors ${
+                        key={t.id}
+                        onClick={() => setQuickTab(id as any)}
+                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
                           active
-                            ? "border-emerald-500/40 bg-emerald-500/10"
-                            : "border-transparent hover:bg-accent"
+                            ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                            : "bg-muted/60 text-muted-foreground hover:bg-muted"
                         }`}
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="truncate text-sm font-medium">
-                            {n.nome_interno || formatPhone(n.display_phone_number ?? n.phone_number_id)}
+                        {t.label}
+                        {t.count > 0 && (
+                          <span
+                            className={`grid h-4 min-w-4 place-items-center rounded-full px-1 text-[10px] ${
+                              active ? "bg-emerald-600 text-white" : "bg-background text-muted-foreground"
+                            }`}
+                          >
+                            {t.count}
                           </span>
-                          {n.unread > 0 && (
-                            <Badge className="h-5 shrink-0 rounded-full bg-emerald-600 px-1.5 text-[10px] hover:bg-emerald-600">
-                              {n.unread}
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="truncate text-[11px] text-muted-foreground">
-                          {n.display_phone_number ? formatPhone(n.display_phone_number) : n.phone_number_id}
-                        </div>
-                        <div className="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground">
-                          <span>{n.total} conversas</span>
-                          {n.open_window > 0 && <span className="text-emerald-600">• {n.open_window} em 24h</span>}
-                        </div>
-                        {n.waba_name && (
-                          <div className="truncate text-[10px] text-muted-foreground/80">{n.waba_name}</div>
                         )}
                       </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </ScrollArea>
-        </div>
+                    );
+                  })}
+                </div>
+              </div>
 
-        {/* Coluna 1 — conversas do número selecionado */}
-        <div className="flex min-h-0 flex-col rounded-2xl border bg-card shadow-sm">
-          <div className="space-y-3 p-3">
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por nome ou telefone"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="h-10 rounded-xl border-muted bg-muted/40 pl-9"
+              <ScrollArea className="flex-1">
+                {convsQuery.isLoading ? (
+                  <div className="space-y-2 px-3">
+                    {[0, 1, 2, 3].map((i) => (
+                      <div key={i} className="h-[86px] animate-pulse rounded-2xl bg-muted/60" />
+                    ))}
+                  </div>
+                ) : visibleConvs.length === 0 ? (
+                  <div className="flex flex-col items-center gap-2 p-8 text-center text-sm text-muted-foreground">
+                    <span className="grid h-12 w-12 place-items-center rounded-2xl bg-muted">
+                      <MessageSquare className="h-5 w-5" />
+                    </span>
+                    Nenhuma conversa ainda.
+                  </div>
+                ) : (
+                  <ul className="space-y-1.5 px-3 pb-4">
+                    {visibleConvs.map((c) => {
+                      const active = selectedId === c.id;
+                      return (
+                        <li key={c.id} className="animate-in fade-in slide-in-from-left-1 duration-200">
+                          <button
+                            onClick={() => {
+                              setSelectedId(c.id);
+                              markReadFn({ data: { conversation_id: c.id } })
+                                .then(() => qc.invalidateQueries({ queryKey: ["atd", "conversations"] }))
+                                .catch(() => {});
+                            }}
+                            className={`flex w-full items-start gap-3 rounded-2xl border p-3 text-left transition-all duration-200 ${
+                              active
+                                ? "border-emerald-500/40 bg-emerald-500/10 shadow-sm"
+                                : "border-border/70 bg-card hover:-translate-y-px hover:border-border hover:shadow-sm"
+                            }`}
+                          >
+                            <ContactAvatar name={c.contact_name} phone={c.contact_phone} />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="truncate text-sm font-semibold">
+                                  {c.contact_name || formatPhone(c.contact_phone)}
+                                </span>
+                                <span className="shrink-0 text-[11px] text-muted-foreground">
+                                  {formatTime(c.last_message_at)}
+                                </span>
+                              </div>
+                              <div className="mt-0.5 flex items-start justify-between gap-2">
+                                <span className="line-clamp-2 text-xs leading-snug text-muted-foreground">
+                                  {c.last_message_preview || "—"}
+                                </span>
+                                {c.unread_count > 0 && (
+                                  <Badge className="mt-0.5 h-5 shrink-0 rounded-full bg-emerald-600 px-1.5 text-[10px] hover:bg-emerald-600">
+                                    {c.unread_count}
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="mt-2 flex items-center gap-1.5">
+                                <WindowBadge conv={c} />
+                                <StatusBadge status={c.conversation_status} />
+                              </div>
+                            </div>
+                          </button>
+                        </li>
+                      );
+                    })}
+                    <li className="pt-2 text-center text-xs text-muted-foreground">
+                      {visibleConvs.length} {visibleConvs.length === 1 ? "conversa" : "conversas"}
+                    </li>
+                  </ul>
+                )}
+              </ScrollArea>
+            </div>
+
+            {/* Coluna 2 — chat */}
+            <div className={`flex min-h-0 flex-col overflow-hidden ${selectedId ? "flex" : "hidden md:flex"}`}>
+              {selectedId ? (
+                <ChatPanel
+                  conversationId={selectedId}
+                  getFn={getFn}
+                  msgsFn={msgsFn}
+                  sendFn={sendFn}
+                  setStatusFn={setStatusFn}
+                  tplListFn={tplListFn}
+                  onBack={() => setSelectedId(null)}
+                  onToggleContext={() => setContextOpen((v) => !v)}
+                />
+              ) : (
+                <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-wa-chat p-6 text-sm text-muted-foreground">
+                  <span className="flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-500/10 text-emerald-600 shadow-sm">
+                    <MessageCircle className="h-8 w-8" />
+                  </span>
+                  Selecione uma conversa para começar
+                </div>
+              )}
+            </div>
+
+            {/* Coluna 3 — contexto */}
+            {contextOpen && selectedId && (
+              <div className="hidden min-h-0 border-l xl:flex xl:flex-col">
+                <ContextPanel
+                  conversationId={selectedId}
+                  getFn={getFn}
+                  notesListFn={notesListFn}
+                  noteAddFn={noteAddFn}
+                  onClose={() => setContextOpen(false)}
                 />
               </div>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="icon" className="relative h-10 w-10 shrink-0 rounded-xl">
-                    <SlidersHorizontal className="h-4 w-4" />
-                    {activeFilters > 0 && (
-                      <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] text-white">
-                        {activeFilters}
-                      </span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="end" className="w-64 space-y-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Status</Label>
-                    <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
-                        <SelectItem value="open">Abertas</SelectItem>
-                        <SelectItem value="waiting">Aguardando</SelectItem>
-                        <SelectItem value="in_progress">Em andamento</SelectItem>
-                        <SelectItem value="resolved">Resolvidas</SelectItem>
-                        <SelectItem value="archived">Arquivadas</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Janela de 24h</Label>
-                    <Select value={windowFilter} onValueChange={(v) => setWindowFilter(v as any)}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todas</SelectItem>
-                        <SelectItem value="open">Aberta</SelectItem>
-                        <SelectItem value="closed">Fechada</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Responsável</Label>
-                    <Select value={assignedFilter} onValueChange={(v) => setAssignedFilter(v as any)}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos os agentes</SelectItem>
-                        <SelectItem value="me">Minhas</SelectItem>
-                        <SelectItem value="none">Sem responsável</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {activeFilters > 0 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full text-xs"
-                      onClick={() => {
-                        setStatusFilter("all");
-                        setWindowFilter("all");
-                        setAssignedFilter("all");
-                      }}
-                    >
-                      Limpar filtros
-                    </Button>
-                  )}
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <div className="flex items-center gap-1 border-b">
-              {([
-                { id: "all", label: "Todas", count: countAll },
-                { id: "open", label: "Abertas", count: countOpen },
-                { id: "pending", label: "Pendentes", count: countPending },
-              ] as const).map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setQuickTab(t.id)}
-                  className={`-mb-px flex items-center gap-1.5 border-b-2 px-2.5 pb-2 text-sm transition-colors ${
-                    quickTab === t.id
-                      ? "border-emerald-600 font-medium text-emerald-700 dark:text-emerald-300"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {t.label}
-                  <span className="text-xs opacity-70">{t.count}</span>
-                </button>
-              ))}
-              <span className="ml-auto pb-2 text-xs text-muted-foreground">
-                {activeNumber
-                  ? activeNumber.nome_interno || formatPhone(activeNumber.display_phone_number ?? activeNumber.phone_number_id)
-                  : "Todas"}
-              </span>
-            </div>
-          </div>
-
-          <ScrollArea className="flex-1">
-            {convsQuery.isLoading ? (
-              <div className="flex items-center justify-center p-6 text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-              </div>
-            ) : visibleConvs.length === 0 ? (
-              <div className="p-4 text-center text-sm text-muted-foreground">
-                Nenhuma conversa ainda.
-              </div>
-            ) : (
-              <ul>
-                {visibleConvs.map((c) => (
-                  <li key={c.id}>
-                    <button
-                      onClick={() => {
-                        setSelectedId(c.id);
-                        markReadFn({ data: { conversation_id: c.id } })
-                          .then(() => qc.invalidateQueries({ queryKey: ["atd", "conversations"] }))
-                          .catch(() => {});
-                      }}
-                      className={`flex w-full items-start gap-3 border-l-2 px-3 py-3 text-left transition-colors ${
-                        selectedId === c.id
-                          ? "border-emerald-600 bg-emerald-500/10"
-                          : "border-transparent hover:bg-accent"
-                      }`}
-                    >
-                      <ContactAvatar name={c.contact_name} phone={c.contact_phone} />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="truncate text-sm font-medium">
-                            {c.contact_name || formatPhone(c.contact_phone)}
-                          </span>
-                          <span className="shrink-0 text-[11px] text-muted-foreground">
-                            {formatTime(c.last_message_at)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="truncate text-xs text-muted-foreground">
-                            {c.last_message_preview || "—"}
-                          </span>
-                          {c.unread_count > 0 && (
-                            <Badge className="h-5 shrink-0 rounded-full bg-emerald-600 px-1.5 text-[10px] hover:bg-emerald-600">
-                              {c.unread_count}
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="mt-1.5 flex items-center gap-1">
-                          <WindowBadge conv={c} />
-                          <StatusBadge status={c.conversation_status} />
-                        </div>
-                      </div>
-                    </button>
-                  </li>
-                ))}
-              </ul>
             )}
-          </ScrollArea>
-        </div>
-
-        {/* Coluna 2 — chat */}
-        <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
-          {selectedId ? (
-            <ChatPanel
-              conversationId={selectedId}
-              getFn={getFn}
-              msgsFn={msgsFn}
-              sendFn={sendFn}
-              setStatusFn={setStatusFn}
-              tplListFn={tplListFn}
-            />
-          ) : (
-            <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-sm text-muted-foreground">
-              <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600">
-                <MessageCircle className="h-7 w-7" />
-              </span>
-              Selecione uma conversa
-            </div>
-          )}
-        </div>
-
-        {/* Coluna 3 — contexto */}
-        <div className="hidden min-h-0 xl:flex xl:flex-col rounded-2xl border bg-card shadow-sm">
-          {selectedId ? (
-            <ContextPanel
-              conversationId={selectedId}
-              getFn={getFn}
-              notesListFn={notesListFn}
-              noteAddFn={noteAddFn}
-            />
-          ) : (
-            <div className="flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground">
-              Nenhuma seleção
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
