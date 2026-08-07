@@ -176,25 +176,47 @@ function AtendimentoPage() {
   const activeFilters =
     (statusFilter !== "all" ? 1 : 0) + (windowFilter !== "all" ? 1 : 0) + (assignedFilter !== "all" ? 1 : 0);
 
+  const isWindowOpen = (c: ConversationRow) =>
+    c.service_window_status === "open" &&
+    (!c.service_window_expires_at || new Date(c.service_window_expires_at).getTime() > Date.now());
+  const countAll = convs.length;
+  const countOpen = convs.filter(isWindowOpen).length;
+  const countPending = convs.filter((c) => c.unread_count > 0).length;
+  const visibleConvs =
+    quickTab === "open" ? convs.filter(isWindowOpen)
+    : quickTab === "pending" ? convs.filter((c) => c.unread_count > 0)
+    : convs;
+
   return (
     <div className="flex h-[calc(100vh-64px)] flex-col gap-3 p-3 md:p-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-xl font-semibold flex items-center gap-2">
-          <MessageSquare className="h-5 w-5" /> Atendimento WhatsApp
-        </h1>
-        <Badge variant="secondary" className="ml-2">
-          {convs.length} conversas
-        </Badge>
-        <div className="ml-auto">
+      {/* Barra superior */}
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border bg-card px-4 py-3 shadow-sm">
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
+          <MessageCircle className="h-5 w-5" />
+        </span>
+        <h1 className="text-xl font-semibold tracking-tight">Atendimento WhatsApp</h1>
+        <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+          {countAll} conversas
+        </span>
+        <div className="ml-auto flex items-center gap-2">
           <AttendanceSettingsDialog />
+          <Button variant="ghost" size="icon" className="rounded-xl text-muted-foreground" title="Notificações">
+            <Bell className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="rounded-xl text-muted-foreground" title="Mais">
+            <MoreVertical className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
-      <div className="grid flex-1 grid-cols-1 gap-3 overflow-hidden md:grid-cols-[240px_1fr] lg:grid-cols-[240px_300px_1fr] xl:grid-cols-[240px_320px_1fr_320px]">
-        {/* Coluna 0 — números de WhatsApp */}
-        <div className="flex min-h-0 flex-col rounded-lg border bg-card">
-          <div className="flex items-center gap-2 border-b px-3 py-2 text-xs font-medium text-muted-foreground">
-            <Smartphone className="h-4 w-4" /> Números
+      <div className="grid flex-1 grid-cols-1 gap-3 overflow-hidden md:grid-cols-[250px_1fr] lg:grid-cols-[250px_320px_1fr] xl:grid-cols-[250px_340px_1fr_320px]">
+        {/* Coluna 0 — conexões */}
+        <div className="flex min-h-0 flex-col rounded-2xl border bg-card shadow-sm">
+          <div className="flex items-center justify-between gap-2 px-4 py-3">
+            <span className="text-sm font-semibold">Conexões</span>
+            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground">
+              <Plus className="h-4 w-4" />
+            </Button>
           </div>
           <ScrollArea className="flex-1">
             {numbersQuery.isLoading ? (
@@ -207,24 +229,33 @@ function AtendimentoPage() {
               </div>
 
             ) : (
-              <ul className="divide-y">
+              <ul className="space-y-1.5 px-2 pb-3">
                 <li>
                   <button
                     onClick={() => {
                       setSelectedNumber(null);
                       setSelectedId(null);
                     }}
-                    className={`w-full px-3 py-2 text-left hover:bg-accent ${!selectedNumber ? "bg-accent" : ""}`}
+                    className={`flex w-full items-center gap-3 rounded-xl border p-2.5 text-left transition-colors ${
+                      !selectedNumber
+                        ? "border-emerald-500/40 bg-emerald-500/10"
+                        : "border-transparent hover:bg-accent"
+                    }`}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="truncate text-sm font-medium">Todos os números</span>
-                      {totalUnread > 0 && (
-                        <Badge className="h-5 shrink-0 rounded-full px-1.5 text-[10px]">{totalUnread}</Badge>
-                      )}
-                    </div>
-                    <div className="truncate text-[11px] text-muted-foreground">
-                      Chat ao vivo de todas as conexões
-                    </div>
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white">
+                      <MessageSquare className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium">Todos os números</span>
+                      <span className="block truncate text-[11px] text-muted-foreground">
+                        Chats ao vivo de todas as conexões
+                      </span>
+                    </span>
+                    {totalUnread > 0 && (
+                      <Badge className="h-5 shrink-0 rounded-full bg-emerald-600 px-1.5 text-[10px] hover:bg-emerald-600">
+                        {totalUnread}
+                      </Badge>
+                    )}
                   </button>
                 </li>
 
@@ -237,14 +268,20 @@ function AtendimentoPage() {
                           setSelectedNumber(n.phone_number_id);
                           setSelectedId(null);
                         }}
-                        className={`w-full px-3 py-2 text-left hover:bg-accent ${active ? "bg-accent" : ""}`}
+                        className={`w-full rounded-xl border p-2.5 text-left transition-colors ${
+                          active
+                            ? "border-emerald-500/40 bg-emerald-500/10"
+                            : "border-transparent hover:bg-accent"
+                        }`}
                       >
                         <div className="flex items-center justify-between gap-2">
                           <span className="truncate text-sm font-medium">
                             {n.nome_interno || formatPhone(n.display_phone_number ?? n.phone_number_id)}
                           </span>
                           {n.unread > 0 && (
-                            <Badge className="h-5 shrink-0 rounded-full px-1.5 text-[10px]">{n.unread}</Badge>
+                            <Badge className="h-5 shrink-0 rounded-full bg-emerald-600 px-1.5 text-[10px] hover:bg-emerald-600">
+                              {n.unread}
+                            </Badge>
                           )}
                         </div>
                         <div className="truncate text-[11px] text-muted-foreground">
@@ -252,7 +289,7 @@ function AtendimentoPage() {
                         </div>
                         <div className="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground">
                           <span>{n.total} conversas</span>
-                          {n.open_window > 0 && <span className="text-emerald-600">{n.open_window} em 24h</span>}
+                          {n.open_window > 0 && <span className="text-emerald-600">• {n.open_window} em 24h</span>}
                         </div>
                         {n.waba_name && (
                           <div className="truncate text-[10px] text-muted-foreground/80">{n.waba_name}</div>
@@ -267,21 +304,26 @@ function AtendimentoPage() {
         </div>
 
         {/* Coluna 1 — conversas do número selecionado */}
-        <div className="flex min-h-0 flex-col rounded-lg border bg-card">
-          <div className="space-y-2 border-b p-2">
-            <div className="flex items-center justify-between gap-2 px-1">
-              <span className="truncate text-xs font-medium text-muted-foreground">
-                {activeNumber
-                  ? activeNumber.nome_interno || formatPhone(activeNumber.display_phone_number ?? activeNumber.phone_number_id)
-                  : "Todas as conversas"}
-              </span>
+        <div className="flex min-h-0 flex-col rounded-2xl border bg-card shadow-sm">
+          <div className="space-y-3 p-3">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome ou telefone"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="h-10 rounded-xl border-muted bg-muted/40 pl-9"
+                />
+              </div>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs">
-                    <ListChecks className="h-3.5 w-3.5" />
-                    Filtros
+                  <Button variant="outline" size="icon" className="relative h-10 w-10 shrink-0 rounded-xl">
+                    <SlidersHorizontal className="h-4 w-4" />
                     {activeFilters > 0 && (
-                      <Badge className="h-4 rounded-full px-1 text-[10px]">{activeFilters}</Badge>
+                      <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] text-white">
+                        {activeFilters}
+                      </span>
                     )}
                   </Button>
                 </PopoverTrigger>
@@ -339,14 +381,31 @@ function AtendimentoPage() {
                 </PopoverContent>
               </Popover>
             </div>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome, telefone…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-7 h-9"
-              />
+
+            <div className="flex items-center gap-1 border-b">
+              {([
+                { id: "all", label: "Todas", count: countAll },
+                { id: "open", label: "Abertas", count: countOpen },
+                { id: "pending", label: "Pendentes", count: countPending },
+              ] as const).map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setQuickTab(t.id)}
+                  className={`-mb-px flex items-center gap-1.5 border-b-2 px-2.5 pb-2 text-sm transition-colors ${
+                    quickTab === t.id
+                      ? "border-emerald-600 font-medium text-emerald-700 dark:text-emerald-300"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {t.label}
+                  <span className="text-xs opacity-70">{t.count}</span>
+                </button>
+              ))}
+              <span className="ml-auto pb-2 text-xs text-muted-foreground">
+                {activeNumber
+                  ? activeNumber.nome_interno || formatPhone(activeNumber.display_phone_number ?? activeNumber.phone_number_id)
+                  : "Todas"}
+              </span>
             </div>
           </div>
 
@@ -355,13 +414,13 @@ function AtendimentoPage() {
               <div className="flex items-center justify-center p-6 text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
               </div>
-            ) : convs.length === 0 ? (
+            ) : visibleConvs.length === 0 ? (
               <div className="p-4 text-center text-sm text-muted-foreground">
                 Nenhuma conversa ainda.
               </div>
             ) : (
-              <ul className="divide-y">
-                {convs.map((c) => (
+              <ul>
+                {visibleConvs.map((c) => (
                   <li key={c.id}>
                     <button
                       onClick={() => {
@@ -370,27 +429,36 @@ function AtendimentoPage() {
                           .then(() => qc.invalidateQueries({ queryKey: ["atd", "conversations"] }))
                           .catch(() => {});
                       }}
-                      className={`flex w-full flex-col gap-1 px-3 py-2 text-left hover:bg-accent ${
-                        selectedId === c.id ? "bg-accent" : ""
+                      className={`flex w-full items-start gap-3 border-l-2 px-3 py-3 text-left transition-colors ${
+                        selectedId === c.id
+                          ? "border-emerald-600 bg-emerald-500/10"
+                          : "border-transparent hover:bg-accent"
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="truncate text-sm font-medium">
-                          {c.contact_name || formatPhone(c.contact_phone)}
-                        </span>
-                        {c.unread_count > 0 && (
-                          <Badge className="h-5 shrink-0 rounded-full px-1.5 text-[10px]">
-                            {c.unread_count}
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="truncate">{c.last_message_preview || "—"}</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-[10px]">
-                        <WindowBadge conv={c} />
-                        <StatusBadge status={c.conversation_status} />
-                        <span className="ml-auto text-muted-foreground">{formatRelative(c.last_message_at)}</span>
+                      <ContactAvatar name={c.contact_name} phone={c.contact_phone} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate text-sm font-medium">
+                            {c.contact_name || formatPhone(c.contact_phone)}
+                          </span>
+                          <span className="shrink-0 text-[11px] text-muted-foreground">
+                            {formatTime(c.last_message_at)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate text-xs text-muted-foreground">
+                            {c.last_message_preview || "—"}
+                          </span>
+                          {c.unread_count > 0 && (
+                            <Badge className="h-5 shrink-0 rounded-full bg-emerald-600 px-1.5 text-[10px] hover:bg-emerald-600">
+                              {c.unread_count}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="mt-1.5 flex items-center gap-1">
+                          <WindowBadge conv={c} />
+                          <StatusBadge status={c.conversation_status} />
+                        </div>
                       </div>
                     </button>
                   </li>
@@ -401,7 +469,7 @@ function AtendimentoPage() {
         </div>
 
         {/* Coluna 2 — chat */}
-        <div className="flex min-h-0 flex-col rounded-lg border bg-card">
+        <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
           {selectedId ? (
             <ChatPanel
               conversationId={selectedId}
@@ -412,14 +480,17 @@ function AtendimentoPage() {
               tplListFn={tplListFn}
             />
           ) : (
-            <div className="flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground">
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-sm text-muted-foreground">
+              <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600">
+                <MessageCircle className="h-7 w-7" />
+              </span>
               Selecione uma conversa
             </div>
           )}
         </div>
 
         {/* Coluna 3 — contexto */}
-        <div className="hidden min-h-0 xl:flex xl:flex-col rounded-lg border bg-card">
+        <div className="hidden min-h-0 xl:flex xl:flex-col rounded-2xl border bg-card shadow-sm">
           {selectedId ? (
             <ContextPanel
               conversationId={selectedId}
@@ -437,6 +508,28 @@ function AtendimentoPage() {
     </div>
   );
 }
+
+function ContactAvatar({
+  name,
+  phone,
+  size = "md",
+}: {
+  name?: string | null;
+  phone?: string | null;
+  size?: "md" | "lg";
+}) {
+  const initials = (name?.trim()?.[0] ?? phone?.replace(/\D/g, "").slice(-2, -1) ?? "?").toUpperCase();
+  return (
+    <span
+      className={`flex shrink-0 items-center justify-center rounded-full bg-muted font-medium text-muted-foreground ${
+        size === "lg" ? "h-16 w-16 text-xl" : "h-10 w-10 text-sm"
+      }`}
+    >
+      {name ? initials : <User className={size === "lg" ? "h-7 w-7" : "h-5 w-5"} />}
+    </span>
+  );
+}
+
 
 function ChatPanel(props: {
   conversationId: string;
