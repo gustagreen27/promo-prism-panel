@@ -158,6 +158,7 @@ function AddNumberWizard({ wabas, onDone }: { wabas: any[]; onDone: () => void }
   const [numbers, setNumbers] = useState<any[]>([]);
 
   const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
   const STEPS = [
     "Adicionar número à WABA",
@@ -169,7 +170,11 @@ function AddNumberWizard({ wabas, onDone }: { wabas: any[]; onDone: () => void }
   ];
 
   async function step1() {
-    if (!waba_ref_id || !cc || !phone || !verified_name) return toast.error("Preencha WABA, DDI, número e nome.");
+    setErr(null);
+    if (!waba_ref_id || !cc || !phone || !verified_name) {
+      setErr("Preencha WABA, DDI, número e nome de exibição.");
+      return toast.error("Preencha WABA, DDI, número e nome.");
+    }
     setLoading(true);
     try {
       const r: any = await addFn({ data: { waba_ref_id, cc, phone_number: phone, verified_name } });
@@ -178,7 +183,11 @@ function AddNumberWizard({ wabas, onDone }: { wabas: any[]; onDone: () => void }
         ? `Número já existia na WABA — reutilizando ${r.phone_number_id}`
         : `Número criado (phone_number_id ${r.phone_number_id})`);
       setStep(2);
-    } catch (e: any) { toast.error(e?.message ?? "Erro"); } finally { setLoading(false); }
+    } catch (e: any) {
+      const msg = e?.message || e?.error?.message || "Erro ao adicionar número na WABA.";
+      setErr(msg);
+      toast.error(msg);
+    } finally { setLoading(false); }
   }
   async function step2() {
     if (!connection_id) return;
@@ -253,11 +262,18 @@ function AddNumberWizard({ wabas, onDone }: { wabas: any[]; onDone: () => void }
           <p className="sm:col-span-2 text-xs text-muted-foreground">
             Se o número já estiver na WABA, o cadastro reutiliza o Phone Number ID existente e segue direto para a verificação.
           </p>
+          {err && (
+            <div className="sm:col-span-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
+              {err}
+            </div>
+          )}
           <DialogFooter className="sm:col-span-2">
             <Button variant="ghost" disabled={!waba_ref_id || loading} onClick={async () => { await loadNumbers(); setStep(6); }}>
               Já existe — ver números da WABA
             </Button>
-            <Button disabled={loading} onClick={step1}><Plus className="mr-2 h-4 w-4" />Adicionar número à WABA</Button>
+            <Button disabled={loading} onClick={step1}>
+              <Plus className="mr-2 h-4 w-4" />{loading ? "Adicionando…" : "Adicionar número à WABA"}
+            </Button>
           </DialogFooter>
         </div>
       )}
