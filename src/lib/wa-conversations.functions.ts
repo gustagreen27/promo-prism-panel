@@ -29,6 +29,19 @@ async function accessibleWorkspaceIds(supabase: any, userId: string): Promise<st
   return ids;
 }
 
+/**
+ * Números liberados para o usuário. `null` = sem restrição (vê todos).
+ * Usado para contas de atendimento limitadas a números específicos.
+ */
+async function allowedPhoneNumberIds(supabase: any, userId: string): Promise<string[] | null> {
+  const { data } = await supabase
+    .from("attendance_number_grants")
+    .select("phone_number_id")
+    .eq("user_id", userId);
+  const ids = (data ?? []).map((g: any) => g.phone_number_id).filter(Boolean);
+  return ids.length ? ids : null;
+}
+
 /** Resolve o workspace de uma conversa garantindo que o usuário tem acesso. */
 async function conversationScope(
   supabase: any,
@@ -36,12 +49,14 @@ async function conversationScope(
   conversationId: string,
 ): Promise<{ wsId: string; ids: string[] }> {
   const ids = await accessibleWorkspaceIds(supabase, userId);
-  const { data } = await supabase
+  const allowed = await allowedPhoneNumberIds(supabase, userId);
+  let cq = supabase
     .from("wa_conversations")
     .select("workspace_id")
     .eq("id", conversationId)
-    .in("workspace_id", ids)
-    .maybeSingle();
+    .in("workspace_id", ids);
+  if (allowed) cq = cq.in("phone_number_id", allowed);
+  const { data } = await cq.maybeSingle();
   if (!data?.workspace_id) throw new Error("Conversa não encontrada");
   return { wsId: data.workspace_id as string, ids };
 }
@@ -71,11 +86,14 @@ export const listAttendanceNumbers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<AttendanceNumber[]> => {
     const wsIds = await accessibleWorkspaceIds(context.supabase, context.userId);
-    const { data: rows, error } = await context.supabase
+    const allowed = await allowedPhoneNumberIds(context.supabase, context.userId);
+    let rq = context.supabase
       .from("wa_conversations")
       .select("phone_number_id, connection_id, unread_count, service_window_status, last_message_at")
       .in("workspace_id", wsIds)
       .limit(5000);
+    if (allowed) rq = rq.in("phone_number_id", allowed);
+    const { data: rows, error } = await rq;
     if (error) throw new Error(error.message);
 
     const map = new Map<string, AttendanceNumber>();
@@ -119,7 +137,9 @@ export const listAttendanceNumbers = createServerFn({ method: "GET" })
       .not("phone_number_id", "is", null)
       .limit(1000);
     const list = ((conns ?? []) as any[]).filter(
-      (c) => !c.workspace_id || wsIds.includes(c.workspace_id),
+      (c) =>
+        (!c.workspace_id || wsIds.includes(c.workspace_id)) &&
+        (!allowed || allowed.includes(c.phone_number_id)),
     );
 
     const wabaRefs = [...new Set(list.map((c) => c.waba_ref_id).filter(Boolean))];
@@ -212,6 +232,8 @@ export const listConversationsAtd = createServerFn({ method: "GET" })
     if (assigned === "none") q = q.is("assigned_user_id", null);
     if (data.campaign_id) q = q.eq("campaign_id", data.campaign_id);
     if (data.phone_number_id) q = q.eq("phone_number_id", data.phone_number_id);
+    const allowedPnis = await allowedPhoneNumberIds(context.supabase, context.userId);
+    if (allowedPnis) q = q.in("phone_number_id", allowedPnis);
     if (data.search && data.search.trim()) {
       const s = `%${data.search.trim()}%`;
       q = q.or(`contact_phone.ilike.${s},contact_name.ilike.${s},last_message_preview.ilike.${s}`);
