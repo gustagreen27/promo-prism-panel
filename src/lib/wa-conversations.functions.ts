@@ -108,36 +108,64 @@ export const listAttendanceNumbers = createServerFn({ method: "GET" })
     }
 
     const items = [...map.values()];
-    const ids = items.map((i) => i.phone_number_id).filter(Boolean);
-    if (ids.length) {
-      const { data: conns } = await context.supabase
-        .from("whatsapp_connections")
-        .select("id, phone_number_id, display_phone, phone, verified_name, nome_interno, quality_rating, status, waba_ref_id")
-        .in("phone_number_id", ids);
-      const list = (conns ?? []) as any[];
-      const wabaRefs = [...new Set(list.map((c) => c.waba_ref_id).filter(Boolean))];
-      const wabaNames = new Map<string, string>();
-      if (wabaRefs.length) {
-        const { data: wabas } = await context.supabase
-          .from("whatsapp_wabas")
-          .select("id, waba_id, nome_interno")
-          .in("id", wabaRefs);
-        for (const w of (wabas ?? []) as any[]) wabaNames.set(w.id, w.nome_interno ?? w.waba_id);
-      }
-      const byPni = new Map<string, any>();
-      for (const c of list) byPni.set(c.phone_number_id, c);
-      for (const i of items) {
-        const c = byPni.get(i.phone_number_id);
-        if (!c) continue;
-        i.connection_id = c.id;
-        i.display_phone_number = c.display_phone ?? c.phone ?? null;
-        i.nome_interno = c.nome_interno ?? c.verified_name ?? null;
-        i.quality_rating = c.quality_rating ?? null;
-        i.status = c.status ?? null;
-        i.waba_name = c.waba_ref_id ? wabaNames.get(c.waba_ref_id) ?? null : null;
-      }
 
+    // Todos os números conectados (mesmo sem nenhuma conversa ainda) —
+    // o chat ao vivo precisa listar qualquer número que possa receber mensagem.
+    const { data: conns } = await context.supabase
+      .from("whatsapp_connections")
+      .select(
+        "id, workspace_id, phone_number_id, display_phone, phone, verified_name, nome_interno, quality_rating, status, waba_ref_id",
+      )
+      .not("phone_number_id", "is", null)
+      .limit(1000);
+    const list = ((conns ?? []) as any[]).filter(
+      (c) => !c.workspace_id || wsIds.includes(c.workspace_id),
+    );
+
+    const wabaRefs = [...new Set(list.map((c) => c.waba_ref_id).filter(Boolean))];
+    const wabaNames = new Map<string, string>();
+    if (wabaRefs.length) {
+      const { data: wabas } = await context.supabase
+        .from("whatsapp_wabas")
+        .select("id, waba_id, nome_interno")
+        .in("id", wabaRefs);
+      for (const w of (wabas ?? []) as any[]) wabaNames.set(w.id, w.nome_interno ?? w.waba_id);
     }
+
+    const byPni = new Map<string, any>();
+    for (const c of list) byPni.set(c.phone_number_id, c);
+
+    // Garante uma entrada para cada número conectado.
+    for (const c of list) {
+      if (map.has(c.phone_number_id)) continue;
+      const empty: AttendanceNumber = {
+        phone_number_id: c.phone_number_id,
+        connection_id: c.id,
+        display_phone_number: null,
+        nome_interno: null,
+        waba_name: null,
+        quality_rating: null,
+        status: null,
+        total: 0,
+        unread: 0,
+        open_window: 0,
+        last_message_at: null,
+      };
+      map.set(c.phone_number_id, empty);
+      items.push(empty);
+    }
+
+    for (const i of items) {
+      const c = byPni.get(i.phone_number_id);
+      if (!c) continue;
+      i.connection_id = c.id;
+      i.display_phone_number = c.display_phone ?? c.phone ?? null;
+      i.nome_interno = c.nome_interno ?? c.verified_name ?? null;
+      i.quality_rating = c.quality_rating ?? null;
+      i.status = c.status ?? null;
+      i.waba_name = c.waba_ref_id ? wabaNames.get(c.waba_ref_id) ?? null : null;
+    }
+
 
     items.sort((a, b) => (b.last_message_at ?? "").localeCompare(a.last_message_at ?? ""));
     return items;
