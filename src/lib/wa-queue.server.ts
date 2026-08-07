@@ -55,10 +55,20 @@ const OPT_OUT_REGEX = /\b(parar|sair|cancelar|cancela|remover|descadastrar|n[ãa
 // 131000 = "Something went wrong" (transient generic error, isolado por recipient)
 // 131016 = Service overloaded; 131026 = Message undeliverable (retry tenta re-rota); 368 = temporarily blocked
 const RETRYABLE_CODES = new Set([
-  "130429", "131000", "131016", "131026", "131056", "131048", "131047",
+  "130429", "80007", "131000", "131016", "131026", "131056", "131048", "131047",
   "368", "500", "502", "503", "504",
 ]);
+// Erros de throughput/rate limit tratados pelo controlador adaptativo.
+// 130429 = throughput do número excedido; 80007 = rate limit da API (WABA).
+const THROUGHPUT_ERROR_CODES = new Set(["130429", "80007"]);
+// Modo adaptativo: rampa 20 → 30 → 40 → ... até o teto configurado.
+const ADAPTIVE_START_RATE = 20;
+const ADAPTIVE_MIN_RATE = 5;
+const ADAPTIVE_STEP = 10;
+const ADAPTIVE_STEP_INTERVAL_MS = 60_000;
+const ADAPTIVE_BACKOFF_FACTOR = 0.8;
 const MAX_ATTEMPTS = 5;
+
 // Erros FATAIS de conta: nunca reprocessar, parar tudo na primeira ocorrência.
 // 131031 = Business account has been locked (bloqueio da conta comercial pela Meta)
 // 131042 = problema de pagamento/método de cobrança na conta
