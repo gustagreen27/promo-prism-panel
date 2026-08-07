@@ -1319,8 +1319,16 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
   const header = isInteractive ? payload?.header : null;
   const footer = isInteractive ? payload?.footer : null;
 
+  const failed = msg.status === "failed";
+  const pending = msg.status === "queued" || msg.status === "processing";
+
   return (
-    <div className={`group max-w-[75%] rounded-2xl px-3 py-2 shadow-sm ${bubble}`}>
+    <div
+      className={`group max-w-[75%] rounded-2xl px-3 py-2 shadow-sm transition-all duration-300 animate-in fade-in slide-in-from-bottom-1 ${bubble} ${
+        failed ? "ring-1 ring-destructive/50" : ""
+      } ${pending ? "opacity-80" : "opacity-100"}`}
+    >
+
       {msg.template_name && (
         <div className={`mb-1 text-[10px] font-medium ${out ? "text-foreground/60 dark:text-emerald-100" : "text-muted-foreground"}`}>
           Template · {msg.template_name}
