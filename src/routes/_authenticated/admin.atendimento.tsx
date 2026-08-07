@@ -1203,10 +1203,10 @@ function ChatPanel(props: {
             <Textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder={windowOpen ? "Escreva uma mensagem…" : "Janela fechada — envie um template"}
+              placeholder={windowOpen ? "Digite uma mensagem…" : "Janela fechada — envie um template"}
               disabled={!windowOpen || sendText.isPending}
-              rows={2}
-              className="resize-none"
+              rows={1}
+              className="max-h-32 min-h-10 resize-none border-0 bg-transparent py-2.5 shadow-none focus-visible:ring-0"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -1214,27 +1214,27 @@ function ChatPanel(props: {
                 }
               }}
             />
-            <div className="flex flex-col gap-1">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setTplOpen(true)}
-                title="Enviar template"
-              >
-                <FileText className="h-4 w-4" />
-              </Button>
-              <Button
-                size="sm"
-                disabled={!windowOpen || !text.trim() || sendText.isPending}
-                onClick={() => sendText.mutate()}
-              >
-                {sendText.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-10 w-10 shrink-0 rounded-full text-muted-foreground"
+              onClick={() => setTplOpen(true)}
+              title="Enviar template"
+            >
+              <FileText className="h-4 w-4" />
+            </Button>
+            <Button
+              size="icon"
+              className="h-10 w-10 shrink-0 rounded-full bg-emerald-600 text-white hover:bg-emerald-700"
+              disabled={!windowOpen || !text.trim() || sendText.isPending}
+              onClick={() => sendText.mutate()}
+            >
+              {sendText.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
           </div>
         )}
       </div>
