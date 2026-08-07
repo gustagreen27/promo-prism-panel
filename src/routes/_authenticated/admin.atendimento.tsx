@@ -127,6 +127,8 @@ function AtendimentoPage() {
   const totalUnread = numbers.reduce((a, n) => a + n.unread, 0);
 
 
+  const [live, setLive] = useState(false);
+
   // Lista de conversas (SWR + realtime)
   const convsQuery = useQuery({
     queryKey: ["atd", "conversations", { selectedNumber, statusFilter, windowFilter, assignedFilter, search }],
@@ -141,35 +143,42 @@ function AtendimentoPage() {
         },
       }) as Promise<ConversationRow[]>,
     enabled: !!selectedNumber || numbersQuery.isFetched,
-    refetchInterval: 15000,
+    placeholderData: (prev) => prev,
+    refetchInterval: live ? 30000 : 5000,
   });
 
 
   useEffect(() => {
+    const bumpLists = () => {
+      qc.invalidateQueries({ queryKey: ["atd", "conversations"] });
+      qc.invalidateQueries({ queryKey: ["atd", "numbers"] });
+    };
     const ch = supabase
       .channel("atd-conversations")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "wa_conversations" },
-        () => {
-          qc.invalidateQueries({ queryKey: ["atd", "conversations"] });
-          qc.invalidateQueries({ queryKey: ["atd", "numbers"] });
-        },
+        bumpLists,
       )
       .on(
+        // INSERT (nova mensagem) e UPDATE (status de envio/entrega/erro)
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "wa_conversation_messages" },
+        { event: "*", schema: "public", table: "wa_conversation_messages" },
         (payload) => {
-          const convId = (payload.new as any)?.conversation_id;
+          const convId = (payload.new as any)?.conversation_id ?? (payload.old as any)?.conversation_id;
           if (convId) qc.invalidateQueries({ queryKey: ["atd", "messages", convId] });
-          qc.invalidateQueries({ queryKey: ["atd", "conversations"] });
+          bumpLists();
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        setLive(status === "SUBSCRIBED");
+      });
     return () => {
+      setLive(false);
       supabase.removeChannel(ch);
     };
   }, [qc]);
+
 
   const convs = convsQuery.data ?? [];
 
@@ -196,10 +205,25 @@ function AtendimentoPage() {
           <MessageCircle className="h-5 w-5" />
         </span>
         <h1 className="text-xl font-semibold tracking-tight">Atendimento WhatsApp</h1>
-        <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+        <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 transition-all dark:text-emerald-300">
           {countAll} conversas
         </span>
+        <span
+          className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+            live
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300"
+              : "border-border bg-muted text-muted-foreground"
+          }`}
+          title={live ? "Atualizações em tempo real ativas" : "Reconectando… usando atualização periódica"}
+        >
+          <span className="relative flex h-2 w-2">
+            {live && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />}
+            <span className={`relative inline-flex h-2 w-2 rounded-full ${live ? "bg-emerald-500" : "bg-muted-foreground/50"}`} />
+          </span>
+          {live ? "Ao vivo" : "Reconectando"}
+        </span>
         <div className="ml-auto flex items-center gap-2">
+
           <AttendanceSettingsDialog />
           <Button variant="ghost" size="icon" className="rounded-xl text-muted-foreground" title="Notificações">
             <Bell className="h-4 w-4" />
@@ -580,7 +604,8 @@ function ChatPanel(props: {
   const msgsQuery = useQuery({
     queryKey: ["atd", "messages", conversationId],
     queryFn: () => msgsFn({ data: { conversation_id: conversationId } }),
-    refetchInterval: 5000,
+    placeholderData: (prev: any) => prev,
+    refetchInterval: 4000,
   });
   const tplQuery = useQuery({
     queryKey: ["atd", "templates", (convQuery.data as any)?.conversation?.connection_id],
@@ -591,11 +616,43 @@ function ChatPanel(props: {
       }),
   });
 
+  // Realtime dedicado da conversa aberta: novas mensagens + mudanças de status
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [msgsQuery.data]);
+    if (!conversationId) return;
+    const ch = supabase
+      .channel(`atd-conv-${conversationId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "wa_conversation_messages",
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        () => {
+          qc.invalidateQueries({ queryKey: ["atd", "messages", conversationId] });
+          qc.invalidateQueries({ queryKey: ["atd", "conv", conversationId] });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "wa_conversations", filter: `id=eq.${conversationId}` },
+        () => qc.invalidateQueries({ queryKey: ["atd", "conv", conversationId] }),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [conversationId, qc]);
+
+  const msgCount = (msgsQuery.data as any[] | undefined)?.length ?? 0;
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 240;
+    el.scrollTo({ top: el.scrollHeight, behavior: nearBottom ? "smooth" : "auto" });
+  }, [msgCount, conversationId]);
+
 
   const sendText = useMutation({
     mutationFn: () =>
@@ -1262,8 +1319,16 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
   const header = isInteractive ? payload?.header : null;
   const footer = isInteractive ? payload?.footer : null;
 
+  const failed = msg.status === "failed";
+  const pending = msg.status === "queued" || msg.status === "processing";
+
   return (
-    <div className={`group max-w-[75%] rounded-2xl px-3 py-2 shadow-sm ${bubble}`}>
+    <div
+      className={`group max-w-[75%] rounded-2xl px-3 py-2 shadow-sm transition-all duration-300 animate-in fade-in slide-in-from-bottom-1 ${bubble} ${
+        failed ? "ring-1 ring-destructive/50" : ""
+      } ${pending ? "opacity-80" : "opacity-100"}`}
+    >
+
       {msg.template_name && (
         <div className={`mb-1 text-[10px] font-medium ${out ? "text-foreground/60 dark:text-emerald-100" : "text-muted-foreground"}`}>
           Template · {msg.template_name}
@@ -1337,10 +1402,17 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
         <div className="mt-1 text-[10px] opacity-70">Selecionado: {msg.interactive_list_title}</div>
       )}
 
+      {failed && msg.error_message && (
+        <div className="mt-1 rounded-md bg-destructive/10 px-2 py-1 text-[10px] text-destructive">
+          Falha no envio · {msg.error_message}
+        </div>
+      )}
+
       <div className={`mt-1 flex items-center gap-1 text-[10px] ${out ? "text-foreground/60 dark:text-emerald-100/90" : "text-muted-foreground"}`}>
         <span>{formatTime(msg.created_at)}</span>
         {out && <StatusTick status={msg.status} />}
-        {msg.error_message && <span className="text-destructive">· {msg.error_message}</span>}
+        {!failed && msg.error_message && <span className="text-destructive">· {msg.error_message}</span>}
+
         {onReply && (
           <button
             className={`ml-auto opacity-0 transition group-hover:opacity-100 ${out ? "text-foreground/60 dark:text-emerald-100" : "text-muted-foreground"}`}
@@ -1357,13 +1429,15 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
 
 
 function StatusTick({ status }: { status: string }) {
-  if (status === "queued") return <Clock className="h-3 w-3" />;
-  if (status === "sent") return <Check className="h-3 w-3" />;
-  if (status === "delivered") return <CheckCheck className="h-3 w-3" />;
-  if (status === "read") return <CheckCheck className="h-3 w-3 text-sky-300" />;
-  if (status === "failed") return <X className="h-3 w-3 text-red-300" />;
+  if (status === "queued" || status === "processing")
+    return <Clock className="h-3 w-3 animate-pulse" aria-label="Enviando" />;
+  if (status === "sent") return <Check className="h-3 w-3" aria-label="Enviada" />;
+  if (status === "delivered") return <CheckCheck className="h-3 w-3" aria-label="Entregue" />;
+  if (status === "read") return <CheckCheck className="h-3 w-3 text-sky-500 dark:text-sky-300" aria-label="Lida" />;
+  if (status === "failed") return <X className="h-3 w-3 text-destructive" aria-label="Falhou" />;
   return null;
 }
+
 
 function ContextPanel(props: { conversationId: string; getFn: any; notesListFn: any; noteAddFn: any }) {
   const qc = useQueryClient();
