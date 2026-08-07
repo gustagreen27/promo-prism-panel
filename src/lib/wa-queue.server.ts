@@ -1847,14 +1847,55 @@ export async function processCampaignTick(
       const mins = Math.max((Date.now() - startedAt) / 60000, 0.1);
       speed = +((doneCount / mins).toFixed(2));
     }
+    // Controlador adaptativo: recua em caso de throughput error, sobe em degraus
+    // quando o tick terminou saudável (respeitando o intervalo de estabilização).
+    const adaptivePatch: Record<string, any> = {};
+    if (adaptiveEnabled) {
+      const lastStep = (camp as any).adaptive_last_step_at
+        ? new Date((camp as any).adaptive_last_step_at as string).getTime()
+        : 0;
+      if (throughputErrors > 0) {
+        const reduced = Math.max(ADAPTIVE_MIN_RATE, Math.floor(adaptiveRate * ADAPTIVE_BACKOFF_FACTOR));
+        if (reduced < adaptiveRate) {
+          adaptiveRate = reduced;
+          adaptivePatch["adaptive_rate_current"] = reduced;
+          adaptivePatch["adaptive_last_step_at"] = new Date().toISOString();
+          void logEvent(
+            campaignId,
+            "adaptive_rate_down",
+            `Throughput error detectado — velocidade adaptativa reduzida para ${reduced} msg/s`,
+            { rate: reduced, throughput_errors: throughputErrors },
+          );
+        }
+      } else if (sent > 0 && adaptiveRate < rawCampRate && Date.now() - lastStep >= ADAPTIVE_STEP_INTERVAL_MS) {
+        const next = Math.min(rawCampRate, adaptiveRate + ADAPTIVE_STEP);
+        if (next > adaptiveRate) {
+          adaptiveRate = next;
+          adaptivePatch["adaptive_rate_current"] = next;
+          adaptivePatch["adaptive_last_step_at"] = new Date().toISOString();
+          void logEvent(
+            campaignId,
+            "adaptive_rate_up",
+            `API estável — velocidade adaptativa aumentada para ${next} msg/s (teto ${rawCampRate})`,
+            { rate: next, target: rawCampRate },
+          );
+        }
+      } else if ((camp as any).adaptive_rate_current == null) {
+        adaptivePatch["adaptive_rate_current"] = adaptiveRate;
+        adaptivePatch["adaptive_last_step_at"] = new Date().toISOString();
+      }
+    }
+
     await supabaseAdmin
       .from("wa_campaigns")
       .update({
         last_sent_at: sent > 0 ? new Date().toISOString() : camp.last_sent_at,
         last_error: lastError ?? camp.last_error,
         avg_speed_per_min: speed,
+        ...adaptivePatch,
       })
       .eq("id", campaignId);
+
 
     if (!pending) {
       await finalizeCampaign(campaignId);
