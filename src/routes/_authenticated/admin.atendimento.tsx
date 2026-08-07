@@ -115,6 +115,7 @@ function AtendimentoPage() {
   const [windowFilter, setWindowFilter] = useState<"all" | "open" | "closed">("all");
   const [assignedFilter, setAssignedFilter] = useState<"all" | "me" | "none">("all");
   const [search, setSearch] = useState("");
+  const [quickTab, setQuickTab] = useState<"all" | "open" | "pending">("all");
 
   // Todos os números conectados (coluna 1), com ou sem conversas
   const numbersQuery = useQuery({
