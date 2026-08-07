@@ -194,8 +194,9 @@ function AtendimentoPage() {
               </div>
             ) : numbers.length === 0 ? (
               <div className="p-4 text-center text-xs text-muted-foreground">
-                Nenhum número com conversas.
+                Nenhum número conectado.
               </div>
+
             ) : (
               <ul className="divide-y">
                 {numbers.map((n) => {
