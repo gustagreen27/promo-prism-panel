@@ -23,11 +23,13 @@ export const Route = createFileRoute("/_authenticated")({
     }
 
     // Usuários restritos ao Atendimento (com números liberados específicos)
+    const roleList = (roles ?? []).map((r) => r.role as string);
+    const isAdmin = roleList.some((r) => r === "admin" || r === "super_admin");
     const { data: grants } = await supabase
       .from("attendance_number_grants")
       .select("phone_number_id")
       .eq("user_id", data.user.id);
-    const attendanceOnly = (grants ?? []).length > 0;
+    const attendanceOnly = !isAdmin && ((grants ?? []).length > 0 || roleList.includes("support"));
     if (attendanceOnly && !location.pathname.startsWith("/admin/atendimento")) {
       throw redirect({ to: "/admin/atendimento" });
     }
