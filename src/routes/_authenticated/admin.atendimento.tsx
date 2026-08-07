@@ -931,12 +931,13 @@ function ChatPanel(props: {
             </Button>
           </div>
         ) : (
-          <div className="flex items-end gap-2">
+          <div className="flex items-end gap-2 rounded-3xl border bg-muted/40 p-1.5">
             <Popover open={attachOpen} onOpenChange={setAttachOpen}>
               <PopoverTrigger asChild>
                 <Button
-                  size="sm"
-                  variant="outline"
+                  size="icon"
+                  variant="ghost"
+                  className="h-10 w-10 shrink-0 rounded-full text-muted-foreground"
                   disabled={!windowOpen}
                   title="Anexar mídia, botões ou lista"
                 >
