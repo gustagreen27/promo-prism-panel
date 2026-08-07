@@ -790,30 +790,35 @@ function ChatPanel(props: {
 
   return (
     <>
-      <div className="flex items-center justify-between gap-2 border-b p-3">
-        <div className="min-w-0">
-          <div className="truncate text-sm font-medium">
-            {conv?.contact_name || formatPhone(conv?.contact_phone)}
-          </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>{formatPhone(conv?.contact_phone)}</span>
-            {connection?.phone_number && (
-              <>
-                <span>•</span>
-                <span>via {connection.phone_number}</span>
-              </>
-            )}
+      <div className="flex items-center justify-between gap-2 border-b bg-card px-4 py-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <ContactAvatar name={conv?.contact_name} phone={conv?.contact_phone} />
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold">
+              {conv?.contact_name || formatPhone(conv?.contact_phone)}
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="truncate">
+                {conv?.contact_name ? formatPhone(conv?.contact_phone) : "Clique para adicionar nome"}
+              </span>
+              {connection?.phone_number && (
+                <>
+                  <span>•</span>
+                  <span className="truncate">via {connection.phone_number}</span>
+                </>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {windowOpen ? (
-            <Badge variant="secondary" className="gap-1">
+            <span className="hidden items-center gap-1 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 sm:inline-flex dark:text-emerald-300">
               <Clock className="h-3 w-3" /> 24h aberta {remaining ? `• ${remaining}` : ""}
-            </Badge>
+            </span>
           ) : (
-            <Badge variant="destructive" className="gap-1">
+            <span className="hidden items-center gap-1 rounded-full bg-destructive/10 px-3 py-1 text-xs font-medium text-destructive sm:inline-flex">
               <Clock className="h-3 w-3" /> Janela fechada
-            </Badge>
+            </span>
           )}
           <Select
             value={conv?.conversation_status ?? "open"}
@@ -827,7 +832,7 @@ function ChatPanel(props: {
               }
             }}
           >
-            <SelectTrigger className="h-8 w-40 text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-9 w-36 rounded-xl text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="open">Aberta</SelectItem>
               <SelectItem value="waiting">Aguardando</SelectItem>
@@ -839,7 +844,14 @@ function ChatPanel(props: {
         </div>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-2 bg-muted/30 p-3">
+      <div
+        ref={scrollRef}
+        className="flex-1 space-y-2 overflow-y-auto bg-[oklch(0.96_0.015_95)] p-4 dark:bg-[oklch(0.22_0.01_150)]"
+      >
+        <div className="mx-auto mb-3 flex max-w-md items-center justify-center gap-2 rounded-lg bg-amber-100/80 px-3 py-1.5 text-center text-[11px] text-amber-900 dark:bg-amber-950/60 dark:text-amber-200">
+          <Lock className="h-3 w-3 shrink-0" />
+          As mensagens são protegidas com criptografia de ponta a ponta.
+        </div>
         {(msgsQuery.data as any[] | undefined)?.map((m) => (
           <MessageBubble
             key={m.id}
@@ -863,6 +875,7 @@ function ChatPanel(props: {
           </div>
         )}
       </div>
+
 
       <div className="space-y-2 border-t p-3">
         {!windowOpen && !tplOpen && (
