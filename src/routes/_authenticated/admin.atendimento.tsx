@@ -604,7 +604,8 @@ function ChatPanel(props: {
   const msgsQuery = useQuery({
     queryKey: ["atd", "messages", conversationId],
     queryFn: () => msgsFn({ data: { conversation_id: conversationId } }),
-    refetchInterval: 5000,
+    placeholderData: (prev: any) => prev,
+    refetchInterval: 4000,
   });
   const tplQuery = useQuery({
     queryKey: ["atd", "templates", (convQuery.data as any)?.conversation?.connection_id],
@@ -615,11 +616,43 @@ function ChatPanel(props: {
       }),
   });
 
+  // Realtime dedicado da conversa aberta: novas mensagens + mudanças de status
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [msgsQuery.data]);
+    if (!conversationId) return;
+    const ch = supabase
+      .channel(`atd-conv-${conversationId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "wa_conversation_messages",
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        () => {
+          qc.invalidateQueries({ queryKey: ["atd", "messages", conversationId] });
+          qc.invalidateQueries({ queryKey: ["atd", "conv", conversationId] });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "wa_conversations", filter: `id=eq.${conversationId}` },
+        () => qc.invalidateQueries({ queryKey: ["atd", "conv", conversationId] }),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [conversationId, qc]);
+
+  const msgCount = (msgsQuery.data as any[] | undefined)?.length ?? 0;
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 240;
+    el.scrollTo({ top: el.scrollHeight, behavior: nearBottom ? "smooth" : "auto" });
+  }, [msgCount, conversationId]);
+
 
   const sendText = useMutation({
     mutationFn: () =>
