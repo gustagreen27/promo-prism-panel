@@ -531,18 +531,21 @@ async function handleChange(supabaseAdmin: any, change: any, entryId: string | n
     // Número ainda não cadastrado: cria a conexão para que o Atendimento
     // receba as mensagens de qualquer número conectado à nossa WABA.
     if (!connectionId && workspaceId) {
+      const label = value?.metadata?.display_phone_number ?? String(phoneNumberId);
       const { data: created } = await supabaseAdmin
         .from("whatsapp_connections")
         .insert({
           workspace_id: workspaceId,
+          name: label,
           phone_number_id: String(phoneNumberId),
           waba_id: wabaId ? String(wabaId) : null,
           display_phone: value?.metadata?.display_phone_number ?? null,
-          nome_interno: value?.metadata?.display_phone_number ?? String(phoneNumberId),
+          nome_interno: label,
           provider: "meta_cloud",
-          status: "ativa",
+          status: "ativo",
           use_global_token: true,
         })
+
         .select("id")
         .maybeSingle();
       connectionId = created?.id ?? null;
