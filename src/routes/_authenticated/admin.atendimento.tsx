@@ -1246,8 +1246,8 @@ function ChatPanel(props: {
 function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void }) {
   const out = msg.direction === "outbound";
   const bubble = out
-    ? "ml-auto bg-emerald-600 text-white"
-    : "mr-auto bg-white dark:bg-neutral-800 text-foreground";
+    ? "ml-auto bg-[oklch(0.93_0.06_150)] text-foreground dark:bg-emerald-800 dark:text-white rounded-br-md"
+    : "mr-auto bg-card text-foreground rounded-bl-md";
   const payload = msg.payload ?? {};
   const isMedia =
     msg.message_type === "image" ||
@@ -1263,9 +1263,9 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
   const footer = isInteractive ? payload?.footer : null;
 
   return (
-    <div className={`group max-w-[75%] rounded-lg px-3 py-2 shadow-sm ${bubble}`}>
+    <div className={`group max-w-[75%] rounded-2xl px-3 py-2 shadow-sm ${bubble}`}>
       {msg.template_name && (
-        <div className={`mb-1 text-[10px] font-medium ${out ? "text-emerald-100" : "text-muted-foreground"}`}>
+        <div className={`mb-1 text-[10px] font-medium ${out ? "text-foreground/60 dark:text-emerald-100" : "text-muted-foreground"}`}>
           Template · {msg.template_name}
         </div>
       )}
@@ -1293,7 +1293,7 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
           href={msg.media_url}
           target="_blank"
           rel="noreferrer"
-          className={`mb-1 flex items-center gap-2 rounded border px-2 py-1 text-xs ${out ? "border-emerald-400/40 bg-emerald-700/40" : "border-border bg-muted/50"}`}
+          className={`mb-1 flex items-center gap-2 rounded border px-2 py-1 text-xs ${out ? "border-emerald-600/30 bg-emerald-600/10" : "border-border bg-muted/50"}`}
         >
           <FileIcon className="h-4 w-4" />
           <span className="truncate">{msg.media_filename ?? "Documento"}</span>
@@ -1306,11 +1306,11 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
       {msg.body && <div className="whitespace-pre-wrap break-words text-sm">{msg.body}</div>}
 
       {buttons.length > 0 && (
-        <div className={`mt-2 space-y-1 border-t pt-2 ${out ? "border-emerald-400/40" : "border-border/60"}`}>
+        <div className={`mt-2 space-y-1 border-t pt-2 ${out ? "border-emerald-600/30" : "border-border/60"}`}>
           {buttons.map((b) => (
             <div
               key={b.id}
-              className={`rounded px-2 py-1 text-center text-xs ${out ? "bg-emerald-700/40" : "bg-muted"}`}
+              className={`rounded px-2 py-1 text-center text-xs ${out ? "bg-emerald-600/10" : "bg-muted"}`}
             >
               {b.title}
             </div>
@@ -1318,9 +1318,9 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
         </div>
       )}
       {listSections.length > 0 && (
-        <div className={`mt-2 space-y-1 border-t pt-2 ${out ? "border-emerald-400/40" : "border-border/60"}`}>
+        <div className={`mt-2 space-y-1 border-t pt-2 ${out ? "border-emerald-600/30" : "border-border/60"}`}>
           {listSections.flatMap((s) => s.rows).map((r) => (
-            <div key={r.id} className={`rounded px-2 py-1 text-xs ${out ? "bg-emerald-700/40" : "bg-muted"}`}>
+            <div key={r.id} className={`rounded px-2 py-1 text-xs ${out ? "bg-emerald-600/10" : "bg-muted"}`}>
               <div className="font-medium">{r.title}</div>
               {r.description && <div className="opacity-80">{r.description}</div>}
             </div>
@@ -1337,13 +1337,13 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
         <div className="mt-1 text-[10px] opacity-70">Selecionado: {msg.interactive_list_title}</div>
       )}
 
-      <div className={`mt-1 flex items-center gap-1 text-[10px] ${out ? "text-emerald-100/90" : "text-muted-foreground"}`}>
+      <div className={`mt-1 flex items-center gap-1 text-[10px] ${out ? "text-foreground/60 dark:text-emerald-100/90" : "text-muted-foreground"}`}>
         <span>{formatTime(msg.created_at)}</span>
         {out && <StatusTick status={msg.status} />}
-        {msg.error_message && <span className="text-red-200">· {msg.error_message}</span>}
+        {msg.error_message && <span className="text-destructive">· {msg.error_message}</span>}
         {onReply && (
           <button
-            className={`ml-auto opacity-0 transition group-hover:opacity-100 ${out ? "text-emerald-100" : "text-muted-foreground"}`}
+            className={`ml-auto opacity-0 transition group-hover:opacity-100 ${out ? "text-foreground/60 dark:text-emerald-100" : "text-muted-foreground"}`}
             onClick={() => onReply(msg)}
             title="Responder"
           >
