@@ -1957,8 +1957,10 @@ function DispatchConfigCard({
       target_per_hour: p.target_per_hour,
       rate_per_second: p.rate_per_second,
       max_concurrency: p.max_concurrency,
+      adaptive_enabled: p.adaptive,
       scheduled_pause_enabled: false,
     }));
+
   };
 
   const isCustom = value.preset === "custom";
