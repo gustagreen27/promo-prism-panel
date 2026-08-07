@@ -1382,37 +1382,56 @@ function ContextPanel(props: { conversationId: string; getFn: any; notesListFn: 
   const connection = (convQuery.data as any)?.connection;
 
   return (
-    <Tabs defaultValue="contact" className="flex flex-1 flex-col">
-      <TabsList className="m-2 grid grid-cols-2">
-        <TabsTrigger value="contact"><User className="mr-1 h-3 w-3" /> Contato</TabsTrigger>
-        <TabsTrigger value="notes"><StickyNote className="mr-1 h-3 w-3" /> Notas</TabsTrigger>
+    <Tabs defaultValue="contact" className="flex min-h-0 flex-1 flex-col">
+      <TabsList className="h-auto w-full justify-start gap-0 rounded-none border-b bg-transparent p-0">
+        <TabsTrigger
+          value="contact"
+          className="flex-1 rounded-none border-b-2 border-transparent bg-transparent py-3 text-sm shadow-none data-[state=active]:border-emerald-600 data-[state=active]:bg-transparent data-[state=active]:font-medium data-[state=active]:text-emerald-700 data-[state=active]:shadow-none dark:data-[state=active]:text-emerald-300"
+        >
+          Contato
+        </TabsTrigger>
+        <TabsTrigger
+          value="notes"
+          className="flex-1 rounded-none border-b-2 border-transparent bg-transparent py-3 text-sm shadow-none data-[state=active]:border-emerald-600 data-[state=active]:bg-transparent data-[state=active]:font-medium data-[state=active]:text-emerald-700 data-[state=active]:shadow-none dark:data-[state=active]:text-emerald-300"
+        >
+          Notas
+        </TabsTrigger>
       </TabsList>
-      <TabsContent value="contact" className="flex-1 overflow-y-auto space-y-3 p-3">
-        <div>
-          <div className="text-xs text-muted-foreground">Nome</div>
-          <div className="text-sm">{conv?.contact_name || "—"}</div>
-        </div>
-        <div>
-          <div className="text-xs text-muted-foreground">Telefone</div>
-          <div className="text-sm">{formatPhone(conv?.contact_phone)}</div>
-        </div>
-        <div>
-          <div className="text-xs text-muted-foreground">Número de origem</div>
-          <div className="text-sm">{connection?.phone_number ?? "—"}</div>
-        </div>
-        <div>
-          <div className="text-xs text-muted-foreground">Campanha</div>
-          <div className="text-sm">{campaign?.name ?? "—"}</div>
-        </div>
-        <div>
-          <div className="text-xs text-muted-foreground">Janela 24h</div>
-          <div className="text-sm">
-            {conv?.service_window_expires_at
-              ? new Date(conv.service_window_expires_at).toLocaleString("pt-BR")
-              : "—"}
+      <TabsContent value="contact" className="flex-1 overflow-y-auto p-4">
+        <div className="flex flex-col items-center gap-2 pb-5 text-center">
+          <ContactAvatar name={conv?.contact_name} phone={conv?.contact_phone} size="lg" />
+          <div className="text-base font-semibold">
+            {conv?.contact_name || formatPhone(conv?.contact_phone)}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {conv?.contact_name ? formatPhone(conv?.contact_phone) : "Clique para adicionar nome"}
           </div>
         </div>
+        <dl className="divide-y border-t">
+          {[
+            { icon: User, label: "Nome", value: conv?.contact_name || "—" },
+            { icon: Phone, label: "Telefone", value: formatPhone(conv?.contact_phone) || "—" },
+            { icon: Hash, label: "Número de origem", value: connection?.phone_number ?? "—" },
+            { icon: Megaphone, label: "Campanha", value: campaign?.name ?? "—" },
+            {
+              icon: Clock,
+              label: "Janela 24h",
+              value: conv?.service_window_expires_at
+                ? new Date(conv.service_window_expires_at).toLocaleString("pt-BR")
+                : "—",
+            },
+          ].map((row) => (
+            <div key={row.label} className="flex items-start gap-3 py-3">
+              <row.icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <div className="min-w-0">
+                <dt className="text-xs text-muted-foreground">{row.label}</dt>
+                <dd className="break-words text-sm">{row.value}</dd>
+              </div>
+            </div>
+          ))}
+        </dl>
       </TabsContent>
+
       <TabsContent value="notes" className="flex-1 overflow-y-auto space-y-2 p-3">
         <div className="space-y-2">
           <Textarea
