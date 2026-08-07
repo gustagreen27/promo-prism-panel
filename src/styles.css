@@ -209,6 +209,20 @@
     linear-gradient(to bottom, oklch(0.22 0.05 258 / 4%) 1px, transparent 1px);
   background-size: 32px 32px;
 }
+@utility bg-wa-chat {
+  background-color: oklch(0.955 0.012 95);
+  background-image:
+    radial-gradient(oklch(0.22 0.05 258 / 4%) 1.2px, transparent 1.2px),
+    radial-gradient(oklch(0.22 0.05 258 / 3%) 1px, transparent 1px);
+  background-size: 28px 28px, 44px 44px;
+  background-position: 0 0, 14px 22px;
+  .dark & {
+    background-color: oklch(0.2 0.015 160);
+    background-image:
+      radial-gradient(oklch(1 0 0 / 4%) 1.2px, transparent 1.2px),
+      radial-gradient(oklch(1 0 0 / 3%) 1px, transparent 1px);
+  }
+}
 
 
 @media print {
