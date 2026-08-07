@@ -126,10 +126,10 @@ const STEPS: WizardStep[] = [
 // scheduled_pause_enabled, pause_every_messages, pause_duration_seconds.
 // ─────────────────────────────────────────────────────────────────
 type DispatchPreset =
-  | "economico"
-  | "intermediario"
-  | "alto_volume"
-  | "muito_alto"
+  | "adaptativo"
+  | "seguro"
+  | "recomendado"
+  | "alto_desempenho"
   | "maximo"
   | "custom";
 type DispatchConfig = {
@@ -137,6 +137,7 @@ type DispatchConfig = {
   target_per_hour: number;      // meta operacional (mensagens/h)
   rate_per_second: number;      // rate_per_second do rate limiter global (por phone_number_id)
   max_concurrency: number;      // requisições HTTP simultâneas
+  adaptive_enabled: boolean;    // rampa automática 20 → 30 → 40 ... com recuo em 130429/80007
   scheduled_pause_enabled: boolean;
   pause_every_messages: number; // usado apenas se scheduled_pause_enabled
   pause_duration_seconds: number; // usado apenas se scheduled_pause_enabled
@@ -144,35 +145,42 @@ type DispatchConfig = {
 
 type PresetSpec = {
   label: string;
+  hint: string;
   target_per_hour: number;
   rate_per_second: number;
   max_concurrency: number;
+  adaptive: boolean;
 };
 
+// Referência: a Meta documenta throughput padrão de até 80 mps por número
+// (≈20 mps em coexistência com o WhatsApp Business App) e esse teto considera
+// tráfego de entrada e saída — por isso nenhum preset trabalha colado no limite.
 const DISPATCH_PRESETS: Record<Exclude<DispatchPreset, "custom">, PresetSpec> = {
-  economico:      { label: "Econômico — 20 mil/h — 7 msg/s",     target_per_hour: 20_000,  rate_per_second: 7,  max_concurrency: 15  },
-  intermediario:  { label: "Intermediário — 50 mil/h — 15 msg/s", target_per_hour: 50_000,  rate_per_second: 15, max_concurrency: 40  },
-  alto_volume:    { label: "Alto volume — 100 mil/h — 30 msg/s",  target_per_hour: 100_000, rate_per_second: 30, max_concurrency: 80  },
-  muito_alto:     { label: "Muito alto — 200 mil/h — 60 msg/s",   target_per_hour: 200_000, rate_per_second: 60, max_concurrency: 120 },
-  maximo:         { label: "Máximo — 288 mil/h — 80 msg/s",       target_per_hour: 288_000, rate_per_second: 80, max_concurrency: 160 },
+  adaptativo:      { label: "Adaptativo (recomendado)", hint: "Começa em 20 mps e sobe até 40 mps conforme a API responde bem",        target_per_hour: 144_000, rate_per_second: 40, max_concurrency: 12, adaptive: true },
+  seguro:          { label: "Seguro — 25 mps",          hint: "90.000/h · concorrência 8 · ideal para números novos",                  target_per_hour: 90_000,  rate_per_second: 25, max_concurrency: 8,  adaptive: false },
+  recomendado:     { label: "Recomendado — 40 mps",     hint: "144.000/h · concorrência 12 · preset de produção",                      target_per_hour: 144_000, rate_per_second: 40, max_concurrency: 12, adaptive: false },
+  alto_desempenho: { label: "Alto desempenho — 60 mps", hint: "216.000/h · concorrência 16 · exige número estável",                    target_per_hour: 216_000, rate_per_second: 60, max_concurrency: 16, adaptive: false },
+  maximo:          { label: "Máximo — 75 mps",          hint: "270.000/h · concorrência 20 · somente números sem throttling recente",  target_per_hour: 270_000, rate_per_second: 75, max_concurrency: 20, adaptive: false },
 };
 
 const MAX_RATE_PER_SECOND = 80;
 const MAX_CONCURRENCY_UI = 300;
 const MAX_TARGET_PER_HOUR = 288_000;
 
-function defaultDispatch(preset: DispatchPreset = "economico"): DispatchConfig {
-  const p = preset === "custom" ? DISPATCH_PRESETS.economico : DISPATCH_PRESETS[preset];
+function defaultDispatch(preset: DispatchPreset = "adaptativo"): DispatchConfig {
+  const p = preset === "custom" ? DISPATCH_PRESETS.recomendado : (DISPATCH_PRESETS[preset] ?? DISPATCH_PRESETS.adaptativo);
   return {
     preset,
     target_per_hour: p.target_per_hour,
     rate_per_second: p.rate_per_second,
     max_concurrency: p.max_concurrency,
+    adaptive_enabled: p.adaptive,
     scheduled_pause_enabled: false,
     pause_every_messages: 5000,
     pause_duration_seconds: 60,
   };
 }
+
 
 // ─────────────────────────────────────────────────────────────────
 // Fluxo de resposta — configuração salva em wa_campaigns.response_flow_*
