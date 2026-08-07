@@ -199,6 +199,26 @@ function AtendimentoPage() {
 
             ) : (
               <ul className="divide-y">
+                <li>
+                  <button
+                    onClick={() => {
+                      setSelectedNumber(null);
+                      setSelectedId(null);
+                    }}
+                    className={`w-full px-3 py-2 text-left hover:bg-accent ${!selectedNumber ? "bg-accent" : ""}`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate text-sm font-medium">Todos os números</span>
+                      {totalUnread > 0 && (
+                        <Badge className="h-5 shrink-0 rounded-full px-1.5 text-[10px]">{totalUnread}</Badge>
+                      )}
+                    </div>
+                    <div className="truncate text-[11px] text-muted-foreground">
+                      Chat ao vivo de todas as conexões
+                    </div>
+                  </button>
+                </li>
+
                 {numbers.map((n) => {
                   const active = n.phone_number_id === selectedNumber;
                   return (
