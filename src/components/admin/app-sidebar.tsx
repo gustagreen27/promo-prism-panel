@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState, useRouteContext } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   Megaphone,
@@ -169,6 +169,12 @@ export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const waOpen = pathname.startsWith("/admin/whatsapp");
+  const { attendanceOnly } = useRouteContext({ from: "/_authenticated" }) as {
+    attendanceOnly?: boolean;
+  };
+  const visibleGroups = attendanceOnly
+    ? GROUPS.filter((g) => g.label === "Atendimento")
+    : GROUPS;
 
   const isActive = (item: NavLeaf) => {
     if (item.to === "/admin") return pathname === "/admin";
@@ -266,9 +272,9 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {GROUPS.map((group) => (
+        {visibleGroups.map((group) => (
           <Fragment key={group.label}>
-          {group.label === "Atendimento" ? waBlock : null}
+          {!attendanceOnly && group.label === "Atendimento" ? waBlock : null}
           <SidebarGroup>
             <SidebarGroupLabel className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
               {group.label}
