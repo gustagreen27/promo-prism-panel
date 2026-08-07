@@ -1429,13 +1429,15 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
 
 
 function StatusTick({ status }: { status: string }) {
-  if (status === "queued") return <Clock className="h-3 w-3" />;
-  if (status === "sent") return <Check className="h-3 w-3" />;
-  if (status === "delivered") return <CheckCheck className="h-3 w-3" />;
-  if (status === "read") return <CheckCheck className="h-3 w-3 text-sky-300" />;
-  if (status === "failed") return <X className="h-3 w-3 text-red-300" />;
+  if (status === "queued" || status === "processing")
+    return <Clock className="h-3 w-3 animate-pulse" aria-label="Enviando" />;
+  if (status === "sent") return <Check className="h-3 w-3" aria-label="Enviada" />;
+  if (status === "delivered") return <CheckCheck className="h-3 w-3" aria-label="Entregue" />;
+  if (status === "read") return <CheckCheck className="h-3 w-3 text-sky-500 dark:text-sky-300" aria-label="Lida" />;
+  if (status === "failed") return <X className="h-3 w-3 text-destructive" aria-label="Falhou" />;
   return null;
 }
+
 
 function ContextPanel(props: { conversationId: string; getFn: any; notesListFn: any; noteAddFn: any }) {
   const qc = useQueryClient();
