@@ -58,6 +58,15 @@ import {
   CornerUpLeft,
   Link2,
   Smartphone,
+  Bell,
+  MoreVertical,
+  SlidersHorizontal,
+  Phone,
+  Hash,
+  Megaphone,
+  MessageCircle,
+  Lock,
+  Smile,
 } from "lucide-react";
 
 
