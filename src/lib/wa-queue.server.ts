@@ -1170,7 +1170,8 @@ export async function processCampaignTick(
       }
 
       const isTokenErr = result.code === "190" || /token|OAuthException/i.test(result.error || "");
-      const isRateLimit = result.code === "130429";
+      const codeStr = result.code ? String(result.code) : "";
+      const isRateLimit = THROUGHPUT_ERROR_CODES.has(codeStr);
       const isPausedTemplate = result.code === "132015" || /template .*paused|temporarily unavailable/i.test(result.error || "");
       const isRetryable = isNetworkErr || isRateLimit ||
         (result.code ? RETRYABLE_CODES.has(String(result.code)) : false);
@@ -1193,6 +1194,7 @@ export async function processCampaignTick(
 
       if (isRateLimit) {
         consecutive429++;
+        throughputErrors++;
         // NÃO pausa a campanha: reduz temporariamente APENAS este número.
         // Depois do throttle expirar, o número volta ao teto progressivamente.
         if (consecutive429 === 1 || consecutive429 % SYSTEMIC_RATE_LIMIT_STREAK === 0) {
@@ -1201,19 +1203,20 @@ export async function processCampaignTick(
               _phone_number_id: phoneNumberId,
               _factor: 0.6,
               _seconds: 20,
-              _reason: `130429 x${consecutive429}`,
+              _reason: `${codeStr} x${consecutive429}`,
             });
             await logEvent(
               campaignId,
               "number_throttled",
-              `130429 no número ${phoneNumberId} — reduzindo temporariamente para ${newRate ?? "?"} msg/s (campanha segue ativa)`,
-              { phone_number_id: phoneNumberId, streak: consecutive429, new_rate: newRate },
+              `${codeStr} no número ${phoneNumberId} — reduzindo temporariamente para ${newRate ?? "?"} msg/s (campanha segue ativa)`,
+              { phone_number_id: phoneNumberId, streak: consecutive429, new_rate: newRate, error_code: codeStr },
             );
           } catch { /* best-effort */ }
         }
       } else {
         consecutive429 = 0;
       }
+
 
 
       if (isTokenErr) {
