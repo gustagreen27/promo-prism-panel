@@ -1658,3 +1658,13 @@ function formatRelative(iso?: string | null) {
   const d = Math.floor(h / 24);
   return `${d}d`;
 }
+function dayLabel(iso?: string | null) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const today = new Date();
+  const yest = new Date(today.getTime() - 86400000);
+  const same = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+  if (same(d, today)) return "Hoje";
+  if (same(d, yest)) return "Ontem";
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+}
