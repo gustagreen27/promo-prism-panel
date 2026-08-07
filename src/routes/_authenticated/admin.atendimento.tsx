@@ -67,6 +67,12 @@ import {
   MessageCircle,
   Lock,
   Smile,
+  Users,
+  BarChart3,
+  Settings,
+  HelpCircle,
+  ChevronLeft,
+  ChevronDown,
 } from "lucide-react";
 
 
