@@ -72,7 +72,6 @@ import {
   Settings,
   HelpCircle,
   ChevronLeft,
-  ChevronDown,
 } from "lucide-react";
 
 
