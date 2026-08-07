@@ -122,6 +122,7 @@ function AtendimentoPage() {
   const [assignedFilter, setAssignedFilter] = useState<"all" | "me" | "none">("all");
   const [search, setSearch] = useState("");
   const [quickTab, setQuickTab] = useState<"all" | "open" | "pending">("all");
+  const [contextOpen, setContextOpen] = useState(true);
 
   // Todos os números conectados (coluna 1), com ou sem conversas
   const numbersQuery = useQuery({
