@@ -2189,7 +2189,9 @@ function DispatchConfigCard({
           <li>Pausa programada: <b>{value.scheduled_pause_enabled
             ? `${value.pause_duration_seconds}s a cada ${value.pause_every_messages.toLocaleString("pt-BR")} envios`
             : "desativada"}</b></li>
+          <li>Modo adaptativo: <b>{value.adaptive_enabled ? "ativo (inicia em 20 msg/s)" : "desativado"}</b></li>
           <li>Rate limiter: <b>global por número</b></li>
+
           <li>Distribuição: <b>contínua e sem rajadas</b></li>
         </ul>
         <div className="mt-2 text-[11px] text-muted-foreground">
