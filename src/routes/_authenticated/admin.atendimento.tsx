@@ -1317,7 +1317,16 @@ function ChatPanel(props: {
             </Button>
             <Button
               size="icon"
-              className="h-10 w-10 shrink-0 rounded-full bg-emerald-600 text-white hover:bg-emerald-700"
+              variant="ghost"
+              className="hidden h-10 w-10 shrink-0 rounded-full text-muted-foreground sm:inline-flex"
+              title="Emoji"
+              onClick={() => setText((t) => t + "🙂")}
+            >
+              <Smile className="h-4 w-4" />
+            </Button>
+            <Button
+              size="icon"
+              className="h-11 w-11 shrink-0 rounded-full bg-emerald-600 text-white shadow-md shadow-emerald-600/30 transition-all duration-200 hover:scale-105 hover:bg-emerald-700 active:scale-95 disabled:shadow-none"
               disabled={!windowOpen || !text.trim() || sendText.isPending}
               onClick={() => sendText.mutate()}
             >
@@ -1327,6 +1336,7 @@ function ChatPanel(props: {
                 <Send className="h-4 w-4" />
               )}
             </Button>
+
           </div>
         )}
       </div>
