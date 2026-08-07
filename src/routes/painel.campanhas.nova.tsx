@@ -373,7 +373,14 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
     if (d.connectionId) setConnectionId(d.connectionId);
     if (d.templateId) setTemplateId(d.templateId);
     if (d.contactSel) setContactSel(d.contactSel);
-    if (d.dispatch && typeof d.dispatch === "object") setDispatch({ ...defaultDispatch(), ...d.dispatch });
+    if (d.dispatch && typeof d.dispatch === "object") {
+      const merged = { ...defaultDispatch(), ...d.dispatch } as DispatchConfig;
+      // Rascunhos antigos podem trazer presets que não existem mais.
+      if (merged.preset !== "custom" && !(merged.preset in DISPATCH_PRESETS)) merged.preset = "custom";
+      if (typeof (d.dispatch as any).adaptive_enabled !== "boolean") merged.adaptive_enabled = false;
+      setDispatch(merged);
+    }
+
     if (d.responseFlow && typeof d.responseFlow === "object") setResponseFlow({ ...defaultResponseFlow(), ...d.responseFlow });
     if (d.mode) setMode(d.mode);
     if (d.scheduledAt) setScheduledAt(d.scheduledAt);
