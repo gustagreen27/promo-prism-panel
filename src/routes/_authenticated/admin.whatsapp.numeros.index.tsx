@@ -158,6 +158,7 @@ function AddNumberWizard({ wabas, onDone }: { wabas: any[]; onDone: () => void }
   const [numbers, setNumbers] = useState<any[]>([]);
 
   const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
   const STEPS = [
     "Adicionar número à WABA",
@@ -169,7 +170,11 @@ function AddNumberWizard({ wabas, onDone }: { wabas: any[]; onDone: () => void }
   ];
 
   async function step1() {
-    if (!waba_ref_id || !cc || !phone || !verified_name) return toast.error("Preencha WABA, DDI, número e nome.");
+    setErr(null);
+    if (!waba_ref_id || !cc || !phone || !verified_name) {
+      setErr("Preencha WABA, DDI, número e nome de exibição.");
+      return toast.error("Preencha WABA, DDI, número e nome.");
+    }
     setLoading(true);
     try {
       const r: any = await addFn({ data: { waba_ref_id, cc, phone_number: phone, verified_name } });
@@ -178,7 +183,11 @@ function AddNumberWizard({ wabas, onDone }: { wabas: any[]; onDone: () => void }
         ? `Número já existia na WABA — reutilizando ${r.phone_number_id}`
         : `Número criado (phone_number_id ${r.phone_number_id})`);
       setStep(2);
-    } catch (e: any) { toast.error(e?.message ?? "Erro"); } finally { setLoading(false); }
+    } catch (e: any) {
+      const msg = e?.message || e?.error?.message || "Erro ao adicionar número na WABA.";
+      setErr(msg);
+      toast.error(msg);
+    } finally { setLoading(false); }
   }
   async function step2() {
     if (!connection_id) return;
