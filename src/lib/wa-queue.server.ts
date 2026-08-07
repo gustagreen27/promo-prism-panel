@@ -750,6 +750,8 @@ export async function processCampaignTick(
     let lastError: string | null = null;
     let consecutiveNetworkErrors = 0;
     let consecutive429 = 0;
+    let throughputErrors = 0;
+
     let systemicPause: { reason: string; message: string } | null = null;
     let fatalStop: { code: string; message: string } | null = null;
 
