@@ -46,18 +46,8 @@ async function conversationScope(
   return { wsId: data.workspace_id as string, ids };
 }
 
-async function primaryWorkspaceId(supabase: any, userId: string): Promise<string> {
-  const { data } = await supabase
-    .from("workspace_members")
-    .select("workspace_id, workspaces:workspaces(created_at)")
-    .eq("user_id", userId)
-    .order("workspaces(created_at)", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  const ws = (data as any)?.workspace_id;
-  if (!ws) throw new Error("Sem workspace vinculado");
-  return ws;
-}
+
+
 
 // ---------- Numbers (inbox grouped by WhatsApp number) ----------
 
