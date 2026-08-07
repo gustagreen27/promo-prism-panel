@@ -7,7 +7,7 @@ import { LogOut } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw redirect({ to: "/login" });
 
@@ -21,7 +21,18 @@ export const Route = createFileRoute("/_authenticated")({
       // Non-staff logged in: send to client panel instead of forcing sign-out
       throw redirect({ to: "/painel" });
     }
-    return { user: data.user };
+
+    // Usuários restritos ao Atendimento (com números liberados específicos)
+    const { data: grants } = await supabase
+      .from("attendance_number_grants")
+      .select("phone_number_id")
+      .eq("user_id", data.user.id);
+    const attendanceOnly = (grants ?? []).length > 0;
+    if (attendanceOnly && !location.pathname.startsWith("/admin/atendimento")) {
+      throw redirect({ to: "/admin/atendimento" });
+    }
+
+    return { user: data.user, attendanceOnly };
   },
   component: AuthenticatedLayout,
 });
