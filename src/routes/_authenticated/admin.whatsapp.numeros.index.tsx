@@ -262,11 +262,18 @@ function AddNumberWizard({ wabas, onDone }: { wabas: any[]; onDone: () => void }
           <p className="sm:col-span-2 text-xs text-muted-foreground">
             Se o número já estiver na WABA, o cadastro reutiliza o Phone Number ID existente e segue direto para a verificação.
           </p>
+          {err && (
+            <div className="sm:col-span-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
+              {err}
+            </div>
+          )}
           <DialogFooter className="sm:col-span-2">
             <Button variant="ghost" disabled={!waba_ref_id || loading} onClick={async () => { await loadNumbers(); setStep(6); }}>
               Já existe — ver números da WABA
             </Button>
-            <Button disabled={loading} onClick={step1}><Plus className="mr-2 h-4 w-4" />Adicionar número à WABA</Button>
+            <Button disabled={loading} onClick={step1}>
+              <Plus className="mr-2 h-4 w-4" />{loading ? "Adicionando…" : "Adicionar número à WABA"}
+            </Button>
           </DialogFooter>
         </div>
       )}
