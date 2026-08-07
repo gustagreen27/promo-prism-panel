@@ -1484,9 +1484,15 @@ function StatusTick({ status }: { status: string }) {
 }
 
 
-function ContextPanel(props: { conversationId: string; getFn: any; notesListFn: any; noteAddFn: any }) {
+function ContextPanel(props: {
+  conversationId: string;
+  getFn: any;
+  notesListFn: any;
+  noteAddFn: any;
+  onClose?: () => void;
+}) {
   const qc = useQueryClient();
-  const { conversationId, getFn, notesListFn, noteAddFn } = props;
+  const { conversationId, getFn, notesListFn, noteAddFn, onClose } = props;
   const [note, setNote] = useState("");
   const convQuery = useQuery({
     queryKey: ["atd", "conv", conversationId],
@@ -1502,7 +1508,7 @@ function ContextPanel(props: { conversationId: string; getFn: any; notesListFn: 
 
   return (
     <Tabs defaultValue="contact" className="flex min-h-0 flex-1 flex-col">
-      <TabsList className="h-auto w-full justify-start gap-0 rounded-none border-b bg-transparent p-0">
+      <TabsList className="relative h-auto w-full justify-start gap-0 rounded-none border-b bg-transparent p-0 pr-10">
         <TabsTrigger
           value="contact"
           className="flex-1 rounded-none border-b-2 border-transparent bg-transparent py-3 text-sm shadow-none data-[state=active]:border-emerald-600 data-[state=active]:bg-transparent data-[state=active]:font-medium data-[state=active]:text-emerald-700 data-[state=active]:shadow-none dark:data-[state=active]:text-emerald-300"
@@ -1515,7 +1521,17 @@ function ContextPanel(props: { conversationId: string; getFn: any; notesListFn: 
         >
           Notas
         </TabsTrigger>
+        {onClose && (
+          <button
+            onClick={onClose}
+            title="Fechar painel"
+            className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </TabsList>
+
       <TabsContent value="contact" className="flex-1 overflow-y-auto p-4">
         <div className="flex flex-col items-center gap-2 pb-5 text-center">
           <ContactAvatar name={conv?.contact_name} phone={conv?.contact_phone} size="lg" />
