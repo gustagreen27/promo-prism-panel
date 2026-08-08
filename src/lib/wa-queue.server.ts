@@ -146,6 +146,11 @@ async function logEvent(campaignId: string, event_type: string, message: string,
   } catch {}
 }
 
+// Dedupe da auditoria de mídia: campaignId -> última chave registrada.
+const mediaAuditSeen = new Map<string, string>();
+
+
+
 // ---------------------------------------------------------------------------
 // Lease por LANE (trilha de trabalho), não por campanha.
 // Modelo Infobip: N workers paralelos consomem a mesma fila da campanha ao
