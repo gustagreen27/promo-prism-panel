@@ -192,6 +192,7 @@ function CampaignPublicPage() {
       loaded = true;
       emitEvent(slug, "iframe_loaded", { url });
       setTimeout(checkBlank, 100);
+      setTimeout(() => setSplash(false), 350);
     };
     iframe?.addEventListener("load", onLoad);
     iframe?.addEventListener("error", () => fallback("error_event"));
