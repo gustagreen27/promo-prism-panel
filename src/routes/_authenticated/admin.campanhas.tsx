@@ -430,6 +430,7 @@ function CampaignDialog(props: CampaignDialogProps) {
               destination_url: destination.trim(),
               destination_urls: normalizeDestinations(extraDests),
               destination_rotation: rotation as "random" | "sequential",
+              facebook_destination_url: facebookDestination.trim() || undefined,
               campaign_type: campaignType || undefined,
               link_intent: linkIntent || undefined,
               page_category: pageCategory || undefined,
