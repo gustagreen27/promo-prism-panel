@@ -287,6 +287,17 @@ function WrapperPage({
 }: {
   data: Extract<LoaderData, { status: "wrapper" }>;
 }) {
+  // Dentro do navegador interno do Facebook/Instagram, tentamos sair
+  // automaticamente para o navegador padrão do aparelho.
+  useEffect(() => {
+    if (!isMetaInAppBrowser()) return;
+    const t = setTimeout(() => {
+      emitEvent(data.slug, "cta_clicked", { url: data.url, source: "auto_external_browser" });
+      openInExternalBrowser(data.url);
+    }, 600);
+    return () => clearTimeout(t);
+  }, [data.slug, data.url]);
+
   const m = data.meta;
   const heading = m.og_title || m.link_title || m.name || "Continuar";
   const description = m.intermediate_text || m.link_description || m.og_description;
