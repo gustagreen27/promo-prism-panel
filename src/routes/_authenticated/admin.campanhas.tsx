@@ -373,7 +373,7 @@ function CampaignDialog(props: CampaignDialogProps) {
       props.onSaved();
       if (!isEdit) {
         setName(""); setSlug(""); setDestination(""); setSlugTouched(false);
-        setExtraDests([]); setRotation("random");
+        setExtraDests([]); setRotation("random"); setFacebookDestination("");
         setCampaignType(""); setLinkIntent(""); setPageCategory("");
         setLinkTitle(""); setLinkDescription(""); setIntermediateText(""); setCtaLabel("");
         setOpenMode("smart");
