@@ -448,6 +448,26 @@ function EditCampaign() {
 
         <TabsContent value="preview" className="space-y-4 pt-4">
           <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label="Imagem de carregamento"
+              id="loading_image_url"
+              hint="Aparece centralizada na tela enquanto o destino carrega/redireciona"
+            >
+              <ImageUpload
+                value={form.loading_image_url}
+                onChange={(v) => set("loading_image_url", v)}
+                folder="loading"
+                shape="square"
+              />
+            </Field>
+            <Field label="Cor de fundo do carregamento" id="loading_bg_color" hint="Ex.: #C4C7C8">
+              <Input
+                id="loading_bg_color"
+                value={form.loading_bg_color ?? ""}
+                onChange={(e) => set("loading_bg_color", e.target.value)}
+                placeholder="#C4C7C8"
+              />
+            </Field>
             <Field label="Imagem de preview" id="preview_image_url" hint="PNG/JPG/WebP até 4MB ou cole uma URL">
               <ImageUpload
                 value={form.preview_image_url}
