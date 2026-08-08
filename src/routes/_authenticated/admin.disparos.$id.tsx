@@ -351,16 +351,25 @@ function Page() {
           return b;
         })
       : [];
-    // Mídia real enviada à Meta: upload da campanha tem prioridade sobre a do template
-    const campaignMedia = String((varsMap as any)?._header_image_url ?? "").trim();
-    const mediaUrl = campaignMedia || tpl.header_media_url;
+    // Espelha exatamente o motor de envio (wa-queue.server.ts):
+    // a mídia vem SEMPRE de camp.template_variables._header_image_url.
+    // Sem upload persistido não há envio — logo, a prévia também não mostra
+    // a mídia aprovada do template.
+    const campaignMedia = String(
+      ((camp as any)?.template_variables as any)?._header_image_url ?? "",
+    ).trim();
+    const tplHeaderType = String(tpl.header_type ?? "").toLowerCase();
+    const isMediaHeader = ["image", "video", "document"].includes(tplHeaderType);
+    const mediaUrl = campaignMedia || null;
+    const mediaBlocked = isMediaHeader && !campaignMedia;
     return {
       header: {
-        type: tpl.header_type,
+        type: campaignMedia ? (isMediaHeader ? tplHeaderType : "image") : tpl.header_type,
         text: headerText,
         media_url: mediaUrl,
       },
-      mediaOrigin: campaignMedia ? ("campaign_upload" as const) : tpl.header_media_url ? ("template_media" as const) : null,
+      mediaOrigin: campaignMedia ? ("campaign_upload" as const) : null,
+      mediaBlocked,
       body,
       footer: tpl.footer_text,
       buttons,
