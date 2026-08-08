@@ -371,8 +371,10 @@ function Page() {
   // Auditoria de mídia: o que está configurado na campanha vs o que a Meta recebeu
   const mediaAudit = useMemo(() => {
     const tpl: any = (camp as any)?.template;
-    const vars: Record<string, any> =
-      ((camp as any)?.template_variables ?? (camp as any)?.variables_mapping ?? {}) as any;
+    const vars: Record<string, any> = {
+      ...(((camp as any)?.variables_mapping ?? {}) as any),
+      ...(((camp as any)?.template_variables ?? {}) as any),
+    };
     const configured = String(vars?._header_image_url ?? "").trim() || null;
     const templateMedia = tpl?.header_media_url ?? null;
     const events = ((timeline as any[] | undefined) ?? []).filter(
