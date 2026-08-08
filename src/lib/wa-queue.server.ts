@@ -956,7 +956,10 @@ export async function processCampaignTick(
         if (cur == null || cur === "") renderedVars[key] = " ";
       }
 
-      const headerImageOverride = renderedVars._header_image_url || null;
+      // A mídia é uma configuração da campanha, não do contato. Ler direto de
+      // `campVars` impede que dados importados do destinatário apaguem ou troquem
+      // o vídeo carregado no assistente.
+      const headerImageOverride = String(campVars._header_image_url ?? "").trim() || null;
       const rawButtonUrlParam = renderedVars._button_url_param || null;
       const legacyButtonUrlParam = rawButtonUrlParam ? renderMapping(rawButtonUrlParam, ctx) : null;
       const buttonIndexRaw = renderedVars._button_index;

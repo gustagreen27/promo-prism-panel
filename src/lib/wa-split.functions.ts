@@ -130,7 +130,11 @@ export const createSplitDispatch = createServerFn({ method: "POST" })
       const legLabel = conn?.display_name ?? conn?.nome_interno ?? conn?.name ?? conn?.display_phone ?? `BM ${i + 1}`;
       const vars = { ...(data.variables_mapping ?? {}), ...(leg.variables_mapping ?? {}) };
       const legMedia = (leg.header_media_url ?? data.header_media_url ?? "").trim();
-      if (legMedia) vars._header_image_url = legMedia;
+      // Cria um novo objeto (em vez de mutar `vars`) para que o serializador do
+      // server function persista a mídia reservada de forma determinística.
+      const varsWithMedia = legMedia
+        ? { ...vars, _header_image_url: legMedia }
+        : vars;
       const btns = { ...(data.button_url_mapping ?? {}), ...(leg.button_url_mapping ?? {}) };
 
 
@@ -143,8 +147,8 @@ export const createSplitDispatch = createServerFn({ method: "POST" })
           template_id: leg.template_id,
           waba_ref_id: conn?.waba_ref_id ?? null,
           list_id: data.list_id,
-          variables_mapping: vars,
-          template_variables: vars,
+          variables_mapping: varsWithMedia,
+          template_variables: varsWithMedia,
           button_url_mapping: btns,
           send_rate_per_min: data.send_rate_per_min,
           batch_size: data.batch_size,
@@ -159,9 +163,13 @@ export const createSplitDispatch = createServerFn({ method: "POST" })
           split_group_index: i + 1,
           created_by: context.userId,
         })
-        .select("id")
+        .select("id, template_variables")
         .single();
       if (error) throw new Error(error.message);
+      if (legMedia && row?.template_variables?._header_image_url !== legMedia) {
+        await supabase.from("wa_campaigns").delete().eq("split_group_id", groupId);
+        throw new Error("A mídia enviada não foi vinculada ao disparo. Tente enviar o vídeo novamente.");
+      }
       created.push({ id: row.id as string, index: i + 1 });
     }
 
