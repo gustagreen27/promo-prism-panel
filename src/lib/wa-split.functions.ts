@@ -129,7 +129,10 @@ export const createSplitDispatch = createServerFn({ method: "POST" })
       const conn = connById.get(leg.connection_id);
       const legLabel = conn?.display_name ?? conn?.nome_interno ?? conn?.name ?? conn?.display_phone ?? `BM ${i + 1}`;
       const vars = { ...(data.variables_mapping ?? {}), ...(leg.variables_mapping ?? {}) };
+      const legMedia = (leg.header_media_url ?? data.header_media_url ?? "").trim();
+      if (legMedia) vars._header_image_url = legMedia;
       const btns = { ...(data.button_url_mapping ?? {}), ...(leg.button_url_mapping ?? {}) };
+
 
       const { data: row, error } = await supabase
         .from("wa_campaigns")
