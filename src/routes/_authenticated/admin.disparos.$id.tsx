@@ -714,6 +714,21 @@ function Page() {
                     </span>
                   )}
                 </CardTitle>
+                {previewForFirst.mediaOrigin && (
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <Badge variant={previewForFirst.mediaOrigin === "campaign_upload" ? "default" : "secondary"}>
+                      {previewForFirst.mediaOrigin === "campaign_upload"
+                        ? "Mídia: upload da campanha"
+                        : "Mídia: vídeo/imagem do template"}
+                    </Badge>
+                    {previewForFirst.header.media_url && (
+                      <a href={previewForFirst.header.media_url} target="_blank" rel="noreferrer"
+                        className="truncate text-xs text-primary underline max-w-[420px]">
+                        {previewForFirst.header.media_url}
+                      </a>
+                    )}
+                  </div>
+                )}
               </CardHeader>
               <CardContent>
                 <WhatsAppPreview
