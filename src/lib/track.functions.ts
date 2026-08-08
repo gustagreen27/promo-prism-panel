@@ -395,7 +395,8 @@ export const resolveCampaign = createServerFn({ method: "POST" })
       }
     }
     const chosen = pickDestination(campaign as never, cursor);
-    const finalUrl = applyUtms(chosen, campaign);
+    let finalUrl = applyUtms(chosen, campaign);
+    const fbUrl = ((campaign as Record<string, unknown>).facebook_destination_url as string | null)?.trim() || null;
     let mode = ((campaign as Record<string, unknown>).open_mode as string) || "smart";
 
     // Detecta in-app browser do Facebook/Instagram pelo User-Agent (instantâneo).
