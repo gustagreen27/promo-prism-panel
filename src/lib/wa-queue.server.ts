@@ -146,6 +146,11 @@ async function logEvent(campaignId: string, event_type: string, message: string,
   } catch {}
 }
 
+// Dedupe da auditoria de mídia: campaignId -> última chave registrada.
+const mediaAuditSeen = new Map<string, string>();
+
+
+
 // ---------------------------------------------------------------------------
 // Lease por LANE (trilha de trabalho), não por campanha.
 // Modelo Infobip: N workers paralelos consomem a mesma fila da campanha ao
@@ -1029,10 +1034,66 @@ export async function processCampaignTick(
       }
 
       const permitGrantedAt = new Date().toISOString();
+
+      // ---- Auditoria de mídia por combinação (campanha/número/template) ----
+      // Registra a ORIGEM da mídia (upload da campanha vs vídeo aprovado do
+      // template) e o payload efetivamente enviado à Meta. Dedupe por chave para
+      // não poluir a timeline em disparos de milhares de mensagens.
+      try {
+        const mediaOrigin = headerImageOverride
+          ? "campaign_upload"
+          : (isMediaHeader && resolvedHeaderValue ? "template_media" : "none");
+        const auditKey = [
+          campaignId,
+          conn.phone_number_id,
+          tpl.name,
+          mediaOrigin,
+          resolvedHeaderValue ?? "",
+        ].join("|");
+        if (mediaAuditSeen.get(campaignId) !== auditKey) {
+          mediaAuditSeen.set(campaignId, auditKey);
+          await logEvent(
+            campaignId,
+            "media_audit",
+            mediaOrigin === "campaign_upload"
+              ? `Mídia do upload da campanha enviada via ${tpl.name}`
+              : mediaOrigin === "template_media"
+                ? `Mídia aprovada do template ${tpl.name} enviada (sem upload na campanha)`
+                : `Envio sem mídia de cabeçalho (${tpl.name})`,
+            {
+              media_origin: mediaOrigin,
+              media_url: resolvedHeaderValue,
+              campaign_media_url: headerImageOverride,
+              template_media_url: (tpl as any).header_media_url ?? null,
+              header_type: resolvedHeaderType,
+              template_name: tpl.name,
+              language: tpl.language || "pt_BR",
+              phone_number_id: conn.phone_number_id,
+              connection_name: (conn as any).display_phone ?? (conn as any).phone ?? null,
+              graph_version: resolveGraphVersion(conn.graph_api_version),
+              first_recipient_id: r.id,
+              meta_payload: {
+                messaging_product: "whatsapp",
+                type: "template",
+                template: {
+                  name: tpl.name,
+                  language: { code: tpl.language || "pt_BR" },
+                  header: { type: resolvedHeaderType, value: resolvedHeaderValue },
+                  variables: renderedVars,
+                  buttons: dynButtons,
+                },
+              },
+              at: permitGrantedAt,
+            },
+          );
+        }
+      } catch {}
+
       // Não faz write no banco antes do fetch da Meta: esse update por mensagem
       // no hot path era suficiente para transformar 80/s em blocos lentos.
       // Persistimos o timestamp junto com o resultado final abaixo.
       const result = await transport.sendTemplateMessage({
+
         phoneNumberId: conn.phone_number_id!,
         accessToken: conn.access_token!,
         graphVersion: resolveGraphVersion(conn.graph_api_version),
