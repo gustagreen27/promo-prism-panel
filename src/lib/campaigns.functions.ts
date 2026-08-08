@@ -42,6 +42,7 @@ const campaignFields = {
   open_mode: openModeEnum.optional(),
   participants: z.array(z.enum(["gustavo", "cayo"])).optional().default([]),
   destination_rotation: z.enum(["random", "sequential"]).optional(),
+  facebook_destination_url: optUrl(),
   destination_urls: z
     .array(
       z.object({
