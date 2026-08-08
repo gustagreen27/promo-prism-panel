@@ -260,7 +260,7 @@ function CampaignPublicPage() {
 
 
   if (data.status === "redirect") {
-    return <ImmediateRedirect url={data.url} slug={data.slug} />;
+    return <ImmediateRedirect url={data.url} slug={data.slug} meta={data.meta} />;
   }
 
   if (data.status === "wrapper") {
@@ -268,14 +268,17 @@ function CampaignPublicPage() {
   }
 
   return (
-    <iframe
-      ref={iframeRef}
-      src={data.url}
-      title={data.meta.og_title || data.meta.link_title || data.meta.name || "Campanha"}
-      className="fixed inset-0 h-screen w-screen border-0"
-      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-      referrerPolicy="no-referrer-when-downgrade"
-    />
+    <>
+      <iframe
+        ref={iframeRef}
+        src={data.url}
+        title={data.meta.og_title || data.meta.link_title || data.meta.name || "Campanha"}
+        className="fixed inset-0 h-screen w-screen border-0"
+        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+        referrerPolicy="no-referrer-when-downgrade"
+      />
+      {splash && <LoadingSplash meta={data.meta} />}
+    </>
   );
 }
 
