@@ -689,9 +689,10 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
         cacheControl: "3600", upsert: false, contentType: file.type || undefined,
       });
       if (upErr) throw upErr;
-      // 7 days — Meta downloads the URL at send time.
+      // 30 dias — cobre campanhas agendadas, pausadas e retomadas sem expirar
+      // antes de a Meta baixar o vídeo no momento de cada envio.
       const { data: signed, error: sErr } = await supabase.storage.from("campaign-images")
-        .createSignedUrl(key, 60 * 60 * 24 * 7);
+        .createSignedUrl(key, 60 * 60 * 24 * 30);
       if (sErr || !signed?.signedUrl) throw sErr ?? new Error("Falha ao gerar URL");
       setHeaderMediaUrl(signed.signedUrl);
       setHeaderMediaMeta({ name: file.name, size: file.size, contentType: file.type || undefined });
