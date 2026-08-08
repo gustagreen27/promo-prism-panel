@@ -1,0 +1,1 @@
+UPDATE public.campaigns SET loading_bg_color = '#FFFFFF' WHERE slug = 'pdm';
