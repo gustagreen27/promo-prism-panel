@@ -115,8 +115,9 @@ export function buildTemplateComponents(t: {
   const bodyComp: any = { type: "BODY", text: t.body };
   const bodyExamples = examplesFor(t.variables_examples, "body");
   if (usesNamed) {
-    if (bodyExamples.length < bodyNamed.length) {
-      throw new Error(`Preencha ${bodyNamed.length} exemplo(s) para as variáveis do corpo (${bodyNamed.join(", ")}).`);
+    const missing = bodyNamed.filter((_, i) => !bodyExamples[i]);
+    if (missing.length) {
+      throw new Error(`Preencha o exemplo das variáveis do corpo: ${missing.join(", ")}.`);
     }
     bodyComp.example = {
       body_text_named_params: bodyNamed.map((param_name, i) => ({
@@ -126,11 +127,13 @@ export function buildTemplateComponents(t: {
     };
   } else {
     const bVars = (t.body.match(POSITIONAL_RE) || []).length;
+    POSITIONAL_RE.lastIndex = 0;
     if (bVars > 0) {
-      if (bodyExamples.length < bVars) {
+      const vals = bodyExamples.slice(0, bVars);
+      if (vals.length < bVars || vals.some((v: string) => !v)) {
         throw new Error(`Preencha ${bVars} exemplo(s) para as variáveis do corpo.`);
       }
-      bodyComp.example = { body_text: [bodyExamples.slice(0, bVars)] };
+      bodyComp.example = { body_text: [vals] };
     }
   }
   components.push(bodyComp);
