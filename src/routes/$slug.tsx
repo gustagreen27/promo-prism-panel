@@ -329,7 +329,7 @@ function ImmediateRedirect({ url, slug, meta }: { url: string; slug: string; met
     // Alguns navegadores in-app ignoram o primeiro replace; reforça o destino.
     const t = setTimeout(() => {
       window.location.href = url;
-    }, 1200);
+    }, 500);
     return () => clearTimeout(t);
   }, [url, slug]);
   return (
