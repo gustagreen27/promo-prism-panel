@@ -346,12 +346,16 @@ function Page() {
           return b;
         })
       : [];
+    // Mídia real enviada à Meta: upload da campanha tem prioridade sobre a do template
+    const campaignMedia = String((varsMap as any)?._header_image_url ?? "").trim();
+    const mediaUrl = campaignMedia || tpl.header_media_url;
     return {
       header: {
         type: tpl.header_type,
         text: headerText,
-        media_url: tpl.header_media_url,
+        media_url: mediaUrl,
       },
+      mediaOrigin: campaignMedia ? ("campaign_upload" as const) : tpl.header_media_url ? ("template_media" as const) : null,
       body,
       footer: tpl.footer_text,
       buttons,
