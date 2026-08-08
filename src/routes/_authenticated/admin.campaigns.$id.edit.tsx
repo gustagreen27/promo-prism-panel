@@ -190,6 +190,8 @@ function EditCampaign() {
           intermediate_text: form.intermediate_text || null,
           cta_label: form.cta_label || null,
           preview_image_url: form.preview_image_url || null,
+          loading_image_url: form.loading_image_url || null,
+          loading_bg_color: form.loading_bg_color || null,
           favicon_url: form.favicon_url || null,
           og_title: form.og_title || null,
           og_description: form.og_description || null,
