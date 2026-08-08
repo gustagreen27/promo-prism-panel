@@ -86,6 +86,8 @@ function EditCampaign() {
       intermediate_text: data.intermediate_text ?? "",
       cta_label: data.cta_label ?? "",
       preview_image_url: data.preview_image_url ?? "",
+      loading_image_url: (data as Record<string, any>).loading_image_url ?? "",
+      loading_bg_color: (data as Record<string, any>).loading_bg_color ?? "",
       favicon_url: data.favicon_url ?? "",
       og_title: data.og_title ?? "",
       og_description: data.og_description ?? "",
