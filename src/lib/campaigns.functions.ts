@@ -28,6 +28,8 @@ const campaignFields = {
   intermediate_text: optStr(2000),
   cta_label: optStr(80),
   preview_image_url: optUrl(),
+  loading_image_url: optUrl(),
+  loading_bg_color: optStr(20),
   favicon_url: optUrl(),
   og_title: optStr(160),
   og_description: optStr(400),
