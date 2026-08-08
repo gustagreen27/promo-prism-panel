@@ -462,18 +462,19 @@ export const resolveCampaign = createServerFn({ method: "POST" })
     }
 
     // Fora do Brasil (país detectado e diferente de BR) também vai para a
-    // página estática com CTA.
-    if (isNonBrazil(earlyGeo)) {
+    // página estática com CTA, usando o mesmo destino alternativo.
+    const nonBrazil = isNonBrazil(earlyGeo);
+    if (nonBrazil) {
       mode = "wrapper";
       iframeAllowed = false;
     }
 
-
-    // Destino alternativo exclusivo para tráfego do Facebook/Instagram.
+    // Destino alternativo para tráfego do Facebook/Instagram e internacional.
     // Não afeta os demais visitantes.
-    if (isFacebookTraffic && fbUrl) {
+    if ((isFacebookTraffic || nonBrazil) && fbUrl) {
       finalUrl = applyUtms(fbUrl, campaign);
     }
+
 
     // Grava clique/eventos server-side, mas com teto de espera: se o banco
     // demorar, respondemos o redirect na hora e o insert termina em segundo
