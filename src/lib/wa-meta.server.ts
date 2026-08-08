@@ -23,7 +23,7 @@ function humanizeMetaError(json: any, status: number): { error: string; code?: s
   if (/already exists/i.test(msg)) return { code, error: "Já existe um template com esse nome nessa WABA." };
   if (/name.*invalid/i.test(msg)) return { code, error: "Nome de template inválido. Use letras minúsculas, números e underscore." };
   if (/category/i.test(msg)) return { code, error: "Categoria inválida. Use MARKETING, UTILITY ou AUTHENTICATION." };
-  if (/example/i.test(msg)) return { code, error: "Variável sem exemplo. Preencha as amostras (variables_examples) para todas as variáveis do corpo/URL." };
+  if (/example/i.test(msg)) return { code, error: `A Meta recusou os exemplos das variáveis: ${msg}${sub}` };
   if (/button/i.test(msg)) return { code, error: `Botão inválido: ${msg}${sub}` };
   if (err?.error_subcode === 2388273) return { code, error: "Mídia do cabeçalho inválida: a Meta rejeitou o arquivo de amostra. Envie novamente a imagem/vídeo (JPG, PNG ou MP4, até 5 MB)." };
   if (/media/i.test(msg) || /header.*url/i.test(msg)) return { code, error: `Mídia do cabeçalho inválida: ${msg}${sub}` };
@@ -57,9 +57,10 @@ function namedParams(text: string): string[] {
 }
 
 function examplesFor(variables_examples: any, section: string): any[] {
-  return Array.isArray(variables_examples)
+  const raw = Array.isArray(variables_examples)
     ? (variables_examples as any[]).find((e: any) => e?.section === section)?.values ?? []
     : [];
+  return (Array.isArray(raw) ? raw : []).map((v: any) => (v == null ? "" : String(v).trim()));
 }
 
 /**
@@ -114,8 +115,9 @@ export function buildTemplateComponents(t: {
   const bodyComp: any = { type: "BODY", text: t.body };
   const bodyExamples = examplesFor(t.variables_examples, "body");
   if (usesNamed) {
-    if (bodyExamples.length < bodyNamed.length) {
-      throw new Error(`Preencha ${bodyNamed.length} exemplo(s) para as variáveis do corpo (${bodyNamed.join(", ")}).`);
+    const missing = bodyNamed.filter((_, i) => !bodyExamples[i]);
+    if (missing.length) {
+      throw new Error(`Preencha o exemplo das variáveis do corpo: ${missing.join(", ")}.`);
     }
     bodyComp.example = {
       body_text_named_params: bodyNamed.map((param_name, i) => ({
@@ -125,11 +127,13 @@ export function buildTemplateComponents(t: {
     };
   } else {
     const bVars = (t.body.match(POSITIONAL_RE) || []).length;
+    POSITIONAL_RE.lastIndex = 0;
     if (bVars > 0) {
-      if (bodyExamples.length < bVars) {
+      const vals = bodyExamples.slice(0, bVars);
+      if (vals.length < bVars || vals.some((v: string) => !v)) {
         throw new Error(`Preencha ${bVars} exemplo(s) para as variáveis do corpo.`);
       }
-      bodyComp.example = { body_text: [bodyExamples.slice(0, bVars)] };
+      bodyComp.example = { body_text: [vals] };
     }
   }
   components.push(bodyComp);
@@ -146,8 +150,14 @@ export function buildTemplateComponents(t: {
         if (type === "URL") {
           const btn: any = { type: "URL", text: b.text, url: b.url };
           const url = String(b.url || "");
-          if ((POSITIONAL_RE.test(url) || namedParams(url).length > 0) && b.example) btn.example = [b.example];
           POSITIONAL_RE.lastIndex = 0;
+          const hasVar = POSITIONAL_RE.test(url) || namedParams(url).length > 0;
+          POSITIONAL_RE.lastIndex = 0;
+          if (hasVar) {
+            const ex = String(b.example ?? "").trim();
+            if (!ex) throw new Error(`Preencha o exemplo da URL do botão "${b.text || "URL"}".`);
+            btn.example = [ex];
+          }
           return btn;
         }
         if (type === "PHONE_NUMBER") return { type: "PHONE_NUMBER", text: b.text, phone_number: b.phone_number };
