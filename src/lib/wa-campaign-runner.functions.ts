@@ -393,6 +393,7 @@ export const resumeCampaignAsync = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     await assertCampaignUnlocked(context.supabase, data.id);
+    await assertCampaignUploadMedia(context.supabase, data.id);
 
     await context.supabase
       .from("wa_campaigns")
