@@ -324,8 +324,13 @@ function Page() {
       project: (camp as any)?.project,
       campaign: camp,
     });
-    const varsMap: Record<string, string> =
-      ((camp as any)?.variables_mapping ?? (camp as any)?.template_variables ?? {}) as any;
+    const varsMap: Record<string, string> = {
+      ...(((camp as any)?.template_variables ?? {}) as any),
+      ...(((camp as any)?.variables_mapping ?? {}) as any),
+      ...((((camp as any)?.variables_mapping ?? {}) as any)._header_image_url
+        ? {}
+        : { _header_image_url: (((camp as any)?.template_variables ?? {}) as any)._header_image_url }),
+    } as any;
     const resolved: Record<number, string> = {};
     for (const [k, v] of Object.entries(varsMap)) {
       if (k.startsWith("_") || !/^\d+$/.test(k)) continue;
