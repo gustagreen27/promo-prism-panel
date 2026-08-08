@@ -432,6 +432,7 @@ export const retryFailedRecipients = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     await assertCampaignUnlocked(context.supabase, data.id);
+    await assertCampaignUploadMedia(context.supabase, data.id);
 
     const { data: updated, error } = await context.supabase
       .from("campaign_recipients")
