@@ -603,6 +603,101 @@ function Page() {
             </CardContent>
           </Card>
 
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Mídia do cabeçalho — origem e auditoria</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="grid gap-2 md:grid-cols-2">
+                <KV
+                  k="Vídeo/imagem associado à campanha"
+                  v={mediaAudit.configured ? "Upload próprio da campanha" : "Nenhum upload — usa o do template"}
+                />
+                <KV k="Tipo de cabeçalho" v={String(mediaAudit.headerType ?? "—")} />
+              </div>
+
+              {mediaAudit.configured && (
+                <div className="rounded-md border p-3 space-y-1">
+                  <div className="text-xs font-medium text-muted-foreground">URL do upload da campanha</div>
+                  <a href={mediaAudit.configured} target="_blank" rel="noreferrer" className="break-all text-xs text-primary underline">
+                    {mediaAudit.configured}
+                  </a>
+                </div>
+              )}
+              {mediaAudit.templateMedia && (
+                <div className="rounded-md border p-3 space-y-1">
+                  <div className="text-xs font-medium text-muted-foreground">Mídia aprovada do template</div>
+                  <a href={mediaAudit.templateMedia} target="_blank" rel="noreferrer" className="break-all text-xs text-primary underline">
+                    {mediaAudit.templateMedia}
+                  </a>
+                </div>
+              )}
+
+              <div className="rounded-md border p-3 space-y-2">
+                <div className="text-xs font-medium text-muted-foreground">Enviado no último disparo</div>
+                {mediaAudit.last ? (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={mediaAudit.last.payload?.media_origin === "campaign_upload" ? "default" : "secondary"}>
+                        {mediaAudit.last.payload?.media_origin === "campaign_upload"
+                          ? "Upload da campanha"
+                          : mediaAudit.last.payload?.media_origin === "template_media"
+                            ? "Vídeo do template"
+                            : "Sem mídia"}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {mediaAudit.last.payload?.template_name ?? "—"} • {fmtDate(mediaAudit.last.created_at)}
+                      </span>
+                    </div>
+                    {mediaAudit.last.payload?.media_url && (
+                      <a href={mediaAudit.last.payload.media_url} target="_blank" rel="noreferrer" className="block break-all text-xs text-primary underline">
+                        {mediaAudit.last.payload.media_url}
+                      </a>
+                    )}
+                    {mediaAudit.configured &&
+                      mediaAudit.last.payload?.media_url &&
+                      mediaAudit.last.payload.media_url !== mediaAudit.configured && (
+                        <div className="rounded bg-destructive/10 p-2 text-xs text-destructive">
+                          Divergência: o disparo usou uma mídia diferente do upload configurado na campanha.
+                        </div>
+                      )}
+                  </>
+                ) : (
+                  <div className="text-xs text-muted-foreground">
+                    Nenhum envio registrado ainda para esta campanha.
+                  </div>
+                )}
+              </div>
+
+              {mediaAudit.events.length > 0 && (
+                <details className="rounded-md border p-3">
+                  <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+                    Log por combinação ({mediaAudit.events.length}) — payload enviado à Meta
+                  </summary>
+                  <div className="mt-3 space-y-3">
+                    {mediaAudit.events.map((ev: any) => (
+                      <div key={ev.id} className="space-y-1 border-t pt-2 first:border-t-0 first:pt-0">
+                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                          <Badge variant="outline">
+                            {ev.payload?.media_origin === "campaign_upload" ? "upload" : ev.payload?.media_origin === "template_media" ? "template" : "sem mídia"}
+                          </Badge>
+                          <span className="text-muted-foreground">
+                            {ev.payload?.template_name ?? "—"} • número {ev.payload?.connection_name ?? ev.payload?.phone_number_id ?? "—"} • {fmtDate(ev.created_at)}
+                          </span>
+                        </div>
+                        <pre className="max-h-64 overflow-auto rounded bg-muted p-2 text-[11px] leading-relaxed">
+{JSON.stringify(ev.payload?.meta_payload ?? ev.payload, null, 2)}
+                        </pre>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
+            </CardContent>
+          </Card>
+
+
+
           {previewForFirst && (
             <Card>
               <CardHeader>
