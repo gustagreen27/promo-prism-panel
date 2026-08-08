@@ -456,20 +456,23 @@ export const resolveCampaign = createServerFn({ method: "POST" })
       finalUrl = applyUtms(fbUrl, campaign);
     }
 
-    // Grava clique/eventos server-side (mais robusto que o fire-and-forget
-    // do cliente, que era abortado nos modos redirect/wrapper). Nunca falha
-    // a resolução: se o insert der erro, seguimos com o redirect normal.
-    try {
-      const attribution = await resolveDispatchAttribution(
-        supabaseAdmin,
-        campaign.id,
-        data.wa_campaign_id,
-        data.recipient_id,
-      );
-      await recordClick(supabaseAdmin, campaign, finalUrl, earlyGeo, attribution);
-    } catch {
-      /* ignore — métricas não devem quebrar o link */
-    }
+    // Grava clique/eventos server-side, mas com teto de espera: se o banco
+    // demorar, respondemos o redirect na hora e o insert termina em segundo
+    // plano. Métricas nunca podem atrasar o link.
+    const clickWrite = (async () => {
+      try {
+        const attribution = await resolveDispatchAttribution(
+          supabaseAdmin,
+          campaign.id,
+          data.wa_campaign_id,
+          data.recipient_id,
+        );
+        await recordClick(supabaseAdmin, campaign, finalUrl, earlyGeo ?? (await geoPromise), attribution);
+      } catch {
+        /* ignore — métricas não devem quebrar o link */
+      }
+    })();
+    await Promise.race([clickWrite, new Promise((r) => setTimeout(r, 500))]);
 
 
     return {
