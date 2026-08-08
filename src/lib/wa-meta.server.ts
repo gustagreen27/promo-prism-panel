@@ -150,8 +150,14 @@ export function buildTemplateComponents(t: {
         if (type === "URL") {
           const btn: any = { type: "URL", text: b.text, url: b.url };
           const url = String(b.url || "");
-          if ((POSITIONAL_RE.test(url) || namedParams(url).length > 0) && b.example) btn.example = [b.example];
           POSITIONAL_RE.lastIndex = 0;
+          const hasVar = POSITIONAL_RE.test(url) || namedParams(url).length > 0;
+          POSITIONAL_RE.lastIndex = 0;
+          if (hasVar) {
+            const ex = String(b.example ?? "").trim();
+            if (!ex) throw new Error(`Preencha o exemplo da URL do botão "${b.text || "URL"}".`);
+            btn.example = [ex];
+          }
           return btn;
         }
         if (type === "PHONE_NUMBER") return { type: "PHONE_NUMBER", text: b.text, phone_number: b.phone_number };
