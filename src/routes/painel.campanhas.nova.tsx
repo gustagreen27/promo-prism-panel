@@ -729,7 +729,8 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
       try {
         const legs = [
           { connection_id: connectionId, template_id: templateId, weight: Math.max(1, primaryWeight),
-            variables_mapping: bodyVars, button_url_mapping: btnVars },
+            variables_mapping: bodyVars, button_url_mapping: btnVars,
+            header_media_url: headerMediaUrl || null },
           ...validExtras.map((l) => ({
             connection_id: l.connection_id,
             template_id: l.template_id,
@@ -737,6 +738,8 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
             // Copy própria da combinação; se não preenchida, herda a principal.
             variables_mapping: { ...bodyVars, ...(l.vars ?? {}) },
             button_url_mapping: { ...btnVars, ...(l.btn ?? {}) },
+            // Mídia enviada no assistente vale para todas as combinações.
+            header_media_url: headerMediaUrl || null,
           })),
         ];
         const r: any = await fnSplit({
@@ -747,6 +750,8 @@ export function CampaignWizard({ workspaceId, event_id, scheduled_for, onExit, o
             legs,
             variables_mapping: bodyVars,
             button_url_mapping: btnVars,
+            header_media_url: headerMediaUrl || null,
+
             send_rate_per_min: Math.max(1, Math.min(2400, Math.round(dispatch.rate_per_second * 60))),
             rate_per_second: dispatch.rate_per_second,
             max_concurrency: dispatch.max_concurrency,
