@@ -225,6 +225,17 @@ function isFacebookGeo(geo: Record<string, unknown> | null): boolean {
   return fields.some((v) => WRAPPER_ASN_RE.test(v));
 }
 
+/** País detectado e diferente de Brasil → tratamos como tráfego internacional. */
+function isNonBrazil(geo: Record<string, unknown> | null): boolean {
+  if (!geo) return false;
+  const cc = typeof geo.countryCode === "string" ? geo.countryCode.toUpperCase() : null;
+  if (cc) return cc !== "BR";
+  const name = typeof geo.country === "string" ? geo.country.trim().toLowerCase() : null;
+  if (name) return name !== "brazil" && name !== "brasil";
+  return false;
+}
+
+
 /** Shared click writer used by both `resolveCampaign` (SSR loader) and the
  *  client fallback `trackClick`. Roda com service role e faz o enrich de
  *  UA/IP a partir dos headers da request atual. */
