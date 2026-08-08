@@ -976,16 +976,26 @@ export async function processCampaignTick(
         ? (isMediaHeader ? tplHeaderType : "image")
         : tpl.header_type;
       let resolvedHeaderValue: string | null = headerImageOverride;
-      if (!resolvedHeaderValue) {
-        if (isMediaHeader) {
-          const rawComponents = ((tpl as any).raw?.components ?? []) as any[];
-          const headerComp = rawComponents.find((c: any) => c?.type === "HEADER");
-          const exampleUrl = headerComp?.example?.header_handle?.[0] ?? headerComp?.example?.header_url?.[0] ?? null;
-          resolvedHeaderValue = (tpl as any).header_media_url || exampleUrl || null;
-        } else {
-          resolvedHeaderValue = tpl.header_text;
-        }
+      if (!resolvedHeaderValue && !isMediaHeader) {
+        resolvedHeaderValue = tpl.header_text;
       }
+
+      // REGRA ABSOLUTA: nunca enviar a mídia aprovada do template.
+      // Se o cabeçalho é de mídia e não há upload da campanha, o envio é
+      // bloqueado — melhor falhar do que mandar o vídeo/imagem errado.
+      if (isMediaHeader && !headerImageOverride) {
+        const reason =
+          "Mídia do cabeçalho ausente na campanha — envio bloqueado (proibido usar a mídia do template)";
+        console.error(`[wa-send] ${reason} (${r.phone})`);
+        await supabaseAdmin
+          .from("campaign_recipients")
+          .update({ status: "failed", failed_reason: reason, attempt: (r.attempt ?? 0) + 1 })
+          .eq("id", r.id);
+        failed++;
+        lastError = reason;
+        return;
+      }
+
 
       const btnMapRaw =
         ((camp as any).button_url_mapping as Record<string, string> | null | undefined) ??
