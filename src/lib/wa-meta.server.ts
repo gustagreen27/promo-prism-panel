@@ -23,7 +23,7 @@ function humanizeMetaError(json: any, status: number): { error: string; code?: s
   if (/already exists/i.test(msg)) return { code, error: "Já existe um template com esse nome nessa WABA." };
   if (/name.*invalid/i.test(msg)) return { code, error: "Nome de template inválido. Use letras minúsculas, números e underscore." };
   if (/category/i.test(msg)) return { code, error: "Categoria inválida. Use MARKETING, UTILITY ou AUTHENTICATION." };
-  if (/example/i.test(msg)) return { code, error: "Variável sem exemplo. Preencha as amostras (variables_examples) para todas as variáveis do corpo/URL." };
+  if (/example/i.test(msg)) return { code, error: `A Meta recusou os exemplos das variáveis: ${msg}${sub}` };
   if (/button/i.test(msg)) return { code, error: `Botão inválido: ${msg}${sub}` };
   if (err?.error_subcode === 2388273) return { code, error: "Mídia do cabeçalho inválida: a Meta rejeitou o arquivo de amostra. Envie novamente a imagem/vídeo (JPG, PNG ou MP4, até 5 MB)." };
   if (/media/i.test(msg) || /header.*url/i.test(msg)) return { code, error: `Mídia do cabeçalho inválida: ${msg}${sub}` };
