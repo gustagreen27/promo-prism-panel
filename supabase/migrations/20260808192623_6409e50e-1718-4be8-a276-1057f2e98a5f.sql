@@ -1,0 +1,1 @@
+UPDATE public.campaigns SET loading_image_url = 'https://disparosfr.com/__l5e/assets-v1/bbaddd7c-46bb-4ac9-b3dc-e89c18605c3b/pdm-logo.png' WHERE slug = 'pdm';
