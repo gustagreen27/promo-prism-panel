@@ -39,6 +39,46 @@ async function assertCampaignUnlocked(supabase: any, campaignId: string) {
   }
 }
 
+/**
+ * REGRA ABSOLUTA: um disparo com cabeçalho de mídia só pode usar a mídia
+ * enviada no upload da campanha. Se não houver upload persistido
+ * (`_header_image_url`), o disparo é bloqueado — nunca cai para a mídia
+ * aprovada do template.
+ */
+async function assertCampaignUploadMedia(supabase: any, campaignId: string) {
+  const { data: camp } = await supabase
+    .from("wa_campaigns")
+    .select("template_id, template_variables, variables_mapping")
+    .eq("id", campaignId)
+    .maybeSingle();
+  if (!camp?.template_id) return;
+
+  const { data: tpl } = await supabase
+    .from("whatsapp_templates")
+    .select("header_type")
+    .eq("id", camp.template_id)
+    .maybeSingle();
+  const headerType = String(tpl?.header_type ?? "").toLowerCase();
+  if (!["image", "video", "document"].includes(headerType)) return;
+
+  const vars = {
+    ...((camp.variables_mapping as Record<string, any>) ?? {}),
+    ...((camp.template_variables as Record<string, any>) ?? {}),
+  };
+  const media = String(vars._header_image_url ?? "").trim();
+  if (!media) {
+    const msg =
+      "Disparo bloqueado: o template tem cabeçalho de mídia e não há upload persistido na campanha. Envie o arquivo no assistente — a mídia do template nunca é usada.";
+    await supabase.from("wa_campaigns").update({ last_error: msg }).eq("id", campaignId);
+    await logEvent(supabase, campaignId, "preflight_failed", msg, null, {
+      reason: "missing_campaign_upload_media",
+      header_type: headerType,
+    });
+    throw new Error(msg);
+  }
+}
+
+
 
 async function logEvent(supabase: any, campaignId: string, event_type: string, message: string, actorId: string | null = null, payload: any = {}) {
   try {
