@@ -86,6 +86,8 @@ function EditCampaign() {
       intermediate_text: data.intermediate_text ?? "",
       cta_label: data.cta_label ?? "",
       preview_image_url: data.preview_image_url ?? "",
+      loading_image_url: (data as Record<string, any>).loading_image_url ?? "",
+      loading_bg_color: (data as Record<string, any>).loading_bg_color ?? "",
       favicon_url: data.favicon_url ?? "",
       og_title: data.og_title ?? "",
       og_description: data.og_description ?? "",
@@ -188,6 +190,8 @@ function EditCampaign() {
           intermediate_text: form.intermediate_text || null,
           cta_label: form.cta_label || null,
           preview_image_url: form.preview_image_url || null,
+          loading_image_url: form.loading_image_url || null,
+          loading_bg_color: form.loading_bg_color || null,
           favicon_url: form.favicon_url || null,
           og_title: form.og_title || null,
           og_description: form.og_description || null,
@@ -444,6 +448,26 @@ function EditCampaign() {
 
         <TabsContent value="preview" className="space-y-4 pt-4">
           <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label="Imagem de carregamento"
+              id="loading_image_url"
+              hint="Aparece centralizada na tela enquanto o destino carrega/redireciona"
+            >
+              <ImageUpload
+                value={form.loading_image_url}
+                onChange={(v) => set("loading_image_url", v)}
+                folder="loading"
+                shape="square"
+              />
+            </Field>
+            <Field label="Cor de fundo do carregamento" id="loading_bg_color" hint="Ex.: #C4C7C8">
+              <Input
+                id="loading_bg_color"
+                value={form.loading_bg_color ?? ""}
+                onChange={(e) => set("loading_bg_color", e.target.value)}
+                placeholder="#C4C7C8"
+              />
+            </Field>
             <Field label="Imagem de preview" id="preview_image_url" hint="PNG/JPG/WebP até 4MB ou cole uma URL">
               <ImageUpload
                 value={form.preview_image_url}

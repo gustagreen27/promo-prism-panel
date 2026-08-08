@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { resolveCampaign, trackEvent } from "@/lib/track.functions";
 
 function emitEvent(slug: string, event_type: string, metadata?: Record<string, unknown>) {
@@ -22,7 +22,29 @@ type Meta = {
   page_category: string | null;
   intermediate_text: string | null;
   cta_label: string | null;
+  loading_image_url?: string | null;
+  loading_bg_color?: string | null;
 };
+
+function LoadingSplash({ meta }: { meta: Meta }) {
+  const bg = meta.loading_bg_color?.trim() || "#C4C7C8";
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ backgroundColor: bg }}
+    >
+      {meta.loading_image_url ? (
+        <img
+          src={meta.loading_image_url}
+          alt=""
+          className="h-28 w-28 animate-pulse rounded-[22%] object-cover shadow-lg sm:h-32 sm:w-32"
+        />
+      ) : (
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-black/20 border-t-black/60" />
+      )}
+    </div>
+  );
+}
 
 type OpenMode = "smart" | "iframe" | "redirect" | "wrapper";
 
@@ -126,6 +148,17 @@ export const Route = createFileRoute("/$slug")({
 function CampaignPublicPage() {
   const data = Route.useLoaderData();
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const [splash, setSplash] = useState(true);
+
+  // Enquanto o destino não carrega, mantemos a tela de carregamento por cima
+  // do iframe — assim o visitante nunca vê a página de erro do navegador
+  // ("sem conexão") quando o destino recusa o primeiro carregamento.
+  useEffect(() => {
+    if (data.status !== "iframe") return;
+    const t = setTimeout(() => setSplash(false), 6000);
+    return () => clearTimeout(t);
+  }, [data]);
+
 
   // Client-side watchdog for iframe blocks not caught by server HEAD check.
   // Browsers que recusam a conexão (X-Frame-Options, CSP frame-ancestors,
@@ -159,6 +192,7 @@ function CampaignPublicPage() {
       loaded = true;
       emitEvent(slug, "iframe_loaded", { url });
       setTimeout(checkBlank, 100);
+      setTimeout(() => setSplash(false), 350);
     };
     iframe?.addEventListener("load", onLoad);
     iframe?.addEventListener("error", () => fallback("error_event"));
@@ -226,7 +260,7 @@ function CampaignPublicPage() {
 
 
   if (data.status === "redirect") {
-    return <ImmediateRedirect url={data.url} slug={data.slug} />;
+    return <ImmediateRedirect url={data.url} slug={data.slug} meta={data.meta} />;
   }
 
   if (data.status === "wrapper") {
@@ -234,14 +268,17 @@ function CampaignPublicPage() {
   }
 
   return (
-    <iframe
-      ref={iframeRef}
-      src={data.url}
-      title={data.meta.og_title || data.meta.link_title || data.meta.name || "Campanha"}
-      className="fixed inset-0 h-screen w-screen border-0"
-      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-      referrerPolicy="no-referrer-when-downgrade"
-    />
+    <>
+      <iframe
+        ref={iframeRef}
+        src={data.url}
+        title={data.meta.og_title || data.meta.link_title || data.meta.name || "Campanha"}
+        className="fixed inset-0 h-screen w-screen border-0"
+        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+        referrerPolicy="no-referrer-when-downgrade"
+      />
+      {splash && <LoadingSplash meta={data.meta} />}
+    </>
   );
 }
 
@@ -284,12 +321,22 @@ function WrapperPage({
   );
 }
 
-function ImmediateRedirect({ url, slug }: { url: string; slug: string }) {
+function ImmediateRedirect({ url, slug, meta }: { url: string; slug: string; meta: Meta }) {
   useEffect(() => {
     emitEvent(slug, "redirect_started", { url, source: "direct" });
     window.location.replace(url);
     emitEvent(slug, "redirect_completed", { url });
+    // Alguns navegadores in-app ignoram o primeiro replace; reforça o destino.
+    const t = setTimeout(() => {
+      window.location.href = url;
+    }, 1200);
+    return () => clearTimeout(t);
   }, [url, slug]);
-  return <meta httpEquiv="refresh" content={`0;url=${url}`} />;
+  return (
+    <>
+      <meta httpEquiv="refresh" content={`0;url=${url}`} />
+      <LoadingSplash meta={meta} />
+    </>
+  );
 }
 

@@ -782,6 +782,8 @@ export type Database = {
           link_description: string | null
           link_intent: string | null
           link_title: string | null
+          loading_bg_color: string | null
+          loading_image_url: string | null
           name: string
           og_description: string | null
           og_image_url: string | null
@@ -824,6 +826,8 @@ export type Database = {
           link_description?: string | null
           link_intent?: string | null
           link_title?: string | null
+          loading_bg_color?: string | null
+          loading_image_url?: string | null
           name: string
           og_description?: string | null
           og_image_url?: string | null
@@ -866,6 +870,8 @@ export type Database = {
           link_description?: string | null
           link_intent?: string | null
           link_title?: string | null
+          loading_bg_color?: string | null
+          loading_image_url?: string | null
           name?: string
           og_description?: string | null
           og_image_url?: string | null
