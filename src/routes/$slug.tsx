@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { resolveCampaign, trackEvent } from "@/lib/track.functions";
+import { isMetaInAppBrowser, openInExternalBrowser } from "@/lib/external-open";
 
 function emitEvent(slug: string, event_type: string, metadata?: Record<string, unknown>) {
   if (!slug) return;
