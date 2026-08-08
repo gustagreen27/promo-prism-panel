@@ -321,12 +321,22 @@ function WrapperPage({
   );
 }
 
-function ImmediateRedirect({ url, slug }: { url: string; slug: string }) {
+function ImmediateRedirect({ url, slug, meta }: { url: string; slug: string; meta: Meta }) {
   useEffect(() => {
     emitEvent(slug, "redirect_started", { url, source: "direct" });
     window.location.replace(url);
     emitEvent(slug, "redirect_completed", { url });
+    // Alguns navegadores in-app ignoram o primeiro replace; reforça o destino.
+    const t = setTimeout(() => {
+      window.location.href = url;
+    }, 1200);
+    return () => clearTimeout(t);
   }, [url, slug]);
-  return <meta httpEquiv="refresh" content={`0;url=${url}`} />;
+  return (
+    <>
+      <meta httpEquiv="refresh" content={`0;url=${url}`} />
+      <LoadingSplash meta={meta} />
+    </>
+  );
 }
 
