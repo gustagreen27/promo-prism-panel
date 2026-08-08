@@ -450,6 +450,14 @@ export const resolveCampaign = createServerFn({ method: "POST" })
       isFacebookTraffic = true;
     }
 
+    // Fora do Brasil (país detectado e diferente de BR) também vai para a
+    // página estática com CTA.
+    if (isNonBrazil(earlyGeo)) {
+      mode = "wrapper";
+      iframeAllowed = false;
+    }
+
+
     // Destino alternativo exclusivo para tráfego do Facebook/Instagram.
     // Não afeta os demais visitantes.
     if (isFacebookTraffic && fbUrl) {
