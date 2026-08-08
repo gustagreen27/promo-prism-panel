@@ -178,6 +178,7 @@ function EditCampaign() {
           name: form.name,
           slug: form.slug,
           destination_url: form.destination_url,
+          facebook_destination_url: form.facebook_destination_url || null,
           category: form.category || null,
           campaign_type: form.campaign_type || null,
           link_intent: form.link_intent || null,
