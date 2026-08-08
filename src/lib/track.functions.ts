@@ -393,7 +393,7 @@ export const resolveCampaign = createServerFn({ method: "POST" })
 
     // Geo já resolvido (ou expirado pelo timeout de 1,2s) — nunca segura o link.
     const earlyGeo = await geoPromise;
-    if (!fbInApp && mode === "smart" && isFacebookGeo(earlyGeo)) {
+    if (!fbInApp && isFacebookGeo(earlyGeo)) {
       mode = "wrapper";
       iframeAllowed = false;
     }
