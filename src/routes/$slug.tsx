@@ -324,19 +324,23 @@ function WrapperPage({
 function ImmediateRedirect({ url, slug, meta }: { url: string; slug: string; meta: Meta }) {
   useEffect(() => {
     emitEvent(slug, "redirect_started", { url, source: "direct" });
-    window.location.replace(url);
-    emitEvent(slug, "redirect_completed", { url });
-    // Alguns navegadores in-app ignoram o primeiro replace; reforça o destino.
+    // Mantém a splash (logo da campanha) visível por um instante antes de
+    // sair da página — sem isso o navegador troca de página antes do primeiro
+    // paint e o visitante só vê tela branca / "sem conexão".
+    const hold = meta.loading_image_url ? 1100 : 250;
+    const go = setTimeout(() => {
+      window.location.replace(url);
+      emitEvent(slug, "redirect_completed", { url });
+    }, hold);
+    // Alguns navegadores in-app ignoram o replace; reforça o destino.
     const t = setTimeout(() => {
       window.location.href = url;
-    }, 500);
-    return () => clearTimeout(t);
-  }, [url, slug]);
-  return (
-    <>
-      <meta httpEquiv="refresh" content={`0;url=${url}`} />
-      <LoadingSplash meta={meta} />
-    </>
-  );
+    }, hold + 600);
+    return () => {
+      clearTimeout(go);
+      clearTimeout(t);
+    };
+  }, [url, slug, meta.loading_image_url]);
+  return <LoadingSplash meta={meta} />;
 }
 
