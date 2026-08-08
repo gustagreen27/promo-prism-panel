@@ -770,6 +770,7 @@ export type Database = {
           destination_rotation: string
           destination_url: string
           destination_urls: Json
+          facebook_destination_url: string | null
           favicon_url: string | null
           id: string
           iframe_checked_at: string | null
@@ -811,6 +812,7 @@ export type Database = {
           destination_rotation?: string
           destination_url: string
           destination_urls?: Json
+          facebook_destination_url?: string | null
           favicon_url?: string | null
           id?: string
           iframe_checked_at?: string | null
@@ -852,6 +854,7 @@ export type Database = {
           destination_rotation?: string
           destination_url?: string
           destination_urls?: Json
+          facebook_destination_url?: string | null
           favicon_url?: string | null
           id?: string
           iframe_checked_at?: string | null

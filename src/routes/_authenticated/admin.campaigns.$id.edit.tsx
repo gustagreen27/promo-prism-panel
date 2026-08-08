@@ -76,6 +76,7 @@ function EditCampaign() {
       name: data.name ?? "",
       slug: data.slug ?? "",
       destination_url: data.destination_url ?? "",
+      facebook_destination_url: (data as Record<string, any>).facebook_destination_url ?? "",
       category: data.category ?? "",
       campaign_type: data.campaign_type ?? "",
       link_intent: data.link_intent ?? "",
@@ -177,6 +178,7 @@ function EditCampaign() {
           name: form.name,
           slug: form.slug,
           destination_url: form.destination_url,
+          facebook_destination_url: form.facebook_destination_url || null,
           category: form.category || null,
           campaign_type: form.campaign_type || null,
           link_intent: form.link_intent || null,
@@ -417,6 +419,19 @@ function EditCampaign() {
             warning={firstWarningOf("destination_url")}
           >
             <Input id="destination_url" type="url" value={form.destination_url ?? ""} onChange={(e) => set("destination_url", e.target.value)} />
+          </Field>
+          <Field
+            label="Destino para tráfego do Facebook/Instagram"
+            id="facebook_destination_url"
+            hint="Opcional. Usado só na página com CTA quando o acesso vem do Facebook/Instagram — não altera o destino dos outros visitantes."
+          >
+            <Input
+              id="facebook_destination_url"
+              type="url"
+              value={form.facebook_destination_url ?? ""}
+              onChange={(e) => set("facebook_destination_url", e.target.value)}
+              placeholder="https://exemplo.com/pagina-facebook"
+            />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="utm_source" id="utm_source"><Input id="utm_source" value={form.utm_source ?? ""} onChange={(e) => set("utm_source", e.target.value)} /></Field>

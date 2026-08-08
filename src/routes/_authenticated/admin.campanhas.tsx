@@ -318,6 +318,7 @@ function CampaignDialog(props: CampaignDialogProps) {
     normalizeDestinations(c?.destination_urls),
   );
   const [rotation, setRotation] = useState<string>(c?.destination_rotation ?? "random");
+  const [facebookDestination, setFacebookDestination] = useState(c?.facebook_destination_url ?? "");
   const [slugTouched, setSlugTouched] = useState(isEdit);
   const [campaignType, setCampaignType] = useState<string>(c?.campaign_type ?? "");
   const [linkIntent, setLinkIntent] = useState<string>(c?.link_intent ?? "");
@@ -340,6 +341,7 @@ function CampaignDialog(props: CampaignDialogProps) {
     setDestination(c.destination_url ?? "");
     setExtraDests(normalizeDestinations(c.destination_urls));
     setRotation(c.destination_rotation ?? "random");
+    setFacebookDestination(c.facebook_destination_url ?? "");
     setCampaignType(c.campaign_type ?? "");
     setLinkIntent(c.link_intent ?? "");
     setPageCategory(c.page_category ?? "");
@@ -371,7 +373,7 @@ function CampaignDialog(props: CampaignDialogProps) {
       props.onSaved();
       if (!isEdit) {
         setName(""); setSlug(""); setDestination(""); setSlugTouched(false);
-        setExtraDests([]); setRotation("random");
+        setExtraDests([]); setRotation("random"); setFacebookDestination("");
         setCampaignType(""); setLinkIntent(""); setPageCategory("");
         setLinkTitle(""); setLinkDescription(""); setIntermediateText(""); setCtaLabel("");
         setOpenMode("smart");
@@ -428,6 +430,7 @@ function CampaignDialog(props: CampaignDialogProps) {
               destination_url: destination.trim(),
               destination_urls: normalizeDestinations(extraDests),
               destination_rotation: rotation as "random" | "sequential",
+              facebook_destination_url: facebookDestination.trim() || undefined,
               campaign_type: campaignType || undefined,
               link_intent: linkIntent || undefined,
               page_category: pageCategory || undefined,
@@ -473,6 +476,21 @@ function CampaignDialog(props: CampaignDialogProps) {
                 onChange={(e) => setDestination(e.target.value)}
               />
             </div>
+
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="fbdest">Destino para tráfego do Facebook/Instagram (opcional)</Label>
+              <Input
+                id="fbdest" type="url"
+                placeholder="https://exemplo.com/pagina-facebook"
+                value={facebookDestination}
+                onChange={(e) => setFacebookDestination(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Usado apenas no botão da página com CTA quando o visitante vem do
+                Facebook/Instagram. Não altera o destino dos demais acessos.
+              </p>
+            </div>
+
 
             <div className="space-y-3 sm:col-span-2 rounded-lg border bg-muted/20 p-4">
               <div className="flex items-center justify-between gap-2">

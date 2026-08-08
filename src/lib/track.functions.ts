@@ -395,7 +395,8 @@ export const resolveCampaign = createServerFn({ method: "POST" })
       }
     }
     const chosen = pickDestination(campaign as never, cursor);
-    const finalUrl = applyUtms(chosen, campaign);
+    let finalUrl = applyUtms(chosen, campaign);
+    const fbUrl = ((campaign as Record<string, unknown>).facebook_destination_url as string | null)?.trim() || null;
     let mode = ((campaign as Record<string, unknown>).open_mode as string) || "smart";
 
     // Detecta in-app browser do Facebook/Instagram pelo User-Agent (instantâneo).
@@ -404,6 +405,7 @@ export const resolveCampaign = createServerFn({ method: "POST" })
     const geoPromise = earlyIp ? lookupIp(earlyIp) : Promise.resolve(null);
     const uaHeader = getRequestHeader("user-agent") ?? "";
     const fbInApp = /FBAN|FBAV|FB_IAB|Instagram/i.test(uaHeader);
+    let isFacebookTraffic = fbInApp;
     if (fbInApp) mode = "wrapper";
 
     let iframeAllowed = true;
@@ -438,6 +440,13 @@ export const resolveCampaign = createServerFn({ method: "POST" })
     if (!fbInApp && isFacebookGeo(earlyGeo)) {
       mode = "wrapper";
       iframeAllowed = false;
+      isFacebookTraffic = true;
+    }
+
+    // Destino alternativo exclusivo para tráfego do Facebook/Instagram.
+    // Não afeta os demais visitantes.
+    if (isFacebookTraffic && fbUrl) {
+      finalUrl = applyUtms(fbUrl, campaign);
     }
 
     // Grava clique/eventos server-side (mais robusto que o fire-and-forget
