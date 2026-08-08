@@ -1443,6 +1443,27 @@ export type Database = {
           },
         ]
       }
+      ip_geo_cache: {
+        Row: {
+          created_at: string
+          data: Json
+          ip: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data: Json
+          ip: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          ip?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       message_logs: {
         Row: {
           campaign_id: string | null

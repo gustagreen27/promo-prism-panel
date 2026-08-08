@@ -40,7 +40,48 @@ function pickIp(): string | null {
   return getRequestIP() ?? null;
 }
 
+// Cache de geolocalização por IP: memória (curta, por isolate) + tabela
+// `ip_geo_cache` (compartilhada entre instâncias). Reduz latência e custo
+// de chamadas ao IP-API Members.
+const GEO_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 dias
+const memGeo = new Map<string, { at: number; data: Record<string, unknown> }>();
+
+async function readGeoCache(ip: string): Promise<Record<string, unknown> | null> {
+  const hit = memGeo.get(ip);
+  if (hit && Date.now() - hit.at < GEO_TTL_MS) return hit.data;
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin
+      .from("ip_geo_cache")
+      .select("data, updated_at")
+      .eq("ip", ip)
+      .maybeSingle();
+    const row = data as { data?: Record<string, unknown>; updated_at?: string } | null;
+    if (!row?.data || !row.updated_at) return null;
+    if (Date.now() - new Date(row.updated_at).getTime() > GEO_TTL_MS) return null;
+    memGeo.set(ip, { at: Date.now(), data: row.data });
+    return row.data;
+  } catch {
+    return null;
+  }
+}
+
+async function writeGeoCache(ip: string, data: Record<string, unknown>) {
+  memGeo.set(ip, { at: Date.now(), data });
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin
+      .from("ip_geo_cache")
+      .upsert({ ip, data, updated_at: new Date().toISOString() } as never, { onConflict: "ip" });
+  } catch {
+    /* cache é best-effort */
+  }
+}
+
 async function lookupIp(ip: string) {
+  const cached = await readGeoCache(ip);
+  if (cached) return cached;
+
   const key = process.env.IP_API_KEY;
   const proFields =
     "status,message,continent,continentCode,country,countryCode,countryCode3,region,regionName,city,district,zip,lat,lon,timezone,offset,currentTime,currency,callingCode,isp,org,as,asname,reverse,mobile,proxy,hosting,query";
@@ -55,6 +96,7 @@ async function lookupIp(ip: string) {
     if (!res.ok) return null;
     const j = (await res.json()) as Record<string, unknown>;
     if (j.status !== "success") return null;
+    void writeGeoCache(ip, j);
     return j;
   } catch {
     return null;
