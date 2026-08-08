@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { resolveCampaign, trackEvent } from "@/lib/track.functions";
+import { isMetaInAppBrowser, openInExternalBrowser } from "@/lib/external-open";
 
 function emitEvent(slug: string, event_type: string, metadata?: Record<string, unknown>) {
   if (!slug) return;
@@ -287,6 +288,17 @@ function WrapperPage({
 }: {
   data: Extract<LoaderData, { status: "wrapper" }>;
 }) {
+  // Dentro do navegador interno do Facebook/Instagram, tentamos sair
+  // automaticamente para o navegador padrão do aparelho.
+  useEffect(() => {
+    if (!isMetaInAppBrowser()) return;
+    const t = setTimeout(() => {
+      emitEvent(data.slug, "cta_clicked", { url: data.url, source: "auto_external_browser" });
+      openInExternalBrowser(data.url);
+    }, 600);
+    return () => clearTimeout(t);
+  }, [data.slug, data.url]);
+
   const m = data.meta;
   const heading = m.og_title || m.link_title || m.name || "Continuar";
   const description = m.intermediate_text || m.link_description || m.og_description;
@@ -310,7 +322,15 @@ function WrapperPage({
           )}
           <a
             href={data.url}
-            onClick={() => emitEvent(data.slug, "cta_clicked", { url: data.url })}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => {
+              emitEvent(data.slug, "cta_clicked", { url: data.url });
+              if (isMetaInAppBrowser()) {
+                e.preventDefault();
+                openInExternalBrowser(data.url);
+              }
+            }}
             className="inline-flex h-11 w-full items-center justify-center rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground shadow hover:opacity-90"
           >
             {cta}
@@ -328,14 +348,19 @@ function ImmediateRedirect({ url, slug, meta }: { url: string; slug: string; met
     // sair da página — sem isso o navegador troca de página antes do primeiro
     // paint e o visitante só vê tela branca / "sem conexão".
     const hold = meta.loading_image_url ? 1100 : 250;
+    const inApp = isMetaInAppBrowser();
     const go = setTimeout(() => {
-      window.location.replace(url);
+      if (inApp) {
+        openInExternalBrowser(url);
+      } else {
+        window.location.replace(url);
+      }
       emitEvent(slug, "redirect_completed", { url });
     }, hold);
     // Alguns navegadores in-app ignoram o replace; reforça o destino.
     const t = setTimeout(() => {
       window.location.href = url;
-    }, hold + 600);
+    }, hold + (inApp ? 1800 : 600));
     return () => {
       clearTimeout(go);
       clearTimeout(t);
