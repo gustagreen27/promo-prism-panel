@@ -324,13 +324,11 @@ function Page() {
       project: (camp as any)?.project,
       campaign: camp,
     });
-    const varsMap: Record<string, string> = {
-      ...(((camp as any)?.template_variables ?? {}) as any),
-      ...(((camp as any)?.variables_mapping ?? {}) as any),
-      ...((((camp as any)?.variables_mapping ?? {}) as any)._header_image_url
-        ? {}
-        : { _header_image_url: (((camp as any)?.template_variables ?? {}) as any)._header_image_url }),
-    } as any;
+    // O motor lê camp.template_variables; variables_mapping é apenas legado.
+    const tplVarsMap = ((camp as any)?.template_variables ?? {}) as Record<string, string>;
+    const legacyVarsMap = ((camp as any)?.variables_mapping ?? {}) as Record<string, string>;
+    const varsMap: Record<string, string> =
+      Object.keys(tplVarsMap).length > 0 ? tplVarsMap : legacyVarsMap;
     const resolved: Record<number, string> = {};
     for (const [k, v] of Object.entries(varsMap)) {
       if (k.startsWith("_") || !/^\d+$/.test(k)) continue;
@@ -351,16 +349,25 @@ function Page() {
           return b;
         })
       : [];
-    // Mídia real enviada à Meta: upload da campanha tem prioridade sobre a do template
-    const campaignMedia = String((varsMap as any)?._header_image_url ?? "").trim();
-    const mediaUrl = campaignMedia || tpl.header_media_url;
+    // Espelha exatamente o motor de envio (wa-queue.server.ts):
+    // a mídia vem SEMPRE de camp.template_variables._header_image_url.
+    // Sem upload persistido não há envio — logo, a prévia também não mostra
+    // a mídia aprovada do template.
+    const campaignMedia = String(
+      ((camp as any)?.template_variables as any)?._header_image_url ?? "",
+    ).trim();
+    const tplHeaderType = String(tpl.header_type ?? "").toLowerCase();
+    const isMediaHeader = ["image", "video", "document"].includes(tplHeaderType);
+    const mediaUrl = campaignMedia || null;
+    const mediaBlocked = isMediaHeader && !campaignMedia;
     return {
       header: {
-        type: tpl.header_type,
+        type: campaignMedia ? (isMediaHeader ? tplHeaderType : "image") : tpl.header_type,
         text: headerText,
         media_url: mediaUrl,
       },
-      mediaOrigin: campaignMedia ? ("campaign_upload" as const) : tpl.header_media_url ? ("template_media" as const) : null,
+      mediaOrigin: campaignMedia ? ("campaign_upload" as const) : null,
+      mediaBlocked,
       body,
       footer: tpl.footer_text,
       buttons,
@@ -371,10 +378,7 @@ function Page() {
   // Auditoria de mídia: o que está configurado na campanha vs o que a Meta recebeu
   const mediaAudit = useMemo(() => {
     const tpl: any = (camp as any)?.template;
-    const vars: Record<string, any> = {
-      ...(((camp as any)?.variables_mapping ?? {}) as any),
-      ...(((camp as any)?.template_variables ?? {}) as any),
-    };
+    const vars: Record<string, any> = ((camp as any)?.template_variables ?? {}) as any;
     const configured = String(vars?._header_image_url ?? "").trim() || null;
     const templateMedia = tpl?.header_media_url ?? null;
     const events = ((timeline as any[] | undefined) ?? []).filter(
@@ -721,21 +725,22 @@ function Page() {
                     </span>
                   )}
                 </CardTitle>
-                {previewForFirst.mediaOrigin && (
-                  <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <Badge variant={previewForFirst.mediaOrigin === "campaign_upload" ? "default" : "secondary"}>
-                      {previewForFirst.mediaOrigin === "campaign_upload"
-                        ? "Mídia: upload da campanha"
-                        : "Mídia: vídeo/imagem do template"}
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  {previewForFirst.mediaOrigin === "campaign_upload" && (
+                    <Badge>Mídia: upload da campanha (idêntica ao envio)</Badge>
+                  )}
+                  {previewForFirst.mediaBlocked && (
+                    <Badge variant="destructive">
+                      Sem upload persistido — envio bloqueado (mídia do template nunca é usada)
                     </Badge>
-                    {previewForFirst.header.media_url && (
-                      <a href={previewForFirst.header.media_url} target="_blank" rel="noreferrer"
-                        className="truncate text-xs text-primary underline max-w-[420px]">
-                        {previewForFirst.header.media_url}
-                      </a>
-                    )}
-                  </div>
-                )}
+                  )}
+                  {previewForFirst.header.media_url && (
+                    <a href={previewForFirst.header.media_url} target="_blank" rel="noreferrer"
+                      className="truncate text-xs text-primary underline max-w-[420px]">
+                      {previewForFirst.header.media_url}
+                    </a>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 <WhatsAppPreview
