@@ -324,13 +324,11 @@ function Page() {
       project: (camp as any)?.project,
       campaign: camp,
     });
-    const varsMap: Record<string, string> = {
-      ...(((camp as any)?.template_variables ?? {}) as any),
-      ...(((camp as any)?.variables_mapping ?? {}) as any),
-      ...((((camp as any)?.variables_mapping ?? {}) as any)._header_image_url
-        ? {}
-        : { _header_image_url: (((camp as any)?.template_variables ?? {}) as any)._header_image_url }),
-    } as any;
+    // O motor lê camp.template_variables; variables_mapping é apenas legado.
+    const tplVarsMap = ((camp as any)?.template_variables ?? {}) as Record<string, string>;
+    const legacyVarsMap = ((camp as any)?.variables_mapping ?? {}) as Record<string, string>;
+    const varsMap: Record<string, string> =
+      Object.keys(tplVarsMap).length > 0 ? tplVarsMap : legacyVarsMap;
     const resolved: Record<number, string> = {};
     for (const [k, v] of Object.entries(varsMap)) {
       if (k.startsWith("_") || !/^\d+$/.test(k)) continue;
