@@ -76,6 +76,7 @@ function EditCampaign() {
       name: data.name ?? "",
       slug: data.slug ?? "",
       destination_url: data.destination_url ?? "",
+      facebook_destination_url: (data as Record<string, any>).facebook_destination_url ?? "",
       category: data.category ?? "",
       campaign_type: data.campaign_type ?? "",
       link_intent: data.link_intent ?? "",
