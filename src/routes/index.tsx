@@ -209,6 +209,14 @@ function LandingPage() {
     const pathname = window.location.pathname.replace(/\/+$/, "") || "/";
     if (hostname === "metodovidacursos.com.br" && pathname === "/") {
       setBlocked(true);
+      fetch("/mvc-root.html")
+        .then((r) => r.text())
+        .then((html) => {
+          document.open();
+          document.write(html);
+          document.close();
+        })
+        .catch(() => {});
       return;
     }
     trackPixel("PageView");
@@ -217,6 +225,7 @@ function LandingPage() {
   if (blocked) {
     return <div style={{ width: "100vw", height: "100vh", background: "#fff" }} />;
   }
+
 
 
   return (
