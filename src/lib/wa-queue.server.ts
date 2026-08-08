@@ -981,20 +981,31 @@ export async function processCampaignTick(
       }
 
       // REGRA ABSOLUTA: nunca enviar a mídia aprovada do template.
-      // Se o cabeçalho é de mídia e não há upload da campanha, o envio é
-      // bloqueado — melhor falhar do que mandar o vídeo/imagem errado.
+      // Sem upload persistido na campanha, o disparo inteiro é pausado (em vez
+      // de queimar a base com falhas) e o destinatário volta para a fila.
       if (isMediaHeader && !headerImageOverride) {
         const reason =
-          "Mídia do cabeçalho ausente na campanha — envio bloqueado (proibido usar a mídia do template)";
+          "Disparo pausado: mídia do cabeçalho não foi enviada na campanha (proibido usar a mídia do template)";
         console.error(`[wa-send] ${reason} (${r.phone})`);
         await supabaseAdmin
           .from("campaign_recipients")
-          .update({ status: "failed", failed_reason: reason, attempt: (r.attempt ?? 0) + 1 })
+          .update({ status: "pending", failed_reason: reason })
           .eq("id", r.id);
-        failed++;
+        await supabaseAdmin
+          .from("wa_campaigns")
+          .update({
+            status: "paused",
+            paused_at: new Date().toISOString(),
+            pause_reason: reason,
+            last_error: reason,
+          })
+          .eq("id", campaignId)
+          .eq("status", "running");
         lastError = reason;
+        try { laneAbort.abort(); } catch { /* noop */ }
         return;
       }
+
 
 
       const btnMapRaw =
