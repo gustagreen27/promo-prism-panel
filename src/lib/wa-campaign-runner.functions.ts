@@ -307,6 +307,8 @@ export const startCampaignAsync = createServerFn({ method: "POST" })
       .eq("campaign_id", data.id);
     if (!recCount) throw new Error("Gere a fila de destinatários antes de iniciar.");
 
+    await assertCampaignUploadMedia(supabase, data.id);
+
     // Verify phone number is registered on Meta before dispatching (avoids #133010 mid-run).
     const { data: connRow } = await supabase
       .from("whatsapp_connections")
