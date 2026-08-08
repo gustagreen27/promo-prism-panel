@@ -359,6 +359,22 @@ function Page() {
     };
   }, [camp, recipients]);
 
+  // Auditoria de mídia: o que está configurado na campanha vs o que a Meta recebeu
+  const mediaAudit = useMemo(() => {
+    const tpl: any = (camp as any)?.template;
+    const vars: Record<string, any> =
+      ((camp as any)?.template_variables ?? (camp as any)?.variables_mapping ?? {}) as any;
+    const configured = String(vars?._header_image_url ?? "").trim() || null;
+    const templateMedia = tpl?.header_media_url ?? null;
+    const events = ((timeline as any[] | undefined) ?? []).filter(
+      (e: any) => e?.event_type === "media_audit",
+    );
+    const last = events[0] ?? null;
+    return { configured, templateMedia, headerType: tpl?.header_type ?? null, events, last };
+  }, [camp, timeline]);
+
+
+
   const isPaused = status === "paused";
   const isFinished = ["completed", "partial", "cancelled", "error"].includes(status);
   const canRetry = (isFinished || isPaused) && ((p.failed ?? 0) > 0 || (isPaused && (p.pending ?? 0) > 0));
