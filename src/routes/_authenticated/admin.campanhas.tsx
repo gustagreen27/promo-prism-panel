@@ -341,6 +341,7 @@ function CampaignDialog(props: CampaignDialogProps) {
     setDestination(c.destination_url ?? "");
     setExtraDests(normalizeDestinations(c.destination_urls));
     setRotation(c.destination_rotation ?? "random");
+    setFacebookDestination(c.facebook_destination_url ?? "");
     setCampaignType(c.campaign_type ?? "");
     setLinkIntent(c.link_intent ?? "");
     setPageCategory(c.page_category ?? "");
