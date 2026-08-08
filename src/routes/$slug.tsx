@@ -22,7 +22,29 @@ type Meta = {
   page_category: string | null;
   intermediate_text: string | null;
   cta_label: string | null;
+  loading_image_url?: string | null;
+  loading_bg_color?: string | null;
 };
+
+function LoadingSplash({ meta }: { meta: Meta }) {
+  const bg = meta.loading_bg_color?.trim() || "#C4C7C8";
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ backgroundColor: bg }}
+    >
+      {meta.loading_image_url ? (
+        <img
+          src={meta.loading_image_url}
+          alt=""
+          className="h-28 w-28 animate-pulse rounded-[22%] object-cover shadow-lg sm:h-32 sm:w-32"
+        />
+      ) : (
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-black/20 border-t-black/60" />
+      )}
+    </div>
+  );
+}
 
 type OpenMode = "smart" | "iframe" | "redirect" | "wrapper";
 
