@@ -83,6 +83,8 @@ const legSchema = z.object({
   weight: z.number().int().min(1).max(1_000_000).default(1),
   variables_mapping: z.record(z.string(), z.string()).optional().default({}),
   button_url_mapping: z.record(z.string(), z.string()).optional().default({}),
+  /** Mídia de cabeçalho própria da combinação. Vazio = herda a mídia principal. */
+  header_media_url: z.string().optional().nullable(),
 });
 
 const createSplitSchema = z.object({
@@ -92,6 +94,9 @@ const createSplitSchema = z.object({
   legs: z.array(legSchema).min(1).max(50),
   variables_mapping: z.record(z.string(), z.string()).optional().default({}),
   button_url_mapping: z.record(z.string(), z.string()).optional().default({}),
+  /** Mídia de cabeçalho enviada no assistente (substitui a mídia aprovada do template). */
+  header_media_url: z.string().optional().nullable(),
+
   send_rate_per_min: z.number().int().min(1).max(2400).optional().default(60),
   batch_size: z.number().int().min(1).max(500).optional().default(25),
   rate_per_second: z.number().int().min(1).max(500).nullable().optional(),
