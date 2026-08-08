@@ -50,7 +50,8 @@ async function lookupIp(ip: string) {
     ? `https://pro.ip-api.com/json/${encodeURIComponent(ip)}?fields=${proFields}&key=${key}`
     : `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=${freeFields}`;
   try {
-    const res = await fetch(url);
+    // Timeout curto: geo é métrica, nunca pode atrasar o redirect.
+    const res = await fetch(url, { signal: AbortSignal.timeout(1200) });
     if (!res.ok) return null;
     const j = (await res.json()) as Record<string, unknown>;
     if (j.status !== "success") return null;
