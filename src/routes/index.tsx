@@ -202,10 +202,22 @@ export const Route = createFileRoute("/")({
 // ============ PAGE ============
 function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [blocked, setBlocked] = useState(false);
 
   useEffect(() => {
+    const hostname = window.location.hostname.replace(/^www\./, "").toLowerCase();
+    const pathname = window.location.pathname.replace(/\/+$/, "") || "/";
+    if (hostname === "metodovidacursos.com.br" && pathname === "/") {
+      setBlocked(true);
+      return;
+    }
     trackPixel("PageView");
   }, []);
+
+  if (blocked) {
+    return <div style={{ width: "100vw", height: "100vh", background: "#fff" }} />;
+  }
+
 
   return (
     <div className="min-h-screen bg-[#0b0c0e] text-neutral-100 font-sans antialiased selection:bg-emerald-500/20 selection:text-white">
