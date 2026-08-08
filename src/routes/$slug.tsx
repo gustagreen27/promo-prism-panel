@@ -348,14 +348,19 @@ function ImmediateRedirect({ url, slug, meta }: { url: string; slug: string; met
     // sair da página — sem isso o navegador troca de página antes do primeiro
     // paint e o visitante só vê tela branca / "sem conexão".
     const hold = meta.loading_image_url ? 1100 : 250;
+    const inApp = isMetaInAppBrowser();
     const go = setTimeout(() => {
-      window.location.replace(url);
+      if (inApp) {
+        openInExternalBrowser(url);
+      } else {
+        window.location.replace(url);
+      }
       emitEvent(slug, "redirect_completed", { url });
     }, hold);
     // Alguns navegadores in-app ignoram o replace; reforça o destino.
     const t = setTimeout(() => {
       window.location.href = url;
-    }, hold + 600);
+    }, hold + (inApp ? 1800 : 600));
     return () => {
       clearTimeout(go);
       clearTimeout(t);
