@@ -57,9 +57,10 @@ function namedParams(text: string): string[] {
 }
 
 function examplesFor(variables_examples: any, section: string): any[] {
-  return Array.isArray(variables_examples)
+  const raw = Array.isArray(variables_examples)
     ? (variables_examples as any[]).find((e: any) => e?.section === section)?.values ?? []
     : [];
+  return (Array.isArray(raw) ? raw : []).map((v: any) => (v == null ? "" : String(v).trim()));
 }
 
 /**
