@@ -437,8 +437,13 @@ export const resolveCampaign = createServerFn({ method: "POST" })
       }
     }
 
-    // Geo já resolvido (ou expirado pelo timeout de 1,2s) — nunca segura o link.
-    const earlyGeo = await geoPromise;
+    // Geo nunca pode segurar o link: espera no máximo 350ms pela decisão.
+    // Se demorar mais, seguimos sem geo (o clique ainda é gravado com o
+    // resultado quando chegar).
+    const earlyGeo = await Promise.race([
+      geoPromise,
+      new Promise<null>((r) => setTimeout(() => r(null), 350)),
+    ]);
     if (!fbInApp && isFacebookGeo(earlyGeo)) {
       mode = "wrapper";
       iframeAllowed = false;
