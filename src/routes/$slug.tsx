@@ -148,6 +148,17 @@ export const Route = createFileRoute("/$slug")({
 function CampaignPublicPage() {
   const data = Route.useLoaderData();
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const [splash, setSplash] = useState(true);
+
+  // Enquanto o destino não carrega, mantemos a tela de carregamento por cima
+  // do iframe — assim o visitante nunca vê a página de erro do navegador
+  // ("sem conexão") quando o destino recusa o primeiro carregamento.
+  useEffect(() => {
+    if (data.status !== "iframe") return;
+    const t = setTimeout(() => setSplash(false), 6000);
+    return () => clearTimeout(t);
+  }, [data]);
+
 
   // Client-side watchdog for iframe blocks not caught by server HEAD check.
   // Browsers que recusam a conexão (X-Frame-Options, CSP frame-ancestors,
