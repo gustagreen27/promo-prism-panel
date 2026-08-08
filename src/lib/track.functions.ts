@@ -212,6 +212,8 @@ function pickMeta(c: Record<string, unknown>) {
     page_category: (c.page_category as string) ?? null,
     intermediate_text: (c.intermediate_text as string) ?? null,
     cta_label: (c.cta_label as string) ?? null,
+    loading_image_url: (c.loading_image_url as string) ?? null,
+    loading_bg_color: (c.loading_bg_color as string) ?? null,
   };
 }
 
