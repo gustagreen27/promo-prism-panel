@@ -1002,7 +1002,7 @@ export async function processCampaignTick(
           .eq("id", campaignId)
           .eq("status", "running");
         lastError = reason;
-        stopLane = true;
+        try { laneAbort.abort(); } catch { /* noop */ }
         return;
       }
 
