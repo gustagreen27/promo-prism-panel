@@ -50,7 +50,8 @@ async function lookupIp(ip: string) {
     ? `https://pro.ip-api.com/json/${encodeURIComponent(ip)}?fields=${proFields}&key=${key}`
     : `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=${freeFields}`;
   try {
-    const res = await fetch(url);
+    // Timeout curto: geo é métrica, nunca pode atrasar o redirect.
+    const res = await fetch(url, { signal: AbortSignal.timeout(1200) });
     if (!res.ok) return null;
     const j = (await res.json()) as Record<string, unknown>;
     if (j.status !== "success") return null;
@@ -114,6 +115,7 @@ export async function canEmbedInIframe(url: string): Promise<boolean> {
     const res = await fetch(url, {
       method: "GET",
       redirect: "follow",
+      signal: AbortSignal.timeout(2500),
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
@@ -354,15 +356,13 @@ export const resolveCampaign = createServerFn({ method: "POST" })
     const finalUrl = applyUtms(chosen, campaign);
     let mode = ((campaign as Record<string, unknown>).open_mode as string) || "smart";
 
-    // Lookup geo cedo para (a) forçar wrapper quando o clique vier do ASN do
-    // Facebook/Meta (in-app browser bloqueia redirect e iframe) e (b)
-    // reaproveitar o resultado no recordClick, evitando duas chamadas à API.
+    // Detecta in-app browser do Facebook/Instagram pelo User-Agent (instantâneo).
+    // O lookup de geo roda em paralelo e só é usado como reforço/métrica.
     const earlyIp = pickIp();
-    const earlyGeo = earlyIp ? await lookupIp(earlyIp) : null;
-    const facebookTraffic = isFacebookGeo(earlyGeo);
-    if (facebookTraffic) {
-      mode = "wrapper";
-    }
+    const geoPromise = earlyIp ? lookupIp(earlyIp) : Promise.resolve(null);
+    const uaHeader = getRequestHeader("user-agent") ?? "";
+    const fbInApp = /FBAN|FBAV|FB_IAB|Instagram/i.test(uaHeader);
+    if (fbInApp) mode = "wrapper";
 
     let iframeAllowed = true;
     if (mode === "redirect") {
@@ -391,6 +391,13 @@ export const resolveCampaign = createServerFn({ method: "POST" })
       }
     }
 
+    // Geo já resolvido (ou expirado pelo timeout de 1,2s) — nunca segura o link.
+    const earlyGeo = await geoPromise;
+    if (!fbInApp && mode === "smart" && isFacebookGeo(earlyGeo)) {
+      mode = "wrapper";
+      iframeAllowed = false;
+    }
+
     // Grava clique/eventos server-side (mais robusto que o fire-and-forget
     // do cliente, que era abortado nos modos redirect/wrapper). Nunca falha
     // a resolução: se o insert der erro, seguimos com o redirect normal.
@@ -405,6 +412,7 @@ export const resolveCampaign = createServerFn({ method: "POST" })
     } catch {
       /* ignore — métricas não devem quebrar o link */
     }
+
 
     return {
       ok: true as const,
