@@ -292,13 +292,14 @@ export const duplicateTemplate = createServerFn({ method: "POST" })
       .select("*").eq("id", data.template_id).single();
     if (error) throw error;
     const {
-      id: _id, created_at: _c, updated_at: _u, meta_template_id: _m, submitted_at: _s, approved_at: _a,
+      id: _id, created_at: _c, updated_at: _u, meta_template_id: _m, submitted_at: _s,
+      reviewed_at: _r, rejection_reason: _rr, history: _h, raw: _raw, last_synced_at: _ls,
       status: _st, ...rest
     } = t as any;
     const newName = data.new_name || `${t.name}_copy`;
     const { data: row, error: e2 } = await context.supabase.from("whatsapp_templates").insert({
-      ...rest, name: newName, status: "rascunho", meta_template_id: null,
-      submitted_at: null, approved_at: null,
+      ...rest, name: newName, status: "pending", meta_template_id: null,
+      submitted_at: null, reviewed_at: null, rejection_reason: null, history: [], raw: null,
     }).select().single();
     if (e2) throw e2;
     return row;
