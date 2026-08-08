@@ -1,0 +1,1 @@
+UPDATE public.campaigns SET loading_image_url = 'https://i.ibb.co/pBtTzLr2/Design-sem-nome-37.png', loading_bg_color = COALESCE(NULLIF(loading_bg_color,''), '#C4C7C8') WHERE slug = 'pdm';
