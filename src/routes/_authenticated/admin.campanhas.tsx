@@ -474,6 +474,21 @@ function CampaignDialog(props: CampaignDialogProps) {
               />
             </div>
 
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="fbdest">Destino para tráfego do Facebook/Instagram (opcional)</Label>
+              <Input
+                id="fbdest" type="url"
+                placeholder="https://exemplo.com/pagina-facebook"
+                value={facebookDestination}
+                onChange={(e) => setFacebookDestination(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Usado apenas no botão da página com CTA quando o visitante vem do
+                Facebook/Instagram. Não altera o destino dos demais acessos.
+              </p>
+            </div>
+
+
             <div className="space-y-3 sm:col-span-2 rounded-lg border bg-muted/20 p-4">
               <div className="flex items-center justify-between gap-2">
                 <div>
