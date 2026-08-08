@@ -318,6 +318,7 @@ function CampaignDialog(props: CampaignDialogProps) {
     normalizeDestinations(c?.destination_urls),
   );
   const [rotation, setRotation] = useState<string>(c?.destination_rotation ?? "random");
+  const [facebookDestination, setFacebookDestination] = useState(c?.facebook_destination_url ?? "");
   const [slugTouched, setSlugTouched] = useState(isEdit);
   const [campaignType, setCampaignType] = useState<string>(c?.campaign_type ?? "");
   const [linkIntent, setLinkIntent] = useState<string>(c?.link_intent ?? "");
