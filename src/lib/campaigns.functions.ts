@@ -85,16 +85,21 @@ export const listCampaigns = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await assertAdmin(context);
 
-    // Tudo em paralelo: lista, agregação de cliques (feita no Postgres) e flags públicas.
+    // Checagem de admin roda em paralelo com as leituras; nada é retornado antes dela passar.
+    const adminCheck = assertAdmin(context);
+
+    // Lista, agregação de cliques (feita no Postgres) e flags públicas, tudo junto.
     const [campaignsRes, countsRes, pubRes] = await Promise.all([
       supabaseAdmin.from("campaigns").select("*").order("created_at", { ascending: false }),
       supabaseAdmin.rpc("campaigns_click_counts" as any),
       supabaseAdmin.from("campaign_public_settings").select("campaign_id, enabled").eq("enabled", true),
     ]);
 
+    await adminCheck;
+
     if (campaignsRes.error) throw campaignsRes.error;
+
     const campaigns = campaignsRes.data ?? [];
 
     const counts: Record<string, { total: number; unique: number }> = {};
