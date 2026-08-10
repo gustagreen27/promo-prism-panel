@@ -403,11 +403,11 @@ function Page() {
         const s = v == null ? "" : String(v);
         return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
       };
-      const header = ["phone","nome","status","tentativas","enviada","entregue","lida","respondida","erro","error_code","wamid"];
+      const header = ["phone","nome","status","tentativas","enviada","entregue","lida","respondida","erro","error_code"];
       const csv = [header.join(","), ...all.map((r: any) => [
         r.phone, r.contact?.name ?? "", r.status, r.attempt ?? 0,
         r.sent_at ?? "", r.delivered_at ?? "", r.read_at ?? "", r.replied_at ?? "",
-        r.failed_reason ?? "", r.error_code ?? "", r.meta_message_id ?? "",
+        r.failed_reason ?? "", r.error_code ?? "",
       ].map(esc).join(","))].join("\n");
       const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
