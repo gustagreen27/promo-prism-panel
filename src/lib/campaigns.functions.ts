@@ -85,50 +85,41 @@ export const listCampaigns = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await assertAdmin(context);
 
-    const { data: campaigns, error } = await supabaseAdmin
-      .from("campaigns")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (error) throw error;
+    // Checagem de admin roda em paralelo com as leituras; nada é retornado antes dela passar.
+    const adminCheck = assertAdmin(context);
 
-    const ids = campaigns?.map((c) => c.id) ?? [];
+    // Lista, agregação de cliques (feita no Postgres) e flags públicas, tudo junto.
+    const [campaignsRes, countsRes, pubRes] = await Promise.all([
+      supabaseAdmin.from("campaigns").select("*").order("created_at", { ascending: false }),
+      supabaseAdmin.rpc("campaigns_click_counts" as any),
+      supabaseAdmin.from("campaign_public_settings").select("campaign_id, enabled").eq("enabled", true),
+    ]);
+
+    await adminCheck;
+
+    if (campaignsRes.error) throw campaignsRes.error;
+
+    const campaigns = campaignsRes.data ?? [];
+
     const counts: Record<string, { total: number; unique: number }> = {};
-    if (ids.length) {
-      const { data: clicks } = await supabaseAdmin
-        .from("campaign_clicks")
-        .select("campaign_id, ip")
-        .in("campaign_id", ids);
-      const seen: Record<string, Set<string>> = {};
-      for (const row of clicks ?? []) {
-        const k = row.campaign_id as string;
-        counts[k] ||= { total: 0, unique: 0 };
-        counts[k].total += 1;
-        seen[k] ||= new Set();
-        if (row.ip) seen[k].add(row.ip as string);
-      }
-      for (const k of Object.keys(seen)) counts[k].unique = seen[k].size;
+    for (const row of ((countsRes.data as any[]) ?? [])) {
+      counts[row.campaign_id as string] = {
+        total: Number(row.total ?? 0),
+        unique: Number(row.uniques ?? 0),
+      };
     }
 
-    // Enriquecer com flag de personalização pública (novas tabelas)
-    const { data: pubEnabled } = ids.length
-      ? await supabaseAdmin
-          .from("campaign_public_settings")
-          .select("campaign_id, enabled")
-          .in("campaign_id", ids)
-      : { data: [] as { campaign_id: string; enabled: boolean }[] };
-    const pubSet = new Set(
-      (pubEnabled ?? []).filter((r: any) => r.enabled).map((r: any) => r.campaign_id as string),
-    );
+    const pubSet = new Set(((pubRes.data as any[]) ?? []).map((r) => r.campaign_id as string));
 
-    return (campaigns ?? []).map((c) => ({
+    return campaigns.map((c) => ({
       ...c,
       total_clicks: counts[c.id]?.total ?? 0,
       unique_clicks: counts[c.id]?.unique ?? 0,
       public_customization_enabled: pubSet.has(c.id as string),
     }));
   });
+
 
 export const getCampaign = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])

@@ -5211,6 +5211,14 @@ export type Database = {
         Args: { _campaign_id: string }
         Returns: number
       }
+      campaigns_click_counts: {
+        Args: never
+        Returns: {
+          campaign_id: string
+          total: number
+          uniques: number
+        }[]
+      }
       ci_path_is_public: { Args: { _path: string }; Returns: boolean }
       cron_headers: { Args: { _src?: string }; Returns: Json }
       get_my_context: { Args: never; Returns: Json }
