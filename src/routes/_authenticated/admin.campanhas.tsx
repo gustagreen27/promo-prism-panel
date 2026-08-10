@@ -51,17 +51,30 @@ import {
   type Participant,
 } from "@/components/participants";
 
+const campaignsQuery = {
+  queryKey: ["campaigns"],
+  queryFn: () => listCampaigns(),
+  staleTime: 60_000,
+  gcTime: 10 * 60_000,
+} as const;
+
 export const Route = createFileRoute("/_authenticated/admin/campanhas")({
   head: () => ({ meta: [{ title: "Campanhas — Painel" }] }),
+  loader: ({ context }) => {
+    // Aquece o cache antes de renderizar (sem bloquear a navegação).
+    (context as any).queryClient?.prefetchQuery(campaignsQuery);
+  },
   component: CampaignsList,
 });
 
 function CampaignsList() {
   const list = useServerFn(listCampaigns);
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["campaigns"],
+    ...campaignsQuery,
     queryFn: () => list(),
+    placeholderData: (prev: any) => prev,
   });
+
 
   const [partFilter, setPartFilter] = useState<Participant[]>([]);
   const filtered = (data ?? []).filter((c: any) => matchesParticipants(c, partFilter));
