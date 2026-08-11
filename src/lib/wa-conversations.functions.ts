@@ -30,6 +30,13 @@ async function accessibleWorkspaceIds(supabase: any, userId: string): Promise<st
 }
 
 /**
+ * Allowlist global do Atendimento: apenas estes números aparecem no módulo.
+ * (Não afeta disparos/campanhas — só o Atendimento.)
+ * Vazio = sem restrição global.
+ */
+const ATTENDANCE_GLOBAL_ALLOWLIST: string[] = ["1294636743726288"]; // +55 11 95502-8300
+
+/**
  * Números liberados para o usuário. `null` = sem restrição (vê todos).
  * Usado para contas de atendimento limitadas a números específicos.
  */
@@ -39,8 +46,13 @@ async function allowedPhoneNumberIds(supabase: any, userId: string): Promise<str
     .select("phone_number_id")
     .eq("user_id", userId);
   const ids = (data ?? []).map((g: any) => g.phone_number_id).filter(Boolean);
+  const global = ATTENDANCE_GLOBAL_ALLOWLIST;
+  if (global.length) {
+    return ids.length ? ids.filter((i: string) => global.includes(i)) : global;
+  }
   return ids.length ? ids : null;
 }
+
 
 /** Resolve o workspace de uma conversa garantindo que o usuário tem acesso. */
 async function conversationScope(
