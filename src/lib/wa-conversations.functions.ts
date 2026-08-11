@@ -199,8 +199,11 @@ export const listAttendanceNumbers = createServerFn({ method: "GET" })
     }
 
 
-    items.sort((a, b) => (b.last_message_at ?? "").localeCompare(a.last_message_at ?? ""));
-    return items;
+    const finalItems = allowed
+      ? items.filter((i) => allowed.includes(i.phone_number_id))
+      : items;
+    finalItems.sort((a, b) => (b.last_message_at ?? "").localeCompare(a.last_message_at ?? ""));
+    return finalItems;
   });
 
 // ---------- List conversations ----------
