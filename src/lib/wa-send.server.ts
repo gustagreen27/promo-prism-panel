@@ -179,18 +179,29 @@ export async function sendTemplateMessage(input: WaSendInput): Promise<WaSendRes
     if (!id) return { ok: false, error: "No message id returned", raw: json, httpStatus: res.status, requestStartedAt, responseReceivedAt };
     return { ok: true, metaMessageId: id, messageStatus, wamid, raw: json, httpStatus: res.status, requestStartedAt, responseReceivedAt };
   } catch (e: any) {
-    const aborted = e?.name === "AbortError";
+    const egress = e?.source === "egress";
+    const aborted = e?.name === "AbortError" || e?.code === "egress_timeout";
     // Cancelamento externo (circuit breaker) ≠ timeout: não conta como falha
     // do destinatário, ele volta para a fila sem consumir tentativa.
-    const cancelled = aborted && input.signal?.aborted === true;
+    const cancelled =
+      e?.code === "egress_cancelled" || (aborted && input.signal?.aborted === true);
+    // Falha de egress (relay/proxy) é reportada com código próprio para não
+    // ser confundida com erro da Meta. Sem fallback para conexão direta.
+    const code = cancelled
+      ? "cancelled"
+      : egress
+        ? String(e.code ?? "egress_unavailable")
+        : "network_error";
     return {
       ok: false,
       error: cancelled
         ? "Envio cancelado pelo circuit breaker (conta bloqueada)"
-        : aborted
-          ? `Meta Graph timeout após ${META_SEND_TIMEOUT_MS}ms`
-          : (e?.message ?? "Network error"),
-      code: cancelled ? "cancelled" : "network_error",
+        : egress
+          ? `Falha na saída de rede (${e.code}): ${e.message}`
+          : aborted
+            ? `Meta Graph timeout após ${META_SEND_TIMEOUT_MS}ms`
+            : (e?.message ?? "Network error"),
+      code,
       requestStartedAt,
       responseReceivedAt: new Date().toISOString(),
     };
@@ -205,11 +216,13 @@ export async function syncTemplatesFromMeta(opts: {
 }) {
   const ver = opts.graphVersion || "v21.0";
   const url = `https://graph.facebook.com/${ver}/${opts.wabaId}/message_templates?limit=200`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${opts.accessToken}` } });
+  const { metaEgressFetch } = await import("@/lib/meta/meta-egress");
+  const res = await metaEgressFetch(url, { headers: { Authorization: `Bearer ${opts.accessToken}` } });
   const json: any = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json?.error?.message ?? `HTTP ${res.status}`);
   return (json?.data ?? []) as any[];
 }
+
 
 // ---------------------------------------------------------------------------
 // Template específico frgc_01 (Disparos FR)
