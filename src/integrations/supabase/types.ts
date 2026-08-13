@@ -1473,6 +1473,71 @@ export type Database = {
         }
         Relationships: []
       }
+      message_dead_letters: {
+        Row: {
+          attempts: number
+          campaign_id: string | null
+          category: string
+          created_at: string
+          error_code: string | null
+          error_message: string | null
+          error_title: string | null
+          id: string
+          last_attempt_at: string | null
+          payload: Json
+          phone: string
+          phone_normalized: string | null
+          phone_number_id: string | null
+          recipient_id: string | null
+          route_id: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          attempts?: number
+          campaign_id?: string | null
+          category?: string
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          error_title?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          payload?: Json
+          phone: string
+          phone_normalized?: string | null
+          phone_number_id?: string | null
+          recipient_id?: string | null
+          route_id?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          attempts?: number
+          campaign_id?: string | null
+          category?: string
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          error_title?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          payload?: Json
+          phone?: string
+          phone_normalized?: string | null
+          phone_number_id?: string | null
+          recipient_id?: string | null
+          route_id?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_dead_letters_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "wa_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_logs: {
         Row: {
           campaign_id: string | null
@@ -2073,6 +2138,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      recipient_suppression: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          error_code: string | null
+          expires_at: string | null
+          failure_count: number
+          first_seen_at: string
+          id: string
+          last_seen_at: string
+          note: string | null
+          permanent: boolean
+          phone_normalized: string
+          reason: string
+          scope: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          error_code?: string | null
+          expires_at?: string | null
+          failure_count?: number
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          note?: string | null
+          permanent?: boolean
+          phone_normalized: string
+          reason?: string
+          scope?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          error_code?: string | null
+          expires_at?: string | null
+          failure_count?: number
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          note?: string | null
+          permanent?: boolean
+          phone_normalized?: string
+          reason?: string
+          scope?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       reports: {
         Row: {
@@ -5272,6 +5388,7 @@ export type Database = {
           max_concurrency: number
         }[]
       }
+      wa_audience_preflight: { Args: { _list_id: string }; Returns: Json }
       wa_available_stock: {
         Args: { _client_id: string; _project_id: string }
         Returns: number
@@ -5283,6 +5400,15 @@ export type Database = {
       wa_campaign_active_routes: {
         Args: { _campaign_id: string }
         Returns: number
+      }
+      wa_campaign_failure_reasons: {
+        Args: { _campaign_id: string }
+        Returns: {
+          error_code: string
+          pct: number
+          sample_reason: string
+          total: number
+        }[]
       }
       wa_check_scheduling_conflict: {
         Args: {
@@ -5402,6 +5528,49 @@ export type Database = {
       wa_split_build_recipients: {
         Args: { _campaign_ids: string[]; _list_id: string; _weights: number[] }
         Returns: Json
+      }
+      wa_suppression_add: {
+        Args: {
+          _created_by?: string
+          _error_code?: string
+          _note?: string
+          _permanent?: boolean
+          _phone: string
+          _reason?: string
+          _ttl_days?: number
+        }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          error_code: string | null
+          expires_at: string | null
+          failure_count: number
+          first_seen_at: string
+          id: string
+          last_seen_at: string
+          note: string | null
+          permanent: boolean
+          phone_normalized: string
+          reason: string
+          scope: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "recipient_suppression"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      wa_suppression_is_active: { Args: { _phone: string }; Returns: boolean }
+      wa_suppression_register_failure: {
+        Args: {
+          _error_code: string
+          _phone: string
+          _threshold?: number
+          _ttl_days?: number
+        }
+        Returns: boolean
       }
       wa_throttle_number: {
         Args: {
