@@ -69,13 +69,19 @@ async function postToMeta(base: WaServiceSendBase, body: Record<string, any>): P
     if (!wamid) return { ok: false, error: "No message id returned", raw: json, httpStatus: res.status };
     return { ok: true, wamid, raw: json, httpStatus: res.status };
   } catch (e: any) {
-    const timedOut = e?.name === "AbortError";
+    const egress = e?.source === "egress";
+    const timedOut = e?.name === "AbortError" || e?.code === "egress_timeout";
     return {
       ok: false,
-      error: timedOut ? `Meta Graph timeout ${META_TIMEOUT_MS}ms` : (e?.message ?? "Network error"),
-      code: "network_error",
+      error: egress
+        ? `Falha na saída de rede (${e.code}): ${e.message}`
+        : timedOut
+          ? `Meta Graph timeout ${META_TIMEOUT_MS}ms`
+          : (e?.message ?? "Network error"),
+      code: egress ? String(e.code ?? "egress_unavailable") : "network_error",
     };
   }
+
 }
 
 // ---- Public helpers ----
