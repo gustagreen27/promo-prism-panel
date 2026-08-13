@@ -36,26 +36,17 @@ export type WaSendResult =
 
 const META_SEND_TIMEOUT_MS = 8000;
 
+// Todas as chamadas saem pela porta única de egress (ver meta-egress.ts).
 async function fetchWithTimeout(
   url: string,
   init: RequestInit,
   timeoutMs = META_SEND_TIMEOUT_MS,
   external?: AbortSignal,
 ) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  const onExternalAbort = () => controller.abort(new Error("cancelled"));
-  if (external) {
-    if (external.aborted) controller.abort(new Error("cancelled"));
-    else external.addEventListener("abort", onExternalAbort, { once: true });
-  }
-  try {
-    return await fetch(url, { ...init, signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-    external?.removeEventListener("abort", onExternalAbort);
-  }
+  const { metaEgressFetch } = await import("@/lib/meta/meta-egress");
+  return await metaEgressFetch(url, { ...init, timeoutMs, externalSignal: external });
 }
+
 
 
 
