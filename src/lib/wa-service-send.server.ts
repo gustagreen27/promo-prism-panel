@@ -5,15 +5,12 @@
 
 const META_TIMEOUT_MS = 10000;
 
+// Sai sempre pela porta única de egress (ver meta-egress.ts).
 async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = META_TIMEOUT_MS) {
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { ...init, signal: controller.signal });
-  } finally {
-    clearTimeout(t);
-  }
+  const { metaEgressFetch } = await import("@/lib/meta/meta-egress");
+  return await metaEgressFetch(url, { ...init, timeoutMs });
 }
+
 
 export type WaServiceSendBase = {
   phoneNumberId: string;
