@@ -21,6 +21,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { getWaCampaign, clearCampaignFatalLock } from "@/lib/wa-campaigns.functions";
 import { DispatchPerformancePanel } from "@/components/admin/dispatch-performance-panel";
+import { FailureReasonsCard } from "@/components/admin/failure-reasons-card";
 import {
   getCampaignProgress, getCampaignTimeline, getCampaignRecipients,
   getCampaignFinalReport, getCampaignErrors, getRecipientPreviews,
