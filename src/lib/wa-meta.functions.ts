@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { metaEgressFetch } from "@/lib/meta/meta-egress";
 
 async function assertAdmin(ctx: { supabase: any; userId: string }) {
   const { data } = await ctx.supabase.rpc("has_role", { _user_id: ctx.userId, _role: "admin" });
@@ -160,7 +161,7 @@ export const sendTestTemplate = createServerFn({ method: "POST" })
     if (!token) throw new Error("WHATSAPP_ACCESS_TOKEN não configurado.");
     const ver = conn.graph_api_version || "v21.0";
     const to = data.to.replace(/\D/g, "");
-    const res = await fetch(`https://graph.facebook.com/${ver}/${conn.phone_number_id}/messages`, {
+    const res = await metaEgressFetch(`https://graph.facebook.com/${ver}/${conn.phone_number_id}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({

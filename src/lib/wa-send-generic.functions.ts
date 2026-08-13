@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { metaEgressFetch } from "@/lib/meta/meta-egress";
 
 const InputSchema = z.object({
   connectionId: z.string().uuid(),
@@ -88,7 +89,7 @@ export const sendGenericTemplate = createServerFn({ method: "POST" })
     if (conn.waba_id) {
       try {
         const metaUrl = `https://graph.facebook.com/${graphVersion}/${conn.waba_id}/message_templates?limit=200&fields=name,status,language,category,components,parameter_format`;
-        const metaRes = await fetch(metaUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+        const metaRes = await metaEgressFetch(metaUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
         const metaJson: any = await metaRes.json().catch(() => ({}));
         const metaTemplates = Array.isArray(metaJson?.data) ? metaJson.data : [];
         const metaTemplate = metaTemplates.find((t: any) => tpl.meta_template_id && String(t.id) === String(tpl.meta_template_id))
@@ -183,7 +184,7 @@ export const sendGenericTemplate = createServerFn({ method: "POST" })
       | { ok: true; id: string; status: number; json: any }
       | { ok: false; error: string; code?: string; status: number; json: any };
     const postToMeta = async (payload: any): Promise<MetaPostResult> => {
-      const res = await fetch(url, {
+      const res = await metaEgressFetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
