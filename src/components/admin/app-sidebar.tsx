@@ -161,6 +161,7 @@ const WHATSAPP_ITEMS: NavLeaf[] = [
   },
   { title: "Webhooks", to: "/admin/whatsapp/webhooks", icon: Webhook },
   { title: "Liberações", to: "/admin/whatsapp/liberacoes", icon: ShieldCheck },
+  { title: "Supressão global", to: "/admin/whatsapp/supressao", icon: ShieldCheck },
 ];
 
 const ALL_ITEMS: NavLeaf[] = [...GROUPS.flatMap((g) => g.items), ...WHATSAPP_ITEMS];
