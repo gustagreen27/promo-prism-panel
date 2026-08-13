@@ -87,20 +87,9 @@ const FATAL_ACCOUNT_CODES: Record<string, string> = {
  * ("(#131031) Business account has been locked"). Sem cobrir os três formatos,
  * o circuit breaker não dispara e a campanha segue tentando milhares de vezes.
  */
+// Delegado ao ErrorClassifier (fonte única dos códigos fatais).
 function detectFatalAccountCode(result: any): string | null {
-  const direct = result?.code != null ? String(result.code) : null;
-  if (direct && FATAL_ACCOUNT_CODES[direct]) return direct;
-
-  const err = result?.raw?.error ?? result?.raw ?? null;
-  const sub = err?.error_subcode != null ? String(err.error_subcode) : null;
-  if (sub && FATAL_ACCOUNT_CODES[sub]) return sub;
-
-  const haystack = `${result?.error ?? ""} ${err?.message ?? ""} ${err?.error_user_msg ?? ""}`;
-  for (const code of Object.keys(FATAL_ACCOUNT_CODES)) {
-    if (haystack.includes(`#${code}`) || haystack.includes(code)) return code;
-  }
-  if (/business account has been locked|account has been restricted/i.test(haystack)) return "131031";
-  return null;
+  return classifyFatalCode(result);
 }
 
 /**
