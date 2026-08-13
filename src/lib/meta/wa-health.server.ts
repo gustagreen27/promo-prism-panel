@@ -14,6 +14,7 @@
  */
 
 import { resolveGraphVersion } from "@/lib/meta/graph-version";
+import { metaEgressFetch } from "@/lib/meta/meta-egress";
 
 export type HealthEntity = {
   entity_type?: string;
@@ -51,7 +52,7 @@ export async function fetchHealth(
     checked_at: new Date().toISOString(),
   };
   try {
-    const r = await fetch(`https://graph.facebook.com/${version}/${nodeId}?fields=health_status`, {
+    const r = await metaEgressFetch(`https://graph.facebook.com/${version}/${nodeId}?fields=health_status`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const j: any = await r.json().catch(() => ({}));

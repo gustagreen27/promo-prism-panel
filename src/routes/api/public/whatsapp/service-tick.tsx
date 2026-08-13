@@ -3,18 +3,15 @@
 // Segurança: rota /api/public/* — validada via apikey (Supabase anon).
 
 import { createFileRoute } from "@tanstack/react-router";
+import { metaEgressFetch } from "@/lib/meta/meta-egress";
 
 const TIMEOUT_MS = 10000;
 
+// Sai pela porta única de egress (ver meta-egress.ts).
 async function fetchWithTimeout(url: string, init: RequestInit, ms = TIMEOUT_MS) {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), ms);
-  try {
-    return await fetch(url, { ...init, signal: ctrl.signal });
-  } finally {
-    clearTimeout(t);
-  }
+  return await metaEgressFetch(url, { ...init, timeoutMs: ms });
 }
+
 
 export const Route = createFileRoute("/api/public/whatsapp/service-tick")({
   server: {

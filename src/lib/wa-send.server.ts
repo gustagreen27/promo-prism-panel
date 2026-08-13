@@ -36,26 +36,17 @@ export type WaSendResult =
 
 const META_SEND_TIMEOUT_MS = 8000;
 
+// Todas as chamadas saem pela porta única de egress (ver meta-egress.ts).
 async function fetchWithTimeout(
   url: string,
   init: RequestInit,
   timeoutMs = META_SEND_TIMEOUT_MS,
   external?: AbortSignal,
 ) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  const onExternalAbort = () => controller.abort(new Error("cancelled"));
-  if (external) {
-    if (external.aborted) controller.abort(new Error("cancelled"));
-    else external.addEventListener("abort", onExternalAbort, { once: true });
-  }
-  try {
-    return await fetch(url, { ...init, signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-    external?.removeEventListener("abort", onExternalAbort);
-  }
+  const { metaEgressFetch } = await import("@/lib/meta/meta-egress");
+  return await metaEgressFetch(url, { ...init, timeoutMs, externalSignal: external });
 }
+
 
 
 
@@ -188,18 +179,29 @@ export async function sendTemplateMessage(input: WaSendInput): Promise<WaSendRes
     if (!id) return { ok: false, error: "No message id returned", raw: json, httpStatus: res.status, requestStartedAt, responseReceivedAt };
     return { ok: true, metaMessageId: id, messageStatus, wamid, raw: json, httpStatus: res.status, requestStartedAt, responseReceivedAt };
   } catch (e: any) {
-    const aborted = e?.name === "AbortError";
+    const egress = e?.source === "egress";
+    const aborted = e?.name === "AbortError" || e?.code === "egress_timeout";
     // Cancelamento externo (circuit breaker) ≠ timeout: não conta como falha
     // do destinatário, ele volta para a fila sem consumir tentativa.
-    const cancelled = aborted && input.signal?.aborted === true;
+    const cancelled =
+      e?.code === "egress_cancelled" || (aborted && input.signal?.aborted === true);
+    // Falha de egress (relay/proxy) é reportada com código próprio para não
+    // ser confundida com erro da Meta. Sem fallback para conexão direta.
+    const code = cancelled
+      ? "cancelled"
+      : egress
+        ? String(e.code ?? "egress_unavailable")
+        : "network_error";
     return {
       ok: false,
       error: cancelled
         ? "Envio cancelado pelo circuit breaker (conta bloqueada)"
-        : aborted
-          ? `Meta Graph timeout após ${META_SEND_TIMEOUT_MS}ms`
-          : (e?.message ?? "Network error"),
-      code: cancelled ? "cancelled" : "network_error",
+        : egress
+          ? `Falha na saída de rede (${e.code}): ${e.message}`
+          : aborted
+            ? `Meta Graph timeout após ${META_SEND_TIMEOUT_MS}ms`
+            : (e?.message ?? "Network error"),
+      code,
       requestStartedAt,
       responseReceivedAt: new Date().toISOString(),
     };
@@ -214,11 +216,13 @@ export async function syncTemplatesFromMeta(opts: {
 }) {
   const ver = opts.graphVersion || "v21.0";
   const url = `https://graph.facebook.com/${ver}/${opts.wabaId}/message_templates?limit=200`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${opts.accessToken}` } });
+  const { metaEgressFetch } = await import("@/lib/meta/meta-egress");
+  const res = await metaEgressFetch(url, { headers: { Authorization: `Bearer ${opts.accessToken}` } });
   const json: any = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json?.error?.message ?? `HTTP ${res.status}`);
   return (json?.data ?? []) as any[];
 }
+
 
 // ---------------------------------------------------------------------------
 // Template específico frgc_01 (Disparos FR)
@@ -318,7 +322,7 @@ export async function sendWhatsAppTemplateFrgc01(input: SendFrgc01Input): Promis
     }
     return { ok: true, metaMessageId: id, status, requestPayload: payload, raw: json, httpStatus: res.status };
   } catch (e: any) {
-    const timedOut = e?.name === "AbortError";
+    const timedOut = e?.name === "AbortError" || e?.code === "egress_timeout";
     return {
       ok: false,
       error: timedOut ? `Meta Graph timeout após ${META_SEND_TIMEOUT_MS}ms` : (e?.message ?? "Network error"),

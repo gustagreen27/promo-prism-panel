@@ -15,6 +15,7 @@
 
 import { resolveGraphVersion } from "@/lib/meta/graph-version";
 import { getHealthCached } from "@/lib/meta/wa-health.server";
+import { metaEgressFetch } from "@/lib/meta/meta-egress";
 
 export type PreflightCheck = {
   key: string;
@@ -46,7 +47,7 @@ const TIER_LIMITS: Record<string, number> = {
 };
 
 async function graph(path: string, token: string, version: string) {
-  const r = await fetch(`https://graph.facebook.com/${version}/${path}`, {
+  const r = await metaEgressFetch(`https://graph.facebook.com/${version}/${path}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   const j: any = await r.json().catch(() => ({}));

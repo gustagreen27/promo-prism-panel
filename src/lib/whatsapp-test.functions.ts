@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { metaEgressFetch } from "@/lib/meta/meta-egress";
 
 async function assertAdmin(ctx: { supabase: any; userId: string }) {
   const { data } = await ctx.supabase.rpc("has_role", { _user_id: ctx.userId, _role: "admin" });
@@ -71,7 +72,7 @@ function explainMetaError(err: any): { detail: string; hint: string } {
 }
 
 async function metaGet(url: string, token: string) {
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  const res = await metaEgressFetch(url, { headers: { Authorization: `Bearer ${token}` } });
   const json: any = await res.json().catch(() => ({}));
   return { ok: res.ok, status: res.status, json };
 }
@@ -186,7 +187,7 @@ export const listWabaTemplates = createServerFn({ method: "GET" })
     const version = "v25.0";
     const url = `https://graph.facebook.com/${version}/${creds.waba_id}/message_templates?limit=200&fields=name,status,language,category,components,parameter_format`;
     try {
-      const res = await fetch(url, {
+      const res = await metaEgressFetch(url, {
         headers: { Authorization: `Bearer ${creds.access_token}` },
       });
       const json: any = await res.json().catch(() => ({}));
@@ -272,7 +273,7 @@ export const sendTestTemplate = createServerFn({ method: "POST" })
     };
 
     try {
-      const res = await fetch(url, {
+      const res = await metaEgressFetch(url, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${creds.access_token}`,

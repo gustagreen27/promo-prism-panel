@@ -73,21 +73,13 @@ function parseMetaError(json: any, status: number, endpoint: string): MetaError 
   );
 }
 
-async function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
-  return await Promise.race([
-    p,
-    new Promise<T>((_, rej) =>
-      setTimeout(() => rej(new Error(`Tempo esgotado (${label})`)), ms),
-    ),
-  ]);
-}
-
 export async function metaFetch(
   path: string,
   init: RequestInit & { timeoutMs?: number } = {},
 ): Promise<any> {
   const url = path.startsWith("http") ? path : `${META_GRAPH}${path.startsWith("/") ? "" : "/"}${path}`;
-  const res = await withTimeout(fetch(url, init), init.timeoutMs ?? 25_000, url);
+  const { metaEgressFetch } = await import("@/lib/meta/meta-egress");
+  const res = await metaEgressFetch(url, { ...init, timeoutMs: init.timeoutMs ?? 25_000 });
   const json: any = await res.json().catch(() => ({}));
   if (!res.ok) throw parseMetaError(json, res.status, url);
   return json;
@@ -99,5 +91,7 @@ export async function metaFetchRaw(
   init: RequestInit & { timeoutMs?: number } = {},
 ): Promise<Response> {
   const url = path.startsWith("http") ? path : `${META_GRAPH}${path.startsWith("/") ? "" : "/"}${path}`;
-  return await withTimeout(fetch(url, init), init.timeoutMs ?? 60_000, url);
+  const { metaEgressFetch } = await import("@/lib/meta/meta-egress");
+  return await metaEgressFetch(url, { ...init, timeoutMs: init.timeoutMs ?? 60_000 });
 }
+

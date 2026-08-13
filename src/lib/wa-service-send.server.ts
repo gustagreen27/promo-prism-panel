@@ -5,15 +5,12 @@
 
 const META_TIMEOUT_MS = 10000;
 
+// Sai sempre pela porta única de egress (ver meta-egress.ts).
 async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = META_TIMEOUT_MS) {
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { ...init, signal: controller.signal });
-  } finally {
-    clearTimeout(t);
-  }
+  const { metaEgressFetch } = await import("@/lib/meta/meta-egress");
+  return await metaEgressFetch(url, { ...init, timeoutMs });
 }
+
 
 export type WaServiceSendBase = {
   phoneNumberId: string;
@@ -72,13 +69,19 @@ async function postToMeta(base: WaServiceSendBase, body: Record<string, any>): P
     if (!wamid) return { ok: false, error: "No message id returned", raw: json, httpStatus: res.status };
     return { ok: true, wamid, raw: json, httpStatus: res.status };
   } catch (e: any) {
-    const timedOut = e?.name === "AbortError";
+    const egress = e?.source === "egress";
+    const timedOut = e?.name === "AbortError" || e?.code === "egress_timeout";
     return {
       ok: false,
-      error: timedOut ? `Meta Graph timeout ${META_TIMEOUT_MS}ms` : (e?.message ?? "Network error"),
-      code: "network_error",
+      error: egress
+        ? `Falha na saída de rede (${e.code}): ${e.message}`
+        : timedOut
+          ? `Meta Graph timeout ${META_TIMEOUT_MS}ms`
+          : (e?.message ?? "Network error"),
+      code: egress ? String(e.code ?? "egress_unavailable") : "network_error",
     };
   }
+
 }
 
 // ---- Public helpers ----

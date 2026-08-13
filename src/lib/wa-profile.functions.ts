@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { META_GRAPH, MetaError, metaFetch, metaFetchRaw } from "@/lib/meta/meta-client.server";
 import { loadConnectionSecure, type LoadedConnection } from "@/lib/meta/wa-token-resolver.server";
 import { auditProfileEvent } from "@/lib/meta/wa-profile-audit.server";
+import { metaEgressFetch } from "@/lib/meta/meta-egress";
 
 const PROFILE_FIELDS = "about,address,description,email,profile_picture_url,websites,vertical";
 const PHONE_FIELDS =
@@ -401,7 +402,7 @@ export const diagnoseConnection = createServerFn({ method: "POST" })
     for (const appToken of appTokenCandidates) {
       const url = `https://graph.facebook.com/v21.0/debug_token?input_token=${encodeURIComponent(conn.access_token)}&access_token=${encodeURIComponent(appToken)}`;
       try {
-        const r = await fetch(url);
+        const r = await metaEgressFetch(url);
         const j: any = await r.json().catch(() => ({}));
         if (!r.ok || j?.error) { dbgErr = j?.error ?? { message: `HTTP ${r.status}` }; continue; }
         dbg = j?.data ?? {};
@@ -470,7 +471,7 @@ export const diagnoseConnection = createServerFn({ method: "POST" })
       body.set("access_token", conn.access_token);
       body.set("include_headers", "false");
       body.set("batch", JSON.stringify(ops.map((o) => ({ method: "GET", relative_url: o.relative_url }))));
-      const r = await fetch("https://graph.facebook.com/v21.0/", { method: "POST", body });
+      const r = await metaEgressFetch("https://graph.facebook.com/v21.0/", { method: "POST", body });
       batchResp = await r.json().catch(() => []);
       if (!Array.isArray(batchResp)) {
         push({ key: "batch", label: "Meta Batch API", status: "error", detail: `Resposta inesperada: ${JSON.stringify(batchResp).slice(0, 200)}` });
