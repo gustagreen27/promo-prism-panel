@@ -69,7 +69,7 @@ const ADAPTIVE_MIN_RATE = 5;
 const ADAPTIVE_STEP = 10;
 const ADAPTIVE_STEP_INTERVAL_MS = 60_000;
 const ADAPTIVE_BACKOFF_FACTOR = 0.8;
-const MAX_ATTEMPTS = 5;
+const MAX_ATTEMPTS = RETRY_MAX_ATTEMPTS;
 
 // Erros FATAIS de conta: nunca reprocessar, parar tudo na primeira ocorrência.
 // 131031 = Business account has been locked (bloqueio da conta comercial pela Meta)
