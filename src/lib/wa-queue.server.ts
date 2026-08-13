@@ -1228,14 +1228,11 @@ export async function processCampaignTick(
         return;
       }
 
-      // ---- Falha: distinguir rede vs Meta ----
-      const isNetworkErr =
-        result.code === "network_error" ||
-        /failed to fetch|fetch failed|network|econnreset|etimedout|enetunreach|socket hang up/i.test(
-          result.error || "",
-        );
+      // ---- Falha: classificação centralizada (ErrorClassifier) ----
+      const classified = classifyMetaError(result as any);
+      const isNetworkErr = classified.network;
 
-      const fatalCode = detectFatalAccountCode(result);
+      const fatalCode = classified.category === "FATAL_ACCOUNT" ? classified.code : null;
       if (fatalCode) {
 
         lastError = result.error;
@@ -1247,13 +1244,16 @@ export async function processCampaignTick(
         return;
       }
 
-      const isTokenErr = result.code === "190" || /token|OAuthException/i.test(result.error || "");
-      const codeStr = result.code ? String(result.code) : "";
-      const isRateLimit = THROUGHPUT_ERROR_CODES.has(codeStr);
-      const isPausedTemplate = result.code === "132015" || /template .*paused|temporarily unavailable/i.test(result.error || "");
-      const isRetryable = isNetworkErr || isRateLimit ||
-        (result.code ? RETRYABLE_CODES.has(String(result.code)) : false);
-      const shouldRetry = isRetryable && attempts < MAX_ATTEMPTS;
+      const codeStr = classified.code;
+      const isTokenErr = codeStr === "190" || /token|OAuthException/i.test(result.error || "");
+      const isRateLimit = classified.throughput;
+      const isPausedTemplate = codeStr === "132015" || codeStr === "132016";
+      const retryDecision = decideRetry({
+        retryable: classified.retryable,
+        attempts,
+        reason: result.error || classified.title,
+      });
+      const shouldRetry = retryDecision.shouldRetry;
 
       lastError = result.error;
 
@@ -1312,21 +1312,33 @@ export async function processCampaignTick(
       }
 
       if (shouldRetry) {
-        await scheduleRetry(r, attempts, result.error || "retry", result.code ?? null);
+        await scheduleRetry(
+          r,
+          attempts,
+          result.error || classified.title,
+          codeStr,
+          retryDecision.nextAttemptAt,
+        );
         return;
       }
 
-      // Dead-letter: falha temporária que esgotou as tentativas sai da fila
-      // de vez, com motivo explícito, em vez de voltar a circular.
-      const isDeadLetter = isRetryable && attempts >= MAX_ATTEMPTS;
+      // Dead-letter: esgotou tentativas OU erro definitivo do destinatário.
+      // Sai da fila com contexto completo, em vez de virar um `failed` mudo.
+      const isDeadLetter = retryDecision.deadLetter || classified.category === "RECIPIENT_SUPPRESSION";
       if (isDeadLetter) {
         deadLetterCount++;
+        void recordDeadLetter(r, classified, attempts);
         if (deadLetterCount === 1 || deadLetterCount % 25 === 0) {
           void logEvent(
             campaignId,
             "dead_letter",
-            `${deadLetterCount} destinatário(s) encerrados após ${MAX_ATTEMPTS} tentativas — último motivo: ${result.error}`,
-            { count: deadLetterCount, last_error: result.error, error_code: result.code ?? null },
+            `${deadLetterCount} destinatário(s) encerrados (último: ${classified.title})`,
+            {
+              count: deadLetterCount,
+              last_error: result.error,
+              error_code: codeStr,
+              category: classified.category,
+            },
           );
         }
       }
@@ -1337,10 +1349,10 @@ export async function processCampaignTick(
         .update({
           status: "failed",
           failed_at: new Date().toISOString(),
-          failed_reason: isDeadLetter
+          failed_reason: retryDecision.deadLetter
             ? `Dead-letter após ${MAX_ATTEMPTS} tentativas: ${result.error}`
-            : result.error,
-          error_code: result.code,
+            : result.error || classified.title,
+          error_code: codeStr,
           attempt: attempts,
           next_attempt_at: null,
           request_started_at: (result as any).requestStartedAt ?? null,
