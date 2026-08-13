@@ -897,6 +897,7 @@ function Page() {
         </TabsContent>
 
         <TabsContent value="errors" className="space-y-3">
+          <FailureReasonsCard campaignId={id} />
           {errorsQ.error && <ErrorCard error={errorsQ.error} onRetry={() => errorsQ.refetch()} />}
           <Card>
             <CardContent className="p-0 overflow-auto">
