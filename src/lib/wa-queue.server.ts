@@ -3,6 +3,8 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendTemplateMessage } from "@/lib/wa-send.server";
 import { renderMapping, buildContext } from "@/lib/wa-variables";
 import { GRAPH_VERSION, resolveGraphVersion } from "@/lib/meta/graph-version";
+import { classifyMetaError, detectFatalAccountCode as classifyFatalCode } from "@/lib/wa/error-classifier";
+import { decideRetry, MAX_ATTEMPTS as RETRY_MAX_ATTEMPTS } from "@/lib/wa/retry-policy";
 
 // ---------------------------------------------------------------------------
 // Dependency-injection surface (Fase 2, harness end-to-end)
