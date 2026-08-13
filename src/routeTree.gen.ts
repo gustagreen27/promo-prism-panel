@@ -66,6 +66,7 @@ import { Route as ApiPublicWhatsappHarnessRouteImport } from './routes/api/publi
 import { Route as ApiPublicHooksWaTemplatesSyncRouteImport } from './routes/api/public/hooks/wa-templates-sync'
 import { Route as ApiPublicHooksNotifyUpcomingCampaignsRouteImport } from './routes/api/public/hooks/notify-upcoming-campaigns'
 import { Route as ApiPublicGoogleOauthCallbackRouteImport } from './routes/api/public/google/oauth-callback'
+import { Route as ApiPublicDiagEgressIpRouteImport } from './routes/api/public/diag/egress-ip'
 import { Route as ApiPublicCiSplatRouteImport } from './routes/api/public/ci.$'
 import { Route as AuthenticatedAdminWhatsappWebhooksRouteImport } from './routes/_authenticated/admin.whatsapp.webhooks'
 import { Route as AuthenticatedAdminWhatsappWabasRouteImport } from './routes/_authenticated/admin.whatsapp.wabas'
@@ -411,6 +412,11 @@ const ApiPublicGoogleOauthCallbackRoute =
     path: '/api/public/google/oauth-callback',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicDiagEgressIpRoute = ApiPublicDiagEgressIpRouteImport.update({
+  id: '/api/public/diag/egress-ip',
+  path: '/api/public/diag/egress-ip',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicCiSplatRoute = ApiPublicCiSplatRouteImport.update({
   id: '/api/public/ci/$',
   path: '/api/public/ci/$',
@@ -654,6 +660,7 @@ export interface FileRoutesByFullPath {
   '/admin/whatsapp/wabas': typeof AuthenticatedAdminWhatsappWabasRoute
   '/admin/whatsapp/webhooks': typeof AuthenticatedAdminWhatsappWebhooksRoute
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
+  '/api/public/diag/egress-ip': typeof ApiPublicDiagEgressIpRoute
   '/api/public/google/oauth-callback': typeof ApiPublicGoogleOauthCallbackRoute
   '/api/public/hooks/notify-upcoming-campaigns': typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
   '/api/public/hooks/wa-templates-sync': typeof ApiPublicHooksWaTemplatesSyncRoute
@@ -739,6 +746,7 @@ export interface FileRoutesByTo {
   '/admin/whatsapp/wabas': typeof AuthenticatedAdminWhatsappWabasRoute
   '/admin/whatsapp/webhooks': typeof AuthenticatedAdminWhatsappWebhooksRoute
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
+  '/api/public/diag/egress-ip': typeof ApiPublicDiagEgressIpRoute
   '/api/public/google/oauth-callback': typeof ApiPublicGoogleOauthCallbackRoute
   '/api/public/hooks/notify-upcoming-campaigns': typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
   '/api/public/hooks/wa-templates-sync': typeof ApiPublicHooksWaTemplatesSyncRoute
@@ -828,6 +836,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/whatsapp/wabas': typeof AuthenticatedAdminWhatsappWabasRoute
   '/_authenticated/admin/whatsapp/webhooks': typeof AuthenticatedAdminWhatsappWebhooksRoute
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
+  '/api/public/diag/egress-ip': typeof ApiPublicDiagEgressIpRoute
   '/api/public/google/oauth-callback': typeof ApiPublicGoogleOauthCallbackRoute
   '/api/public/hooks/notify-upcoming-campaigns': typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
   '/api/public/hooks/wa-templates-sync': typeof ApiPublicHooksWaTemplatesSyncRoute
@@ -917,6 +926,7 @@ export interface FileRouteTypes {
     | '/admin/whatsapp/wabas'
     | '/admin/whatsapp/webhooks'
     | '/api/public/ci/$'
+    | '/api/public/diag/egress-ip'
     | '/api/public/google/oauth-callback'
     | '/api/public/hooks/notify-upcoming-campaigns'
     | '/api/public/hooks/wa-templates-sync'
@@ -1002,6 +1012,7 @@ export interface FileRouteTypes {
     | '/admin/whatsapp/wabas'
     | '/admin/whatsapp/webhooks'
     | '/api/public/ci/$'
+    | '/api/public/diag/egress-ip'
     | '/api/public/google/oauth-callback'
     | '/api/public/hooks/notify-upcoming-campaigns'
     | '/api/public/hooks/wa-templates-sync'
@@ -1090,6 +1101,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/whatsapp/wabas'
     | '/_authenticated/admin/whatsapp/webhooks'
     | '/api/public/ci/$'
+    | '/api/public/diag/egress-ip'
     | '/api/public/google/oauth-callback'
     | '/api/public/hooks/notify-upcoming-campaigns'
     | '/api/public/hooks/wa-templates-sync'
@@ -1124,6 +1136,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   CampaignsIdRoute: typeof CampaignsIdRoute
   ApiPublicCiSplatRoute: typeof ApiPublicCiSplatRoute
+  ApiPublicDiagEgressIpRoute: typeof ApiPublicDiagEgressIpRoute
   ApiPublicGoogleOauthCallbackRoute: typeof ApiPublicGoogleOauthCallbackRoute
   ApiPublicHooksNotifyUpcomingCampaignsRoute: typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
   ApiPublicHooksWaTemplatesSyncRoute: typeof ApiPublicHooksWaTemplatesSyncRoute
@@ -1535,6 +1548,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/google/oauth-callback'
       fullPath: '/api/public/google/oauth-callback'
       preLoaderRoute: typeof ApiPublicGoogleOauthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/diag/egress-ip': {
+      id: '/api/public/diag/egress-ip'
+      path: '/api/public/diag/egress-ip'
+      fullPath: '/api/public/diag/egress-ip'
+      preLoaderRoute: typeof ApiPublicDiagEgressIpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/ci/$': {
@@ -1967,6 +1987,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   CampaignsIdRoute: CampaignsIdRoute,
   ApiPublicCiSplatRoute: ApiPublicCiSplatRoute,
+  ApiPublicDiagEgressIpRoute: ApiPublicDiagEgressIpRoute,
   ApiPublicGoogleOauthCallbackRoute: ApiPublicGoogleOauthCallbackRoute,
   ApiPublicHooksNotifyUpcomingCampaignsRoute:
     ApiPublicHooksNotifyUpcomingCampaignsRoute,
