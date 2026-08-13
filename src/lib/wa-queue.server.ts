@@ -3,6 +3,8 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendTemplateMessage } from "@/lib/wa-send.server";
 import { renderMapping, buildContext } from "@/lib/wa-variables";
 import { GRAPH_VERSION, resolveGraphVersion } from "@/lib/meta/graph-version";
+import { classifyMetaError, detectFatalAccountCode as classifyFatalCode } from "@/lib/wa/error-classifier";
+import { decideRetry, MAX_ATTEMPTS as RETRY_MAX_ATTEMPTS } from "@/lib/wa/retry-policy";
 
 // ---------------------------------------------------------------------------
 // Dependency-injection surface (Fase 2, harness end-to-end)
@@ -67,7 +69,7 @@ const ADAPTIVE_MIN_RATE = 5;
 const ADAPTIVE_STEP = 10;
 const ADAPTIVE_STEP_INTERVAL_MS = 60_000;
 const ADAPTIVE_BACKOFF_FACTOR = 0.8;
-const MAX_ATTEMPTS = 5;
+const MAX_ATTEMPTS = RETRY_MAX_ATTEMPTS;
 
 // Erros FATAIS de conta: nunca reprocessar, parar tudo na primeira ocorrência.
 // 131031 = Business account has been locked (bloqueio da conta comercial pela Meta)
@@ -85,20 +87,9 @@ const FATAL_ACCOUNT_CODES: Record<string, string> = {
  * ("(#131031) Business account has been locked"). Sem cobrir os três formatos,
  * o circuit breaker não dispara e a campanha segue tentando milhares de vezes.
  */
+// Delegado ao ErrorClassifier (fonte única dos códigos fatais).
 function detectFatalAccountCode(result: any): string | null {
-  const direct = result?.code != null ? String(result.code) : null;
-  if (direct && FATAL_ACCOUNT_CODES[direct]) return direct;
-
-  const err = result?.raw?.error ?? result?.raw ?? null;
-  const sub = err?.error_subcode != null ? String(err.error_subcode) : null;
-  if (sub && FATAL_ACCOUNT_CODES[sub]) return sub;
-
-  const haystack = `${result?.error ?? ""} ${err?.message ?? ""} ${err?.error_user_msg ?? ""}`;
-  for (const code of Object.keys(FATAL_ACCOUNT_CODES)) {
-    if (haystack.includes(`#${code}`) || haystack.includes(code)) return code;
-  }
-  if (/business account has been locked|account has been restricted/i.test(haystack)) return "131031";
-  return null;
+  return classifyFatalCode(result);
 }
 
 /**
@@ -884,9 +875,10 @@ export async function processCampaignTick(
       attempts: number,
       reason: string,
       code: string | null,
+      nextAttemptAtOverride?: string | null,
     ) => {
       const backoffMs = applyBackoff(attempts);
-      const nextAt = new Date(Date.now() + backoffMs).toISOString();
+      const nextAt = nextAttemptAtOverride ?? new Date(Date.now() + backoffMs).toISOString();
       await supabaseAdmin
         .from("campaign_recipients")
         .update({
@@ -898,6 +890,45 @@ export async function processCampaignTick(
           last_attempt_at: new Date().toISOString(),
         })
         .eq("id", r.id);
+    };
+
+    /**
+     * Registra a falha definitiva em `message_dead_letters` e alimenta a
+     * supressão global (o RPC decide se o telefone entra na lista após N
+     * falhas definitivas). Sempre best-effort: nunca derruba o disparo.
+     */
+    const recordDeadLetter = async (
+      r: any,
+      classified: { code: string; title: string; message: string; category: string; suppressionCandidate: boolean },
+      attempts: number,
+    ) => {
+      const phone = String(r.phone ?? "").replace(/\D/g, "");
+      try {
+        await supabaseAdmin.from("message_dead_letters" as any).insert({
+          campaign_id: campaignId,
+          recipient_id: r.id,
+          workspace_id: (camp as any).workspace_id ?? null,
+          phone_normalized: phone,
+          phone_number_id: phoneNumberId,
+          route_id: r.locked_route_id ?? r.route_id ?? null,
+          error_code: classified.code,
+          error_title: classified.title,
+          error_category: classified.category,
+          error_message: classified.message || classified.title,
+          attempts,
+          last_attempt_at: new Date().toISOString(),
+        });
+      } catch { /* best-effort */ }
+
+      if (classified.suppressionCandidate && phone) {
+        try {
+          await supabaseAdmin.rpc("wa_suppression_register_failure" as any, {
+            _phone: phone,
+            _reason: "repeated_hard_failure",
+            _error_code: classified.code,
+          });
+        } catch { /* best-effort */ }
+      }
     };
 
     const sendOne = async (r: any): Promise<void> => {
@@ -1237,14 +1268,11 @@ export async function processCampaignTick(
         return;
       }
 
-      // ---- Falha: distinguir rede vs Meta ----
-      const isNetworkErr =
-        result.code === "network_error" ||
-        /failed to fetch|fetch failed|network|econnreset|etimedout|enetunreach|socket hang up/i.test(
-          result.error || "",
-        );
+      // ---- Falha: classificação centralizada (ErrorClassifier) ----
+      const classified = classifyMetaError(result as any);
+      const isNetworkErr = classified.network;
 
-      const fatalCode = detectFatalAccountCode(result);
+      const fatalCode = classified.category === "FATAL_ACCOUNT" ? classified.code : null;
       if (fatalCode) {
 
         lastError = result.error;
@@ -1256,13 +1284,16 @@ export async function processCampaignTick(
         return;
       }
 
-      const isTokenErr = result.code === "190" || /token|OAuthException/i.test(result.error || "");
-      const codeStr = result.code ? String(result.code) : "";
-      const isRateLimit = THROUGHPUT_ERROR_CODES.has(codeStr);
-      const isPausedTemplate = result.code === "132015" || /template .*paused|temporarily unavailable/i.test(result.error || "");
-      const isRetryable = isNetworkErr || isRateLimit ||
-        (result.code ? RETRYABLE_CODES.has(String(result.code)) : false);
-      const shouldRetry = isRetryable && attempts < MAX_ATTEMPTS;
+      const codeStr = classified.code;
+      const isTokenErr = codeStr === "190" || /token|OAuthException/i.test(result.error || "");
+      const isRateLimit = classified.throughput;
+      const isPausedTemplate = codeStr === "132015" || codeStr === "132016";
+      const retryDecision = decideRetry({
+        retryable: classified.retryable,
+        attempts,
+        reason: result.error || classified.title,
+      });
+      const shouldRetry = retryDecision.shouldRetry;
 
       lastError = result.error;
 
@@ -1321,21 +1352,33 @@ export async function processCampaignTick(
       }
 
       if (shouldRetry) {
-        await scheduleRetry(r, attempts, result.error || "retry", result.code ?? null);
+        await scheduleRetry(
+          r,
+          attempts,
+          result.error || classified.title,
+          codeStr,
+          retryDecision.nextAttemptAt,
+        );
         return;
       }
 
-      // Dead-letter: falha temporária que esgotou as tentativas sai da fila
-      // de vez, com motivo explícito, em vez de voltar a circular.
-      const isDeadLetter = isRetryable && attempts >= MAX_ATTEMPTS;
+      // Dead-letter: esgotou tentativas OU erro definitivo do destinatário.
+      // Sai da fila com contexto completo, em vez de virar um `failed` mudo.
+      const isDeadLetter = retryDecision.deadLetter || classified.category === "RECIPIENT_SUPPRESSION";
       if (isDeadLetter) {
         deadLetterCount++;
+        void recordDeadLetter(r, classified, attempts);
         if (deadLetterCount === 1 || deadLetterCount % 25 === 0) {
           void logEvent(
             campaignId,
             "dead_letter",
-            `${deadLetterCount} destinatário(s) encerrados após ${MAX_ATTEMPTS} tentativas — último motivo: ${result.error}`,
-            { count: deadLetterCount, last_error: result.error, error_code: result.code ?? null },
+            `${deadLetterCount} destinatário(s) encerrados (último: ${classified.title})`,
+            {
+              count: deadLetterCount,
+              last_error: result.error,
+              error_code: codeStr,
+              category: classified.category,
+            },
           );
         }
       }
@@ -1346,10 +1389,10 @@ export async function processCampaignTick(
         .update({
           status: "failed",
           failed_at: new Date().toISOString(),
-          failed_reason: isDeadLetter
+          failed_reason: retryDecision.deadLetter
             ? `Dead-letter após ${MAX_ATTEMPTS} tentativas: ${result.error}`
-            : result.error,
-          error_code: result.code,
+            : result.error || classified.title,
+          error_code: codeStr,
           attempt: attempts,
           next_attempt_at: null,
           request_started_at: (result as any).requestStartedAt ?? null,

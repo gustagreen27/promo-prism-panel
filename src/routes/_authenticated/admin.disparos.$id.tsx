@@ -21,6 +21,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { getWaCampaign, clearCampaignFatalLock } from "@/lib/wa-campaigns.functions";
 import { DispatchPerformancePanel } from "@/components/admin/dispatch-performance-panel";
+import { FailureReasonsCard } from "@/components/admin/failure-reasons-card";
 import {
   getCampaignProgress, getCampaignTimeline, getCampaignRecipients,
   getCampaignFinalReport, getCampaignErrors, getRecipientPreviews,
@@ -897,6 +898,7 @@ function Page() {
         </TabsContent>
 
         <TabsContent value="errors" className="space-y-3">
+          <FailureReasonsCard campaignId={id} />
           {errorsQ.error && <ErrorCard error={errorsQ.error} onRetry={() => errorsQ.refetch()} />}
           <Card>
             <CardContent className="p-0 overflow-auto">

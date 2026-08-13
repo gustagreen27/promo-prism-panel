@@ -9,6 +9,7 @@ import {
   Loader2, Plus, CheckSquare, Sparkles,
 } from "lucide-react";
 import { listWorkspaceLists, previewWorkspaceList } from "@/lib/wa-wizard-lists.functions";
+import { AudiencePreflightCard } from "@/components/campaigns/wizard/AudiencePreflightCard";
 import { ContactPicker } from "./ContactPicker";
 import { cn } from "@/lib/utils";
 
@@ -234,6 +235,7 @@ export function ContactsStep({
             <Plus className="mr-1 h-3.5 w-3.5" /> Adicionar contato
           </Button>
         </div>
+        <AudiencePreflightCard listId={value?.list_id} />
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>{selectedCount.toLocaleString("pt-BR")} destinatário{selectedCount === 1 ? "" : "s"}</span>
           {value && (
