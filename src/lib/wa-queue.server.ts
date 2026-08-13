@@ -899,7 +899,7 @@ export async function processCampaignTick(
      */
     const recordDeadLetter = async (
       r: any,
-      classified: { code: string; title: string; category: string; suppressionCandidate: boolean },
+      classified: { code: string; title: string; message: string; category: string; suppressionCandidate: boolean },
       attempts: number,
     ) => {
       const phone = String(r.phone ?? "").replace(/\D/g, "");
@@ -914,7 +914,7 @@ export async function processCampaignTick(
           error_code: classified.code,
           error_title: classified.title,
           error_category: classified.category,
-          error_message: classified.title,
+          error_message: classified.message || classified.title,
           attempts,
           last_attempt_at: new Date().toISOString(),
         });
