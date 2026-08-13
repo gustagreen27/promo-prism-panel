@@ -899,7 +899,7 @@ export async function processCampaignTick(
      */
     const recordDeadLetter = async (
       r: any,
-      classified: { code: string; title: string; category: string; suppress: boolean },
+      classified: { code: string; title: string; category: string; suppressionCandidate: boolean },
       attempts: number,
     ) => {
       const phone = String(r.phone ?? "").replace(/\D/g, "");
@@ -914,13 +914,13 @@ export async function processCampaignTick(
           error_code: classified.code,
           error_title: classified.title,
           error_category: classified.category,
-          error_message: (r.failed_reason ?? null) as string | null,
+          error_message: classified.title,
           attempts,
           last_attempt_at: new Date().toISOString(),
         });
       } catch { /* best-effort */ }
 
-      if (classified.suppress && phone) {
+      if (classified.suppressionCandidate && phone) {
         try {
           await supabaseAdmin.rpc("wa_suppression_register_failure" as any, {
             _phone: phone,
