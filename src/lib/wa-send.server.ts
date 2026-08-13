@@ -322,7 +322,7 @@ export async function sendWhatsAppTemplateFrgc01(input: SendFrgc01Input): Promis
     }
     return { ok: true, metaMessageId: id, status, requestPayload: payload, raw: json, httpStatus: res.status };
   } catch (e: any) {
-    const timedOut = e?.name === "AbortError";
+    const timedOut = e?.name === "AbortError" || e?.code === "egress_timeout";
     return {
       ok: false,
       error: timedOut ? `Meta Graph timeout após ${META_SEND_TIMEOUT_MS}ms` : (e?.message ?? "Network error"),
