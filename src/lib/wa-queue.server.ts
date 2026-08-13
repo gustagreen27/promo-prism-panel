@@ -875,9 +875,10 @@ export async function processCampaignTick(
       attempts: number,
       reason: string,
       code: string | null,
+      nextAttemptAtOverride?: string | null,
     ) => {
       const backoffMs = applyBackoff(attempts);
-      const nextAt = new Date(Date.now() + backoffMs).toISOString();
+      const nextAt = nextAttemptAtOverride ?? new Date(Date.now() + backoffMs).toISOString();
       await supabaseAdmin
         .from("campaign_recipients")
         .update({
@@ -889,6 +890,45 @@ export async function processCampaignTick(
           last_attempt_at: new Date().toISOString(),
         })
         .eq("id", r.id);
+    };
+
+    /**
+     * Registra a falha definitiva em `message_dead_letters` e alimenta a
+     * supressão global (o RPC decide se o telefone entra na lista após N
+     * falhas definitivas). Sempre best-effort: nunca derruba o disparo.
+     */
+    const recordDeadLetter = async (
+      r: any,
+      classified: { code: string; title: string; category: string; suppress: boolean },
+      attempts: number,
+    ) => {
+      const phone = String(r.phone ?? "").replace(/\D/g, "");
+      try {
+        await supabaseAdmin.from("message_dead_letters" as any).insert({
+          campaign_id: campaignId,
+          recipient_id: r.id,
+          workspace_id: (camp as any).workspace_id ?? null,
+          phone_normalized: phone,
+          phone_number_id: phoneNumberId,
+          route_id: r.locked_route_id ?? r.route_id ?? null,
+          error_code: classified.code,
+          error_title: classified.title,
+          error_category: classified.category,
+          error_message: (r.failed_reason ?? null) as string | null,
+          attempts,
+          last_attempt_at: new Date().toISOString(),
+        });
+      } catch { /* best-effort */ }
+
+      if (classified.suppress && phone) {
+        try {
+          await supabaseAdmin.rpc("wa_suppression_register_failure" as any, {
+            _phone: phone,
+            _reason: "repeated_hard_failure",
+            _error_code: classified.code,
+          });
+        } catch { /* best-effort */ }
+      }
     };
 
     const sendOne = async (r: any): Promise<void> => {
