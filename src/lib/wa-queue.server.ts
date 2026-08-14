@@ -438,16 +438,12 @@ export async function processCampaignTick(
       .select("*")
       .eq("id", camp.template_id)
       .single();
-    // Token: quando a conexão está marcada para usar token global,
-    // ignorar qualquer token salvo na conexão (pode estar antigo/expirado).
+    // Token: conexão → token da WABA dona do número → token global.
     if (conn) {
-      const globalToken = process.env.WHATSAPP_ACCESS_TOKEN;
-      if ((conn as any).use_global_token) {
-        (conn as any).access_token = globalToken ?? null;
-      } else if (!conn.access_token && globalToken) {
-        (conn as any).access_token = globalToken;
-      }
+      const { resolveConnectionToken } = await import("@/lib/meta/wa-waba-token.server");
+      (conn as any).access_token = await resolveConnectionToken(supabaseAdmin, conn as any);
     }
+
     if (!conn?.phone_number_id || !conn?.access_token || !tpl) {
       const missing: string[] = [];
       if (!conn) missing.push("conexão não encontrada");

@@ -50,23 +50,15 @@ export async function loadConnectionSecure(
     if (!isMember) throw new Error("Forbidden");
   }
 
-  // Token — se use_global_token=true, preferir o global (ignorar token da conexão, que pode estar expirado)
-  let token: string | undefined;
-  if (conn.use_global_token) {
-    token = process.env.WHATSAPP_ACCESS_TOKEN;
-    if (!token) {
-      throw new Error(
-        "Token global (WHATSAPP_ACCESS_TOKEN) não configurado no ambiente.",
-      );
-    }
-  } else {
-    token = conn.access_token ?? undefined;
-    if (!token) {
-      throw new Error(
-        "Esta conexão não possui um token de acesso configurado. Atualize o token ou marque 'Usar token global' nas configurações da conexão.",
-      );
-    }
+  // Token: conexão → token da WABA dona do número → token global.
+  const { resolveConnectionToken } = await import("@/lib/meta/wa-waba-token.server");
+  const token = await resolveConnectionToken(supabase, conn as any);
+  if (!token) {
+    throw new Error(
+      "Esta conexão não possui token de acesso. Cadastre o token da BM em Admin → WhatsApp → WABAs ou configure o token global.",
+    );
   }
+
 
 
   return { ...(conn as any), access_token: token } as LoadedConnection;
