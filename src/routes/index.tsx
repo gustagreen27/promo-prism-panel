@@ -26,7 +26,7 @@ import {
   Headphones,
 } from "lucide-react";
 
-import logoAsset from "@/assets/disparos-fr-logo-new.png.asset.json";
+import logoAsset from "@/assets/next-disparos-logo.png.asset.json";
 
 // ============ CONFIG ============
 const WHATSAPP_NUMBER = "5562933003970"; // editar aqui

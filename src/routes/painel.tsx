@@ -18,7 +18,7 @@ import {
   LogOut, Wallet, Building2, AlertTriangle, ChevronDown, UserCircle, MessageCircle,
 } from "lucide-react";
 import { NotificationsBell } from "@/components/NotificationsBell";
-import logoAsset from "@/assets/disparos-fr-logo.png.asset.json";
+import logoAsset from "@/assets/next-disparos-logo.png.asset.json";
 
 export const Route = createFileRoute("/painel")({
   ssr: false,

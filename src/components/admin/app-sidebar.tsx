@@ -45,7 +45,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
-import logoAsset from "@/assets/disparos-fr-logo.png.asset.json";
+import logoAsset from "@/assets/next-disparos-logo.png.asset.json";
 
 type NavLeaf = {
   title: string;

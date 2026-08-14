@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ShieldCheck, Zap, BarChart3 } from "lucide-react";
-import logoAsset from "@/assets/disparos-fr-logo.png.asset.json";
+import logoAsset from "@/assets/next-disparos-logo.png.asset.json";
 import type { ReactNode } from "react";
 
 export function AuthShell({

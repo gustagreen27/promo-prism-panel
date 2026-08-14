@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ShieldCheck, Check, X, MessageCircle } from "lucide-react";
-import logoAsset from "@/assets/disparos-fr-logo-new.png.asset.json";
+import logoAsset from "@/assets/next-disparos-logo.png.asset.json";
 
 const TITLE = "Conformidade e Uso Responsável — Disparos FR";
 const DESC =
