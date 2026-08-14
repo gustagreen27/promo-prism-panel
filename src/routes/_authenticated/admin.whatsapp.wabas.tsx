@@ -170,9 +170,14 @@ function Page() {
             <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
               <Download className="mr-2 h-4 w-4" />Importar do BM
             </Button>
+            <Button variant="outline" size="sm" disabled={restrictionMut.isPending} onClick={() => restrictionMut.mutate(undefined)}>
+              <AlertTriangle className={`mr-2 h-4 w-4 ${restrictionMut.isPending ? "animate-pulse" : ""}`} />
+              Verificar restrições
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setApiOpen(true)}>
               <Cloud className="mr-2 h-4 w-4" />Criar via API
             </Button>
+
             <Button variant="outline" size="sm" disabled={syncAllMut.isPending} onClick={() => syncAllMut.mutate()}>
               <RefreshCw className={`mr-2 h-4 w-4 ${syncAllMut.isPending ? "animate-spin" : ""}`} />
               Sincronizar tudo
