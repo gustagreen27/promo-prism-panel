@@ -1,0 +1,1 @@
+update public.whatsapp_wabas set business_id = '404795491638227' where waba_id = '1007888915415085';
