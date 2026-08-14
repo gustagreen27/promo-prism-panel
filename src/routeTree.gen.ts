@@ -58,6 +58,7 @@ import { Route as AuthenticatedAdminDisparosIndexRouteImport } from './routes/_a
 import { Route as AuthenticatedAdminContatosIndexRouteImport } from './routes/_authenticated/admin.contatos.index'
 import { Route as ApiPublicWhatsappWebhookHealthRouteImport } from './routes/api/public/whatsapp/webhook-health'
 import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp/webhook'
+import { Route as ApiPublicWhatsappWabaConnectTempRouteImport } from './routes/api/public/whatsapp/waba-connect-temp'
 import { Route as ApiPublicWhatsappSyncNumbersRouteImport } from './routes/api/public/whatsapp/sync-numbers'
 import { Route as ApiPublicWhatsappServiceTickRouteImport } from './routes/api/public/whatsapp/service-tick'
 import { Route as ApiPublicWhatsappQueueTickRouteImport } from './routes/api/public/whatsapp/queue-tick'
@@ -362,6 +363,12 @@ const ApiPublicWhatsappWebhookRoute =
   ApiPublicWhatsappWebhookRouteImport.update({
     id: '/api/public/whatsapp/webhook',
     path: '/api/public/whatsapp/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicWhatsappWabaConnectTempRoute =
+  ApiPublicWhatsappWabaConnectTempRouteImport.update({
+    id: '/api/public/whatsapp/waba-connect-temp',
+    path: '/api/public/whatsapp/waba-connect-temp',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicWhatsappSyncNumbersRoute =
@@ -669,6 +676,7 @@ export interface FileRoutesByFullPath {
   '/api/public/whatsapp/queue-tick': typeof ApiPublicWhatsappQueueTickRoute
   '/api/public/whatsapp/service-tick': typeof ApiPublicWhatsappServiceTickRoute
   '/api/public/whatsapp/sync-numbers': typeof ApiPublicWhatsappSyncNumbersRoute
+  '/api/public/whatsapp/waba-connect-temp': typeof ApiPublicWhatsappWabaConnectTempRoute
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
   '/api/public/whatsapp/webhook-health': typeof ApiPublicWhatsappWebhookHealthRoute
   '/admin/contatos/': typeof AuthenticatedAdminContatosIndexRoute
@@ -755,6 +763,7 @@ export interface FileRoutesByTo {
   '/api/public/whatsapp/queue-tick': typeof ApiPublicWhatsappQueueTickRoute
   '/api/public/whatsapp/service-tick': typeof ApiPublicWhatsappServiceTickRoute
   '/api/public/whatsapp/sync-numbers': typeof ApiPublicWhatsappSyncNumbersRoute
+  '/api/public/whatsapp/waba-connect-temp': typeof ApiPublicWhatsappWabaConnectTempRoute
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
   '/api/public/whatsapp/webhook-health': typeof ApiPublicWhatsappWebhookHealthRoute
   '/admin/contatos': typeof AuthenticatedAdminContatosIndexRoute
@@ -845,6 +854,7 @@ export interface FileRoutesById {
   '/api/public/whatsapp/queue-tick': typeof ApiPublicWhatsappQueueTickRoute
   '/api/public/whatsapp/service-tick': typeof ApiPublicWhatsappServiceTickRoute
   '/api/public/whatsapp/sync-numbers': typeof ApiPublicWhatsappSyncNumbersRoute
+  '/api/public/whatsapp/waba-connect-temp': typeof ApiPublicWhatsappWabaConnectTempRoute
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
   '/api/public/whatsapp/webhook-health': typeof ApiPublicWhatsappWebhookHealthRoute
   '/_authenticated/admin/contatos/': typeof AuthenticatedAdminContatosIndexRoute
@@ -935,6 +945,7 @@ export interface FileRouteTypes {
     | '/api/public/whatsapp/queue-tick'
     | '/api/public/whatsapp/service-tick'
     | '/api/public/whatsapp/sync-numbers'
+    | '/api/public/whatsapp/waba-connect-temp'
     | '/api/public/whatsapp/webhook'
     | '/api/public/whatsapp/webhook-health'
     | '/admin/contatos/'
@@ -1021,6 +1032,7 @@ export interface FileRouteTypes {
     | '/api/public/whatsapp/queue-tick'
     | '/api/public/whatsapp/service-tick'
     | '/api/public/whatsapp/sync-numbers'
+    | '/api/public/whatsapp/waba-connect-temp'
     | '/api/public/whatsapp/webhook'
     | '/api/public/whatsapp/webhook-health'
     | '/admin/contatos'
@@ -1110,6 +1122,7 @@ export interface FileRouteTypes {
     | '/api/public/whatsapp/queue-tick'
     | '/api/public/whatsapp/service-tick'
     | '/api/public/whatsapp/sync-numbers'
+    | '/api/public/whatsapp/waba-connect-temp'
     | '/api/public/whatsapp/webhook'
     | '/api/public/whatsapp/webhook-health'
     | '/_authenticated/admin/contatos/'
@@ -1145,6 +1158,7 @@ export interface RootRouteChildren {
   ApiPublicWhatsappQueueTickRoute: typeof ApiPublicWhatsappQueueTickRoute
   ApiPublicWhatsappServiceTickRoute: typeof ApiPublicWhatsappServiceTickRoute
   ApiPublicWhatsappSyncNumbersRoute: typeof ApiPublicWhatsappSyncNumbersRoute
+  ApiPublicWhatsappWabaConnectTempRoute: typeof ApiPublicWhatsappWabaConnectTempRoute
   ApiPublicWhatsappWebhookRoute: typeof ApiPublicWhatsappWebhookRoute
   ApiPublicWhatsappWebhookHealthRoute: typeof ApiPublicWhatsappWebhookHealthRoute
 }
@@ -1492,6 +1506,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/whatsapp/webhook'
       fullPath: '/api/public/whatsapp/webhook'
       preLoaderRoute: typeof ApiPublicWhatsappWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/whatsapp/waba-connect-temp': {
+      id: '/api/public/whatsapp/waba-connect-temp'
+      path: '/api/public/whatsapp/waba-connect-temp'
+      fullPath: '/api/public/whatsapp/waba-connect-temp'
+      preLoaderRoute: typeof ApiPublicWhatsappWabaConnectTempRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/whatsapp/sync-numbers': {
@@ -1997,6 +2018,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicWhatsappQueueTickRoute: ApiPublicWhatsappQueueTickRoute,
   ApiPublicWhatsappServiceTickRoute: ApiPublicWhatsappServiceTickRoute,
   ApiPublicWhatsappSyncNumbersRoute: ApiPublicWhatsappSyncNumbersRoute,
+  ApiPublicWhatsappWabaConnectTempRoute: ApiPublicWhatsappWabaConnectTempRoute,
   ApiPublicWhatsappWebhookRoute: ApiPublicWhatsappWebhookRoute,
   ApiPublicWhatsappWebhookHealthRoute: ApiPublicWhatsappWebhookHealthRoute,
 }
