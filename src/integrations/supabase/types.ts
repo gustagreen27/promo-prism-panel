@@ -4925,17 +4925,25 @@ export type Database = {
       whatsapp_wabas: {
         Row: {
           access_token: string | null
+          account_review_status: string | null
+          ban_state: string | null
           business_id: string | null
+          business_verification_status: string | null
           client_id: string | null
           created_at: string
           id: string
           last_sync_error: string | null
           last_synced_at: string | null
+          meta_status: string | null
           nome_interno: string
           observacoes: string | null
           onboarded_at: string | null
           onboarded_via: string
           project_id: string | null
+          restriction_checked_at: string | null
+          restriction_level: string | null
+          restriction_reason: string | null
+          restrictions: Json
           status: string
           token_expires_at: string | null
           updated_at: string
@@ -4944,17 +4952,25 @@ export type Database = {
         }
         Insert: {
           access_token?: string | null
+          account_review_status?: string | null
+          ban_state?: string | null
           business_id?: string | null
+          business_verification_status?: string | null
           client_id?: string | null
           created_at?: string
           id?: string
           last_sync_error?: string | null
           last_synced_at?: string | null
+          meta_status?: string | null
           nome_interno: string
           observacoes?: string | null
           onboarded_at?: string | null
           onboarded_via?: string
           project_id?: string | null
+          restriction_checked_at?: string | null
+          restriction_level?: string | null
+          restriction_reason?: string | null
+          restrictions?: Json
           status?: string
           token_expires_at?: string | null
           updated_at?: string
@@ -4963,17 +4979,25 @@ export type Database = {
         }
         Update: {
           access_token?: string | null
+          account_review_status?: string | null
+          ban_state?: string | null
           business_id?: string | null
+          business_verification_status?: string | null
           client_id?: string | null
           created_at?: string
           id?: string
           last_sync_error?: string | null
           last_synced_at?: string | null
+          meta_status?: string | null
           nome_interno?: string
           observacoes?: string | null
           onboarded_at?: string | null
           onboarded_via?: string
           project_id?: string | null
+          restriction_checked_at?: string | null
+          restriction_level?: string | null
+          restriction_reason?: string | null
+          restrictions?: Json
           status?: string
           token_expires_at?: string | null
           updated_at?: string
