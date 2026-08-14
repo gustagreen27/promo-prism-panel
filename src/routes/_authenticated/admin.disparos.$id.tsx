@@ -270,32 +270,15 @@ function Page() {
   };
 
   const rawP = (prog?.progress as any) ?? {};
-  // Camada de apresentação: "Entregue" = mensagem aceita pela Meta, ou seja,
-  // tudo que foi enviado sem falha (independente de callback de entrega).
-  const p = useMemo(() => {
-    const t = Number(rawP.total ?? camp?.total_recipients ?? 0) || 0;
+  // Sem camada de apresentação: "Entregue" só é exibido quando a Meta confirmou
+  // a entrega via webhook. Mensagens apenas aceitas pela API aparecem em "Aceitas".
+  const p = rawP;
+  const acceptedOnly = useMemo(() => {
     const sent = Number(rawP.sent ?? 0) || 0;
     const delivered = Number(rawP.delivered ?? 0) || 0;
-    const read = Number(rawP.read ?? 0) || 0;
-    const failed = Number(rawP.failed ?? 0) || 0;
-    const proc = Number(rawP.processed ?? 0) || 0;
-    const noCallbacks = delivered === 0 && read === 0 && sent > 0;
-    const finished = t > 0 && proc >= t - Math.max(1, Math.round(t * 0.01));
-    if (noCallbacks && finished) {
-      return {
-        ...rawP,
-        sent: t,
-        delivered: Math.max(0, t - failed),
-        processed: t,
-        pending: 0,
-        processing: 0,
-        percent: 100,
-      };
-    }
-    // Aceito pela Meta: nunca menos do que enviados - falhas.
-    const accepted = Math.max(0, sent - failed);
-    return accepted > delivered ? { ...rawP, delivered: accepted } : rawP;
-  }, [rawP, camp?.total_recipients]);
+    return Math.max(0, sent - delivered);
+  }, [rawP]);
+
   const total = p.total ?? camp?.total_recipients ?? 0;
   const percent = p.percent ?? 0;
   const processed = p.processed ?? (total - (p.pending ?? 0) - (p.processing ?? 0));
@@ -570,13 +553,14 @@ function Page() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
         <Stat icon={Users} label="Total" value={total} tone="neutral" />
         <Stat icon={Send} label="Enviadas" value={p.sent ?? 0} tone="info" />
-        <Stat icon={CheckCircle2} label="Entregues" value={p.delivered ?? 0} tone="success" />
+        <Stat icon={Clock} label="Aceitas (sem confirmação)" value={acceptedOnly} tone="warning" />
+        <Stat icon={CheckCircle2} label="Entregues (confirmadas)" value={p.delivered ?? 0} tone="success" />
         <Stat icon={Eye} label="Lidas" value={p.read ?? 0} tone="success" />
         <Stat icon={MousePointerClick} label="Cliques" value={(prog as any)?.clicks ?? 0} tone="primary" />
         <Stat icon={MessageSquare} label="Respostas" value={p.replied ?? 0} tone="primary" />
         <Stat icon={XCircle} label="Falhas" value={p.failed ?? 0} tone="danger" />
-        <Stat icon={Ban} label="Opt-out" value={p.opt_out ?? 0} tone="warning" />
       </div>
+
 
       <DispatchPerformancePanel
         campaignId={id}
