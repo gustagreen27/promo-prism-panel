@@ -22,7 +22,10 @@ const wabaFields = {
   waba_id: z.string().trim().min(1).max(64),
   status: z.enum(["ativo", "inativo", "suspenso"]).default("ativo"),
   observacoes: optStr(2000),
+  /** Token de Usuário do Sistema da BM dona desta WABA (opcional). */
+  access_token: optStr(1000),
 };
+
 
 export const listWabas = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
