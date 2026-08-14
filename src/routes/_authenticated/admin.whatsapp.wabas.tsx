@@ -194,11 +194,12 @@ function Page() {
             <TableHead>Nome interno</TableHead><TableHead>WABA ID</TableHead><TableHead>Business ID</TableHead>
             <TableHead>Cliente</TableHead><TableHead>Projeto</TableHead>
             <TableHead>Números</TableHead><TableHead>Templates</TableHead><TableHead>Campanhas</TableHead>
+            <TableHead>Restrição (Meta)</TableHead>
             <TableHead>Status</TableHead><TableHead />
           </TableRow></TableHeader>
           <TableBody>
             {rows.map((r: any) => (
-              <TableRow key={r.id}>
+              <TableRow key={r.id} className={r.restriction_level === "restricted" ? "bg-destructive/5" : undefined}>
                 <TableCell className="font-medium">{r.nome_interno}</TableCell>
                 <TableCell className="font-mono text-xs">{r.waba_id}</TableCell>
                 <TableCell className="font-mono text-xs">{r.business_id ?? "—"}</TableCell>
@@ -207,8 +208,21 @@ function Page() {
                 <TableCell>{r.numbers_count}</TableCell>
                 <TableCell>{r.templates_count}</TableCell>
                 <TableCell>{r.campaigns_count}</TableCell>
+                <TableCell><RestrictionBadge waba={r} /></TableCell>
                 <TableCell><Badge variant={r.status === "ativo" ? "default" : "secondary"}>{r.status}</Badge></TableCell>
                 <TableCell className="text-right">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    title="Verificar restrições na Meta"
+                    disabled={restrictionMut.isPending && restrictionMut.variables === r.id}
+                    onClick={() => restrictionMut.mutate(r.id)}
+                  >
+                    {restrictionMut.isPending && restrictionMut.variables === r.id
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <AlertTriangle className="h-4 w-4" />}
+                  </Button>
+
                   <Button size="icon" variant="ghost" title="Importar números da Meta" disabled={importMut.isPending} onClick={() => importMut.mutate(r.id)}>
                     <RefreshCw className="h-4 w-4" />
                   </Button>
