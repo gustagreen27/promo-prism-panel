@@ -116,6 +116,17 @@ function Page() {
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao consultar apps"),
   });
+  const restrictionMut = useMutation({
+    mutationFn: (id?: string) => restrictionsFn({ data: { waba_ref_id: id ?? null } }),
+    onSuccess: (r: any) => {
+      if (r.restricted) toast.error(`${r.restricted} conta(s) restrita(s) pela Meta.`);
+      else if (r.limited) toast.warning(`${r.limited} conta(s) com limitação na Meta.`);
+      else toast.success(`${r.checked} conta(s) verificada(s) — nenhuma restrição.`);
+      refresh();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao verificar restrições"),
+  });
+
   const syncAllMut = useMutation({
     mutationFn: () => syncAll(),
     onSuccess: (r: any) => {
