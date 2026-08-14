@@ -49,12 +49,16 @@ export const listWabas = createServerFn({ method: "GET" })
     const count = (rows: any[] | null, id: string) =>
       (rows ?? []).filter((r) => r.waba_ref_id === id).length;
 
-    return data!.map((w: any) => ({
-      ...w,
-      numbers_count: count(nums, w.id),
-      templates_count: count(tpls, w.id),
-      campaigns_count: count(camps, w.id),
-    }));
+    return data!.map((w: any) => {
+      const { access_token, ...safe } = w;
+      return {
+        ...safe,
+        has_token: !!access_token,
+        numbers_count: count(nums, w.id),
+        templates_count: count(tpls, w.id),
+        campaigns_count: count(camps, w.id),
+      };
+    });
   });
 
 export const createWaba = createServerFn({ method: "POST" })
@@ -62,8 +66,10 @@ export const createWaba = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object(wabaFields).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    const payload: any = { ...data };
+    if (!payload.access_token) delete payload.access_token;
     const { data: row, error } = await context.supabase
-      .from("whatsapp_wabas").insert(data).select().single();
+      .from("whatsapp_wabas").insert(payload).select("id").single();
     if (error) throw error;
     return row;
   });
@@ -73,12 +79,15 @@ export const updateWaba = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid(), ...wabaFields }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { id, ...patch } = data;
+    const { id, ...patch } = data as any;
+    // Campo vazio = manter o token atual (não sobrescrever).
+    if (!patch.access_token) delete patch.access_token;
     const { data: row, error } = await context.supabase
-      .from("whatsapp_wabas").update(patch).eq("id", id).select().single();
+      .from("whatsapp_wabas").update(patch).eq("id", id).select("id").single();
     if (error) throw error;
     return row;
   });
+
 
 export const deleteWaba = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
