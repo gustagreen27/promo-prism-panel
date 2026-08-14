@@ -314,7 +314,44 @@ function Page() {
   );
 }
 
+function RestrictionBadge({ waba }: { waba: any }) {
+  const level = waba.restriction_level as string | null;
+  const reason = waba.restriction_reason as string | null;
+  const checked = waba.restriction_checked_at
+    ? new Date(waba.restriction_checked_at).toLocaleString("pt-BR")
+    : null;
+
+  if (!level || !checked) {
+    return (
+      <Badge variant="outline" title="Clique no ícone de alerta para verificar na Meta">
+        <Circle className="mr-1 h-3 w-3" />Não verificado
+      </Badge>
+    );
+  }
+
+  const map: Record<string, { variant: any; label: string; icon: any }> = {
+    none: { variant: "default", label: "Sem restrição", icon: CheckCircle2 },
+    limited: { variant: "secondary", label: "Limitada", icon: AlertTriangle },
+    restricted: { variant: "destructive", label: "Restrita", icon: XCircle },
+    unknown: { variant: "outline", label: "Indeterminada", icon: Circle },
+  };
+  const cfg = map[level] ?? map.unknown;
+  const Icon = cfg.icon;
+
+  return (
+    <div className="flex flex-col gap-1">
+      <Badge variant={cfg.variant} title={`${reason ?? "Nenhuma restrição reportada"}\nVerificado em ${checked}`}>
+        <Icon className="mr-1 h-3 w-3" />{cfg.label}
+      </Badge>
+      {reason && level !== "none" && (
+        <span className="max-w-[260px] truncate text-[11px] text-muted-foreground" title={reason}>{reason}</span>
+      )}
+    </div>
+  );
+}
+
 function CreateApiDialog({ clients, projects, saving, onSubmit }: any) {
+
   const [form, setForm] = useState<any>({ business_id: "", name: "", timezone_id: "25", currency: "BRL", client_id: "", project_id: "" });
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
   return (
