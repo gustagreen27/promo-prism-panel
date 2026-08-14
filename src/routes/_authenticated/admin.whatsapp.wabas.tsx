@@ -364,10 +364,13 @@ function Children({ id, fetcher }: { id: string; fetcher: any }) {
 }
 
 function FormDialog({ editing, clients, projects, onSubmit, saving }: any) {
-  const [form, setForm] = useState<any>(() => editing ?? {
+  const [form, setForm] = useState<any>(() => ({
     nome_interno: "", client_id: "", project_id: "", business_id: "", waba_id: "", status: "ativo", observacoes: "",
-  });
+    ...(editing ?? {}),
+    access_token: "",
+  }));
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
+
   return (
     <DialogContent className="max-w-xl">
       <DialogHeader><DialogTitle>{editing ? "Editar WABA" : "Nova WABA"}</DialogTitle></DialogHeader>
