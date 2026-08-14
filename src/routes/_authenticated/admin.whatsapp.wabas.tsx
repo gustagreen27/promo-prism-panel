@@ -19,6 +19,8 @@ import { syncWabaNumbers, syncAllWabas } from "@/lib/wa-meta-sync.functions";
 import { debugToken, createWabaViaApi, importWabasFromBusiness } from "@/lib/wa-meta-api.functions";
 import { quickConnectWa, parseQuickConnect } from "@/lib/wa-quick-connect.functions";
 import { subscribeWabaToApp, listSubscribedApps } from "@/lib/wa-subscribe.functions";
+import { checkWabaRestrictionsFn } from "@/lib/wa-restrictions.functions";
+
 import { listWorkspaceConnections } from "@/lib/wa-connections.functions";
 import { listClients } from "@/lib/clients.functions";
 import { listProjects } from "@/lib/projects.functions";
@@ -47,6 +49,8 @@ function Page() {
   const workspacesFn = useServerFn(listWorkspaceConnections);
   const subscribeFn = useServerFn(subscribeWabaToApp);
   const listSubsFn = useServerFn(listSubscribedApps);
+  const restrictionsFn = useServerFn(checkWabaRestrictionsFn);
+
   const qc = useQueryClient();
 
   const wabasQuery = useQuery({ queryKey: ["wa-wabas"], queryFn: () => listFn() });
@@ -112,6 +116,17 @@ function Page() {
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao consultar apps"),
   });
+  const restrictionMut = useMutation({
+    mutationFn: (id?: string) => restrictionsFn({ data: { waba_ref_id: id ?? null } }),
+    onSuccess: (r: any) => {
+      if (r.restricted) toast.error(`${r.restricted} conta(s) restrita(s) pela Meta.`);
+      else if (r.limited) toast.warning(`${r.limited} conta(s) com limitação na Meta.`);
+      else toast.success(`${r.checked} conta(s) verificada(s) — nenhuma restrição.`);
+      refresh();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao verificar restrições"),
+  });
+
   const syncAllMut = useMutation({
     mutationFn: () => syncAll(),
     onSuccess: (r: any) => {
@@ -155,9 +170,14 @@ function Page() {
             <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
               <Download className="mr-2 h-4 w-4" />Importar do BM
             </Button>
+            <Button variant="outline" size="sm" disabled={restrictionMut.isPending} onClick={() => restrictionMut.mutate(undefined)}>
+              <AlertTriangle className={`mr-2 h-4 w-4 ${restrictionMut.isPending ? "animate-pulse" : ""}`} />
+              Verificar restrições
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setApiOpen(true)}>
               <Cloud className="mr-2 h-4 w-4" />Criar via API
             </Button>
+
             <Button variant="outline" size="sm" disabled={syncAllMut.isPending} onClick={() => syncAllMut.mutate()}>
               <RefreshCw className={`mr-2 h-4 w-4 ${syncAllMut.isPending ? "animate-spin" : ""}`} />
               Sincronizar tudo
@@ -179,11 +199,12 @@ function Page() {
             <TableHead>Nome interno</TableHead><TableHead>WABA ID</TableHead><TableHead>Business ID</TableHead>
             <TableHead>Cliente</TableHead><TableHead>Projeto</TableHead>
             <TableHead>Números</TableHead><TableHead>Templates</TableHead><TableHead>Campanhas</TableHead>
+            <TableHead>Restrição (Meta)</TableHead>
             <TableHead>Status</TableHead><TableHead />
           </TableRow></TableHeader>
           <TableBody>
             {rows.map((r: any) => (
-              <TableRow key={r.id}>
+              <TableRow key={r.id} className={r.restriction_level === "restricted" ? "bg-destructive/5" : undefined}>
                 <TableCell className="font-medium">{r.nome_interno}</TableCell>
                 <TableCell className="font-mono text-xs">{r.waba_id}</TableCell>
                 <TableCell className="font-mono text-xs">{r.business_id ?? "—"}</TableCell>
@@ -192,8 +213,21 @@ function Page() {
                 <TableCell>{r.numbers_count}</TableCell>
                 <TableCell>{r.templates_count}</TableCell>
                 <TableCell>{r.campaigns_count}</TableCell>
+                <TableCell><RestrictionBadge waba={r} /></TableCell>
                 <TableCell><Badge variant={r.status === "ativo" ? "default" : "secondary"}>{r.status}</Badge></TableCell>
                 <TableCell className="text-right">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    title="Verificar restrições na Meta"
+                    disabled={restrictionMut.isPending && restrictionMut.variables === r.id}
+                    onClick={() => restrictionMut.mutate(r.id)}
+                  >
+                    {restrictionMut.isPending && restrictionMut.variables === r.id
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <AlertTriangle className="h-4 w-4" />}
+                  </Button>
+
                   <Button size="icon" variant="ghost" title="Importar números da Meta" disabled={importMut.isPending} onClick={() => importMut.mutate(r.id)}>
                     <RefreshCw className="h-4 w-4" />
                   </Button>
@@ -280,7 +314,44 @@ function Page() {
   );
 }
 
+function RestrictionBadge({ waba }: { waba: any }) {
+  const level = waba.restriction_level as string | null;
+  const reason = waba.restriction_reason as string | null;
+  const checked = waba.restriction_checked_at
+    ? new Date(waba.restriction_checked_at).toLocaleString("pt-BR")
+    : null;
+
+  if (!level || !checked) {
+    return (
+      <Badge variant="outline" title="Clique no ícone de alerta para verificar na Meta">
+        <Circle className="mr-1 h-3 w-3" />Não verificado
+      </Badge>
+    );
+  }
+
+  const map: Record<string, { variant: any; label: string; icon: any }> = {
+    none: { variant: "default", label: "Sem restrição", icon: CheckCircle2 },
+    limited: { variant: "secondary", label: "Limitada", icon: AlertTriangle },
+    restricted: { variant: "destructive", label: "Restrita", icon: XCircle },
+    unknown: { variant: "outline", label: "Indeterminada", icon: Circle },
+  };
+  const cfg = map[level] ?? map.unknown;
+  const Icon = cfg.icon;
+
+  return (
+    <div className="flex flex-col gap-1">
+      <Badge variant={cfg.variant} title={`${reason ?? "Nenhuma restrição reportada"}\nVerificado em ${checked}`}>
+        <Icon className="mr-1 h-3 w-3" />{cfg.label}
+      </Badge>
+      {reason && level !== "none" && (
+        <span className="max-w-[260px] truncate text-[11px] text-muted-foreground" title={reason}>{reason}</span>
+      )}
+    </div>
+  );
+}
+
 function CreateApiDialog({ clients, projects, saving, onSubmit }: any) {
+
   const [form, setForm] = useState<any>({ business_id: "", name: "", timezone_id: "25", currency: "BRL", client_id: "", project_id: "" });
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
   return (

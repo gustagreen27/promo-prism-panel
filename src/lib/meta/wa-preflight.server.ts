@@ -214,18 +214,22 @@ export async function runSelectionPreflight(
     );
     if (waba.ok) {
       const review = waba.json?.account_review_status ?? null;
+      const bv = waba.json?.business_verification_status ?? null;
       tier = waba.json?.whatsapp_business_manager_messaging_limit ?? null;
-      const restricted = review && !["APPROVED", "VERIFIED"].includes(String(review).toUpperCase());
+      const r = String(review ?? "").toUpperCase();
+      const restricted = r && !["APPROVED", "VERIFIED"].includes(r);
+      const blocked = ["REJECTED", "BANNED", "DISABLED", "RESTRICTED"].includes(r);
       push({
         key: "waba",
         label: "WABA/portfólio acessível",
-        status: restricted ? "warn" : "ok",
-        detail: `${waba.json?.name ?? wabaId}${review ? ` · review=${review}` : ""}`,
+        status: blocked ? "fail" : restricted ? "warn" : "ok",
+        detail: `${waba.json?.name ?? wabaId}${review ? ` · review=${review}` : ""}${bv ? ` · negócio=${bv}` : ""}${blocked ? " — conta restrita pela Meta, disparo bloqueado." : ""}`,
       });
 
     } else {
       push({ key: "waba", label: "WABA/portfólio acessível", status: "fail", detail: `Token não acessa a WABA: ${waba.error}` });
     }
+
   }
 
   // 3) Template aprovado e ativo
