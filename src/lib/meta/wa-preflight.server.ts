@@ -164,9 +164,9 @@ export async function runSelectionPreflight(
     });
   }
 
-  const token = conn.use_global_token
-    ? process.env.WHATSAPP_ACCESS_TOKEN || ""
-    : conn.access_token || process.env.WHATSAPP_ACCESS_TOKEN || "";
+  const { resolveConnectionToken } = await import("@/lib/meta/wa-waba-token.server");
+  const token = (await resolveConnectionToken(db, conn)) || "";
+
   const version = resolveGraphVersion(conn.graph_api_version ?? null);
 
   if (!token) {
