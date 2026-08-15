@@ -38,7 +38,7 @@ export function ImportReportDialog({ onImported }: { onImported?: () => void }) 
   const upsertFn = useServerFn(upsertImportedReport);
   const chunkFn = useServerFn(importReportRecordsChunk);
 
-  const reset = () => { setParsed(null); setDup(null); setBusy(false); setDone(0); setSlug(""); setIsPublic(true); if (inputRef.current) inputRef.current.value = ""; };
+  const reset = () => { setParsed(null); setDup(null); setBusy(false); setDone(0); setSlug(""); setName(""); setIsPublic(true); if (inputRef.current) inputRef.current.value = ""; };
 
   const onFile = async (file: File) => {
     try {
