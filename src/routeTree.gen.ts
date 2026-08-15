@@ -22,6 +22,7 @@ import { Route as SlugRouteImport } from './routes/$slug'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PainelIndexRouteImport } from './routes/painel.index'
+import { Route as RelatoriosSlugRouteImport } from './routes/relatorios.$slug'
 import { Route as PainelWhatsappRouteImport } from './routes/painel.whatsapp'
 import { Route as PainelTemplatesRouteImport } from './routes/painel.templates'
 import { Route as PainelRelatoriosRouteImport } from './routes/painel.relatorios'
@@ -162,6 +163,11 @@ const PainelIndexRoute = PainelIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PainelRoute,
+} as any)
+const RelatoriosSlugRoute = RelatoriosSlugRouteImport.update({
+  id: '/relatorios/$slug',
+  path: '/relatorios/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const PainelWhatsappRoute = PainelWhatsappRouteImport.update({
   id: '/whatsapp',
@@ -627,6 +633,7 @@ export interface FileRoutesByFullPath {
   '/painel/relatorios': typeof PainelRelatoriosRoute
   '/painel/templates': typeof PainelTemplatesRoute
   '/painel/whatsapp': typeof PainelWhatsappRoute
+  '/relatorios/$slug': typeof RelatoriosSlugRoute
   '/painel/': typeof PainelIndexRoute
   '/admin/agenda': typeof AuthenticatedAdminAgendaRoute
   '/admin/atendimento': typeof AuthenticatedAdminAtendimentoRoute
@@ -716,6 +723,7 @@ export interface FileRoutesByTo {
   '/painel/relatorios': typeof PainelRelatoriosRoute
   '/painel/templates': typeof PainelTemplatesRoute
   '/painel/whatsapp': typeof PainelWhatsappRoute
+  '/relatorios/$slug': typeof RelatoriosSlugRoute
   '/painel': typeof PainelIndexRoute
   '/admin/agenda': typeof AuthenticatedAdminAgendaRoute
   '/admin/atendimento': typeof AuthenticatedAdminAtendimentoRoute
@@ -807,6 +815,7 @@ export interface FileRoutesById {
   '/painel/relatorios': typeof PainelRelatoriosRoute
   '/painel/templates': typeof PainelTemplatesRoute
   '/painel/whatsapp': typeof PainelWhatsappRoute
+  '/relatorios/$slug': typeof RelatoriosSlugRoute
   '/painel/': typeof PainelIndexRoute
   '/_authenticated/admin/agenda': typeof AuthenticatedAdminAgendaRoute
   '/_authenticated/admin/atendimento': typeof AuthenticatedAdminAtendimentoRoute
@@ -899,6 +908,7 @@ export interface FileRouteTypes {
     | '/painel/relatorios'
     | '/painel/templates'
     | '/painel/whatsapp'
+    | '/relatorios/$slug'
     | '/painel/'
     | '/admin/agenda'
     | '/admin/atendimento'
@@ -988,6 +998,7 @@ export interface FileRouteTypes {
     | '/painel/relatorios'
     | '/painel/templates'
     | '/painel/whatsapp'
+    | '/relatorios/$slug'
     | '/painel'
     | '/admin/agenda'
     | '/admin/atendimento'
@@ -1078,6 +1089,7 @@ export interface FileRouteTypes {
     | '/painel/relatorios'
     | '/painel/templates'
     | '/painel/whatsapp'
+    | '/relatorios/$slug'
     | '/painel/'
     | '/_authenticated/admin/agenda'
     | '/_authenticated/admin/atendimento'
@@ -1161,6 +1173,7 @@ export interface RootRouteChildren {
   RecuperarSenhaRoute: typeof RecuperarSenhaRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   CampaignsIdRoute: typeof CampaignsIdRoute
+  RelatoriosSlugRoute: typeof RelatoriosSlugRoute
   ApiPublicCiSplatRoute: typeof ApiPublicCiSplatRoute
   ApiPublicDiagEgressIpRoute: typeof ApiPublicDiagEgressIpRoute
   ApiPublicGoogleOauthCallbackRoute: typeof ApiPublicGoogleOauthCallbackRoute
@@ -1267,6 +1280,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/painel/'
       preLoaderRoute: typeof PainelIndexRouteImport
       parentRoute: typeof PainelRoute
+    }
+    '/relatorios/$slug': {
+      id: '/relatorios/$slug'
+      path: '/relatorios/$slug'
+      fullPath: '/relatorios/$slug'
+      preLoaderRoute: typeof RelatoriosSlugRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/painel/whatsapp': {
       id: '/painel/whatsapp'
@@ -2032,6 +2052,7 @@ const rootRouteChildren: RootRouteChildren = {
   RecuperarSenhaRoute: RecuperarSenhaRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   CampaignsIdRoute: CampaignsIdRoute,
+  RelatoriosSlugRoute: RelatoriosSlugRoute,
   ApiPublicCiSplatRoute: ApiPublicCiSplatRoute,
   ApiPublicDiagEgressIpRoute: ApiPublicDiagEgressIpRoute,
   ApiPublicGoogleOauthCallbackRoute: ApiPublicGoogleOauthCallbackRoute,

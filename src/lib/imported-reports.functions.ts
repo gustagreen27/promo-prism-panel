@@ -261,7 +261,7 @@ export const updateReportSharing = createServerFn({ method: "POST" })
     }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const patch: Record<string, unknown> = {};
+    const patch: { public_slug?: string | null; is_public?: boolean } = {};
     if (data.publicSlug !== undefined) {
       const slug = data.publicSlug ? data.publicSlug.toLowerCase() : null;
       if (slug && !SLUG_RE.test(slug)) throw new Error("Slug inválido. Use apenas letras minúsculas, números e hífens.");
