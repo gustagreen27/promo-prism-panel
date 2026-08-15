@@ -4,7 +4,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, FileText, BarChart3 } from "lucide-react";
+import { Plus, FileText, BarChart3, Copy, ExternalLink } from "lucide-react";
+import { toast } from "sonner";
+import { publicReportUrl } from "@/lib/slugify";
 import { computeTotals, fmtBRL, fmtNum, formatBRDate, type Campaign } from "@/lib/report-utils";
 import { PageHeader } from "@/components/admin/page-header";
 import { RELATORIOS_TABS } from "@/components/admin/hub-tabs";
@@ -76,10 +78,37 @@ function ReportsPage() {
                         {r.boost_id ? ` · Boost ${String(r.boost_id).slice(0, 8)}` : ""}
                       </div>
                     </div>
-                    <div className="flex gap-6 text-sm">
+                    <div className="flex items-center gap-6 text-sm">
                       <Stat label="Total" value={fmtNum(r.total ?? 0)} />
                       <Stat label="Concluídos" value={fmtNum(r.completed ?? 0)} />
                       <Stat label="Com erro" value={fmtNum(r.errors ?? 0)} />
+                      {r.is_public && r.public_slug && (
+                        <div className="flex gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            title="Copiar link público"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              navigator.clipboard.writeText(publicReportUrl(r.public_slug));
+                              toast.success("Link copiado.");
+                            }}
+                          >
+                            <Copy className="size-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            title="Abrir relatório público"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              window.open(publicReportUrl(r.public_slug), "_blank", "noopener");
+                            }}
+                          >
+                            <ExternalLink className="size-4" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </Card>
