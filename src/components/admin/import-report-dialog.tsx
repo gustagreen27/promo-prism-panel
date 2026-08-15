@@ -31,6 +31,7 @@ export function ImportReportDialog({ onImported }: { onImported?: () => void }) 
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(0);
   const [slug, setSlug] = useState("");
+  const [name, setName] = useState("");
   const [isPublic, setIsPublic] = useState(true);
 
   const findFn = useServerFn(findImportedReportByBoost);
