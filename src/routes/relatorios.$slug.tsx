@@ -120,15 +120,39 @@ function PublicReportPage() {
   const sent = stats?.sent ?? 0;
   const replied = stats?.replied ?? 0;
 
-  const kpis = [
-    { label: "Leads no disparo", value: nf(totalRecords) },
-    { label: "Mensagens enviadas", value: nf(sent), hint: pct(sent, totalRecords) + " da base" },
-    { label: "Mensagens Entregues", value: nf(report.completed ?? 0), hint: pct(report.completed ?? 0, totalRecords) },
-    { label: "Falhou", value: nf(report.errors ?? 0), hint: pct(report.errors ?? 0, totalRecords) },
-    { label: "Números inválidos", value: nf(stats?.noSend ?? 0) },
-    { label: "Responderam", value: nf(replied), hint: pct(replied, sent) + " dos enviados" },
-    { label: "Resposta mediana", value: stats ? `${Math.round((stats.medianReplySec || 0) / 60)} min` : "—" },
-    { label: "Taxa de conclusão", value: pctFmt(report.completion_rate ?? 0) },
+  const groups = [
+    {
+      title: "Leads no disparo",
+      cols: 1,
+      items: [
+        { label: "Total de leads", value: nf(totalRecords) },
+      ],
+    },
+    {
+      title: "Envio",
+      cols: 2,
+      items: [
+        { label: "Mensagens enviadas", value: nf(sent), hint: pct(sent, totalRecords) + " da base" },
+        { label: "Números inválidos", value: nf(stats?.noSend ?? 0) },
+      ],
+    },
+    {
+      title: "Resultado do processamento",
+      cols: 2,
+      items: [
+        { label: "Mensagens Entregues", value: nf(report.completed ?? 0), hint: pct(report.completed ?? 0, totalRecords) },
+        { label: "Falhou", value: nf(report.errors ?? 0), hint: pct(report.errors ?? 0, totalRecords) },
+      ],
+    },
+    {
+      title: "Engajamento",
+      cols: 3,
+      items: [
+        { label: "Responderam", value: nf(replied), hint: pct(replied, sent) + " dos enviados" },
+        { label: "Resposta mediana", value: stats ? `${Math.round((stats.medianReplySec || 0) / 60)} min` : "—" },
+        { label: "Taxa de conclusão", value: pctFmt(report.completion_rate ?? 0) },
+      ],
+    },
   ];
 
   return (
@@ -138,13 +162,22 @@ function PublicReportPage() {
         <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{report.name}</h1>
       </header>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {kpis.map((k) => (
-          <Card key={k.label}>
-            <CardContent className="p-4">
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">{k.label}</div>
-              <div className="mt-1 text-2xl font-bold tabular-nums">{k.value}</div>
-              {k.hint && <div className="mt-1 text-xs text-muted-foreground">{k.hint}</div>}
+      <div className="grid gap-4">
+        {groups.map((g) => (
+          <Card key={g.title}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide">{g.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={`grid gap-4 ${g.cols === 1 ? "grid-cols-1 max-w-xs" : g.cols === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
+                {g.items.map((k) => (
+                  <div key={k.label}>
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">{k.label}</div>
+                    <div className="mt-1 text-2xl font-bold tabular-nums">{k.value}</div>
+                    {k.hint && <div className="mt-1 text-xs text-muted-foreground">{k.hint}</div>}
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         ))}
