@@ -42,18 +42,22 @@ export function ImportReportDialog({ onImported }: { onImported?: () => void }) 
     try {
       const json = JSON.parse(await file.text());
       const summary = json.summary ?? {};
-      const records: any[] = Array.isArray(json.records) ? json.records : Array.isArray(json) ? json : [];
-      if (!records.length) throw new Error("Nenhum registro encontrado no arquivo.");
-      const total = summary.total ?? records.length;
-      const completed = summary.completed ?? records.filter((r) => r.status === "completed").length;
-      const errors = summary.errors ?? records.filter((r) => r.status === "error").length;
+      const rawRecords: any[] = Array.isArray(json.records) ? json.records : Array.isArray(json) ? json : [];
+      if (!rawRecords.length) throw new Error("Nenhum registro encontrado no arquivo.");
+      const records = normalizeRecords(rawRecords);
+      const stats = summarizeRecords(records);
       const norm = {
         ...summary,
         campaign: summary.campaign ?? file.name.replace(/\.json$/i, ""),
-        boostId: summary.boostId ?? records[0]?.boostId ?? null,
-        total, completed, errors,
-        completionRate: summary.completionRate ?? (total ? (completed / total) * 100 : 0),
-        errorRate: summary.errorRate ?? (total ? (errors / total) * 100 : 0),
+        boostId: summary.boostId ?? records.find((r) => r.boostId)?.boostId ?? null,
+        total: summary.total ?? stats.total,
+        completed: summary.completed ?? stats.completed,
+        errors: summary.errors ?? stats.errors,
+        completionRate: summary.completionRate ?? stats.completionRate,
+        errorRate: summary.errorRate ?? stats.errorRate,
+        firstStartedAt: summary.firstStartedAt ?? stats.firstStartedAt,
+        firstSentAt: summary.firstSentAt ?? stats.firstSentAt,
+        lastSentAt: summary.lastSentAt ?? stats.lastSentAt,
       };
       setParsed({ summary: norm, records });
       setSlug(slugify(norm.campaign ?? ""));
