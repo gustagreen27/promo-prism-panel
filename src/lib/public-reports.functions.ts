@@ -79,3 +79,19 @@ export const listPublicReportRecords = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { rows: rows ?? [], total: count ?? 0 };
   });
+
+export const getPublicReportStats = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ slug: z.string().min(1).max(120) }).parse(d))
+  .handler(async ({ data }) => {
+    const slug = data.slug.toLowerCase();
+    if (!SLUG_RE.test(slug)) return null;
+    const sb = publicClient();
+    const { data: stats, error } = await sb.rpc("public_report_stats", { p_slug: slug });
+    if (error) throw new Error(error.message);
+    return (stats ?? null) as {
+      sent: number; replied: number; noSend: number; medianReplySec: number;
+      timeline: { t: string; v: number }[];
+      replyTimeline: { t: string; v: number }[];
+      ddd: { ddd: string; v: number }[];
+    } | null;
+  });
