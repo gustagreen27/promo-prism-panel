@@ -86,19 +86,70 @@ function PublicReportPage() {
   const total = data?.total ?? 0;
   const pages = Math.max(1, Math.ceil(total / perPage));
 
-  const exportCsv = () => {
-    const head = ["nome", "telefone", "email", "status", "iniciado_em", "enviado_em", "respondeu_em"];
-    const body = rows.map((r: any) =>
-      [r.name, r.phone, r.email, statusLabel(r.status), dts(r.started_at), dts(r.last_sent_at), dts(r.last_received_at)]
-        .map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`)
-        .join(","),
-    );
-    const blob = new Blob(["\uFEFF" + [head.join(","), ...body].join("\n")], { type: "text/csv;charset=utf-8" });
+  const HEAD = [
+    "nome", "telefone", "email", "status", "criado_em", "entrou_na_fila", "iniciado_em",
+    "enviado_em", "respondeu_em", "status_mensagem", "codigo_erro", "mensagem_erro",
+  ];
+
+  const toRow = (r: any) => [
+    r.name ?? "", r.phone ?? "", r.email ?? "", statusLabel(r.status),
+    dt(r.created_at_source), dt(r.entered_at), dt(r.started_at),
+    dt(r.last_sent_at), dt(r.last_received_at),
+    r.message_status ?? "", r.error_code ?? "", r.error_message ?? "",
+  ];
+
+  const download = (blob: Blob, filename: string) => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `${slug}-logs.csv`;
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(a.href);
+  };
+
+  const fetchAll = async () => {
+    const chunk = 200;
+    const out: any[] = [];
+    for (let p = 0; ; p++) {
+      const res: any = await recordsFn({ data: { slug, search: term, status, page: p, perPage: chunk } });
+      const batch = res?.rows ?? [];
+      out.push(...batch);
+      if (batch.length < chunk || out.length >= (res?.total ?? 0) || p > 500) break;
+    }
+    return out;
+  };
+
+  const runExport = async (kind: "csv" | "xlsx") => {
+    setExporting(kind);
+    try {
+      const all = await fetchAll();
+      if (!all.length) {
+        toast.error("Nenhum registro para exportar");
+        return;
+      }
+      if (kind === "csv") {
+        const body = all.map((r) => toRow(r).map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(";"));
+        download(
+          new Blob(["\uFEFF" + [HEAD.join(";"), ...body].join("\n")], { type: "text/csv;charset=utf-8" }),
+          `${slug}-logs.csv`,
+        );
+      } else {
+        const XLSX = await import("xlsx");
+        const ws = XLSX.utils.aoa_to_sheet([HEAD, ...all.map(toRow)]);
+        ws["!cols"] = HEAD.map(() => ({ wch: 20 }));
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Logs");
+        const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+        download(
+          new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
+          `${slug}-logs.xlsx`,
+        );
+      }
+      toast.success(`${nf(all.length)} registros exportados`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao exportar");
+    } finally {
+      setExporting(null);
+    }
   };
 
   if (loadingReport) {
