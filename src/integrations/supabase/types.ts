@@ -1556,9 +1556,11 @@ export type Database = {
           first_sent_at: string | null
           first_started_at: string | null
           id: string
+          is_public: boolean
           last_sent_at: string | null
           metadata: Json
           name: string
+          public_slug: string | null
           source: string
           total: number
           updated_at: string
@@ -1574,9 +1576,11 @@ export type Database = {
           first_sent_at?: string | null
           first_started_at?: string | null
           id?: string
+          is_public?: boolean
           last_sent_at?: string | null
           metadata?: Json
           name: string
+          public_slug?: string | null
           source?: string
           total?: number
           updated_at?: string
@@ -1592,9 +1596,11 @@ export type Database = {
           first_sent_at?: string | null
           first_started_at?: string | null
           id?: string
+          is_public?: boolean
           last_sent_at?: string | null
           metadata?: Json
           name?: string
+          public_slug?: string | null
           source?: string
           total?: number
           updated_at?: string
