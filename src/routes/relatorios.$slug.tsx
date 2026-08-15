@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,6 +75,12 @@ function PublicReportPage() {
     enabled: !!report,
     staleTime: 5 * 60 * 1000,
   });
+
+  useEffect(() => {
+    if (report?.name) {
+      document.title = `${report.name} — Relatório de disparo | next DISPAROS`;
+    }
+  }, [report?.name]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["public-report-records", slug, term, status, page],
@@ -210,12 +216,12 @@ function PublicReportPage() {
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-10">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-3 print:hidden">
         <div>
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Relatório de disparo</p>
           <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{report.name}</h1>
         </div>
-        <div className="flex flex-wrap gap-2 print:hidden">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={() => runExport("csv")} disabled={!!exporting}>
             {exporting === "csv" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
             CSV
@@ -229,6 +235,14 @@ function PublicReportPage() {
           </Button>
         </div>
       </header>
+
+      <div className="hidden print:block text-center mb-8">
+        <h1 className="text-2xl font-bold">{report.name}</h1>
+        <p className="text-sm text-muted-foreground mt-1">Relatório de disparo — next DISPAROS</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Gerado em {new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+        </p>
+      </div>
 
       <div className="grid gap-4">
         {groups.map((g) => (
