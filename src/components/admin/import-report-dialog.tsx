@@ -62,6 +62,7 @@ export function ImportReportDialog({ onImported }: { onImported?: () => void }) 
         lastSentAt: summary.lastSentAt ?? stats.lastSentAt,
       };
       setParsed({ summary: norm, records });
+      setName(norm.campaign ?? "");
       setSlug(slugify(norm.campaign ?? ""));
       if (norm.boostId) {
         const existing = await findFn({ data: { boostId: norm.boostId } });
