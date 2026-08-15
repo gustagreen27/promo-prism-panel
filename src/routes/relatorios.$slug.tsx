@@ -328,7 +328,7 @@ function PublicReportPage() {
             </p>
           ) : (
             <>
-              <div className="mb-3 flex flex-wrap gap-2">
+              <div className="mb-3 flex flex-wrap gap-2 print:hidden">
                 <Input
                   className="max-w-xs"
                   placeholder="Buscar por nome, telefone ou e-mail…"
