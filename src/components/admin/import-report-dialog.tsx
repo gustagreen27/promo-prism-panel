@@ -31,13 +31,14 @@ export function ImportReportDialog({ onImported }: { onImported?: () => void }) 
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(0);
   const [slug, setSlug] = useState("");
+  const [name, setName] = useState("");
   const [isPublic, setIsPublic] = useState(true);
 
   const findFn = useServerFn(findImportedReportByBoost);
   const upsertFn = useServerFn(upsertImportedReport);
   const chunkFn = useServerFn(importReportRecordsChunk);
 
-  const reset = () => { setParsed(null); setDup(null); setBusy(false); setDone(0); setSlug(""); setIsPublic(true); if (inputRef.current) inputRef.current.value = ""; };
+  const reset = () => { setParsed(null); setDup(null); setBusy(false); setDone(0); setSlug(""); setName(""); setIsPublic(true); if (inputRef.current) inputRef.current.value = ""; };
 
   const onFile = async (file: File) => {
     try {
@@ -61,6 +62,7 @@ export function ImportReportDialog({ onImported }: { onImported?: () => void }) 
         lastSentAt: summary.lastSentAt ?? stats.lastSentAt,
       };
       setParsed({ summary: norm, records });
+      setName(norm.campaign ?? "");
       setSlug(slugify(norm.campaign ?? ""));
       if (norm.boostId) {
         const existing = await findFn({ data: { boostId: norm.boostId } });
@@ -79,7 +81,7 @@ export function ImportReportDialog({ onImported }: { onImported?: () => void }) 
     try {
       const { id } = await upsertFn({
         data: {
-          summary: parsed.summary,
+          summary: { ...parsed.summary, campaign: name.trim() || parsed.summary.campaign },
           replace: !!dup,
           publicSlug: slug ? slug : null,
           isPublic: !!slug && isPublic,
@@ -128,7 +130,7 @@ export function ImportReportDialog({ onImported }: { onImported?: () => void }) 
           ) : (
             <div className="space-y-4">
               <div className="rounded-lg border p-4">
-                <div className="font-semibold">{parsed.summary.campaign}</div>
+                <div className="font-semibold">{name || parsed.summary.campaign}</div>
                 <div className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
                   <Field label="Total" value={nf(parsed.summary.total)} />
                   <Field label="Concluídos" value={nf(parsed.summary.completed)} />
@@ -139,6 +141,16 @@ export function ImportReportDialog({ onImported }: { onImported?: () => void }) 
 
               {!busy && (
                 <div className="space-y-3 rounded-lg border p-4">
+                  <div>
+                    <Label htmlFor="report-name">Nome do relatório</Label>
+                    <Input
+                      id="report-name"
+                      className="mt-1"
+                      value={name}
+                      placeholder="Disparo Magistrar 14/08"
+                      onChange={(e) => setName(e.target.value)}
+                    />
+                  </div>
                   <div>
                     <Label htmlFor="report-slug">Link público / Slug</Label>
                     <Input
