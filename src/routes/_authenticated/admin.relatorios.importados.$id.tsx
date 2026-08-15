@@ -15,6 +15,8 @@ import { RenameReportButton } from "@/components/admin/rename-report-button";
 import { Download, FileText } from "lucide-react";
 import { getImportedReport, listImportedRecords, renameImportedReport } from "@/lib/imported-reports.functions";
 import { ReportSharingCard } from "@/components/admin/report-sharing-card";
+import { toast } from "sonner";
+
 
 
 export const Route = createFileRoute("/_authenticated/admin/relatorios/importados/$id")({
@@ -116,11 +118,18 @@ function Page() {
         title={report?.name ?? "Relatório importado"}
         description="Relatório de disparo importado via arquivo."
         actions={
-          <Button variant="outline" onClick={exportCsv} disabled={exporting || !total}>
-            <Download className="size-4" /> {exporting ? "Exportando…" : "Exportar CSV"}
-          </Button>
+          <div className="flex items-center gap-1">
+            <RenameReportButton
+              currentName={report?.name ?? "Relatório importado"}
+              onConfirm={(name: string) => renameImported(name)}
+            />
+            <Button variant="outline" onClick={exportCsv} disabled={exporting || !total}>
+              <Download className="size-4" /> {exporting ? "Exportando…" : "Exportar CSV"}
+            </Button>
+          </div>
         }
       />
+
 
       <div className="grid gap-3 sm:grid-cols-3">
         <Kpi label="Total" value={nf(report?.total ?? 0)} />
