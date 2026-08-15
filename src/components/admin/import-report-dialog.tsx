@@ -5,6 +5,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { slugify, isValidSlug } from "@/lib/slugify";
 import { Upload } from "lucide-react";
 import {
   findImportedReportByBoost,
@@ -25,12 +29,14 @@ export function ImportReportDialog({ onImported }: { onImported?: () => void }) 
   const [dup, setDup] = useState<{ id: string; name: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(0);
+  const [slug, setSlug] = useState("");
+  const [isPublic, setIsPublic] = useState(true);
 
   const findFn = useServerFn(findImportedReportByBoost);
   const upsertFn = useServerFn(upsertImportedReport);
   const chunkFn = useServerFn(importReportRecordsChunk);
 
-  const reset = () => { setParsed(null); setDup(null); setBusy(false); setDone(0); if (inputRef.current) inputRef.current.value = ""; };
+  const reset = () => { setParsed(null); setDup(null); setBusy(false); setDone(0); setSlug(""); setIsPublic(true); if (inputRef.current) inputRef.current.value = ""; };
 
   const onFile = async (file: File) => {
     try {
@@ -50,6 +56,7 @@ export function ImportReportDialog({ onImported }: { onImported?: () => void }) 
         errorRate: summary.errorRate ?? (total ? (errors / total) * 100 : 0),
       };
       setParsed({ summary: norm, records });
+      setSlug(slugify(norm.campaign ?? ""));
       if (norm.boostId) {
         const existing = await findFn({ data: { boostId: norm.boostId } });
         if (existing) setDup({ id: existing.id, name: existing.name });
@@ -65,7 +72,14 @@ export function ImportReportDialog({ onImported }: { onImported?: () => void }) 
     setBusy(true);
     setDone(0);
     try {
-      const { id } = await upsertFn({ data: { summary: parsed.summary, replace: !!dup } });
+      const { id } = await upsertFn({
+        data: {
+          summary: parsed.summary,
+          replace: !!dup,
+          publicSlug: slug ? slug : null,
+          isPublic: !!slug && isPublic,
+        },
+      });
       for (let i = 0; i < parsed.records.length; i += CHUNK) {
         await chunkFn({ data: { reportId: id, records: parsed.records.slice(i, i + CHUNK) } });
         setDone(Math.min(i + CHUNK, parsed.records.length));
@@ -118,6 +132,33 @@ export function ImportReportDialog({ onImported }: { onImported?: () => void }) 
                 </div>
               </div>
 
+              {!busy && (
+                <div className="space-y-3 rounded-lg border p-4">
+                  <div>
+                    <Label htmlFor="report-slug">Link público / Slug</Label>
+                    <Input
+                      id="report-slug"
+                      className="mt-1"
+                      value={slug}
+                      placeholder="magistrar-1408"
+                      onChange={(e) => setSlug(slugify(e.target.value))}
+                    />
+                    <p className="mt-1 break-all text-xs text-muted-foreground">
+                      {slug
+                        ? `${typeof window !== "undefined" ? window.location.origin : ""}/relatorios/${slug}`
+                        : "Sem slug o relatório fica apenas no admin."}
+                    </p>
+                    {!!slug && !isValidSlug(slug) && (
+                      <p className="mt-1 text-xs text-destructive">Use apenas letras minúsculas, números e hífens.</p>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="report-public" className="font-normal">Relatório público</Label>
+                    <Switch id="report-public" checked={isPublic && !!slug} disabled={!slug} onCheckedChange={setIsPublic} />
+                  </div>
+                </div>
+              )}
+
               {dup && !busy && (
                 <p className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
                   Já existe um relatório deste disparo (<strong>{dup.name}</strong>). Deseja atualizar os dados existentes?
@@ -139,7 +180,7 @@ export function ImportReportDialog({ onImported }: { onImported?: () => void }) 
 
           <DialogFooter>
             <Button variant="outline" disabled={busy} onClick={() => { setOpen(false); reset(); }}>Cancelar</Button>
-            <Button disabled={!parsed || busy} onClick={run}>
+            <Button disabled={!parsed || busy || (!!slug && !isValidSlug(slug))} onClick={run}>
               {busy ? "Importando…" : dup ? "Atualizar relatório" : "Confirmar importação"}
             </Button>
           </DialogFooter>
