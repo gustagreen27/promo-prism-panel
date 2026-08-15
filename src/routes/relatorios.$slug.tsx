@@ -546,6 +546,7 @@ function PublicReportPage() {
           )}
         </SheetContent>
       </Sheet>
+      </div>
     </main>
   );
 }
