@@ -312,7 +312,8 @@ function PublicReportPage() {
         </Card>
       )}
 
-      <Card className="mt-4">
+      <Card className="mt-4 print:hidden">
+
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">Logs detalhados</CardTitle>
           {!showLogs ? (
