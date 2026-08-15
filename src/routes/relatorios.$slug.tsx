@@ -210,9 +210,24 @@ function PublicReportPage() {
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-10">
-      <header className="mb-6">
-        <p className="text-xs uppercase tracking-widest text-muted-foreground">Relatório de disparo</p>
-        <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{report.name}</h1>
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-widest text-muted-foreground">Relatório de disparo</p>
+          <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{report.name}</h1>
+        </div>
+        <div className="flex flex-wrap gap-2 print:hidden">
+          <Button variant="outline" size="sm" onClick={() => runExport("csv")} disabled={!!exporting}>
+            {exporting === "csv" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+            CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => runExport("xlsx")} disabled={!!exporting}>
+            {exporting === "xlsx" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}
+            XLSX
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => window.print()}>
+            <Printer className="mr-2 h-4 w-4" /> Imprimir / PDF
+          </Button>
+        </div>
       </header>
 
       <div className="grid gap-4">
