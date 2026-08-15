@@ -125,7 +125,7 @@ function PublicReportPage() {
     { label: "Mensagens enviadas", value: nf(sent), hint: pct(sent, totalRecords) + " da base" },
     { label: "Mensagens Entregues", value: nf(report.completed ?? 0), hint: pct(report.completed ?? 0, totalRecords) },
     { label: "Falhou", value: nf(report.errors ?? 0), hint: pct(report.errors ?? 0, totalRecords) },
-    { label: "Sem envio", value: nf(stats?.noSend ?? 0) },
+    { label: "Números inválidos", value: nf(stats?.noSend ?? 0) },
     { label: "Responderam", value: nf(replied), hint: pct(replied, sent) + " dos enviados" },
     { label: "Resposta mediana", value: stats ? `${Math.round((stats.medianReplySec || 0) / 60)} min` : "—" },
     { label: "Taxa de conclusão", value: pctFmt(report.completion_rate ?? 0) },
