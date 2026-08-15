@@ -48,6 +48,7 @@ function Page() {
   const { id } = Route.useParams();
   const reportFn = useServerFn(getImportedReport);
   const recordsFn = useServerFn(listImportedRecords);
+  const renameImportedFn = useServerFn(renameImportedReport);
 
   const [search, setSearch] = useState("");
   const [term, setTerm] = useState("");
@@ -61,6 +62,13 @@ function Page() {
     queryKey: ["imported-report", id],
     queryFn: () => reportFn({ data: { id } }),
   });
+
+  const renameImported = async (name: string) => {
+    await renameImportedFn({ data: { id, name } });
+    await refetchReport();
+    toast.success("Nome atualizado.");
+  };
+
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["imported-records", id, term, status, page, perPage],
