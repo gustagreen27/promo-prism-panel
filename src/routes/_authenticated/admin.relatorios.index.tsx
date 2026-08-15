@@ -16,13 +16,9 @@ import { computeTotals, fmtBRL, fmtNum, formatBRDate, type Campaign } from "@/li
 import { PageHeader } from "@/components/admin/page-header";
 import { RELATORIOS_TABS } from "@/components/admin/hub-tabs";
 import { ImportReportDialog } from "@/components/admin/import-report-dialog";
+import { RenameReportButton } from "@/components/admin/rename-report-button";
 import { listImportedReports, deleteImportedReport, renameImportedReport } from "@/lib/imported-reports.functions";
-import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Pencil } from "lucide-react";
+
 
 
 type ReportRow = {
