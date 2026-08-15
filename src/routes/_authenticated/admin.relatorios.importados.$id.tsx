@@ -11,9 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ErrorCard } from "@/components/admin/query-state";
+import { RenameReportButton } from "@/components/admin/rename-report-button";
 import { Download, FileText } from "lucide-react";
-import { getImportedReport, listImportedRecords } from "@/lib/imported-reports.functions";
+import { getImportedReport, listImportedRecords, renameImportedReport } from "@/lib/imported-reports.functions";
 import { ReportSharingCard } from "@/components/admin/report-sharing-card";
+
 
 export const Route = createFileRoute("/_authenticated/admin/relatorios/importados/$id")({
   head: () => ({
