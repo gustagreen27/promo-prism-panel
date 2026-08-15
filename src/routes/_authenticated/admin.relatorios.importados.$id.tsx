@@ -114,7 +114,7 @@ function Page() {
 
       <div className="grid gap-3 sm:grid-cols-3">
         <Kpi label="Total" value={nf(report?.total ?? 0)} />
-        <Kpi label="Concluídos" value={nf(report?.completed ?? 0)} hint={pctFmt(report?.completion_rate ?? 0)} />
+        <Kpi label="Mensagens Entregues" value={nf(report?.completed ?? 0)} hint={pctFmt(report?.completion_rate ?? 0)} />
         <Kpi label="Com erro" value={nf(report?.errors ?? 0)} hint={pctFmt(report?.error_rate ?? 0)} />
       </div>
 
@@ -151,7 +151,7 @@ function Page() {
                 variant={status === s ? "default" : "outline"}
                 onClick={() => { setStatus(s); setPage(0); }}
               >
-                {s === "all" ? "Todos" : s === "completed" ? "Concluídos" : "Com erro"}
+                {s === "all" ? "Todos" : s === "completed" ? "Mensagens Entregues" : "Falhou"}
               </Button>
             ))}
           </div>
