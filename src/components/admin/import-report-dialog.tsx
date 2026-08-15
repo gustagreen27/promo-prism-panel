@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { slugify, isValidSlug } from "@/lib/slugify";
 import { Upload } from "lucide-react";
+import { normalizeRecords, summarizeRecords } from "@/lib/report-import-normalize";
 import {
   findImportedReportByBoost,
   importReportRecordsChunk,
