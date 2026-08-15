@@ -10,7 +10,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
-import { FileText, Download } from "lucide-react";
+import { FileText, Download, FileSpreadsheet, Printer, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { getPublicReport, getPublicReportStats, listPublicReportRecords } from "@/lib/public-reports.functions";
 
 export const Route = createFileRoute("/relatorios/$slug")({
