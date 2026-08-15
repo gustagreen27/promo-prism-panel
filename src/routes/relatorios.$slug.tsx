@@ -178,14 +178,17 @@ function PublicReportPage() {
   const totalRecords = report.total ?? 0;
   const sent = stats?.sent ?? 0;
   const replied = stats?.replied ?? 0;
+  const maxDdd = Math.max(1, ...(stats?.ddd ?? []).map((d) => d.v));
 
-  const groups = [
+  const groups: {
+    title: string;
+    cols: number;
+    items: { label: string; value: string; hint?: string; tone?: "default" | "success" | "danger" }[];
+  }[] = [
     {
       title: "Leads no disparo",
       cols: 1,
-      items: [
-        { label: "Total de leads", value: nf(totalRecords) },
-      ],
+      items: [{ label: "Total de leads", value: nf(totalRecords) }],
     },
     {
       title: "Envio",
@@ -199,8 +202,8 @@ function PublicReportPage() {
       title: "Resultado do processamento",
       cols: 2,
       items: [
-        { label: "Mensagens Entregues", value: nf(report.completed ?? 0), hint: pct(report.completed ?? 0, totalRecords) },
-        { label: "Falhou", value: nf(report.errors ?? 0), hint: pct(report.errors ?? 0, totalRecords) },
+        { label: "Mensagens Entregues", value: nf(report.completed ?? 0), hint: pct(report.completed ?? 0, totalRecords), tone: "success" },
+        { label: "Falhou", value: nf(report.errors ?? 0), hint: pct(report.errors ?? 0, totalRecords), tone: "danger" },
       ],
     },
     {
@@ -215,102 +218,193 @@ function PublicReportPage() {
   ];
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-10">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-3 print:hidden">
-        <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">Relatório de disparo</p>
-          <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{report.name}</h1>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => runExport("csv")} disabled={!!exporting}>
-            {exporting === "csv" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-            CSV
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => runExport("xlsx")} disabled={!!exporting}>
-            {exporting === "xlsx" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}
-            XLSX
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => window.print()}>
-            <Printer className="mr-2 h-4 w-4" /> Imprimir / PDF
-          </Button>
-        </div>
-      </header>
+    <main className="min-h-screen bg-gradient-to-b from-accent/40 via-background to-background print:bg-background">
+      <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:py-12">
+        <section className="relative overflow-hidden rounded-3xl border border-border/60 bg-primary text-primary-foreground shadow-[var(--shadow-lg)] print:hidden">
+          <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-primary-foreground/10 blur-2xl" />
+          <div className="pointer-events-none absolute -bottom-28 left-1/3 h-72 w-72 rounded-full bg-primary-foreground/10 blur-3xl" />
+          <div className="relative flex flex-col gap-8 p-6 sm:p-10">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
+                <span className="inline-flex items-center gap-2 rounded-full border border-primary-foreground/25 bg-primary-foreground/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em]">
+                  <FileText className="h-3.5 w-3.5" /> Relatório de disparo
+                </span>
+                <h1 className="mt-4 text-balance text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
+                  {report.name}
+                </h1>
+                <p className="mt-2 text-sm text-primary-foreground/70">
+                  Gerado a partir de {nf(totalRecords)} leads processados
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="border-0 bg-primary-foreground/15 text-primary-foreground hover:bg-primary-foreground/25"
+                  onClick={() => runExport("csv")}
+                  disabled={!!exporting}
+                >
+                  {exporting === "csv" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                  CSV
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="border-0 bg-primary-foreground/15 text-primary-foreground hover:bg-primary-foreground/25"
+                  onClick={() => runExport("xlsx")}
+                  disabled={!!exporting}
+                >
+                  {exporting === "xlsx" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}
+                  XLSX
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-primary-foreground text-primary hover:bg-primary-foreground/90"
+                  onClick={() => window.print()}
+                >
+                  <Printer className="mr-2 h-4 w-4" /> Imprimir / PDF
+                </Button>
+              </div>
+            </div>
 
-      <div className="hidden print:block text-center mb-8">
-        <h1 className="text-2xl font-bold">{report.name}</h1>
-        <p className="text-sm text-muted-foreground mt-1">Relatório de disparo</p>
-        <p className="text-xs text-muted-foreground mt-1">
-          Impresso em {new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
-        </p>
-      </div>
+            <div className="grid gap-px overflow-hidden rounded-2xl bg-primary-foreground/15 sm:grid-cols-3">
+              {[
+                { label: "Mensagens enviadas", value: nf(sent) },
+                { label: "Mensagens entregues", value: nf(report.completed ?? 0) },
+                { label: "Taxa de conclusão", value: pctFmt(report.completion_rate ?? 0) },
+              ].map((h) => (
+                <div key={h.label} className="bg-primary px-5 py-4">
+                  <div className="text-[11px] uppercase tracking-[0.14em] text-primary-foreground/65">{h.label}</div>
+                  <div className="mt-1 text-2xl font-semibold tabular-nums sm:text-3xl">{h.value}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
-      <div className="grid gap-4">
-        {groups.map((g) => (
-          <Card key={g.title}>
+        <div className="mb-8 hidden text-center print:block">
+          <h1 className="text-2xl font-bold">{report.name}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Relatório de disparo</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Impresso em {new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+          </p>
+        </div>
+
+        <div className="mt-8 grid gap-4">
+          {groups.map((g) => (
+            <Card key={g.title} className="border-border/60 shadow-[var(--shadow-sm)]">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  <span className="h-3 w-1 rounded-full bg-primary" />
+                  {g.title}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div
+                  className={`grid gap-4 ${g.cols === 1 ? "grid-cols-1 max-w-xs" : g.cols === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}
+                >
+                  {g.items.map((k) => (
+                    <div
+                      key={k.label}
+                      className="rounded-2xl border border-border/60 bg-secondary/40 p-4 transition-colors hover:border-primary/30 hover:bg-accent/40"
+                    >
+                      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{k.label}</div>
+                      <div
+                        className={`mt-1.5 text-3xl font-semibold tabular-nums tracking-tight ${
+                          k.tone === "success" ? "text-primary" : k.tone === "danger" ? "text-destructive" : "text-foreground"
+                        }`}
+                      >
+                        {k.value}
+                      </div>
+                      {k.hint && <div className="mt-1 text-xs text-muted-foreground">{k.hint}</div>}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <Card className="border-border/60 shadow-[var(--shadow-sm)]">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide">{g.title}</CardTitle>
+              <CardTitle className="text-base">Envios por minuto</CardTitle>
+            </CardHeader>
+            <CardContent className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats?.timeline ?? []}>
+                  <defs>
+                    <linearGradient id="barSent" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.95} />
+                      <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0.45} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border" />
+                  <XAxis dataKey="t" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis fontSize={11} tickLine={false} axisLine={false} width={44} />
+                  <Tooltip
+                    cursor={{ fill: "var(--color-accent)", opacity: 0.5 }}
+                    contentStyle={{ borderRadius: 12, border: "1px solid var(--color-border)", fontSize: 12 }}
+                    formatter={(v: any) => nf(Number(v))}
+                  />
+                  <Bar dataKey="v" fill="url(#barSent)" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/60 shadow-[var(--shadow-sm)]">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Respostas por hora</CardTitle>
+            </CardHeader>
+            <CardContent className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats?.replyTimeline ?? []}>
+                  <defs>
+                    <linearGradient id="barReply" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--color-chart-2)" stopOpacity={0.95} />
+                      <stop offset="100%" stopColor="var(--color-chart-2)" stopOpacity={0.45} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border" />
+                  <XAxis dataKey="t" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis fontSize={11} tickLine={false} axisLine={false} width={44} />
+                  <Tooltip
+                    cursor={{ fill: "var(--color-accent)", opacity: 0.5 }}
+                    contentStyle={{ borderRadius: 12, border: "1px solid var(--color-border)", fontSize: 12 }}
+                    formatter={(v: any) => nf(Number(v))}
+                  />
+                  <Bar dataKey="v" fill="url(#barReply)" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+
+        {!!stats?.ddd?.length && (
+          <Card className="mt-4 border-border/60 shadow-[var(--shadow-sm)]">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Top DDDs da base</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className={`grid gap-4 ${g.cols === 1 ? "grid-cols-1 max-w-xs" : g.cols === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
-                {g.items.map((k) => (
-                  <div key={k.label}>
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">{k.label}</div>
-                    <div className="mt-1 text-2xl font-bold tabular-nums">{k.value}</div>
-                    {k.hint && <div className="mt-1 text-xs text-muted-foreground">{k.hint}</div>}
+              <div className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
+                {stats.ddd.map((d) => (
+                  <div key={d.ddd} className="flex items-center gap-3">
+                    <span className="w-14 shrink-0 text-xs font-medium text-muted-foreground">DDD {d.ddd}</span>
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-secondary">
+                      <div
+                        className="h-full rounded-full bg-primary/80"
+                        style={{ width: `${Math.max(4, (d.v / maxDdd) * 100)}%` }}
+                      />
+                    </div>
+                    <span className="w-16 shrink-0 text-right text-xs font-semibold tabular-nums">{nf(d.v)}</span>
                   </div>
                 ))}
               </div>
             </CardContent>
           </Card>
-        ))}
-      </div>
+        )}
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader><CardTitle className="text-base">Envios por minuto</CardTitle></CardHeader>
-          <CardContent className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats?.timeline ?? []}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="t" fontSize={11} />
-                <YAxis fontSize={11} />
-                <Tooltip formatter={(v: any) => nf(Number(v))} />
-                <Bar dataKey="v" className="fill-primary" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle className="text-base">Respostas por hora</CardTitle></CardHeader>
-          <CardContent className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats?.replyTimeline ?? []}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="t" fontSize={11} />
-                <YAxis fontSize={11} />
-                <Tooltip formatter={(v: any) => nf(Number(v))} />
-                <Bar dataKey="v" className="fill-primary" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {!!stats?.ddd?.length && (
-        <Card className="mt-4">
-          <CardHeader><CardTitle className="text-base">Top DDDs da base</CardTitle></CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {stats.ddd.map((d) => (
-                <Badge key={d.ddd} variant="outline" className="tabular-nums">
-                  DDD {d.ddd} · {nf(d.v)}
-                </Badge>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       <Card className="mt-4 print:hidden">
 
