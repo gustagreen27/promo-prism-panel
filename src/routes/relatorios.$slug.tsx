@@ -123,8 +123,8 @@ function PublicReportPage() {
   const kpis = [
     { label: "Leads no disparo", value: nf(totalRecords) },
     { label: "Mensagens enviadas", value: nf(sent), hint: pct(sent, totalRecords) + " da base" },
-    { label: "Concluídos", value: nf(report.completed ?? 0), hint: pct(report.completed ?? 0, totalRecords) },
-    { label: "Com erro no fluxo", value: nf(report.errors ?? 0), hint: pct(report.errors ?? 0, totalRecords) },
+    { label: "Mensagens Entregues", value: nf(report.completed ?? 0), hint: pct(report.completed ?? 0, totalRecords) },
+    { label: "Falhou", value: nf(report.errors ?? 0), hint: pct(report.errors ?? 0, totalRecords) },
     { label: "Sem envio", value: nf(stats?.noSend ?? 0) },
     { label: "Responderam", value: nf(replied), hint: pct(replied, sent) + " dos enviados" },
     { label: "Resposta mediana", value: stats ? `${Math.round((stats.medianReplySec || 0) / 60)} min` : "—" },
@@ -230,8 +230,8 @@ function PublicReportPage() {
                   <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="completed">Concluídos</SelectItem>
-                    <SelectItem value="error">Com erro</SelectItem>
+                    <SelectItem value="completed">Mensagens Entregues</SelectItem>
+                    <SelectItem value="error">Falhou</SelectItem>
                   </SelectContent>
                 </Select>
                 <div className="ml-auto self-center text-xs text-muted-foreground">{nf(total)} registros</div>

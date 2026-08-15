@@ -88,8 +88,8 @@ function Page() {
   const kpis = [
     { label: "Leads no disparo", value: nf(summary.total) },
     { label: "Mensagens enviadas", value: nf(summary.sent), hint: pct(summary.sent, summary.total) + " da base" },
-    { label: "Concluídos", value: nf(summary.completed), hint: pct(summary.completed, summary.total) },
-    { label: "Com erro no fluxo", value: nf(summary.error), hint: pct(summary.error, summary.total) },
+    { label: "Mensagens Entregues", value: nf(summary.completed), hint: pct(summary.completed, summary.total) },
+    { label: "Falhou", value: nf(summary.error), hint: pct(summary.error, summary.total) },
     { label: "Sem envio", value: nf(summary.noSend) },
     { label: "Responderam", value: nf(summary.replied), hint: pct(summary.replied, summary.sent) + " dos enviados" },
     { label: "Resposta mediana", value: `${Math.round(summary.medianReplySec / 60)} min` },
@@ -193,8 +193,8 @@ function Page() {
                   <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="completed">Concluídos</SelectItem>
-                    <SelectItem value="error">Com erro</SelectItem>
+                    <SelectItem value="completed">Mensagens Entregues</SelectItem>
+                    <SelectItem value="error">Falhou</SelectItem>
                     <SelectItem value="replied">Responderam</SelectItem>
                     <SelectItem value="nosend">Sem envio</SelectItem>
                   </SelectContent>
