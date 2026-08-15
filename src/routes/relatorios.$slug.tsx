@@ -61,6 +61,7 @@ function PublicReportPage() {
   const [status, setStatus] = useState<"all" | "completed" | "error">("all");
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<any | null>(null);
+  const [exporting, setExporting] = useState<"csv" | "xlsx" | null>(null);
   const perPage = 50;
 
   const { data: report, isLoading: loadingReport } = useQuery({
