@@ -10,7 +10,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
-import { FileText, Download } from "lucide-react";
+import { FileText, Download, FileSpreadsheet, Printer, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { getPublicReport, getPublicReportStats, listPublicReportRecords } from "@/lib/public-reports.functions";
 
 export const Route = createFileRoute("/relatorios/$slug")({
@@ -60,6 +61,7 @@ function PublicReportPage() {
   const [status, setStatus] = useState<"all" | "completed" | "error">("all");
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<any | null>(null);
+  const [exporting, setExporting] = useState<"csv" | "xlsx" | null>(null);
   const perPage = 50;
 
   const { data: report, isLoading: loadingReport } = useQuery({
@@ -85,19 +87,70 @@ function PublicReportPage() {
   const total = data?.total ?? 0;
   const pages = Math.max(1, Math.ceil(total / perPage));
 
-  const exportCsv = () => {
-    const head = ["nome", "telefone", "email", "status", "iniciado_em", "enviado_em", "respondeu_em"];
-    const body = rows.map((r: any) =>
-      [r.name, r.phone, r.email, statusLabel(r.status), dts(r.started_at), dts(r.last_sent_at), dts(r.last_received_at)]
-        .map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`)
-        .join(","),
-    );
-    const blob = new Blob(["\uFEFF" + [head.join(","), ...body].join("\n")], { type: "text/csv;charset=utf-8" });
+  const HEAD = [
+    "nome", "telefone", "email", "status", "criado_em", "entrou_na_fila", "iniciado_em",
+    "enviado_em", "respondeu_em", "status_mensagem", "codigo_erro", "mensagem_erro",
+  ];
+
+  const toRow = (r: any) => [
+    r.name ?? "", r.phone ?? "", r.email ?? "", statusLabel(r.status),
+    dt(r.created_at_source), dt(r.entered_at), dt(r.started_at),
+    dt(r.last_sent_at), dt(r.last_received_at),
+    r.message_status ?? "", r.error_code ?? "", r.error_message ?? "",
+  ];
+
+  const download = (blob: Blob, filename: string) => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `${slug}-logs.csv`;
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(a.href);
+  };
+
+  const fetchAll = async () => {
+    const chunk = 200;
+    const out: any[] = [];
+    for (let p = 0; ; p++) {
+      const res: any = await recordsFn({ data: { slug, search: term, status, page: p, perPage: chunk } });
+      const batch = res?.rows ?? [];
+      out.push(...batch);
+      if (batch.length < chunk || out.length >= (res?.total ?? 0) || p > 500) break;
+    }
+    return out;
+  };
+
+  const runExport = async (kind: "csv" | "xlsx") => {
+    setExporting(kind);
+    try {
+      const all = await fetchAll();
+      if (!all.length) {
+        toast.error("Nenhum registro para exportar");
+        return;
+      }
+      if (kind === "csv") {
+        const body = all.map((r) => toRow(r).map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(";"));
+        download(
+          new Blob(["\uFEFF" + [HEAD.join(";"), ...body].join("\n")], { type: "text/csv;charset=utf-8" }),
+          `${slug}-logs.csv`,
+        );
+      } else {
+        const XLSX = await import("xlsx");
+        const ws = XLSX.utils.aoa_to_sheet([HEAD, ...all.map(toRow)]);
+        ws["!cols"] = HEAD.map(() => ({ wch: 20 }));
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Logs");
+        const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+        download(
+          new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
+          `${slug}-logs.xlsx`,
+        );
+      }
+      toast.success(`${nf(all.length)} registros exportados`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao exportar");
+    } finally {
+      setExporting(null);
+    }
   };
 
   if (loadingReport) {
@@ -157,9 +210,24 @@ function PublicReportPage() {
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-10">
-      <header className="mb-6">
-        <p className="text-xs uppercase tracking-widest text-muted-foreground">Relatório de disparo</p>
-        <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{report.name}</h1>
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-widest text-muted-foreground">Relatório de disparo</p>
+          <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{report.name}</h1>
+        </div>
+        <div className="flex flex-wrap gap-2 print:hidden">
+          <Button variant="outline" size="sm" onClick={() => runExport("csv")} disabled={!!exporting}>
+            {exporting === "csv" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+            CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => runExport("xlsx")} disabled={!!exporting}>
+            {exporting === "xlsx" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}
+            XLSX
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => window.print()}>
+            <Printer className="mr-2 h-4 w-4" /> Imprimir / PDF
+          </Button>
+        </div>
       </header>
 
       <div className="grid gap-4">
@@ -234,13 +302,23 @@ function PublicReportPage() {
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">Logs detalhados</CardTitle>
           {!showLogs ? (
-            <Button onClick={() => setShowLogs(true)}>
+            <Button className="print:hidden" onClick={() => setShowLogs(true)}>
               <FileText className="mr-2 h-4 w-4" /> Clique aqui e veja os logs
             </Button>
           ) : (
-            <Button variant="outline" onClick={exportCsv} disabled={!rows.length}>
-              <Download className="mr-2 h-4 w-4" /> Exportar CSV
-            </Button>
+            <div className="flex flex-wrap gap-2 print:hidden">
+              <Button variant="outline" onClick={() => runExport("csv")} disabled={!!exporting || !total}>
+                {exporting === "csv" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                Exportar CSV
+              </Button>
+              <Button variant="outline" onClick={() => runExport("xlsx")} disabled={!!exporting || !total}>
+                {exporting === "xlsx" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}
+                Exportar XLSX
+              </Button>
+              <Button variant="secondary" onClick={() => window.print()}>
+                <Printer className="mr-2 h-4 w-4" /> Imprimir / PDF
+              </Button>
+            </div>
           )}
         </CardHeader>
         <CardContent>
@@ -250,7 +328,7 @@ function PublicReportPage() {
             </p>
           ) : (
             <>
-              <div className="mb-3 flex flex-wrap gap-2">
+              <div className="mb-3 flex flex-wrap gap-2 print:hidden">
                 <Input
                   className="max-w-xs"
                   placeholder="Buscar por nome, telefone ou e-mail…"
@@ -310,7 +388,7 @@ function PublicReportPage() {
                 )}
               </div>
 
-              <div className="mt-3 flex items-center justify-between">
+              <div className="mt-3 flex items-center justify-between print:hidden">
                 <span className="text-xs text-muted-foreground">Página {page + 1} de {nf(pages)}</span>
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Anterior</Button>
