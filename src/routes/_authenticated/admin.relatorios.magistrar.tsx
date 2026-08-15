@@ -90,7 +90,7 @@ function Page() {
     { label: "Mensagens enviadas", value: nf(summary.sent), hint: pct(summary.sent, summary.total) + " da base" },
     { label: "Mensagens Entregues", value: nf(summary.completed), hint: pct(summary.completed, summary.total) },
     { label: "Falhou", value: nf(summary.error), hint: pct(summary.error, summary.total) },
-    { label: "Sem envio", value: nf(summary.noSend) },
+    { label: "Números inválidos", value: nf(summary.noSend) },
     { label: "Responderam", value: nf(summary.replied), hint: pct(summary.replied, summary.sent) + " dos enviados" },
     { label: "Resposta mediana", value: `${Math.round(summary.medianReplySec / 60)} min` },
     { label: "Janela do disparo", value: "08:00 → 15:05", hint: "horário de Brasília" },
@@ -196,7 +196,7 @@ function Page() {
                     <SelectItem value="completed">Mensagens Entregues</SelectItem>
                     <SelectItem value="error">Falhou</SelectItem>
                     <SelectItem value="replied">Responderam</SelectItem>
-                    <SelectItem value="nosend">Sem envio</SelectItem>
+                    <SelectItem value="nosend">Números inválidos</SelectItem>
                   </SelectContent>
                 </Select>
                 <div className="ml-auto self-center text-xs text-muted-foreground">
