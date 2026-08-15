@@ -5553,6 +5553,7 @@ export type Database = {
         }
         Returns: string
       }
+      public_report_stats: { Args: { p_slug: string }; Returns: Json }
       seed_onboarding_checklist: { Args: { _ws: string }; Returns: undefined }
       user_workspace_ids: { Args: { _user: string }; Returns: string[] }
       wa_acquire_slots: {
