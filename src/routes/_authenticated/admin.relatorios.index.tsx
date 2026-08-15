@@ -142,7 +142,7 @@ function ReportsPage() {
                         )}
                         <RenameReportButton
                           currentName={r.name}
-                          onConfirm={(name) => renameImported(r.id, name)}
+                          onConfirm={(name: string) => renameImported(r.id, name)}
                         />
                         <DeleteReportButton
                           title="Excluir relatório importado"
@@ -274,5 +274,64 @@ function Stat({ label, value, highlight }: { label: string; value: string; highl
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className={highlight ? "font-bold text-report-blue" : "font-medium"}>{value}</div>
     </div>
+  );
+}
+
+function RenameReportButton({
+  currentName,
+  onConfirm,
+}: {
+  currentName: string;
+  onConfirm: (name: string) => Promise<void> | void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(currentName);
+  const [saving, setSaving] = useState(false);
+
+  return (
+    <>
+      <Button
+        size="icon"
+        variant="ghost"
+        title="Renomear relatório"
+        onClick={(e) => {
+          e.preventDefault();
+          setName(currentName);
+          setOpen(true);
+        }}
+      >
+        <Pencil className="size-4" />
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent onClick={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Renomear relatório</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="report-name">Nome do relatório</Label>
+            <Input id="report-name" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button
+              disabled={saving || !name.trim()}
+              onClick={async () => {
+                setSaving(true);
+                try {
+                  await onConfirm(name.trim());
+                  setOpen(false);
+                } catch (err: any) {
+                  toast.error(err?.message ?? "Falha ao renomear.");
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            >
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
