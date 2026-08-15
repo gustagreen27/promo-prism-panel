@@ -287,13 +287,23 @@ function PublicReportPage() {
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">Logs detalhados</CardTitle>
           {!showLogs ? (
-            <Button onClick={() => setShowLogs(true)}>
+            <Button className="print:hidden" onClick={() => setShowLogs(true)}>
               <FileText className="mr-2 h-4 w-4" /> Clique aqui e veja os logs
             </Button>
           ) : (
-            <Button variant="outline" onClick={exportCsv} disabled={!rows.length}>
-              <Download className="mr-2 h-4 w-4" /> Exportar CSV
-            </Button>
+            <div className="flex flex-wrap gap-2 print:hidden">
+              <Button variant="outline" onClick={() => runExport("csv")} disabled={!!exporting || !total}>
+                {exporting === "csv" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                Exportar CSV
+              </Button>
+              <Button variant="outline" onClick={() => runExport("xlsx")} disabled={!!exporting || !total}>
+                {exporting === "xlsx" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}
+                Exportar XLSX
+              </Button>
+              <Button variant="secondary" onClick={() => window.print()}>
+                <Printer className="mr-2 h-4 w-4" /> Imprimir / PDF
+              </Button>
+            </div>
           )}
         </CardHeader>
         <CardContent>
