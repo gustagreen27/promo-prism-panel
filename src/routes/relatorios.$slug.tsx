@@ -152,7 +152,7 @@ function PublicReportPage() {
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader><CardTitle className="text-base">Envios por hora</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">Envios por minuto</CardTitle></CardHeader>
           <CardContent className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={stats?.timeline ?? []}>
