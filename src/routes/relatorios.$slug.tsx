@@ -2,14 +2,16 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FileText } from "lucide-react";
-import { getPublicReport, listPublicReportRecords } from "@/lib/public-reports.functions";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { FileText, Download } from "lucide-react";
+import { getPublicReport, getPublicReportStats, listPublicReportRecords } from "@/lib/public-reports.functions";
 
 export const Route = createFileRoute("/relatorios/$slug")({
   head: ({ params }) => ({
@@ -28,6 +30,7 @@ export const Route = createFileRoute("/relatorios/$slug")({
 
 const nf = (n: number) => Number(n || 0).toLocaleString("pt-BR");
 const pctFmt = (n: number) => `${Number(n || 0).toFixed(2).replace(".", ",")}%`;
+const pct = (a: number, b: number) => (b ? `${((a / b) * 100).toFixed(1)}%` : "—");
 const dt = (v?: string | null) =>
   v
     ? new Date(v).toLocaleString("pt-BR", {
@@ -36,13 +39,22 @@ const dt = (v?: string | null) =>
         hour: "2-digit", minute: "2-digit", second: "2-digit",
       })
     : "Não informado";
+const dts = (v?: string | null) =>
+  v
+    ? new Date(v).toLocaleString("pt-BR", {
+        timeZone: "America/Sao_Paulo",
+        day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit",
+      })
+    : "—";
 const statusLabel = (s?: string | null) => (s === "completed" ? "Concluído" : s === "error" ? "Com erro" : (s ?? "—"));
 
 function PublicReportPage() {
   const { slug } = Route.useParams();
   const reportFn = useServerFn(getPublicReport);
   const recordsFn = useServerFn(listPublicReportRecords);
+  const statsFn = useServerFn(getPublicReportStats);
 
+  const [showLogs, setShowLogs] = useState(false);
   const [search, setSearch] = useState("");
   const [term, setTerm] = useState("");
   const [status, setStatus] = useState<"all" | "completed" | "error">("all");
@@ -55,16 +67,38 @@ function PublicReportPage() {
     queryFn: () => reportFn({ data: { slug } }),
   });
 
+  const { data: stats } = useQuery({
+    queryKey: ["public-report-stats", slug],
+    queryFn: () => statsFn({ data: { slug } }),
+    enabled: !!report,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const { data, isLoading } = useQuery({
     queryKey: ["public-report-records", slug, term, status, page],
     queryFn: () => recordsFn({ data: { slug, search: term, status, page, perPage } }),
     placeholderData: keepPreviousData,
-    enabled: !!report,
+    enabled: !!report && showLogs,
   });
 
   const rows = data?.rows ?? [];
   const total = data?.total ?? 0;
   const pages = Math.max(1, Math.ceil(total / perPage));
+
+  const exportCsv = () => {
+    const head = ["nome", "telefone", "email", "status", "iniciado_em", "enviado_em", "respondeu_em"];
+    const body = rows.map((r: any) =>
+      [r.name, r.phone, r.email, statusLabel(r.status), dts(r.started_at), dts(r.last_sent_at), dts(r.last_received_at)]
+        .map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`)
+        .join(","),
+    );
+    const blob = new Blob(["\uFEFF" + [head.join(","), ...body].join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${slug}-logs.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
 
   if (loadingReport) {
     return <div className="p-10 text-center text-sm text-muted-foreground">Carregando relatório…</div>;
@@ -82,99 +116,180 @@ function PublicReportPage() {
     );
   }
 
+  const totalRecords = report.total ?? 0;
+  const sent = stats?.sent ?? 0;
+  const replied = stats?.replied ?? 0;
+
+  const kpis = [
+    { label: "Leads no disparo", value: nf(totalRecords) },
+    { label: "Mensagens enviadas", value: nf(sent), hint: pct(sent, totalRecords) + " da base" },
+    { label: "Concluídos", value: nf(report.completed ?? 0), hint: pct(report.completed ?? 0, totalRecords) },
+    { label: "Com erro no fluxo", value: nf(report.errors ?? 0), hint: pct(report.errors ?? 0, totalRecords) },
+    { label: "Sem envio", value: nf(stats?.noSend ?? 0) },
+    { label: "Responderam", value: nf(replied), hint: pct(replied, sent) + " dos enviados" },
+    { label: "Resposta mediana", value: stats ? `${Math.round((stats.medianReplySec || 0) / 60)} min` : "—" },
+    { label: "Taxa de conclusão", value: pctFmt(report.completion_rate ?? 0) },
+  ];
+
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-10">
-      <header className="mb-8">
+      <header className="mb-6">
         <p className="text-xs uppercase tracking-widest text-muted-foreground">Relatório de disparo</p>
         <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{report.name}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Gerado em {dt(report.created_at)}
+          Análise operacional do disparo, sem valores financeiros. Gerado em {dt(report.created_at)}.
         </p>
       </header>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Kpi label="Total" value={nf(report.total ?? 0)} />
-        <Kpi label="Concluídos" value={nf(report.completed ?? 0)} />
-        <Kpi label="Com erro" value={nf(report.errors ?? 0)} />
-        <Kpi label="Taxa de conclusão" value={pctFmt(report.completion_rate ?? 0)} />
+        {kpis.map((k) => (
+          <Card key={k.label}>
+            <CardContent className="p-4">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">{k.label}</div>
+              <div className="mt-1 text-2xl font-bold tabular-nums">{k.value}</div>
+              {k.hint && <div className="mt-1 text-xs text-muted-foreground">{k.hint}</div>}
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      <Card className="mt-4 grid gap-3 p-4 text-sm sm:grid-cols-3">
-        <Info label="Primeiro início" value={dt(report.first_started_at)} />
-        <Info label="Primeiro envio registrado" value={dt(report.first_sent_at)} />
-        <Info label="Último envio registrado" value={dt(report.last_sent_at)} />
-      </Card>
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader><CardTitle className="text-base">Envios por hora</CardTitle></CardHeader>
+          <CardContent className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={stats?.timeline ?? []}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="t" fontSize={11} />
+                <YAxis fontSize={11} />
+                <Tooltip formatter={(v: any) => nf(Number(v))} />
+                <Bar dataKey="v" className="fill-primary" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
 
-      <Card className="mt-6 p-4">
-        <h2 className="mb-3 text-sm font-semibold">Logs do disparo</h2>
-        <div className="flex flex-wrap items-center gap-2">
-          <Input
-            className="max-w-sm"
-            placeholder="Pesquisar por nome, telefone, e-mail ou ID"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { setTerm(search); setPage(0); } }}
-          />
-          <Button variant="secondary" onClick={() => { setTerm(search); setPage(0); }}>Pesquisar</Button>
-          <div className="flex gap-1">
-            {(["all", "completed", "error"] as const).map((s) => (
-              <Button
-                key={s}
-                size="sm"
-                variant={status === s ? "default" : "outline"}
-                onClick={() => { setStatus(s); setPage(0); }}
-              >
-                {s === "all" ? "Todos" : s === "completed" ? "Concluídos" : "Com erro"}
-              </Button>
-            ))}
-          </div>
-          <span className="ml-auto text-xs text-muted-foreground">{nf(total)} registros</span>
-        </div>
+        <Card>
+          <CardHeader><CardTitle className="text-base">Respostas por hora</CardTitle></CardHeader>
+          <CardContent className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={stats?.replyTimeline ?? []}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="t" fontSize={11} />
+                <YAxis fontSize={11} />
+                <Tooltip formatter={(v: any) => nf(Number(v))} />
+                <Bar dataKey="v" className="fill-primary" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
 
-        <div className="mt-4 overflow-x-auto rounded-lg border">
-          {isLoading ? (
-            <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
-          ) : !rows.length ? (
-            <div className="p-10 text-center text-sm text-muted-foreground">Nenhum registro encontrado</div>
+      {!!stats?.ddd?.length && (
+        <Card className="mt-4">
+          <CardHeader><CardTitle className="text-base">Top DDDs da base</CardTitle></CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {stats.ddd.map((d) => (
+                <Badge key={d.ddd} variant="outline" className="tabular-nums">
+                  DDD {d.ddd} · {nf(d.v)}
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className="mt-4">
+        <CardHeader className="flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-base">Logs detalhados</CardTitle>
+          {!showLogs ? (
+            <Button onClick={() => setShowLogs(true)}>
+              <FileText className="mr-2 h-4 w-4" /> Clique aqui e veja os logs
+            </Button>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Telefone</TableHead>
-                  <TableHead>E-mail</TableHead>
-                  <TableHead>Iniciado</TableHead>
-                  <TableHead className="text-right">Logs</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((r: any) => (
-                  <TableRow key={r.id}>
-                    <TableCell>
-                      <Badge variant={r.status === "completed" ? "outline" : "destructive"}>{statusLabel(r.status)}</Badge>
-                    </TableCell>
-                    <TableCell className="max-w-[220px] truncate font-medium">{r.name || "—"}</TableCell>
-                    <TableCell className="text-xs tabular-nums">{r.phone || "—"}</TableCell>
-                    <TableCell className="max-w-[220px] truncate text-xs">{r.email || "—"}</TableCell>
-                    <TableCell className="text-xs">{dt(r.started_at)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button size="sm" variant="ghost" onClick={() => setSelected(r)}>Ver logs</Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <Button variant="outline" onClick={exportCsv} disabled={!rows.length}>
+              <Download className="mr-2 h-4 w-4" /> Exportar CSV
+            </Button>
           )}
-        </div>
+        </CardHeader>
+        <CardContent>
+          {!showLogs ? (
+            <p className="text-sm text-muted-foreground">
+              {nf(totalRecords)} registros disponíveis — lead a lead, com horário de envio, resposta e status.
+            </p>
+          ) : (
+            <>
+              <div className="mb-3 flex flex-wrap gap-2">
+                <Input
+                  className="max-w-xs"
+                  placeholder="Buscar por nome, telefone ou e-mail…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { setTerm(search); setPage(0); } }}
+                />
+                <Button variant="secondary" onClick={() => { setTerm(search); setPage(0); }}>Pesquisar</Button>
+                <Select value={status} onValueChange={(v) => { setStatus(v as any); setPage(0); }}>
+                  <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="completed">Concluídos</SelectItem>
+                    <SelectItem value="error">Com erro</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="ml-auto self-center text-xs text-muted-foreground">{nf(total)} registros</div>
+              </div>
 
-        <div className="mt-3 flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Página {page + 1} de {nf(pages)}</span>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Anterior</Button>
-            <Button size="sm" variant="outline" disabled={page + 1 >= pages} onClick={() => setPage((p) => p + 1)}>Próxima</Button>
-          </div>
-        </div>
+              <div className="overflow-x-auto rounded-lg border">
+                {isLoading ? (
+                  <div className="p-6 text-sm text-muted-foreground">Carregando logs…</div>
+                ) : !rows.length ? (
+                  <div className="p-10 text-center text-sm text-muted-foreground">Nenhum registro encontrado</div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Lead</TableHead>
+                        <TableHead>Telefone</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Enviado</TableHead>
+                        <TableHead>Respondeu</TableHead>
+                        <TableHead className="text-right">Logs</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {rows.map((r: any) => (
+                        <TableRow key={r.id}>
+                          <TableCell className="max-w-[220px] truncate font-medium">{r.name || "—"}</TableCell>
+                          <TableCell className="text-xs tabular-nums">{r.phone || "—"}</TableCell>
+                          <TableCell>
+                            <Badge variant={r.status === "completed" ? "outline" : "destructive"}>
+                              {statusLabel(r.status)}
+                            </Badge>
+                            {r.last_received_at && <Badge variant="secondary" className="ml-1">respondeu</Badge>}
+                          </TableCell>
+                          <TableCell className="text-xs">{dts(r.last_sent_at)}</TableCell>
+                          <TableCell className="text-xs">{dts(r.last_received_at)}</TableCell>
+                          <TableCell className="text-right">
+                            <Button size="sm" variant="ghost" onClick={() => setSelected(r)}>Ver logs</Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </div>
+
+              <div className="mt-3 flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Página {page + 1} de {nf(pages)}</span>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Anterior</Button>
+                  <Button size="sm" variant="outline" disabled={page + 1 >= pages} onClick={() => setPage((p) => p + 1)}>Próxima</Button>
+                </div>
+              </div>
+            </>
+          )}
+        </CardContent>
       </Card>
 
       <Sheet open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>
@@ -215,15 +330,6 @@ function PublicReportPage() {
         </SheetContent>
       </Sheet>
     </main>
-  );
-}
-
-function Kpi({ label, value }: { label: string; value: string }) {
-  return (
-    <Card className="p-4">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className="mt-1 text-2xl font-bold tabular-nums">{value}</div>
-    </Card>
   );
 }
 
