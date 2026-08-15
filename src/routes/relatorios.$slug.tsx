@@ -76,6 +76,12 @@ function PublicReportPage() {
     staleTime: 5 * 60 * 1000,
   });
 
+  useEffect(() => {
+    if (report?.name) {
+      document.title = `${report.name} — Relatório de disparo | next DISPAROS`;
+    }
+  }, [report?.name]);
+
   const { data, isLoading } = useQuery({
     queryKey: ["public-report-records", slug, term, status, page],
     queryFn: () => recordsFn({ data: { slug, search: term, status, page, perPage } }),
