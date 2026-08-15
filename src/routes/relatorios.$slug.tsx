@@ -17,7 +17,7 @@ import { getPublicReport, getPublicReportStats, listPublicReportRecords } from "
 export const Route = createFileRoute("/relatorios/$slug")({
   head: ({ params }) => ({
     meta: [
-      { title: "Relatório de disparo — next DISPAROS" },
+      { title: "Relatório de disparo" },
       { name: "description", content: `Relatório público de disparo (${params.slug}) com resumo, taxa de conclusão e logs.` },
       { property: "og:title", content: "Relatório de disparo" },
       { property: "og:description", content: "Resumo, taxa de conclusão e logs do disparo." },
@@ -78,7 +78,7 @@ function PublicReportPage() {
 
   useEffect(() => {
     if (report?.name) {
-      document.title = `${report.name} — Relatório de disparo | next DISPAROS`;
+      document.title = `${report.name} — Relatório de disparo`;
     }
   }, [report?.name]);
 
@@ -238,7 +238,7 @@ function PublicReportPage() {
 
       <div className="hidden print:block text-center mb-8">
         <h1 className="text-2xl font-bold">{report.name}</h1>
-        <p className="text-sm text-muted-foreground mt-1">Relatório de disparo — next DISPAROS</p>
+        <p className="text-sm text-muted-foreground mt-1">Relatório de disparo</p>
         <p className="text-xs text-muted-foreground mt-1">
           Gerado em {new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
         </p>
