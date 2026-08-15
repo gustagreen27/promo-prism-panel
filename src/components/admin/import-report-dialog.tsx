@@ -130,7 +130,7 @@ export function ImportReportDialog({ onImported }: { onImported?: () => void }) 
           ) : (
             <div className="space-y-4">
               <div className="rounded-lg border p-4">
-                <div className="font-semibold">{parsed.summary.campaign}</div>
+                <div className="font-semibold">{name || parsed.summary.campaign}</div>
                 <div className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
                   <Field label="Total" value={nf(parsed.summary.total)} />
                   <Field label="Concluídos" value={nf(parsed.summary.completed)} />
