@@ -78,7 +78,7 @@ function PublicReportPage() {
 
   useEffect(() => {
     if (report?.name) {
-      document.title = `${report.name} — Relatório de disparo | next DISPAROS`;
+      document.title = `${report.name} — Relatório de disparo`;
     }
   }, [report?.name]);
 
