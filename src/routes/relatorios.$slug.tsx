@@ -17,7 +17,7 @@ import { getPublicReport, getPublicReportStats, listPublicReportRecords } from "
 export const Route = createFileRoute("/relatorios/$slug")({
   head: ({ params }) => ({
     meta: [
-      { title: "Relatório de disparo — next DISPAROS" },
+      { title: "Relatório de disparo" },
       { name: "description", content: `Relatório público de disparo (${params.slug}) com resumo, taxa de conclusão e logs.` },
       { property: "og:title", content: "Relatório de disparo" },
       { property: "og:description", content: "Resumo, taxa de conclusão e logs do disparo." },
