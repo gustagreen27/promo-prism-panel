@@ -11,9 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ErrorCard } from "@/components/admin/query-state";
+import { RenameReportButton } from "@/components/admin/rename-report-button";
 import { Download, FileText } from "lucide-react";
-import { getImportedReport, listImportedRecords } from "@/lib/imported-reports.functions";
+import { getImportedReport, listImportedRecords, renameImportedReport } from "@/lib/imported-reports.functions";
 import { ReportSharingCard } from "@/components/admin/report-sharing-card";
+import { toast } from "sonner";
+
+
 
 export const Route = createFileRoute("/_authenticated/admin/relatorios/importados/$id")({
   head: () => ({
@@ -46,6 +50,7 @@ function Page() {
   const { id } = Route.useParams();
   const reportFn = useServerFn(getImportedReport);
   const recordsFn = useServerFn(listImportedRecords);
+  const renameImportedFn = useServerFn(renameImportedReport);
 
   const [search, setSearch] = useState("");
   const [term, setTerm] = useState("");
@@ -59,6 +64,13 @@ function Page() {
     queryKey: ["imported-report", id],
     queryFn: () => reportFn({ data: { id } }),
   });
+
+  const renameImported = async (name: string) => {
+    await renameImportedFn({ data: { id, name } });
+    await refetchReport();
+    toast.success("Nome atualizado.");
+  };
+
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["imported-records", id, term, status, page, perPage],
@@ -106,11 +118,18 @@ function Page() {
         title={report?.name ?? "Relatório importado"}
         description="Relatório de disparo importado via arquivo."
         actions={
-          <Button variant="outline" onClick={exportCsv} disabled={exporting || !total}>
-            <Download className="size-4" /> {exporting ? "Exportando…" : "Exportar CSV"}
-          </Button>
+          <div className="flex items-center gap-1">
+            <RenameReportButton
+              currentName={report?.name ?? "Relatório importado"}
+              onConfirm={(name: string) => renameImported(name)}
+            />
+            <Button variant="outline" onClick={exportCsv} disabled={exporting || !total}>
+              <Download className="size-4" /> {exporting ? "Exportando…" : "Exportar CSV"}
+            </Button>
+          </div>
         }
       />
+
 
       <div className="grid gap-3 sm:grid-cols-3">
         <Kpi label="Total" value={nf(report?.total ?? 0)} />
