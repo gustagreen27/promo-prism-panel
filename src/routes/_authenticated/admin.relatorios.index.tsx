@@ -140,6 +140,10 @@ function ReportsPage() {
                           </Button>
                           </>
                         )}
+                        <RenameReportButton
+                          currentName={r.name}
+                          onConfirm={(name) => renameImported(r.id, name)}
+                        />
                         <DeleteReportButton
                           title="Excluir relatório importado"
                           description={`O relatório "${r.name}" e todos os seus registros serão removidos permanentemente. Esta ação não pode ser desfeita.`}
