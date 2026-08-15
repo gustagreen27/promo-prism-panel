@@ -388,7 +388,7 @@ function PublicReportPage() {
                 )}
               </div>
 
-              <div className="mt-3 flex items-center justify-between">
+              <div className="mt-3 flex items-center justify-between print:hidden">
                 <span className="text-xs text-muted-foreground">Página {page + 1} de {nf(pages)}</span>
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Anterior</Button>
