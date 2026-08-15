@@ -406,7 +406,7 @@ function PublicReportPage() {
         )}
 
 
-      <Card className="mt-4 print:hidden">
+      <Card className="mt-4 border-border/60 shadow-[var(--shadow-sm)] print:hidden">
 
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">Logs detalhados</CardTitle>
