@@ -282,3 +282,21 @@ export const updateReportSharing = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
+
+export const deleteImportedReport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { error: recErr } = await context.supabase
+      .from("imported_dispatch_report_records")
+      .delete()
+      .eq("report_id", data.id);
+    if (recErr) throw new Error(recErr.message);
+    const { error } = await context.supabase
+      .from("imported_dispatch_reports")
+      .delete()
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
