@@ -142,6 +142,16 @@ export function ImportReportDialog({ onImported }: { onImported?: () => void }) 
               {!busy && (
                 <div className="space-y-3 rounded-lg border p-4">
                   <div>
+                    <Label htmlFor="report-name">Nome do relatório</Label>
+                    <Input
+                      id="report-name"
+                      className="mt-1"
+                      value={name}
+                      placeholder="Disparo Magistrar 14/08"
+                      onChange={(e) => setName(e.target.value)}
+                    />
+                  </div>
+                  <div>
                     <Label htmlFor="report-slug">Link público / Slug</Label>
                     <Input
                       id="report-slug"
