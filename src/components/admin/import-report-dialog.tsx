@@ -81,7 +81,7 @@ export function ImportReportDialog({ onImported }: { onImported?: () => void }) 
     try {
       const { id } = await upsertFn({
         data: {
-          summary: parsed.summary,
+          summary: { ...parsed.summary, campaign: name.trim() || parsed.summary.campaign },
           replace: !!dup,
           publicSlug: slug ? slug : null,
           isPublic: !!slug && isPublic,
