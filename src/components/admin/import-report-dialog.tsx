@@ -1,0 +1,159 @@
+import { useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
+import { Upload } from "lucide-react";
+import {
+  findImportedReportByBoost,
+  importReportRecordsChunk,
+  upsertImportedReport,
+} from "@/lib/imported-reports.functions";
+
+type Parsed = { summary: any; records: any[] };
+
+const nf = (n: number) => n.toLocaleString("pt-BR");
+const CHUNK = 1000;
+
+export function ImportReportDialog({ onImported }: { onImported?: () => void }) {
+  const navigate = useNavigate();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
+  const [parsed, setParsed] = useState<Parsed | null>(null);
+  const [dup, setDup] = useState<{ id: string; name: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(0);
+
+  const findFn = useServerFn(findImportedReportByBoost);
+  const upsertFn = useServerFn(upsertImportedReport);
+  const chunkFn = useServerFn(importReportRecordsChunk);
+
+  const reset = () => { setParsed(null); setDup(null); setBusy(false); setDone(0); if (inputRef.current) inputRef.current.value = ""; };
+
+  const onFile = async (file: File) => {
+    try {
+      const json = JSON.parse(await file.text());
+      const summary = json.summary ?? {};
+      const records: any[] = Array.isArray(json.records) ? json.records : Array.isArray(json) ? json : [];
+      if (!records.length) throw new Error("Nenhum registro encontrado no arquivo.");
+      const total = summary.total ?? records.length;
+      const completed = summary.completed ?? records.filter((r) => r.status === "completed").length;
+      const errors = summary.errors ?? records.filter((r) => r.status === "error").length;
+      const norm = {
+        ...summary,
+        campaign: summary.campaign ?? file.name.replace(/\.json$/i, ""),
+        boostId: summary.boostId ?? records[0]?.boostId ?? null,
+        total, completed, errors,
+        completionRate: summary.completionRate ?? (total ? (completed / total) * 100 : 0),
+        errorRate: summary.errorRate ?? (total ? (errors / total) * 100 : 0),
+      };
+      setParsed({ summary: norm, records });
+      if (norm.boostId) {
+        const existing = await findFn({ data: { boostId: norm.boostId } });
+        if (existing) setDup({ id: existing.id, name: existing.name });
+      }
+    } catch (e: any) {
+      toast.error("Arquivo inválido", { description: e?.message ?? "Não foi possível ler o JSON." });
+      reset();
+    }
+  };
+
+  const run = async () => {
+    if (!parsed) return;
+    setBusy(true);
+    setDone(0);
+    try {
+      const { id } = await upsertFn({ data: { summary: parsed.summary, replace: !!dup } });
+      for (let i = 0; i < parsed.records.length; i += CHUNK) {
+        await chunkFn({ data: { reportId: id, records: parsed.records.slice(i, i + CHUNK) } });
+        setDone(Math.min(i + CHUNK, parsed.records.length));
+      }
+      toast.success("Relatório importado com sucesso.", {
+        description: `${nf(parsed.records.length)} registros importados.`,
+      });
+      onImported?.();
+      setOpen(false);
+      reset();
+      navigate({ to: "/admin/relatorios/importados/$id", params: { id } });
+    } catch (e: any) {
+      toast.error("Falha na importação", { description: e?.message ?? "Tente novamente." });
+      setBusy(false);
+    }
+  };
+
+  const total = parsed?.records.length ?? 0;
+
+  return (
+    <>
+      <Button variant="outline" onClick={() => setOpen(true)}>
+        <Upload className="size-4" /> Importar relatório
+      </Button>
+
+      <Dialog open={open} onOpenChange={(v) => { if (!busy) { setOpen(v); if (!v) reset(); } }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Importar relatório de disparo</DialogTitle>
+            <DialogDescription>Selecione um arquivo .json exportado da plataforma de disparo.</DialogDescription>
+          </DialogHeader>
+
+          {!parsed ? (
+            <input
+              ref={inputRef}
+              type="file"
+              accept="application/json,.json"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }}
+              className="block w-full cursor-pointer rounded-md border border-dashed p-6 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm"
+            />
+          ) : (
+            <div className="space-y-4">
+              <div className="rounded-lg border p-4">
+                <div className="font-semibold">{parsed.summary.campaign}</div>
+                <div className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                  <Field label="Total" value={nf(parsed.summary.total)} />
+                  <Field label="Concluídos" value={nf(parsed.summary.completed)} />
+                  <Field label="Com erro" value={nf(parsed.summary.errors)} />
+                  <Field label="Conclusão" value={`${Number(parsed.summary.completionRate).toFixed(2).replace(".", ",")}%`} />
+                </div>
+              </div>
+
+              {dup && !busy && (
+                <p className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+                  Já existe um relatório deste disparo (<strong>{dup.name}</strong>). Deseja atualizar os dados existentes?
+                </p>
+              )}
+
+              {busy && (
+                <div className="space-y-2">
+                  <Progress value={total ? (done / total) * 100 : 0} />
+                  <p className="text-sm text-muted-foreground">
+                    {done >= total && total > 0
+                      ? `${nf(total)} de ${nf(total)} registros importados`
+                      : `Importando registros… ${nf(done)} de ${nf(total)}`}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" disabled={busy} onClick={() => { setOpen(false); reset(); }}>Cancelar</Button>
+            <Button disabled={!parsed || busy} onClick={run}>
+              {busy ? "Importando…" : dup ? "Atualizar relatório" : "Confirmar importação"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="font-medium tabular-nums">{value}</div>
+    </div>
+  );
+}
