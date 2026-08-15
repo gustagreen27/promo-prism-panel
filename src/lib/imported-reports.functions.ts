@@ -7,6 +7,8 @@ async function assertAdmin(ctx: { supabase: any; userId: string }) {
   if (!data) throw new Error("Forbidden");
 }
 
+const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
 const summarySchema = z.object({
   campaign: z.string().nullable().optional(),
   boostId: z.string().nullable().optional(),
@@ -26,7 +28,7 @@ export const listImportedReports = createServerFn({ method: "GET" })
     await assertAdmin(context);
     const { data, error } = await context.supabase
       .from("imported_dispatch_reports")
-      .select("id,name,boost_id,total,completed,errors,completion_rate,error_rate,first_started_at,first_sent_at,last_sent_at,created_at")
+      .select("id,name,boost_id,total,completed,errors,completion_rate,error_rate,first_started_at,first_sent_at,last_sent_at,created_at,public_slug,is_public")
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     return data ?? [];
@@ -47,7 +49,13 @@ export const findImportedReportByBoost = createServerFn({ method: "POST" })
 
 export const upsertImportedReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ summary: summarySchema, replace: z.boolean().optional() }).parse(d))
+  .inputValidator((d: unknown) =>
+    z.object({
+      summary: summarySchema,
+      replace: z.boolean().optional(),
+      publicSlug: z.string().max(80).optional().nullable(),
+      isPublic: z.boolean().optional(),
+    }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const s = data.summary;
@@ -64,7 +72,15 @@ export const upsertImportedReport = createServerFn({ method: "POST" })
       last_sent_at: s.lastSentAt ?? null,
       source: "json_import",
       created_by: context.userId,
+      ...(data.publicSlug !== undefined
+        ? { public_slug: data.publicSlug ? data.publicSlug.toLowerCase() : null }
+        : {}),
+      ...(data.isPublic !== undefined ? { is_public: data.isPublic } : {}),
     };
+
+    if (payload.public_slug && !SLUG_RE.test(payload.public_slug)) {
+      throw new Error("Slug inválido. Use apenas letras minúsculas, números e hífens.");
+    }
 
     let existing: { id: string } | null = null;
     if (s.boostId) {
@@ -218,4 +234,51 @@ export const listImportedRecords = createServerFn({ method: "POST" })
       .range(from, from + data.perPage - 1);
     if (error) throw new Error(error.message);
     return { rows: rows ?? [], total: count ?? 0 };
+  });
+
+export const checkReportSlug = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ slug: z.string().min(1).max(80), excludeId: z.string().uuid().optional().nullable() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const slug = data.slug.toLowerCase();
+    if (!SLUG_RE.test(slug)) return { available: false, reason: "invalid" as const };
+    let q = context.supabase.from("imported_dispatch_reports").select("id").eq("public_slug", slug);
+    if (data.excludeId) q = q.neq("id", data.excludeId);
+    const { data: rows, error } = await q.limit(1);
+    if (error) throw new Error(error.message);
+    return { available: !(rows ?? []).length, reason: (rows ?? []).length ? ("taken" as const) : null };
+  });
+
+export const updateReportSharing = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      id: z.string().uuid(),
+      publicSlug: z.string().max(80).nullable().optional(),
+      isPublic: z.boolean().optional(),
+    }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const patch: { public_slug?: string | null; is_public?: boolean } = {};
+    if (data.publicSlug !== undefined) {
+      const slug = data.publicSlug ? data.publicSlug.toLowerCase() : null;
+      if (slug && !SLUG_RE.test(slug)) throw new Error("Slug inválido. Use apenas letras minúsculas, números e hífens.");
+      patch.public_slug = slug;
+    }
+    if (data.isPublic !== undefined) patch.is_public = data.isPublic;
+    if (patch.is_public === true) {
+      const { data: cur } = await context.supabase
+        .from("imported_dispatch_reports").select("public_slug").eq("id", data.id).maybeSingle();
+      const finalSlug = (patch.public_slug as string | null | undefined) ?? cur?.public_slug ?? null;
+      if (!finalSlug) throw new Error("Defina um slug antes de ativar o link público.");
+    }
+    const { error } = await context.supabase
+      .from("imported_dispatch_reports").update(patch).eq("id", data.id);
+    if (error) {
+      if (String(error.message).includes("public_slug")) throw new Error("Este slug já está em uso por outro relatório.");
+      throw new Error(error.message);
+    }
+    return { ok: true };
   });

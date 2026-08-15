@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ErrorCard } from "@/components/admin/query-state";
 import { Download, FileText } from "lucide-react";
 import { getImportedReport, listImportedRecords } from "@/lib/imported-reports.functions";
+import { ReportSharingCard } from "@/components/admin/report-sharing-card";
 
 export const Route = createFileRoute("/_authenticated/admin/relatorios/importados/$id")({
   head: () => ({
@@ -54,7 +55,10 @@ function Page() {
   const [selected, setSelected] = useState<any | null>(null);
   const [exporting, setExporting] = useState(false);
 
-  const { data: report } = useQuery({ queryKey: ["imported-report", id], queryFn: () => reportFn({ data: { id } }) });
+  const { data: report, refetch: refetchReport } = useQuery({
+    queryKey: ["imported-report", id],
+    queryFn: () => reportFn({ data: { id } }),
+  });
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["imported-records", id, term, status, page, perPage],
@@ -120,6 +124,14 @@ function Page() {
         <Info label="Último envio registrado" value={dt(report?.last_sent_at)} />
         <Info label="Boost ID" value={report?.boost_id ?? "Não informado"} />
       </Card>
+
+      <ReportSharingCard
+        reportId={id}
+        name={report?.name}
+        publicSlug={report?.public_slug ?? null}
+        isPublic={!!report?.is_public}
+        onChanged={() => refetchReport()}
+      />
 
       <Card className="mt-4 p-4">
         <div className="flex flex-wrap items-center gap-2">
