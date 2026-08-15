@@ -1452,6 +1452,155 @@ export type Database = {
           },
         ]
       }
+      imported_dispatch_report_records: {
+        Row: {
+          boost_item_id: string | null
+          created_at: string
+          created_at_source: string | null
+          email: string | null
+          entered_at: string | null
+          error_code: string | null
+          error_message: string | null
+          id: string
+          is_pending: boolean | null
+          last_received_at: string | null
+          last_received_error_code: string | null
+          last_received_message_id: string | null
+          last_sent_at: string | null
+          last_sent_error_code: string | null
+          last_sent_message_id: string | null
+          lead_id: string | null
+          message_status: string | null
+          name: string | null
+          phone: string | null
+          raw_data: Json | null
+          report_id: string
+          started_at: string | null
+          status: string | null
+          status_changed_at: string | null
+          whatsapp_instance_id: string | null
+        }
+        Insert: {
+          boost_item_id?: string | null
+          created_at?: string
+          created_at_source?: string | null
+          email?: string | null
+          entered_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          is_pending?: boolean | null
+          last_received_at?: string | null
+          last_received_error_code?: string | null
+          last_received_message_id?: string | null
+          last_sent_at?: string | null
+          last_sent_error_code?: string | null
+          last_sent_message_id?: string | null
+          lead_id?: string | null
+          message_status?: string | null
+          name?: string | null
+          phone?: string | null
+          raw_data?: Json | null
+          report_id: string
+          started_at?: string | null
+          status?: string | null
+          status_changed_at?: string | null
+          whatsapp_instance_id?: string | null
+        }
+        Update: {
+          boost_item_id?: string | null
+          created_at?: string
+          created_at_source?: string | null
+          email?: string | null
+          entered_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          is_pending?: boolean | null
+          last_received_at?: string | null
+          last_received_error_code?: string | null
+          last_received_message_id?: string | null
+          last_sent_at?: string | null
+          last_sent_error_code?: string | null
+          last_sent_message_id?: string | null
+          lead_id?: string | null
+          message_status?: string | null
+          name?: string | null
+          phone?: string | null
+          raw_data?: Json | null
+          report_id?: string
+          started_at?: string | null
+          status?: string | null
+          status_changed_at?: string | null
+          whatsapp_instance_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "imported_dispatch_report_records_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "imported_dispatch_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      imported_dispatch_reports: {
+        Row: {
+          boost_id: string | null
+          completed: number
+          completion_rate: number
+          created_at: string
+          created_by: string | null
+          error_rate: number
+          errors: number
+          first_sent_at: string | null
+          first_started_at: string | null
+          id: string
+          last_sent_at: string | null
+          metadata: Json
+          name: string
+          source: string
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          boost_id?: string | null
+          completed?: number
+          completion_rate?: number
+          created_at?: string
+          created_by?: string | null
+          error_rate?: number
+          errors?: number
+          first_sent_at?: string | null
+          first_started_at?: string | null
+          id?: string
+          last_sent_at?: string | null
+          metadata?: Json
+          name: string
+          source?: string
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          boost_id?: string | null
+          completed?: number
+          completion_rate?: number
+          created_at?: string
+          created_by?: string | null
+          error_rate?: number
+          errors?: number
+          first_sent_at?: string | null
+          first_started_at?: string | null
+          id?: string
+          last_sent_at?: string | null
+          metadata?: Json
+          name?: string
+          source?: string
+          total?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ip_geo_cache: {
         Row: {
           created_at: string
