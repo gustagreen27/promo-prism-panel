@@ -136,9 +136,6 @@ function PublicReportPage() {
       <header className="mb-6">
         <p className="text-xs uppercase tracking-widest text-muted-foreground">Relatório de disparo</p>
         <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{report.name}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Análise operacional do disparo, sem valores financeiros. Gerado em {dt(report.created_at)}.
-        </p>
       </header>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
