@@ -4,14 +4,19 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, FileText, BarChart3, Copy, ExternalLink } from "lucide-react";
+import { Plus, FileText, BarChart3, Copy, ExternalLink, Trash2 } from "lucide-react";
+import { useState } from "react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { publicReportUrl } from "@/lib/slugify";
 import { computeTotals, fmtBRL, fmtNum, formatBRDate, type Campaign } from "@/lib/report-utils";
 import { PageHeader } from "@/components/admin/page-header";
 import { RELATORIOS_TABS } from "@/components/admin/hub-tabs";
 import { ImportReportDialog } from "@/components/admin/import-report-dialog";
-import { listImportedReports } from "@/lib/imported-reports.functions";
+import { listImportedReports, deleteImportedReport } from "@/lib/imported-reports.functions";
 
 
 type ReportRow = {
@@ -44,6 +49,18 @@ function ReportsPage() {
 
   const importedFn = useServerFn(listImportedReports);
   const imported = useQuery({ queryKey: ["imported-reports"], queryFn: () => importedFn() });
+  const deleteImportedFn = useServerFn(deleteImportedReport);
+
+  const removeImported = async (id: string) => {
+    await deleteImportedFn({ data: { id } });
+    await imported.refetch();
+  };
+
+  const removeReport = async (id: string) => {
+    const { error } = await supabase.from("reports").delete().eq("id", id);
+    if (error) throw new Error(error.message);
+    await refetch();
+  };
 
   return (
     <>
@@ -82,8 +99,9 @@ function ReportsPage() {
                       <Stat label="Total" value={fmtNum(r.total ?? 0)} />
                       <Stat label="Concluídos" value={fmtNum(r.completed ?? 0)} />
                       <Stat label="Com erro" value={fmtNum(r.errors ?? 0)} />
-                      {r.is_public && r.public_slug && (
-                        <div className="flex gap-1">
+                      <div className="flex gap-1">
+                        {r.is_public && r.public_slug && (
+                          <>
                           <Button
                             size="icon"
                             variant="ghost"
@@ -107,8 +125,14 @@ function ReportsPage() {
                           >
                             <ExternalLink className="size-4" />
                           </Button>
-                        </div>
-                      )}
+                          </>
+                        )}
+                        <DeleteReportButton
+                          title="Excluir relatório importado"
+                          description={`O relatório "${r.name}" e todos os seus registros serão removidos permanentemente. Esta ação não pode ser desfeita.`}
+                          onConfirm={() => removeImported(r.id)}
+                        />
+                      </div>
                     </div>
                   </div>
                 </Card>
@@ -160,6 +184,11 @@ function ReportsPage() {
                       <Stat label="Entregues" value={fmtNum(t.delivered)} />
                       <Stat label="Falhou" value={fmtNum(t.failed)} />
                       <Stat label="Líquido" value={fmtBRL(t.net)} highlight />
+                      <DeleteReportButton
+                        title="Excluir relatório"
+                        description={`O relatório de ${r.client_name} será removido permanentemente. Esta ação não pode ser desfeita.`}
+                        onConfirm={() => removeReport(r.id)}
+                      />
                     </div>
                   </div>
                 </Card>
@@ -168,6 +197,56 @@ function ReportsPage() {
           })}
         </div>
       )}
+    </>
+  );
+}
+
+function DeleteReportButton({
+  title, description, onConfirm,
+}: { title: string; description: string; onConfirm: () => Promise<void> }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <>
+      <Button
+        size="icon"
+        variant="ghost"
+        title="Excluir relatório"
+        className="text-destructive hover:text-destructive"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(true); }}
+      >
+        <Trash2 className="size-4" />
+      </Button>
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogContent onClick={(e) => e.preventDefault()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{title}</AlertDialogTitle>
+            <AlertDialogDescription>{description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={busy}
+              onClick={async (e) => {
+                e.preventDefault();
+                setBusy(true);
+                try {
+                  await onConfirm();
+                  toast.success("Relatório excluído.");
+                  setOpen(false);
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : "Falha ao excluir.");
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              {busy ? "Excluindo…" : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
