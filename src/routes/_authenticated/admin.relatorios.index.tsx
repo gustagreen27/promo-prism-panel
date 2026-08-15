@@ -56,6 +56,13 @@ function ReportsPage() {
   const importedFn = useServerFn(listImportedReports);
   const imported = useQuery({ queryKey: ["imported-reports"], queryFn: () => importedFn() });
   const deleteImportedFn = useServerFn(deleteImportedReport);
+  const renameImportedFn = useServerFn(renameImportedReport);
+
+  const renameImported = async (id: string, name: string) => {
+    await renameImportedFn({ data: { id, name } });
+    await imported.refetch();
+    toast.success("Nome atualizado.");
+  };
 
   const removeImported = async (id: string) => {
     await deleteImportedFn({ data: { id } });
