@@ -85,6 +85,7 @@ import { Route as AuthenticatedAdminWhatsappConversasRouteImport } from './route
 import { Route as AuthenticatedAdminWhatsappConfiguracoesRouteImport } from './routes/_authenticated/admin.whatsapp.configuracoes'
 import { Route as AuthenticatedAdminWhatsappConexoesRouteImport } from './routes/_authenticated/admin.whatsapp.conexoes'
 import { Route as AuthenticatedAdminRelatoriosNewRouteImport } from './routes/_authenticated/admin.relatorios.new'
+import { Route as AuthenticatedAdminRelatoriosMagistrarRouteImport } from './routes/_authenticated/admin.relatorios.magistrar'
 import { Route as AuthenticatedAdminRelatoriosAnalyticsRouteImport } from './routes/_authenticated/admin.relatorios.analytics'
 import { Route as AuthenticatedAdminRelatoriosIdRouteImport } from './routes/_authenticated/admin.relatorios.$id'
 import { Route as AuthenticatedAdminDisparosMultiRouteImport } from './routes/_authenticated/admin.disparos.multi'
@@ -524,6 +525,12 @@ const AuthenticatedAdminRelatoriosNewRoute =
     path: '/admin/relatorios/new',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAdminRelatoriosMagistrarRoute =
+  AuthenticatedAdminRelatoriosMagistrarRouteImport.update({
+    id: '/admin/relatorios/magistrar',
+    path: '/admin/relatorios/magistrar',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAdminRelatoriosAnalyticsRoute =
   AuthenticatedAdminRelatoriosAnalyticsRouteImport.update({
     id: '/admin/relatorios/analytics',
@@ -642,6 +649,7 @@ export interface FileRoutesByFullPath {
   '/admin/disparos/multi': typeof AuthenticatedAdminDisparosMultiRoute
   '/admin/relatorios/$id': typeof AuthenticatedAdminRelatoriosIdRoute
   '/admin/relatorios/analytics': typeof AuthenticatedAdminRelatoriosAnalyticsRoute
+  '/admin/relatorios/magistrar': typeof AuthenticatedAdminRelatoriosMagistrarRoute
   '/admin/relatorios/new': typeof AuthenticatedAdminRelatoriosNewRoute
   '/admin/whatsapp/conexoes': typeof AuthenticatedAdminWhatsappConexoesRoute
   '/admin/whatsapp/configuracoes': typeof AuthenticatedAdminWhatsappConfiguracoesRoute
@@ -728,6 +736,7 @@ export interface FileRoutesByTo {
   '/admin/disparos/multi': typeof AuthenticatedAdminDisparosMultiRoute
   '/admin/relatorios/$id': typeof AuthenticatedAdminRelatoriosIdRoute
   '/admin/relatorios/analytics': typeof AuthenticatedAdminRelatoriosAnalyticsRoute
+  '/admin/relatorios/magistrar': typeof AuthenticatedAdminRelatoriosMagistrarRoute
   '/admin/relatorios/new': typeof AuthenticatedAdminRelatoriosNewRoute
   '/admin/whatsapp/conexoes': typeof AuthenticatedAdminWhatsappConexoesRoute
   '/admin/whatsapp/configuracoes': typeof AuthenticatedAdminWhatsappConfiguracoesRoute
@@ -818,6 +827,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/disparos/multi': typeof AuthenticatedAdminDisparosMultiRoute
   '/_authenticated/admin/relatorios/$id': typeof AuthenticatedAdminRelatoriosIdRoute
   '/_authenticated/admin/relatorios/analytics': typeof AuthenticatedAdminRelatoriosAnalyticsRoute
+  '/_authenticated/admin/relatorios/magistrar': typeof AuthenticatedAdminRelatoriosMagistrarRoute
   '/_authenticated/admin/relatorios/new': typeof AuthenticatedAdminRelatoriosNewRoute
   '/_authenticated/admin/whatsapp/conexoes': typeof AuthenticatedAdminWhatsappConexoesRoute
   '/_authenticated/admin/whatsapp/configuracoes': typeof AuthenticatedAdminWhatsappConfiguracoesRoute
@@ -908,6 +918,7 @@ export interface FileRouteTypes {
     | '/admin/disparos/multi'
     | '/admin/relatorios/$id'
     | '/admin/relatorios/analytics'
+    | '/admin/relatorios/magistrar'
     | '/admin/relatorios/new'
     | '/admin/whatsapp/conexoes'
     | '/admin/whatsapp/configuracoes'
@@ -994,6 +1005,7 @@ export interface FileRouteTypes {
     | '/admin/disparos/multi'
     | '/admin/relatorios/$id'
     | '/admin/relatorios/analytics'
+    | '/admin/relatorios/magistrar'
     | '/admin/relatorios/new'
     | '/admin/whatsapp/conexoes'
     | '/admin/whatsapp/configuracoes'
@@ -1083,6 +1095,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/disparos/multi'
     | '/_authenticated/admin/relatorios/$id'
     | '/_authenticated/admin/relatorios/analytics'
+    | '/_authenticated/admin/relatorios/magistrar'
     | '/_authenticated/admin/relatorios/new'
     | '/_authenticated/admin/whatsapp/conexoes'
     | '/_authenticated/admin/whatsapp/configuracoes'
@@ -1683,6 +1696,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRelatoriosNewRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin/relatorios/magistrar': {
+      id: '/_authenticated/admin/relatorios/magistrar'
+      path: '/admin/relatorios/magistrar'
+      fullPath: '/admin/relatorios/magistrar'
+      preLoaderRoute: typeof AuthenticatedAdminRelatoriosMagistrarRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/admin/relatorios/analytics': {
       id: '/_authenticated/admin/relatorios/analytics'
       path: '/admin/relatorios/analytics'
@@ -1886,6 +1906,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminContatosListasRoute: typeof AuthenticatedAdminContatosListasRoute
   AuthenticatedAdminRelatoriosIdRoute: typeof AuthenticatedAdminRelatoriosIdRoute
   AuthenticatedAdminRelatoriosAnalyticsRoute: typeof AuthenticatedAdminRelatoriosAnalyticsRoute
+  AuthenticatedAdminRelatoriosMagistrarRoute: typeof AuthenticatedAdminRelatoriosMagistrarRoute
   AuthenticatedAdminRelatoriosNewRoute: typeof AuthenticatedAdminRelatoriosNewRoute
   AuthenticatedAdminContatosIndexRoute: typeof AuthenticatedAdminContatosIndexRoute
   AuthenticatedAdminRelatoriosIndexRoute: typeof AuthenticatedAdminRelatoriosIndexRoute
@@ -1920,6 +1941,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRelatoriosIdRoute: AuthenticatedAdminRelatoriosIdRoute,
   AuthenticatedAdminRelatoriosAnalyticsRoute:
     AuthenticatedAdminRelatoriosAnalyticsRoute,
+  AuthenticatedAdminRelatoriosMagistrarRoute:
+    AuthenticatedAdminRelatoriosMagistrarRoute,
   AuthenticatedAdminRelatoriosNewRoute: AuthenticatedAdminRelatoriosNewRoute,
   AuthenticatedAdminContatosIndexRoute: AuthenticatedAdminContatosIndexRoute,
   AuthenticatedAdminRelatoriosIndexRoute:
