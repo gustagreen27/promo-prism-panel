@@ -238,7 +238,7 @@ function PublicReportPage() {
 
       <div className="hidden print:block text-center mb-8">
         <h1 className="text-2xl font-bold">{report.name}</h1>
-        <p className="text-sm text-muted-foreground mt-1">Relatório de disparo — next DISPAROS</p>
+        <p className="text-sm text-muted-foreground mt-1">Relatório de disparo</p>
         <p className="text-xs text-muted-foreground mt-1">
           Gerado em {new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
         </p>
