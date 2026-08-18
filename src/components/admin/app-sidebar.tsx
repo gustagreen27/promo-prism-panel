@@ -257,19 +257,23 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r bg-sidebar">
       <SidebarHeader className="border-b px-4 py-4">
-        <div className="flex items-center gap-2">
-          <img
-            src={logoAsset.url}
-            alt="Disparos FR"
-            className="h-8 w-auto object-contain group-data-[collapsible=icon]:hidden"
-          />
-          <img
-            src={logoAsset.url}
-            alt="Disparos FR"
-            className="hidden h-7 w-7 shrink-0 object-contain object-left group-data-[collapsible=icon]:block"
-            style={{ objectPosition: "left center" }}
-          />
-        </div>
+        <Link to="/admin" className="flex items-center gap-2">
+          <span className="grid h-9 place-items-center rounded-lg bg-[#0b0c0e] px-2.5 group-data-[collapsible=icon]:hidden">
+            <img
+              src={logoAsset.url}
+              alt="Disparos FR"
+              className="h-6 w-auto object-contain"
+            />
+          </span>
+          <span className="hidden h-8 w-8 place-items-center rounded-lg bg-[#0b0c0e] group-data-[collapsible=icon]:grid">
+            <img
+              src={logoAsset.url}
+              alt="Disparos FR"
+              className="h-5 w-5 object-contain object-left"
+              style={{ objectPosition: "left center" }}
+            />
+          </span>
+        </Link>
       </SidebarHeader>
 
       <SidebarContent>
