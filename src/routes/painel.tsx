@@ -86,7 +86,9 @@ function PanelChrome({ ctx }: { ctx: MyContext }) {
     <div className="flex min-h-screen bg-app-canvas">
       <aside className="hidden w-64 shrink-0 border-r border-sidebar-border bg-sidebar md:block">
         <Link to="/painel" className="flex h-16 items-center gap-2 border-b border-sidebar-border px-5">
-          <img src={logoAsset.url} alt="Disparos FR" className="h-8 w-auto object-contain" />
+          <span className="grid h-9 place-items-center rounded-lg bg-[#0b0c0e] px-2.5">
+            <img src={logoAsset.url} alt="Disparos FR" className="h-6 w-auto object-contain" />
+          </span>
         </Link>
         <div className="px-5 py-4">
           <div className="truncate text-sm font-semibold text-foreground">{ws.name}</div>
