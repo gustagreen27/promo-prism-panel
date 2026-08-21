@@ -23,7 +23,9 @@ export const listWorkspaceConnections = createServerFn({ method: "GET" })
       .select("id,name,display_phone,workspace_id,waba_ref_id,waba_id,status,quality_rating,messaging_limit");
     const { data: wabas } = await context.supabase
       .from("whatsapp_wabas")
-      .select("id,nome_interno,waba_id,workspace_id");
+      .select(
+        "id,nome_interno,waba_id,workspace_id,status,meta_status,account_review_status,business_verification_status,ban_state,restriction_level,restriction_reason,restriction_checked_at",
+      );
 
     // Contagem de templates aprovados por WABA (apresentação nos cards)
     const { data: tpls } = await context.supabase
