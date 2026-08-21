@@ -144,8 +144,10 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
       workspace_id: z.string().uuid(),
       name: z.string().min(2),
       project_id: z.string().uuid().nullish(),
-      connection_id: z.string().uuid(),
-      template_id: z.string().uuid(),
+      connection_id: z.string().uuid().nullish(),
+      template_id: z.string().uuid().nullish(),
+      // Briefing enviado pelo cliente (mensagem, mídia, botão, origem dos contatos…)
+      client_brief: z.record(z.any()).optional().nullable(),
       list_id: z.string().uuid().nullish(),
       ddd_filter: z.string().regex(/^\d{2}$/).nullish(),
       variables_mapping: z.record(z.string()).optional(),
@@ -182,7 +184,7 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
       ws = await assertWorkspaceNotBlocked(supabase, data.workspace_id)
     }
 
-    if (!isAdmin) {
+    if (!isAdmin && data.connection_id) {
       // Validar número liberado
       const { data: grant } = await supabase
         .from('whatsapp_number_grants')
@@ -192,7 +194,9 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
         .limit(1)
         .maybeSingle()
       if (!grant) throw new Error('Este número não está liberado para o seu workspace')
+    }
 
+    if (!isAdmin && data.template_id) {
       // Validar template liberado
       const { data: tplGrant } = await supabase
         .from('whatsapp_template_grants')
@@ -214,6 +218,8 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
     // aguardando aprovação/execução pelo admin.
     const approval_mode = 'manual'
     const approval_status = 'pending'
+    // "Aguardando envio" (sem data) ou "Agendada" (com data/hora escolhidas pelo cliente).
+    const initialStatus = data.scheduled_at ? 'scheduled' : 'awaiting_approval'
 
     const { data: campaign, error } = await supabase
       .from('wa_campaigns')
@@ -221,14 +227,16 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
         workspace_id: data.workspace_id,
         name: data.name,
         project_id: data.project_id ?? null,
-        connection_id: data.connection_id,
-        template_id: data.template_id,
+        connection_id: data.connection_id ?? null,
+        template_id: data.template_id ?? null,
         list_id: data.list_id ?? null,
         variables_mapping: data.variables_mapping ?? null,
         button_url_mapping: data.button_url_mapping ?? null,
         template_variables: templateVars,
         scheduled_at: data.scheduled_at ?? null,
-        status: 'draft',
+        status: initialStatus,
+        custom_fields: data.client_brief ?? null,
+        submitted_at: new Date().toISOString(),
         approval_mode,
         approval_status,
         created_by: userId,
