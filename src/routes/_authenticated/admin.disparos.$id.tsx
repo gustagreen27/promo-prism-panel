@@ -550,11 +550,10 @@ function Page() {
       </Card>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
         <Stat icon={Users} label="Total" value={total} tone="neutral" />
         <Stat icon={Send} label="Enviadas" value={p.sent ?? 0} tone="info" />
-        <Stat icon={Clock} label="Aceitas (sem confirmação)" value={acceptedOnly} tone="warning" />
-        <Stat icon={CheckCircle2} label="Entregues (confirmadas)" value={p.delivered ?? 0} tone="success" />
+        <Stat icon={CheckCircle2} label="Entregues" value={p.delivered ?? 0} tone="success" />
         <Stat icon={Eye} label="Lidas" value={p.read ?? 0} tone="success" />
         <Stat icon={MousePointerClick} label="Cliques" value={(prog as any)?.clicks ?? 0} tone="primary" />
         <Stat icon={MessageSquare} label="Respostas" value={p.replied ?? 0} tone="primary" />
