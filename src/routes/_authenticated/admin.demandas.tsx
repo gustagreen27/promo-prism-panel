@@ -442,6 +442,23 @@ function ExternalControls({ item }: { item: Item }) {
   return (
     <div className="max-w-2xl space-y-2 rounded-lg border border-violet-500/30 bg-violet-500/5 p-3">
       <div className="text-xs font-medium">Execução externa (somente admin)</div>
+      {(item.external_total_count != null ||
+        item.external_sent_count != null ||
+        item.external_delivered_count != null ||
+        item.external_failed_count != null ||
+        item.external_finished_at) && (
+        <div className="rounded-md border bg-background/60 p-2 text-xs">
+          <div className="mb-1 font-medium">Resultado (informado manualmente)</div>
+          <div className="grid gap-0.5 text-muted-foreground sm:grid-cols-2">
+            <span>{(item.external_total_count ?? 0).toLocaleString("pt-BR")} destinatários</span>
+            <span>{(item.external_sent_count ?? 0).toLocaleString("pt-BR")} enviados com sucesso</span>
+            <span>{(item.external_delivered_count ?? 0).toLocaleString("pt-BR")} entregues</span>
+            <span>{(item.external_failed_count ?? 0).toLocaleString("pt-BR")} falhas</span>
+            {item.external_started_at && <span>Início: {fmt(item.external_started_at)}</span>}
+            {item.external_finished_at && <span>Finalizado em: {fmt(item.external_finished_at)}</span>}
+          </div>
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <Select
           value={item.external_status ?? ""}
