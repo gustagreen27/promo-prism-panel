@@ -15,6 +15,7 @@ import { createClientCampaign } from "@/lib/client-panel.functions";
 import { useWallet } from "@/lib/use-panel-workspace";
 import { listWorkspaceLists, createWorkspaceListWithPhones } from "@/lib/wa-wizard-lists.functions";
 import { metaVarsIn } from "@/lib/wa-variables";
+import { getMyDemandDetail } from "@/lib/client-demand.functions";
 import { DDD_TO_CITY, extractDddBR } from "@/lib/ddd-cities";
 import {
   ArrowLeft, Loader2, Upload, User, Phone, Video, MoreVertical, Mic, ChevronLeft,
@@ -34,8 +35,17 @@ export const Route = createFileRoute("/painel/campanhas/nova")({
       { name: "description", content: "Crie um novo disparo de WhatsApp com preview ao vivo da mensagem." },
     ],
   }),
+  validateSearch: (raw: Record<string, unknown>): NovaSearch => ({
+    from: raw['from'] ? String(raw['from']) : undefined,
+    name: raw['name'] ? String(raw['name']) : undefined,
+    duplicate: raw['duplicate'] ? String(raw['duplicate']) : undefined,
+    event_id: raw['event_id'] ? String(raw['event_id']) : undefined,
+    scheduled_for: raw['scheduled_for'] ? String(raw['scheduled_for']) : undefined,
+  }),
   component: Page,
 });
+
+type NovaSearch = { from?: string; name?: string; duplicate?: string; event_id?: string; scheduled_for?: string };
 
 type ContactMode = "manual" | "lista" | "csv";
 
@@ -64,6 +74,8 @@ function Page() {
   const { data: ctx } = useQuery({ queryKey: ["my-context"], queryFn: () => ctxFn(), staleTime: 30_000 });
   const workspaceId = ctx?.primary_workspace?.id ?? "";
   const navigate = useNavigate();
+  const sp = Route.useSearch();
+  const fnDemand = useServerFn(getMyDemandDetail);
 
   const fnLists = useServerFn(listWorkspaceLists);
   const fnCreateList = useServerFn(createWorkspaceListWithPhones);
@@ -109,6 +121,34 @@ function Page() {
     if (!workspaceId) return;
     fnLists({ data: { workspace_id: workspaceId, only_mine: true } }).then((r: any) => setLists(r.lists)).catch(() => {});
   }, [workspaceId, fnLists]);
+
+  // Pré-preenchimento vindo de outra página (ex.: /painel/demandas).
+  useEffect(() => {
+    if (sp.name && !name) setName(sp.name);
+    if (sp.scheduled_for) {
+      const d = new Date(sp.scheduled_for);
+      if (!Number.isNaN(d.getTime())) {
+        setSchedule(true);
+        setDate(d.toISOString().slice(0, 10));
+        setTime(d.toTimeString().slice(0, 5));
+      }
+    }
+  }, [sp.name, sp.scheduled_for]);
+
+  useEffect(() => {
+    if (!sp.duplicate) return;
+    fnDemand({ data: { id: sp.duplicate } })
+      .then((r: any) => {
+        const c = r?.campaign;
+        if (!c) return;
+        setName((prev) => prev || `Cópia de ${c.name}`);
+        if (c.list_id) {
+          setMode("lista");
+          setListId(c.list_id);
+        }
+      })
+      .catch(() => {});
+  }, [sp.duplicate, fnDemand]);
 
   const bodyVars = useMemo(() => metaVarsIn(message), [message]);
 

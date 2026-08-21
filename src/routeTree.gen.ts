@@ -34,6 +34,7 @@ import { Route as PainelConfiguracoesRouteImport } from './routes/painel.configu
 import { Route as CampaignsIdRouteImport } from './routes/campaigns.$id'
 import { Route as PainelCampanhasIndexRouteImport } from './routes/painel.campanhas.index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as PainelDemandaIdRouteImport } from './routes/painel.demanda.$id'
 import { Route as PainelCampanhasNovaRouteImport } from './routes/painel.campanhas.nova'
 import { Route as PainelCampanhasHistoricoRouteImport } from './routes/painel.campanhas.historico'
 import { Route as AuthenticatedAdminWhatsappRouteImport } from './routes/_authenticated/admin.whatsapp'
@@ -227,6 +228,11 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const PainelDemandaIdRoute = PainelDemandaIdRouteImport.update({
+  id: '/demanda/$id',
+  path: '/demanda/$id',
+  getParentRoute: () => PainelRoute,
 } as any)
 const PainelCampanhasNovaRoute = PainelCampanhasNovaRouteImport.update({
   id: '/campanhas/nova',
@@ -685,6 +691,7 @@ export interface FileRoutesByFullPath {
   '/admin/whatsapp': typeof AuthenticatedAdminWhatsappRouteWithChildren
   '/painel/campanhas/historico': typeof PainelCampanhasHistoricoRoute
   '/painel/campanhas/nova': typeof PainelCampanhasNovaRoute
+  '/painel/demanda/$id': typeof PainelDemandaIdRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/painel/campanhas/': typeof PainelCampanhasIndexRoute
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
@@ -778,6 +785,7 @@ export interface FileRoutesByTo {
   '/admin/whatsapp': typeof AuthenticatedAdminWhatsappRouteWithChildren
   '/painel/campanhas/historico': typeof PainelCampanhasHistoricoRoute
   '/painel/campanhas/nova': typeof PainelCampanhasNovaRoute
+  '/painel/demanda/$id': typeof PainelDemandaIdRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/painel/campanhas': typeof PainelCampanhasIndexRoute
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
@@ -875,6 +883,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/whatsapp': typeof AuthenticatedAdminWhatsappRouteWithChildren
   '/painel/campanhas/historico': typeof PainelCampanhasHistoricoRoute
   '/painel/campanhas/nova': typeof PainelCampanhasNovaRoute
+  '/painel/demanda/$id': typeof PainelDemandaIdRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/painel/campanhas/': typeof PainelCampanhasIndexRoute
   '/_authenticated/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
@@ -972,6 +981,7 @@ export interface FileRouteTypes {
     | '/admin/whatsapp'
     | '/painel/campanhas/historico'
     | '/painel/campanhas/nova'
+    | '/painel/demanda/$id'
     | '/admin/'
     | '/painel/campanhas/'
     | '/admin/campaigns/$id'
@@ -1065,6 +1075,7 @@ export interface FileRouteTypes {
     | '/admin/whatsapp'
     | '/painel/campanhas/historico'
     | '/painel/campanhas/nova'
+    | '/painel/demanda/$id'
     | '/admin'
     | '/painel/campanhas'
     | '/admin/campaigns/$id'
@@ -1161,6 +1172,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/whatsapp'
     | '/painel/campanhas/historico'
     | '/painel/campanhas/nova'
+    | '/painel/demanda/$id'
     | '/_authenticated/admin/'
     | '/painel/campanhas/'
     | '/_authenticated/admin/campaigns/$id'
@@ -1418,6 +1430,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/painel/demanda/$id': {
+      id: '/painel/demanda/$id'
+      path: '/demanda/$id'
+      fullPath: '/painel/demanda/$id'
+      preLoaderRoute: typeof PainelDemandaIdRouteImport
+      parentRoute: typeof PainelRoute
     }
     '/painel/campanhas/nova': {
       id: '/painel/campanhas/nova'
@@ -2094,6 +2113,7 @@ interface PainelRouteChildren {
   PainelIndexRoute: typeof PainelIndexRoute
   PainelCampanhasHistoricoRoute: typeof PainelCampanhasHistoricoRoute
   PainelCampanhasNovaRoute: typeof PainelCampanhasNovaRoute
+  PainelDemandaIdRoute: typeof PainelDemandaIdRoute
   PainelCampanhasIndexRoute: typeof PainelCampanhasIndexRoute
 }
 
@@ -2108,6 +2128,7 @@ const PainelRouteChildren: PainelRouteChildren = {
   PainelIndexRoute: PainelIndexRoute,
   PainelCampanhasHistoricoRoute: PainelCampanhasHistoricoRoute,
   PainelCampanhasNovaRoute: PainelCampanhasNovaRoute,
+  PainelDemandaIdRoute: PainelDemandaIdRoute,
   PainelCampanhasIndexRoute: PainelCampanhasIndexRoute,
 }
 

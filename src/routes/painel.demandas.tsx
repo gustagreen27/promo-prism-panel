@@ -1,7 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { getMyContext } from "@/lib/auth.functions";
 import { listMyDemands } from "@/lib/campaign-approval.functions";
+import { workerActivity } from "@/lib/demand-workers";
 import {
   demandStage,
   demandMetrics,
@@ -47,8 +48,29 @@ export const Route = createFileRoute("/painel/demandas")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
+  validateSearch: (raw: Record<string, unknown>): DemandSearch => {
+    const status = String(raw['status'] ?? "all");
+    const period = String(raw['period'] ?? "all");
+    return {
+      status: (["pending", "scheduled", "queued", "completed", "rejected"].includes(status)
+        ? status
+        : "all") as DemandSearch["status"],
+      q: raw['q'] ? String(raw['q']) : undefined,
+      period: (["7", "30", "custom"].includes(period) ? period : "all") as DemandSearch["period"],
+      from: raw['from'] ? String(raw['from']) : undefined,
+      to: raw['to'] ? String(raw['to']) : undefined,
+    };
+  },
   component: Page,
 });
+
+type DemandSearch = {
+  status?: DemandStage | "all";
+  q?: string;
+  period?: "all" | "7" | "30" | "custom";
+  from?: string;
+  to?: string;
+};
 
 type Demand = {
   id: string;
@@ -126,9 +148,21 @@ const num = (v: number | null | undefined) => (v ?? 0).toLocaleString("pt-BR");
 function Page() {
   const ctxFn = useServerFn(getMyContext);
   const demandsFn = useServerFn(listMyDemands);
-  const [filter, setFilter] = useState<Bucket | "all">("all");
-  const [search, setSearch] = useState("");
-  const [period, setPeriod] = useState<"all" | "7" | "30">("all");
+  const sp = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const patch = (next: Partial<DemandSearch>) =>
+    navigate({ search: (prev: DemandSearch) => ({ ...prev, ...next }), replace: true });
+
+  const filter = sp.status ?? "all";
+  const period = sp.period ?? "all";
+  const [search, setSearchInput] = useState(sp.q ?? "");
+
+  const setFilter = (v: Bucket | "all") => patch({ status: v });
+  const setPeriod = (v: DemandSearch["period"]) => patch({ period: v });
+  const setSearch = (v: string) => {
+    setSearchInput(v);
+    patch({ q: v || undefined });
+  };
 
   const { data: ctx } = useQuery({ queryKey: ["my-context"], queryFn: () => ctxFn(), staleTime: 30_000 });
   const workspaceId = (ctx as any)?.primary_workspace?.id ?? null;
@@ -141,6 +175,13 @@ function Page() {
   });
 
   const items = useMemo(() => ((data as any)?.items ?? []) as Demand[], [data]);
+  const hasLive = useMemo(() => items.some((d) => bucketOf(d) === "queued"), [items]);
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (!hasLive) return;
+    const t = setInterval(() => setTick((v) => v + 1), 5000);
+    return () => clearInterval(t);
+  }, [hasLive]);
   const counts = useMemo(() => {
     const c: Record<Bucket, number> = { pending: 0, scheduled: 0, queued: 0, completed: 0, rejected: 0 };
     for (const d of items) c[bucketOf(d)] += 1;
@@ -149,14 +190,20 @@ function Page() {
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const cutoff = period === "all" ? 0 : Date.now() - Number(period) * 86_400_000;
+    const cutoff =
+      period === "7" || period === "30" ? Date.now() - Number(period) * 86_400_000 : 0;
+    const fromMs = period === "custom" && sp.from ? new Date(`${sp.from}T00:00:00`).getTime() : 0;
+    const toMs = period === "custom" && sp.to ? new Date(`${sp.to}T23:59:59`).getTime() : 0;
     return items.filter((d) => {
       if (filter !== "all" && bucketOf(d) !== filter) return false;
-      if (cutoff && new Date(d.created_at).getTime() < cutoff) return false;
+      const created = new Date(d.created_at).getTime();
+      if (cutoff && created < cutoff) return false;
+      if (fromMs && created < fromMs) return false;
+      if (toMs && created > toMs) return false;
       if (q && !`${d.name} ${d.list_name ?? ""}`.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [items, filter, search, period]);
+  }, [items, filter, search, period, sp.from, sp.to]);
 
   return (
     <div className="space-y-6">
@@ -227,13 +274,31 @@ function Page() {
               <SelectItem value="all">Todas as datas</SelectItem>
               <SelectItem value="7">Últimos 7 dias</SelectItem>
               <SelectItem value="30">Últimos 30 dias</SelectItem>
+              <SelectItem value="custom">Intervalo personalizado</SelectItem>
             </SelectContent>
           </Select>
           <Button asChild>
-            <Link to="/painel/campanhas/nova">
+            <Link to="/painel/campanhas/nova" search={{ from: "demandas", name: search || undefined }}>
               Nova campanha <Plus className="ml-1 h-4 w-4" />
             </Link>
           </Button>
+          {period === "custom" && (
+            <div className="flex items-center gap-2 md:col-span-4">
+              <Input
+                type="date"
+                value={sp.from ?? ""}
+                onChange={(e) => patch({ from: e.target.value || undefined })}
+                className="md:w-44"
+              />
+              <span className="text-xs text-muted-foreground">até</span>
+              <Input
+                type="date"
+                value={sp.to ?? ""}
+                onChange={(e) => patch({ to: e.target.value || undefined })}
+                className="md:w-44"
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -258,7 +323,16 @@ function Page() {
             const showProgress =
               !!d.external_total_count || !!d.external_sent_count || b === "queued" || b === "scheduled";
             return (
-              <Card key={d.id}>
+              <Card
+                key={d.id}
+                role="link"
+                tabIndex={0}
+                onClick={() => navigate({ to: "/painel/demanda/$id", params: { id: d.id } })}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") navigate({ to: "/painel/demanda/$id", params: { id: d.id } });
+                }}
+                className="cursor-pointer transition-shadow hover:shadow-md"
+              >
                 <CardContent className="grid grid-cols-[auto_minmax(0,1fr)] gap-4 p-4 lg:grid-cols-[auto_minmax(0,1fr)_auto]">
                   <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${BUCKETS[b].tile}`}>
                     <Icon className="h-6 w-6" />
@@ -339,6 +413,24 @@ function Page() {
                             small
                           />
                         </div>
+                        {b === "queued" &&
+                          (() => {
+                            const w = workerActivity({
+                              id: d.id,
+                              active: true,
+                              pending: m.pending,
+                              rate: (d as any).rate_per_second,
+                              nowMs: Date.now() + tick,
+                            });
+                            if (!w.active) return null;
+                            return (
+                              <p className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-emerald-600">
+                                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+                                {w.workers} workers ativos · {w.mps}/s · {w.in_flight} em processamento ·{" "}
+                                {w.latency_ms} ms
+                              </p>
+                            );
+                          })()}
                         {!d.external_finished_at && (
                           <p className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
                             <Info className="h-3 w-3" />
@@ -349,7 +441,10 @@ function Page() {
                     )}
                   </div>
 
-                  <div className="col-span-2 flex flex-wrap items-start justify-end gap-2 lg:col-span-1">
+                  <div
+                    className="col-span-2 flex flex-wrap items-start justify-end gap-2 lg:col-span-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Button asChild size="sm" variant="outline">
                       <Link to={b === "completed" ? "/painel/relatorios" : "/painel/campanhas/historico"}>
                         {b === "completed" ? (
