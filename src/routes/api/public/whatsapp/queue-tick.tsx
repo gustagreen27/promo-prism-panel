@@ -202,7 +202,7 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
                     _ws: camp.workspace_id, _kind: "campaign.failed",
                     _title: "Falha ao iniciar campanha",
                     _body: `"${camp.name}": ${msg}`,
-                    _link: "/painel/agenda", _severity: "error",
+                    _link: "/painel/campanhas", _severity: "error",
                     _metadata: { campaign_id: camp.id, errors },
                   });
                 } catch { /* ignore */ }
@@ -217,7 +217,7 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
                     _ws: camp.workspace_id, _kind: "campaign.started",
                     _title: "Campanha iniciada",
                     _body: `"${camp.name}" começou.`,
-                    _link: "/painel/agenda", _severity: "info",
+                    _link: "/painel/campanhas", _severity: "info",
                     _metadata: { campaign_id: camp.id },
                   });
                 } catch { /* ignore */ }

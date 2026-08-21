@@ -88,7 +88,6 @@ function Page() {
                       <TableCell>{r.total_recipients ?? 0}</TableCell>
                       <TableCell>{r.author?.full_name ?? r.author?.email ?? "—"}</TableCell>
                       <TableCell className="text-right">
-                        <Button asChild size="sm" variant="ghost"><Link to="/painel/agenda">Agenda</Link></Button>
                       </TableCell>
                     </TableRow>
                   ))}

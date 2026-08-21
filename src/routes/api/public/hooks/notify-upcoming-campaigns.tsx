@@ -32,7 +32,7 @@ export const Route = createFileRoute("/api/public/hooks/notify-upcoming-campaign
             _kind: "campaign.starting_soon",
             _title: "Campanha inicia em breve",
             _body: `"${r.name}" está agendada para ${new Date(r.scheduled_at as string).toLocaleString("pt-BR")}.`,
-            _link: "/painel/agenda",
+            _link: "/painel/campanhas",
             _severity: "info",
             _metadata: { campaign_id: r.id },
           });
