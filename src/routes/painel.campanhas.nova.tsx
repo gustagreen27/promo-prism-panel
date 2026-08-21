@@ -244,7 +244,8 @@ function Page() {
         finalListId = created.list_id;
       }
 
-      const scheduled_at = schedule ? new Date(`${date}T${time}`).toISOString() : null;
+      // Data/hora informada é sempre horário de Brasília (UTC-03:00).
+      const scheduled_at = schedule ? new Date(`${date}T${time}:00-03:00`).toISOString() : null;
       const campaign: any = await fnCreate({
         data: {
           workspace_id: workspaceId,
