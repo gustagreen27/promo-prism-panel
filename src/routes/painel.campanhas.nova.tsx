@@ -84,6 +84,7 @@ function Page() {
   const mediaInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (!workspaceId) return;
     fnNumbers({ data: { workspace_id: workspaceId } })
       .then((r: any) => { setNumbers(r.numbers); if (r.numbers.length === 1) setConnectionId(r.numbers[0].id); })
       .catch(() => {});
