@@ -268,7 +268,7 @@ export const decideCampaignApproval = createServerFn({ method: 'POST' })
               approved_at: nowIso,
               rejection_reason: null,
               external_status: goScheduled ? 'scheduled_external' : 'in_progress',
-              external_started_at: goScheduled ? null : nowIso,
+              ...(goScheduled ? {} : { external_started_at: nowIso }),
               metrics_source: 'manual',
             }
           : {
