@@ -353,7 +353,7 @@ function Page() {
               </Select>
             </Field>
 
-            <p className="text-xs text-muted-foreground">
+            <p className="text-right text-xs text-muted-foreground">
               {audienceCount.toLocaleString("pt-BR")} contatos selecionados
               {dddFilter ? ` · filtrando DDD +${dddFilter}` : ""}
             </p>
@@ -363,7 +363,7 @@ function Page() {
             <Field label="Foto de perfil">
               <input ref={avatarInput} type="file" accept="image/*" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f, "avatar"); }} />
-              <Button type="button" variant="outline" className="w-full justify-start" onClick={() => avatarInput.current?.click()} disabled={uploading === "avatar"}>
+              <Button type="button" variant="outline" className="w-full rounded-xl" onClick={() => avatarInput.current?.click()} disabled={uploading === "avatar"}>
                 {uploading === "avatar" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
                 {avatarUrl ? "Trocar foto" : "Enviar foto"}
               </Button>
@@ -371,7 +371,7 @@ function Page() {
             <Field label="Mídia (imagem, vídeo ou áudio)">
               <input ref={mediaInput} type="file" accept="image/*,video/*,audio/*" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f, "media"); }} />
-              <Button type="button" variant="outline" className="w-full justify-start" onClick={() => mediaInput.current?.click()} disabled={uploading === "media"}>
+              <Button type="button" variant="outline" className="w-full rounded-xl" onClick={() => mediaInput.current?.click()} disabled={uploading === "media"}>
                 {uploading === "media" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
                 {mediaUrl ? "Trocar mídia" : "Anexar mídia"}
               </Button>
@@ -379,26 +379,29 @@ function Page() {
           </div>
 
           <div className="rounded-xl border bg-muted/30 p-4">
-            <label className="flex items-center gap-2 text-sm font-medium">
-              <Checkbox checked={btnEnabled} onCheckedChange={(v) => setBtnEnabled(!!v)} />
-              <ExternalLink className="h-4 w-4" /> Adicionar botão
-            </label>
+            <div className="flex items-center gap-3 text-sm font-medium">
+              <Switch checked={btnEnabled} onCheckedChange={setBtnEnabled} />
+              <span className="flex items-center gap-2"><ExternalLink className="h-4 w-4" /> Adicionar botão</span>
+            </div>
             {btnEnabled && (
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <Field label="Nome do botão">
-                  <Input value={btnText} onChange={(e) => setBtnText(e.target.value)} placeholder="CLIQUE AQUI" />
+                  <IconInput icon={Tag}>
+                    <Input value={btnText} onChange={(e) => setBtnText(e.target.value)} className="pl-9" placeholder="CLIQUE AQUI" />
+                  </IconInput>
                 </Field>
                 <Field label="Destino do botão (link)">
-                  <Input value={btnUrl} onChange={(e) => setBtnUrl(e.target.value)} placeholder="Ex: https://www.seusite.com.br" />
+                  <IconInput icon={Link2}>
+                    <Input value={btnUrl} onChange={(e) => setBtnUrl(e.target.value)} className="pl-9" placeholder="Ex: https://www.seusite.com.br" />
+                  </IconInput>
                 </Field>
               </div>
             )}
           </div>
 
-
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={schedule} onCheckedChange={(v) => setSchedule(!!v)} /> Agendar envio
-          </label>
+          <div className="flex items-center gap-3 text-sm font-medium">
+            <Switch checked={schedule} onCheckedChange={setSchedule} /> Agendar envio
+          </div>
           {schedule && (
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Data de envio"><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
@@ -406,10 +409,11 @@ function Page() {
             </div>
           )}
 
-          <Button type="submit" className="h-11 w-full rounded-xl" disabled={submitting}>
+          <Button type="submit" className="h-12 w-full rounded-xl text-base" disabled={submitting}>
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {schedule ? "Agendar campanha" : "Enviar campanha"}
           </Button>
+
         </form>
 
         {/* ── Preview ao vivo ── */}
