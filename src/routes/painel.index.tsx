@@ -44,11 +44,20 @@ const BUCKET_CLASS: Record<string, string> = {
   cancelado: "bg-destructive/10 text-destructive border-destructive/20",
 };
 
+type RangeKey = "all" | "today" | "7d";
+
+const RANGES: Array<{ key: RangeKey; label: string }> = [
+  { key: "all", label: "Todos" },
+  { key: "today", label: "Hoje" },
+  { key: "7d", label: "Últimos 7 dias" },
+];
+
 function PanelHome() {
   const ctxFn = useServerFn(getMyContext);
   const dashFn = useServerFn(getClientDashboard);
   const [projectId, setProjectId] = useState<string>("all");
   const [campaignId, setCampaignId] = useState<string>("all");
+  const [range, setRange] = useState<RangeKey>("all");
 
   const { data: ctx } = useQuery({ queryKey: ["my-context"], queryFn: () => ctxFn(), staleTime: 30_000 });
   const ws = ctx?.primary_workspace;
@@ -73,6 +82,15 @@ function PanelHome() {
   const report = selected
     ? { campaigns: 1, done: selected.bucket === "realizado" ? 1 : 0, used: selected.sent }
     : { campaigns: data?.totals.campaigns ?? 0, done: counts?.realizado ?? 0, used: data?.totals.sent ?? 0 };
+
+  const recent = useMemo(() => {
+    if (range === "all") return campaigns;
+    const now = Date.now();
+    const cutoff = range === "today"
+      ? new Date(new Date().setHours(0, 0, 0, 0)).getTime()
+      : now - 7 * 24 * 60 * 60 * 1000;
+    return campaigns.filter((c) => new Date(c.created_at).getTime() >= cutoff);
+  }, [campaigns, range]);
 
   const usedPct = credits && credits.purchased > 0
     ? Math.min(100, Math.round((credits.used / credits.purchased) * 100))
@@ -195,30 +213,53 @@ function PanelHome() {
             <Metric label="Realizados" value={report.done} />
             <Metric label="Créditos usados" value={report.used} />
           </div>
-          {selected && (
+          {selected ? (
             <div className="mt-4 grid gap-3 sm:grid-cols-4">
               <Metric small label="Destinatários" value={selected.total_recipients} />
               <Metric small label="Entregues" value={selected.delivered} />
               <Metric small label="Lidas" value={selected.read} />
               <Metric small label="Falhas" value={selected.failed} />
             </div>
+          ) : (
+            <p className="mt-3 text-xs text-muted-foreground">
+              Escolha “Todos os disparos” para métricas consolidadas.
+            </p>
           )}
         </CardContent>
       </Card>
 
       {/* Disparos recentes */}
       <Card>
-        <CardHeader className="flex-row items-center justify-between pb-3">
-          <CardTitle className="text-base">Disparos recentes</CardTitle>
-          <Button asChild size="sm" variant="ghost"><Link to="/painel/campanhas">Ver todos</Link></Button>
+        <CardHeader className="pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-base">Disparos recentes</CardTitle>
+              <Badge variant="secondary" className="tabular-nums">{recent.length}</Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 rounded-lg border bg-muted/40 p-0.5">
+                {RANGES.map((r) => (
+                  <button
+                    key={r.key}
+                    type="button"
+                    onClick={() => setRange(r.key)}
+                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${range === r.key ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+              <Button asChild size="sm" variant="ghost"><Link to="/painel/campanhas">Ver todos</Link></Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-2">
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Carregando…</p>
-          ) : campaigns.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum disparo ainda. Crie o primeiro.</p>
+          ) : recent.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum disparo no período selecionado.</p>
           ) : (
-            campaigns.slice(0, 5).map((c) => {
+            recent.slice(0, 5).map((c) => {
               const pct = c.total_recipients > 0 ? Math.round((c.delivered / c.total_recipients) * 100) : null;
               return (
                 <div key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 transition hover:bg-muted/40">

@@ -32,12 +32,12 @@ export const Route = createFileRoute("/painel")({
 
 const NAV: Array<{ to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean }> = [
   { to: "/painel", label: "Início", icon: LayoutDashboard, exact: true },
-  { to: "/painel/campanhas", label: "Campanhas", icon: Send },
+  { to: "/painel/campanhas", label: "Disparos", icon: Send },
+  { to: "/painel/contatos", label: "Listas de Leads", icon: Users },
   { to: "/painel/agenda", label: "Agenda", icon: CalendarClock },
   { to: "/painel/whatsapp", label: "WhatsApp", icon: MessageCircle },
-  { to: "/painel/contatos", label: "Contatos", icon: Users },
   { to: "/painel/relatorios", label: "Relatórios", icon: BarChart3 },
-  { to: "/painel/financeiro", label: "Financeiro", icon: CreditCard },
+  { to: "/painel/financeiro", label: "Créditos", icon: CreditCard },
 ];
 
 function PanelLayout() {
@@ -83,39 +83,34 @@ function PanelChrome({ ctx }: { ctx: MyContext }) {
     .split(" ").map((s) => s[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
 
   return (
-    <div className="flex min-h-screen bg-app-canvas">
-      <aside className="hidden w-64 shrink-0 border-r border-sidebar-border bg-sidebar md:block">
-        <Link to="/painel" className="flex h-16 items-center gap-2 border-b border-sidebar-border px-5">
-          <span className="grid h-9 place-items-center rounded-lg bg-[#0b0c0e] px-2.5">
-            <img src={logoAsset.url} alt="Disparos FR" className="h-6 w-auto object-contain" />
-          </span>
-        </Link>
-        <div className="px-5 py-4">
-          <div className="truncate text-sm font-semibold text-foreground">{ws.name}</div>
-          <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Plano {ws.plan}
-          </div>
-        </div>
-        <nav className="space-y-0.5 px-3">
-          {NAV.map((item) => {
-            const active = item.exact ? pathname === item.to : pathname === item.to || pathname.startsWith(item.to + "/");
-            return (
-              <Link key={item.to} to={item.to as never}
-                className={`group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition ${active ? "bg-accent text-accent-foreground shadow-xs" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
-                <item.icon className={`h-4 w-4 ${active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-      </aside>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/60 bg-background/70 px-4 backdrop-blur-xl sm:px-6">
-          <div className="text-sm font-medium truncate text-foreground">
-            Olá, {ctx.profile?.full_name?.split(" ")[0] ?? "seja bem-vindo"} <span className="ml-1">👋</span>
-          </div>
-          <div className="flex items-center gap-2">
+    <div className="flex min-h-screen flex-col bg-app-canvas">
+      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-4 sm:px-6">
+          <Link to="/painel" className="flex shrink-0 items-center gap-2">
+            <span className="grid h-9 place-items-center rounded-lg bg-[#0b0c0e] px-2.5">
+              <img src={logoAsset.url} alt="next Disparos" className="h-6 w-auto object-contain" />
+            </span>
+          </Link>
+
+          <nav className="hidden min-w-0 flex-1 items-center gap-1 overflow-x-auto md:flex">
+            {NAV.map((item) => {
+              const active = item.exact
+                ? pathname === item.to
+                : pathname === item.to || pathname.startsWith(item.to + "/");
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to as never}
+                  className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${active ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="ml-auto flex items-center gap-2">
+            <span className="hidden text-xs text-muted-foreground lg:inline">{ws.name}</span>
             <WalletBadge workspaceId={ws.id} />
             <NotificationsBell workspaceId={ws.id} />
             <DropdownMenu>
@@ -123,6 +118,9 @@ function PanelChrome({ ctx }: { ctx: MyContext }) {
                 <Button variant="ghost" size="sm" className="gap-2">
                   <span className="grid h-7 w-7 place-items-center rounded-full bg-primary/10 text-xs font-bold text-primary">
                     {initials}
+                  </span>
+                  <span className="hidden max-w-28 truncate text-sm sm:inline">
+                    {ctx.profile?.full_name ?? ctx.profile?.email}
                   </span>
                   <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                 </Button>
@@ -140,13 +138,32 @@ function PanelChrome({ ctx }: { ctx: MyContext }) {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        </header>
-        <main className="flex-1 px-4 py-6 sm:px-6 sm:py-8">
-          <div className="mx-auto w-full max-w-6xl space-y-6">
-            <Outlet />
-          </div>
-        </main>
-      </div>
+        </div>
+
+        <nav className="flex items-center gap-1 overflow-x-auto border-t border-border/60 px-4 py-2 md:hidden">
+          {NAV.map((item) => {
+            const active = item.exact
+              ? pathname === item.to
+              : pathname === item.to || pathname.startsWith(item.to + "/");
+            return (
+              <Link
+                key={item.to}
+                to={item.to as never}
+                className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium transition ${active ? "bg-accent text-accent-foreground" : "text-muted-foreground"}`}
+              >
+                <item.icon className="h-3.5 w-3.5" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+      </header>
+
+      <main className="flex-1 px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mx-auto w-full max-w-7xl space-y-6">
+          <Outlet />
+        </div>
+      </main>
     </div>
   );
 }
