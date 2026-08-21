@@ -84,7 +84,14 @@ export const listApprovalQueue = createServerFn({ method: 'POST' })
       }
 
     }
+
+    const counts = { pending: 0, scheduled: 0, queued: 0, completed: 0, rejected: 0 } as Record<string, number>
+    for (const c of campaigns) counts[demandStage(c)] = (counts[demandStage(c)] ?? 0) + 1
+    if (data.status !== 'all') campaigns = campaigns.filter((c) => demandStage(c) === data.status)
+    campaigns = campaigns.slice(0, 200)
+
     const listIds = [...new Set(campaigns.map((c) => c.list_id).filter(Boolean))]
+
     const tplIds = [...new Set(campaigns.map((c) => c.template_id).filter(Boolean))]
     const [{ data: lists }, { data: tpls }] = await Promise.all([
       listIds.length
