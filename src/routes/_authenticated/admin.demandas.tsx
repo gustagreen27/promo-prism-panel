@@ -22,7 +22,8 @@ import {
 import { adminListAllNumbers } from "@/lib/admin-dispatch.functions";
 import { listTemplates } from "@/lib/whatsapp-templates.functions";
 import { adminListTestConnections, adminSetConnectionTestFlag } from "@/lib/wa-tests.functions";
-import { History, Loader2, Settings2, FlaskConical } from "lucide-react";
+import { History, Loader2, Settings2, FlaskConical, Eye } from "lucide-react";
+import { DemandPreviewDialog } from "@/components/admin/DemandPreviewDialog";
 
 export const Route = createFileRoute("/_authenticated/admin/demandas")({
   head: () => ({
