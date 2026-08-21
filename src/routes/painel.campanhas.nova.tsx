@@ -418,65 +418,93 @@ function Page() {
 
         {/* ── Preview ao vivo ── */}
         <div className="lg:sticky lg:top-24 lg:self-start">
-          <div className="mb-2 text-sm font-medium text-muted-foreground">Preview ao vivo</div>
-          <div className="overflow-hidden rounded-[2rem] border-4 border-neutral-800 bg-neutral-900 shadow-xl">
-            <div className="flex items-center justify-between px-4 py-1.5 text-[10px] text-white">
-              <span>{now}</span>
-              <span className="flex items-center gap-1"><Signal className="h-3 w-3" /><Wifi className="h-3 w-3" /><BatteryMedium className="h-3.5 w-3.5" /></span>
-            </div>
-            <div className="flex items-center gap-2 bg-[#075E54] px-3 py-2 text-white">
-              <ChevronLeft className="h-4 w-4" />
-              <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-white/20">
-                {avatarUrl ? <img src={avatarUrl} alt="Foto do perfil" className="h-full w-full object-cover" /> : <User className="h-4 w-4" />}
+          <div className="rounded-2xl border bg-card p-4 shadow-sm">
+            <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+              <span className="truncate text-sm font-semibold">Preview ao vivo</span>
+              <span className="flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" /> Atualizado agora
               </span>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium">{profileName || "Atendimento"}</div>
-                <div className="truncate text-[10px] opacity-80">{bio || "online"}</div>
-              </div>
-              <Video className="h-4 w-4" /><Phone className="h-4 w-4" /><MoreVertical className="h-4 w-4" />
             </div>
-
-            <div className="min-h-[380px] space-y-2 bg-[#e5ddd5] p-3 dark:bg-neutral-800">
-              <div className="mx-auto w-fit rounded bg-white/70 px-2 py-0.5 text-[10px] text-neutral-600">Hoje</div>
-              <div className="max-w-[85%] rounded-lg rounded-tl-none bg-white p-2 shadow-sm">
-                {mediaUrl && (
-                  <img src={mediaUrl} alt="Mídia da campanha" className="mb-2 aspect-video w-full rounded object-cover" />
-                )}
-                <div className="whitespace-pre-wrap break-words text-[13px] leading-relaxed text-neutral-900">
-                  {previewBody || <span className="italic text-neutral-400">Sua mensagem aparece aqui...</span>}
-                </div>
-                <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-neutral-500">
-                  {now} <CheckCheck className="h-3 w-3 text-sky-500" />
-                </div>
+            <div className="mx-auto max-w-[300px] overflow-hidden rounded-[2rem] border-[6px] border-neutral-900 bg-neutral-900 shadow-xl">
+              <div className="flex items-center justify-between px-4 py-1.5 text-[10px] text-white">
+                <span>{now}</span>
+                <span className="flex items-center gap-1"><Signal className="h-3 w-3" /><Wifi className="h-3 w-3" /><BatteryMedium className="h-3.5 w-3.5" /></span>
               </div>
-              {btnEnabled && (
-                <div className="max-w-[85%]">
-                  <div className="rounded-lg bg-white py-1.5 text-center text-[12px] font-medium text-sky-600 shadow-sm">
-                    {btnText || "CLIQUE AQUI"}
+              <div className="flex items-center gap-2 bg-[#075E54] px-3 py-2 text-white">
+                <ChevronLeft className="h-4 w-4" />
+                <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-white/20">
+                  {avatarUrl ? <img src={avatarUrl} alt="Foto do perfil" className="h-full w-full object-cover" /> : <User className="h-4 w-4" />}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium">{profileName || "Atendimento"}</div>
+                  <div className="truncate text-[10px] opacity-80">{bio || "online"}</div>
+                </div>
+                <Video className="h-4 w-4" /><Phone className="h-4 w-4" /><MoreVertical className="h-4 w-4" />
+              </div>
+
+              <div className="min-h-[380px] space-y-2 bg-[#e7dfd6] p-3">
+                <div className="mx-auto w-fit rounded bg-white/70 px-2 py-0.5 text-[10px] text-neutral-600">Hoje</div>
+                <div className="max-w-[88%] rounded-lg rounded-tl-none bg-white p-2 shadow-sm">
+                  {mediaUrl && (
+                    <img src={mediaUrl} alt="Mídia da campanha" className="mb-2 aspect-video w-full rounded object-cover" />
+                  )}
+                  <div className="whitespace-pre-wrap break-words text-[13px] leading-relaxed text-neutral-900">
+                    {previewBody || <span className="italic text-neutral-400">Sua mensagem aparece aqui...</span>}
+                  </div>
+                  <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-neutral-500">
+                    {now} <CheckCheck className="h-3 w-3 text-sky-500" />
                   </div>
                 </div>
-              )}
+                {btnEnabled && (
+                  <div className="max-w-[88%]">
+                    <div className="rounded-lg bg-white py-2 text-center text-[12px] font-semibold text-sky-600 shadow-sm">
+                      {btnText || "CLIQUE AQUI"}
+                    </div>
+                  </div>
+                )}
+              </div>
 
+              <div className="flex items-center gap-2 bg-[#f0f0f0] px-3 py-2">
+                <div className="flex-1 rounded-full bg-white px-3 py-1.5 text-[11px] text-neutral-400">Mensagem</div>
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-[#00a884] text-white"><Mic className="h-4 w-4" /></span>
+              </div>
             </div>
-
-            <div className="flex items-center gap-2 bg-[#f0f0f0] px-3 py-2">
-              <div className="flex-1 rounded-full bg-white px-3 py-1.5 text-[11px] text-neutral-400">Mensagem</div>
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-[#075E54] text-white"><Mic className="h-4 w-4" /></span>
-            </div>
+            <p className="mt-3 text-center text-[11px] leading-relaxed text-muted-foreground">
+              A visualização é aproximada e pode variar no WhatsApp real.
+            </p>
+            {previewUrl && <p className="mt-2 break-all text-center text-[11px] text-muted-foreground">Link do botão: {previewUrl}</p>}
           </div>
-          {previewUrl && <p className="mt-2 break-all text-[11px] text-muted-foreground">Link do botão: {previewUrl}</p>}
         </div>
       </div>
     </div>
   );
 }
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({
+  label, hint, counter, children,
+}: { label: string; hint?: string; counter?: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
       <Label className="text-sm">{label}</Label>
       {children}
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      {(hint || counter) && (
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 text-xs text-muted-foreground">
+          <span className="min-w-0">{hint}</span>
+          {counter && <span className="shrink-0">{counter}</span>}
+        </div>
+      )}
     </div>
   );
 }
+
+function IconInput({
+  icon: Icon, align = "center", children,
+}: { icon: typeof User; align?: "center" | "top"; children: React.ReactNode }) {
+  return (
+    <div className="relative">
+      <Icon className={`pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground ${align === "top" ? "top-3" : "top-1/2 -translate-y-1/2"}`} />
+      {children}
+    </div>
+  );
+}
+
