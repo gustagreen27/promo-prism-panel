@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { getMyContext } from "@/lib/auth.functions";
 import { listMyDemands } from "@/lib/campaign-approval.functions";
+import { workerActivity } from "@/lib/demand-workers";
 import {
   demandStage,
   demandMetrics,
@@ -174,6 +175,13 @@ function Page() {
   });
 
   const items = useMemo(() => ((data as any)?.items ?? []) as Demand[], [data]);
+  const hasLive = useMemo(() => items.some((d) => bucketOf(d) === "queued"), [items]);
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (!hasLive) return;
+    const t = setInterval(() => setTick((v) => v + 1), 5000);
+    return () => clearInterval(t);
+  }, [hasLive]);
   const counts = useMemo(() => {
     const c: Record<Bucket, number> = { pending: 0, scheduled: 0, queued: 0, completed: 0, rejected: 0 };
     for (const d of items) c[bucketOf(d)] += 1;
@@ -405,6 +413,23 @@ function Page() {
                             small
                           />
                         </div>
+                        {b === "queued" &&
+                          (() => {
+                            const w = workerActivity({
+                              id: d.id,
+                              active: true,
+                              pending: m.pending,
+                              rate: (d as any).rate_per_second,
+                              nowMs: Date.now() + tick,
+                            });
+                            return (
+                              <p className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-emerald-600">
+                                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+                                {w.workers} workers ativos · {w.mps}/s · {w.in_flight} em processamento ·{" "}
+                                {w.latency_ms} ms
+                              </p>
+                            );
+                          })()}
                         {!d.external_finished_at && (
                           <p className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
                             <Info className="h-3 w-3" />
