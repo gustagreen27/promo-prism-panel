@@ -99,17 +99,17 @@ function Page() {
   }, [connectionId, workspaceId, fnTemplates]);
 
   const template = useMemo(() => templates.find((t) => t.id === templateId) ?? null, [templates, templateId]);
-  const bodyVars = useMemo(() => (template ? metaVarsIn(template.body ?? "") : []), [template]);
+  const bodyVars = useMemo(() => metaVarsIn(message), [message]);
   const urlButton = useMemo(
     () => (template?.buttons ?? []).find((b: any) => String(b?.type).toUpperCase() === "URL"),
     [template],
   );
   const urlVars = useMemo(() => (urlButton?.url ? metaVarsIn(String(urlButton.url)) : []), [urlButton]);
 
-  // Ao escolher o template, a mensagem já vem preenchida para a pessoa editar.
+  // Modelos de mensagem disponíveis (apenas dois).
   useEffect(() => {
-    if (template) { setMessage(template.body ?? ""); setVars({}); }
-  }, [templateId]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!message) setMessage(MESSAGE_PRESETS[0].body);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const manualRows = useMemo(() => {
     return manual.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
