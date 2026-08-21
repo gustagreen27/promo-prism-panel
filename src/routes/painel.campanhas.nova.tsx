@@ -13,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { createClientCampaign } from "@/lib/client-panel.functions";
 import { useWallet } from "@/lib/use-panel-workspace";
-import { listWorkspaceLists, createWorkspaceListWithPhones } from "@/lib/wa-wizard-lists.functions";
+import { listWorkspaceLists, createEmptyWorkspaceList, appendPhonesChunkToList } from "@/lib/wa-wizard-lists.functions";
+import { createListInChunks } from "@/lib/import-list-chunked";
 import { metaVarsIn } from "@/lib/wa-variables";
 import { getMyDemandDetail } from "@/lib/client-demand.functions";
 import { DDD_TO_CITY, extractDddBR } from "@/lib/ddd-cities";
@@ -78,7 +79,8 @@ function Page() {
   const fnDemand = useServerFn(getMyDemandDetail);
 
   const fnLists = useServerFn(listWorkspaceLists);
-  const fnCreateList = useServerFn(createWorkspaceListWithPhones);
+  const fnCreateEmptyList = useServerFn(createEmptyWorkspaceList);
+  const fnAppendChunk = useServerFn(appendPhonesChunkToList);
   const fnCreate = useServerFn(createClientCampaign);
 
   const [lists, setLists] = useState<Array<{ id: string; name: string; count: number }>>([]);
@@ -101,6 +103,7 @@ function Page() {
   const [sheet, setSheet] = useState<ParsedSheet | null>(null);
   const [mapOpen, setMapOpen] = useState(false);
   const [csvSummary, setCsvSummary] = useState<ImportSummary | null>(null);
+  const [importProgress, setImportProgress] = useState<{ done: number; total: number } | null>(null);
 
   const [ddd, setDdd] = useState("any");
 
@@ -244,9 +247,17 @@ function Page() {
       let finalListId = listId;
       if (mode !== "lista") {
         const rows = mode === "manual" ? manualFiltered : csvFiltered;
-        const created: any = await fnCreateList({
-          data: { workspace_id: workspaceId, name: `${name.trim()} — contatos`, source: "novo-disparo", rows },
+        // Importa em lotes: bases grandes (70k+) não cabem em uma única requisição.
+        const created = await createListInChunks({
+          createList: fnCreateEmptyList as any,
+          appendChunk: fnAppendChunk as any,
+          workspaceId,
+          name: `${name.trim()} — contatos`,
+          source: "novo-disparo",
+          rows,
+          onProgress: (done, total) => setImportProgress({ done, total }),
         });
+        setImportProgress(null);
         finalListId = created.list_id;
       }
 
@@ -293,6 +304,7 @@ function Page() {
     } catch (err: any) {
       toast.error(err?.message ?? "Não foi possível criar o disparo");
     } finally {
+      setImportProgress(null);
       setSubmitting(false);
       setSavingDraft(false);
     }
