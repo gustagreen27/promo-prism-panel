@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import { Link, useNavigate, useRouterState, useRouteContext } from "@tanstack/react-router";
 import {
+  ClipboardCheck,
   LayoutDashboard,
   Megaphone,
   CalendarDays,
