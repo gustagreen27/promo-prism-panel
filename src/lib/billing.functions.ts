@@ -636,7 +636,7 @@ export const adminUpdateClientAccount = createServerFn({ method: 'POST' })
       patch.blocked_at = data.status === 'blocked' ? new Date().toISOString() : null
     }
     if (Object.keys(patch).length) {
-      const { error } = await supabaseAdmin.from('workspaces').update(patch).eq('id', data.workspace_id)
+      const { error } = await supabaseAdmin.from('workspaces').update(patch as never).eq('id', data.workspace_id)
       if (error) throw new Error(`Falha ao atualizar a conta: ${error.message}`)
     }
 
