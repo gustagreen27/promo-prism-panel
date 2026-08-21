@@ -167,6 +167,8 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
       response_flow_config: z.any().optional().nullable(),
       // Rascunho: permitido mesmo sem créditos (não vira demanda de disparo real).
       save_as_draft: z.boolean().optional(),
+      // Tipo de envio: 'test' (até 10 destinatários, sem consumir créditos) ou 'full'.
+      send_type: z.enum(['test', 'full']).optional(),
     }).parse(d)
   )
   .handler(async ({ data, context }) => {
@@ -221,6 +223,9 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
     // aguardando aprovação/execução pelo admin.
     const approval_mode = 'manual'
     const isDraft = !!data.save_as_draft
+    // Teste: no máximo 10 destinatários e nunca consome créditos.
+    const isTest = data.send_type === 'test'
+    const TEST_MAX_RECIPIENTS = 10
     const approval_status = isDraft ? 'draft' : 'pending'
     // "Aguardando envio" (sem data) ou "Agendada" (com data/hora escolhidas pelo cliente).
     const initialStatus = isDraft ? 'draft' : data.scheduled_at ? 'scheduled' : 'awaiting_approval'
@@ -239,7 +244,7 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
         template_variables: templateVars,
         scheduled_at: data.scheduled_at ?? null,
         status: initialStatus,
-        custom_fields: data.client_brief ?? null,
+        custom_fields: { ...(data.client_brief ?? {}), send_type: isTest ? 'test' : 'full' },
         submitted_at: new Date().toISOString(),
         approval_mode,
         approval_status,
@@ -281,10 +286,30 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
       }
     }
 
+    // Envio de teste: mantém no máximo 10 destinatários (corte no backend).
+    if (isTest && Number(campaign.total_recipients ?? 0) > TEST_MAX_RECIPIENTS) {
+      const { data: keep } = await supabase
+        .from('campaign_recipients')
+        .select('id')
+        .eq('campaign_id', campaign.id)
+        .order('id', { ascending: true })
+        .limit(TEST_MAX_RECIPIENTS)
+      const keepIds = (keep ?? []).map((r: any) => r.id)
+      if (keepIds.length) {
+        await supabase
+          .from('campaign_recipients')
+          .delete()
+          .eq('campaign_id', campaign.id)
+          .not('id', 'in', `(${keepIds.join(',')})`)
+      }
+      campaign.total_recipients = keepIds.length
+      await supabase.from('wa_campaigns').update({ total_recipients: keepIds.length }).eq('id', campaign.id)
+    }
+
     // Regra de crédito (backend, revalidada agora): disparo real só é aceito
     // com saldo suficiente para os contatos válidos que serão enviados.
-    // Rascunho é sempre permitido.
-    if (!isDraft && !isAdmin) {
+    // Rascunho e testes são sempre permitidos (teste não consome créditos).
+    if (!isDraft && !isTest && !isAdmin) {
       const required = Number(campaign.total_recipients ?? 0)
       const credits = await getWorkspaceCredits(supabase, data.workspace_id)
       if (required > 0 && credits.availableCredits < required) {
@@ -310,7 +335,7 @@ export const startClientCampaign = createServerFn({ method: 'POST' })
     const { supabase, userId } = context as any
     const { data: c } = await supabase
       .from('wa_campaigns')
-      .select('id, workspace_id, approval_mode, total_recipients, status')
+      .select('id, workspace_id, approval_mode, total_recipients, status, custom_fields')
       .eq('id', data.campaign_id)
       .maybeSingle()
     if (!c) throw new Error('Campanha não encontrada')
@@ -328,7 +353,9 @@ export const startClientCampaign = createServerFn({ method: 'POST' })
     await assertWorkspaceNotBlocked(supabase, c.workspace_id)
 
     // Revalida saldo no backend antes de transformar o rascunho em disparo real.
-    if (c.total_recipients && c.total_recipients > 0) {
+    // Envio de teste não consome créditos.
+    const isTestCampaign = (c as any)?.custom_fields?.send_type === 'test'
+    if (!isTestCampaign && c.total_recipients && c.total_recipients > 0) {
       await assertSufficientCredits(supabase, c.workspace_id, Number(c.total_recipients))
     }
 

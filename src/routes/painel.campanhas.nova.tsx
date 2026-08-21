@@ -80,6 +80,7 @@ function Page() {
   const [btnText, setBtnText] = useState("CLIQUE AQUI");
   const [btnUrl, setBtnUrl] = useState("");
 
+  const [sendType, setSendType] = useState<"test" | "full">("full");
   const [mode, setMode] = useState<ContactMode>("manual");
   const [manual, setManual] = useState("");
   const [listId, setListId] = useState("");
@@ -136,8 +137,13 @@ function Page() {
     : mode === "csv" ? csvFiltered.length
     : (lists.find((l) => l.id === listId)?.count ?? 0);
 
+  const isTest = sendType === "test";
+  const TEST_MAX = 10;
+  const testOverflow = isTest && audienceCount > TEST_MAX;
+
   // Créditos: 1 crédito = 1 contato válido que será realmente disparado.
-  const requiredCredits = audienceCount;
+  // Envio de teste é gratuito (não consome créditos).
+  const requiredCredits = isTest ? 0 : audienceCount;
   const enoughCredits = availableCredits >= requiredCredits;
 
   const previewBody = fillVars(message, vars);
@@ -176,6 +182,8 @@ function Page() {
     e.preventDefault();
     if (name.trim().length < 2) return toast.error("Informe o nome da campanha");
     if (!asDraft && !audienceCount) return toast.error("Adicione os contatos do disparo");
+    if (!asDraft && isTest && audienceCount > TEST_MAX)
+      return toast.error(`Envio de teste permite no máximo ${TEST_MAX} destinatários`);
     if (!asDraft && btnEnabled && !/^https?:\/\/.+/i.test(btnUrl.trim())) return toast.error("Informe o destino (link) do botão");
     if (!asDraft && schedule && (!date || !time)) return toast.error("Informe data e hora do agendamento");
     // Rascunho é sempre permitido; disparo real exige saldo.
@@ -217,12 +225,14 @@ function Page() {
             button_text: btnEnabled ? btnText : null,
             button_url: btnEnabled ? btnUrl.trim() : null,
             variables: vars,
+            send_type: sendType,
             recipients_source: mode,
             recipients_count: audienceCount,
             ddd_filter: dddFilter,
           },
           scheduled_at,
           save_as_draft: asDraft,
+          send_type: sendType,
         },
       });
       toast.success(
@@ -280,6 +290,27 @@ function Page() {
             </IconInput>
           </Field>
 
+
+          <div className="space-y-2">
+            <Label>Tipo de envio</Label>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {([
+                { k: "test" as const, title: "Teste", desc: `Até ${TEST_MAX} destinatários · não consome créditos` },
+                { k: "full" as const, title: "Envio completo", desc: "Toda a base selecionada · consome créditos" },
+              ]).map((o) => (
+                <button key={o.k} type="button" onClick={() => setSendType(o.k)}
+                  className={`rounded-xl border p-3 text-left transition ${sendType === o.k ? "border-primary bg-primary/5 ring-1 ring-primary/30" : "hover:bg-muted/50"}`}>
+                  <span className="block text-sm font-medium">{o.title}</span>
+                  <span className="block text-xs text-muted-foreground">{o.desc}</span>
+                </button>
+              ))}
+            </div>
+            {testOverflow && (
+              <p className="text-xs text-destructive">
+                Envio de teste aceita no máximo {TEST_MAX} destinatários — atualmente {nfmt(audienceCount)} selecionados.
+              </p>
+            )}
+          </div>
 
           <Field label="Nome do perfil">
             <IconInput icon={User}>
