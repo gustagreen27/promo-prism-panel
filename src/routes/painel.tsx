@@ -1,4 +1,3 @@
-import { FlaskConical } from "lucide-react";
 import {
   createFileRoute, Outlet, redirect, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { ClipboardList } from "lucide-react";
