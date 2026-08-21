@@ -125,7 +125,7 @@ export const createWorkspaceListWithPhones = createServerFn({ method: "POST" })
     // 1. Cria a lista
     const { data: list, error: listErr } = await supabase
       .from("contact_lists")
-      .insert({ name: data.name, workspace_id: data.workspace_id })
+      .insert({ name: data.name, workspace_id: data.workspace_id, created_by: (context as any).userId })
       .select("id,name")
       .single();
     if (listErr) throw listErr;
