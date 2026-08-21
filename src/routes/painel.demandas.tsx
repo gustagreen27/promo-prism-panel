@@ -446,7 +446,7 @@ function Page() {
                     onClick={(e) => e.stopPropagation()}
                   >
                     <Button asChild size="sm" variant="outline">
-                      <Link to={b === "completed" ? "/painel/relatorios" : "/painel/campanhas/historico"}>
+                      <Link to={b === "completed" ? "/painel/relatorios" : "/painel/demanda/$id"} params={{ id: d.id }}>
                         {b === "completed" ? (
                           <>
                             <BarChart3 className="mr-1 h-4 w-4" /> Ver relatório
