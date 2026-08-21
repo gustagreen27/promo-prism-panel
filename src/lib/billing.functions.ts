@@ -525,19 +525,44 @@ export const adminCreateClientAccount = createServerFn({ method: 'POST' })
     }
     if (!ownerId) throw new Error('Não foi possível determinar o usuário dono')
 
-    // 2) Cria o workspace
-    const { data: ws, error: wsErr } = await supabaseAdmin
+    // 2) Reaproveita o workspace criado automaticamente no signup (evita conta duplicada sem créditos)
+    let ws: any = null
+    const { data: autoWs } = await supabaseAdmin
       .from('workspaces')
-      .insert({
-        name: data.name.trim(),
-        slug,
-        plan: data.plan?.trim() || 'starter',
-        status: 'active',
-        owner_id: ownerId,
-      })
-      .select('id, name, slug, plan')
-      .single()
-    if (wsErr) throw new Error(`Falha ao criar a conta: ${wsErr.message}`)
+      .select('id, name, slug, plan, created_at, workspace_wallets(balance_cents)')
+      .eq('owner_id', ownerId)
+      .order('created_at', { ascending: true })
+    for (const cand of autoWs ?? []) {
+      const wal = Array.isArray(cand.workspace_wallets) ? cand.workspace_wallets[0] : cand.workspace_wallets
+      if (Number(wal?.balance_cents ?? 0) !== 0) continue
+      const { count } = await supabaseAdmin
+        .from('wa_campaigns').select('id', { count: 'exact', head: true }).eq('workspace_id', cand.id)
+      if ((count ?? 0) > 0) continue
+      const { data: updated, error: updErr } = await supabaseAdmin
+        .from('workspaces')
+        .update({ name: data.name.trim(), slug, plan: data.plan?.trim() || 'starter', status: 'active' })
+        .eq('id', cand.id)
+        .select('id, name, slug, plan')
+        .single()
+      if (!updErr && updated) { ws = updated; break }
+    }
+
+    if (!ws) {
+      const { data: created, error: wsErr } = await supabaseAdmin
+        .from('workspaces')
+        .insert({
+          name: data.name.trim(),
+          slug,
+          plan: data.plan?.trim() || 'starter',
+          status: 'active',
+          owner_id: ownerId,
+        })
+        .select('id, name, slug, plan')
+        .single()
+      if (wsErr) throw new Error(`Falha ao criar a conta: ${wsErr.message}`)
+      ws = created
+    }
+
 
     // 3) Vincula o dono como membro
     const { error: memberErr } = await supabaseAdmin
@@ -574,4 +599,104 @@ export const adminCreateClientAccount = createServerFn({ method: 'POST' })
       generated_password: generatedPassword,
       credited_cents: creditedCents,
     }
+  })
+
+export const adminUpdateClientAccount = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: {
+    workspace_id: string
+    name?: string | null
+    slug?: string | null
+    plan?: string | null
+    status?: string | null
+    owner_name?: string | null
+    owner_password?: string | null
+  }) =>
+    z.object({
+      workspace_id: z.string().uuid(),
+      name: z.string().min(2).max(120).nullish(),
+      slug: z.string().min(2).max(60).regex(/^[a-z0-9-]+$/, 'slug inválido').nullish(),
+      plan: z.string().max(40).nullish(),
+      status: z.enum(['active', 'blocked']).nullish(),
+      owner_name: z.string().max(120).nullish(),
+      owner_password: z.string().min(8).max(72).nullish(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any
+    await assertStaff(supabase, userId)
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
+
+    const patch: Record<string, unknown> = {}
+    if (data.name) patch.name = data.name.trim()
+    if (data.slug) patch.slug = data.slug.trim()
+    if (data.plan) patch.plan = data.plan.trim()
+    if (data.status) {
+      patch.status = data.status
+      patch.blocked_at = data.status === 'blocked' ? new Date().toISOString() : null
+    }
+    if (Object.keys(patch).length) {
+      const { error } = await supabaseAdmin.from('workspaces').update(patch as never).eq('id', data.workspace_id)
+      if (error) throw new Error(`Falha ao atualizar a conta: ${error.message}`)
+    }
+
+    if (data.owner_name || data.owner_password) {
+      const { data: owner } = await supabaseAdmin
+        .from('workspace_members')
+        .select('user_id')
+        .eq('workspace_id', data.workspace_id)
+        .eq('role', 'owner')
+        .maybeSingle()
+      if (owner?.user_id) {
+        if (data.owner_name) {
+          await supabaseAdmin.from('profiles').update({ full_name: data.owner_name.trim() }).eq('id', owner.user_id)
+        }
+        if (data.owner_password) {
+          const { error } = await supabaseAdmin.auth.admin.updateUserById(owner.user_id, { password: data.owner_password })
+          if (error) throw new Error(`Falha ao trocar a senha: ${error.message}`)
+        }
+      }
+    }
+
+    return { ok: true }
+  })
+
+export const adminDeleteClientAccount = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { workspace_id: string; delete_owner_user?: boolean }) =>
+    z.object({
+      workspace_id: z.string().uuid(),
+      delete_owner_user: z.boolean().default(false),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any
+    await assertStaff(supabase, userId)
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
+
+    const { count } = await supabaseAdmin
+      .from('wa_campaigns').select('id', { count: 'exact', head: true }).eq('workspace_id', data.workspace_id)
+    if ((count ?? 0) > 0) {
+      throw new Error('Esta conta possui disparos registrados e não pode ser excluída. Bloqueie a conta em vez de excluir.')
+    }
+
+    const { data: members } = await supabaseAdmin
+      .from('workspace_members').select('user_id, role').eq('workspace_id', data.workspace_id)
+    const ownerUserId = members?.find((m: any) => m.role === 'owner')?.user_id ?? null
+
+    for (const table of ['wallet_transactions', 'wallet_reservations', 'deposits', 'workspace_wallets', 'onboarding_checklist', 'notifications', 'workspace_members']) {
+      await supabaseAdmin.from(table as any).delete().eq('workspace_id', data.workspace_id)
+    }
+    const { error } = await supabaseAdmin.from('workspaces').delete().eq('id', data.workspace_id)
+    if (error) throw new Error(`Falha ao excluir a conta: ${error.message}`)
+
+    if (data.delete_owner_user && ownerUserId) {
+      const { count: otherWs } = await supabaseAdmin
+        .from('workspace_members').select('workspace_id', { count: 'exact', head: true }).eq('user_id', ownerUserId)
+      if ((otherWs ?? 0) === 0) {
+        await supabaseAdmin.auth.admin.deleteUser(ownerUserId).catch(() => {})
+      }
+    }
+
+    return { ok: true }
   })
