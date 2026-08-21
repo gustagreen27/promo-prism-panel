@@ -282,7 +282,7 @@ function Page() {
             ? "Campanha agendada e enviada ao administrador"
             : "Campanha enviada ao administrador — aguardando envio",
       );
-      navigate({ to: "/painel/campanhas" });
+      navigate({ to: "/painel/demandas" });
     } catch (err: any) {
       toast.error(err?.message ?? "Não foi possível criar o disparo");
     } finally {
