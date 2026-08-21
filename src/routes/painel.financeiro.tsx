@@ -35,8 +35,7 @@ export const Route = createFileRoute("/painel/financeiro")({
   component: Page,
 });
 
-const fmt = (cents: number) =>
-  (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const nfc = (n: number) => Math.max(0, Math.round(n)).toLocaleString("pt-BR");
 const nf = (n: number) => Math.max(0, Math.round(n)).toLocaleString("pt-BR");
 
 const TX_LABEL: Record<string, string> = {
