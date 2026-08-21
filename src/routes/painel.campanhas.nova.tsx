@@ -79,6 +79,9 @@ function Page() {
   const [templateId, setTemplateId] = useState("");
   const [vars, setVars] = useState<Record<string, string>>({});
   const [btnVars, setBtnVars] = useState<Record<string, string>>({});
+  const [btnEnabled, setBtnEnabled] = useState(true);
+  const [btnText, setBtnText] = useState("CLIQUE AQUI");
+  const [btnUrl, setBtnUrl] = useState("");
 
   const [mode, setMode] = useState<ContactMode>("manual");
   const [manual, setManual] = useState("");
@@ -137,7 +140,7 @@ function Page() {
     : (lists.find((l) => l.id === listId)?.count ?? 0);
 
   const previewBody = fillVars(message, vars);
-  const previewUrl = urlButton?.url ? fillVars(String(urlButton.url), btnVars) : "";
+  const previewUrl = btnEnabled ? btnUrl : (urlButton?.url ? fillVars(String(urlButton.url), btnVars) : "");
 
   async function upload(file: File, kind: "avatar" | "media") {
     setUploading(kind);
@@ -179,6 +182,7 @@ function Page() {
     if (!connectionId) return toast.error("Selecione o número de envio");
     if (!templateId) return toast.error("Selecione o template aprovado");
     if (!audienceCount) return toast.error("Adicione os contatos do disparo");
+    if (btnEnabled && !/^https?:\/\/.+/i.test(btnUrl.trim())) return toast.error("Informe o destino (link) do botão");
     if (schedule && (!date || !time)) return toast.error("Informe data e hora do agendamento");
 
     setSubmitting(true);
@@ -201,7 +205,7 @@ function Page() {
           template_id: templateId,
           list_id: finalListId,
           variables_mapping: vars,
-          button_url_mapping: btnVars,
+          button_url_mapping: btnEnabled ? { ...btnVars, "1": btnUrl.trim() } : btnVars,
           header_media_url: mediaUrl || null,
           scheduled_at,
         },
@@ -341,18 +345,23 @@ function Page() {
             </Field>
           </div>
 
-          {urlVars.length > 0 && (
-            <div className="rounded-xl border bg-muted/30 p-4">
-              <div className="mb-3 flex items-center gap-2 text-sm font-medium"><ExternalLink className="h-4 w-4" /> Link do botão</div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {urlVars.map((v) => (
-                  <Field key={v} label={`Variável do link {{${v}}}`}>
-                    <Input value={btnVars[v] ?? ""} onChange={(e) => setBtnVars((s) => ({ ...s, [v]: e.target.value }))} placeholder="Ex: promo-agosto" />
-                  </Field>
-                ))}
+          <div className="rounded-xl border bg-muted/30 p-4">
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <Checkbox checked={btnEnabled} onCheckedChange={(v) => setBtnEnabled(!!v)} />
+              <ExternalLink className="h-4 w-4" /> Adicionar botão
+            </label>
+            {btnEnabled && (
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <Field label="Nome do botão">
+                  <Input value={btnText} onChange={(e) => setBtnText(e.target.value)} placeholder="CLIQUE AQUI" />
+                </Field>
+                <Field label="Destino do botão (link)">
+                  <Input value={btnUrl} onChange={(e) => setBtnUrl(e.target.value)} placeholder="Ex: https://www.seusite.com.br" />
+                </Field>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+
 
           <label className="flex items-center gap-2 text-sm">
             <Checkbox checked={schedule} onCheckedChange={(v) => setSchedule(!!v)} /> Agendar envio
@@ -405,7 +414,13 @@ function Page() {
                   {now} <CheckCheck className="h-3 w-3 text-sky-500" />
                 </div>
               </div>
-              {(template?.buttons ?? []).length > 0 && (
+              {btnEnabled ? (
+                <div className="max-w-[85%]">
+                  <div className="rounded-lg bg-white py-1.5 text-center text-[12px] font-medium text-sky-600 shadow-sm">
+                    {btnText || "CLIQUE AQUI"}
+                  </div>
+                </div>
+              ) : (template?.buttons ?? []).length > 0 && (
                 <div className="max-w-[85%] space-y-1">
                   {(template!.buttons as any[]).map((b, i) => (
                     <div key={i} className="rounded-lg bg-white py-1.5 text-center text-[12px] font-medium text-sky-600 shadow-sm">
@@ -414,6 +429,7 @@ function Page() {
                   ))}
                 </div>
               )}
+
             </div>
 
             <div className="flex items-center gap-2 bg-[#f0f0f0] px-3 py-2">
