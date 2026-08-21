@@ -376,6 +376,9 @@ function Page() {
                       <div className="text-xs text-destructive">Motivo da recusa: {r.rejection_reason}</div>
                     )}
                     <div className="flex flex-wrap gap-2 pt-1">
+                      <Button size="sm" variant="secondary" onClick={() => setPreviewId(r.id)}>
+                        <Eye className="mr-1 h-4 w-4" /> Ver preview
+                      </Button>
                       <Button size="sm" variant="ghost" onClick={() => setAuditId(r.id)}>
                         <History className="mr-1 h-4 w-4" /> Histórico
                       </Button>
