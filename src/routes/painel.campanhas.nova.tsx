@@ -113,11 +113,13 @@ function Page() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const manualRows = useMemo(() => {
-    return manual.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
+    const raw = manual.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
       const [phone, nome] = l.split(/[;,]/);
-      return { phone: (phone || "").replace(/\D/g, ""), name: (nome || "").trim() || undefined };
-    }).filter((r) => r.phone.length >= 10);
+      return { phone: phone || "", name: (nome || "").trim() || undefined };
+    });
+    return buildImportSummary(raw).rows;
   }, [manual]);
+
 
   const dddFilter = ddd === "any" ? null : ddd;
   const byDdd = <T extends { phone: string }>(rows: T[]) =>
@@ -337,11 +339,19 @@ function Page() {
             )}
 
             {mode === "csv" && (
-              <Field label="Anexar arquivo CSV" hint="Formato do arquivo (sem cabeçalho): NUMERO | NOME">
-                <Input type="file" accept=".csv,text/csv" onChange={(e) => { const f = e.target.files?.[0]; if (f) onCsv(f); }} />
-                {csvName && <p className="mt-2 text-xs text-muted-foreground">{csvName} · {csvRows.length} contatos detectados</p>}
+              <Field label="Anexar Excel (.xlsx) ou CSV" hint="Após anexar você escolhe as colunas de nome e número; os números são padronizados para 55DDDNÚMERO.">
+                <Input type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) onCsv(f); e.target.value = ""; }} />
+                {csvName && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {csvName} · {csvRows.length.toLocaleString("pt-BR")} contatos válidos
+                    {csvSummary ? ` · ${csvSummary.fixed} corrigidos · ${csvSummary.duplicates} duplicados · ${csvSummary.invalid} inválidos` : ""}
+                    {sheet && <button type="button" className="ml-2 underline" onClick={() => setMapOpen(true)}>revisar mapeamento</button>}
+                  </p>
+                )}
               </Field>
             )}
+
 
             <Field label="DDD de envio" hint="Escolha “Qualquer” para enviar a todos os DDDs.">
               <Select value={ddd} onValueChange={setDdd}>
