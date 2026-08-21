@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -70,7 +70,7 @@ function Page() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Relatórios</h1>
-          <p className="text-sm text-muted-foreground">Desempenho das suas campanhas.</p>
+          <p className="text-sm text-muted-foreground">Desempenho geral e relatório individual por campanha.</p>
         </div>
         <Select value={days} onValueChange={(v) => setDays(v as any)}>
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
@@ -120,13 +120,20 @@ function Page() {
                     <TableHead className="text-right">Lidas</TableHead>
                     <TableHead className="text-right">Falhas</TableHead>
                     <TableHead className="text-right">Custo</TableHead>
+                    <TableHead className="text-right">Relatório</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {rows.map((r) => (
                     <TableRow key={r.id}>
                       <TableCell>
-                        <div className="font-medium">{r.name}</div>
+                        <Link
+                          to="/painel/relatorio/$id"
+                          params={{ id: r.id }}
+                          className="font-medium text-primary hover:underline"
+                        >
+                          {r.name}
+                        </Link>
                         <div className="text-xs text-muted-foreground">
                           {new Date(r.created_at).toLocaleDateString("pt-BR")}
                         </div>
@@ -138,6 +145,15 @@ function Page() {
                       <TableCell className="text-right tabular-nums">{r.read_count ?? 0}</TableCell>
                       <TableCell className="text-right tabular-nums">{r.failed_count ?? 0}</TableCell>
                       <TableCell className="text-right tabular-nums">{brl(Number(r.charged_cents) || 0)}</TableCell>
+                      <TableCell className="text-right">
+                        <Link
+                          to="/painel/relatorio/$id"
+                          params={{ id: r.id }}
+                          className="text-xs font-medium text-primary hover:underline"
+                        >
+                          Ver relatório
+                        </Link>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

@@ -34,6 +34,7 @@ import { Route as PainelConfiguracoesRouteImport } from './routes/painel.configu
 import { Route as CampaignsIdRouteImport } from './routes/campaigns.$id'
 import { Route as PainelCampanhasIndexRouteImport } from './routes/painel.campanhas.index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as PainelRelatorioIdRouteImport } from './routes/painel.relatorio.$id'
 import { Route as PainelDemandaIdRouteImport } from './routes/painel.demanda.$id'
 import { Route as PainelCampanhasNovaRouteImport } from './routes/painel.campanhas.nova'
 import { Route as PainelCampanhasHistoricoRouteImport } from './routes/painel.campanhas.historico'
@@ -228,6 +229,11 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const PainelRelatorioIdRoute = PainelRelatorioIdRouteImport.update({
+  id: '/relatorio/$id',
+  path: '/relatorio/$id',
+  getParentRoute: () => PainelRoute,
 } as any)
 const PainelDemandaIdRoute = PainelDemandaIdRouteImport.update({
   id: '/demanda/$id',
@@ -692,6 +698,7 @@ export interface FileRoutesByFullPath {
   '/painel/campanhas/historico': typeof PainelCampanhasHistoricoRoute
   '/painel/campanhas/nova': typeof PainelCampanhasNovaRoute
   '/painel/demanda/$id': typeof PainelDemandaIdRoute
+  '/painel/relatorio/$id': typeof PainelRelatorioIdRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/painel/campanhas/': typeof PainelCampanhasIndexRoute
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
@@ -786,6 +793,7 @@ export interface FileRoutesByTo {
   '/painel/campanhas/historico': typeof PainelCampanhasHistoricoRoute
   '/painel/campanhas/nova': typeof PainelCampanhasNovaRoute
   '/painel/demanda/$id': typeof PainelDemandaIdRoute
+  '/painel/relatorio/$id': typeof PainelRelatorioIdRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/painel/campanhas': typeof PainelCampanhasIndexRoute
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
@@ -884,6 +892,7 @@ export interface FileRoutesById {
   '/painel/campanhas/historico': typeof PainelCampanhasHistoricoRoute
   '/painel/campanhas/nova': typeof PainelCampanhasNovaRoute
   '/painel/demanda/$id': typeof PainelDemandaIdRoute
+  '/painel/relatorio/$id': typeof PainelRelatorioIdRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/painel/campanhas/': typeof PainelCampanhasIndexRoute
   '/_authenticated/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
@@ -982,6 +991,7 @@ export interface FileRouteTypes {
     | '/painel/campanhas/historico'
     | '/painel/campanhas/nova'
     | '/painel/demanda/$id'
+    | '/painel/relatorio/$id'
     | '/admin/'
     | '/painel/campanhas/'
     | '/admin/campaigns/$id'
@@ -1076,6 +1086,7 @@ export interface FileRouteTypes {
     | '/painel/campanhas/historico'
     | '/painel/campanhas/nova'
     | '/painel/demanda/$id'
+    | '/painel/relatorio/$id'
     | '/admin'
     | '/painel/campanhas'
     | '/admin/campaigns/$id'
@@ -1173,6 +1184,7 @@ export interface FileRouteTypes {
     | '/painel/campanhas/historico'
     | '/painel/campanhas/nova'
     | '/painel/demanda/$id'
+    | '/painel/relatorio/$id'
     | '/_authenticated/admin/'
     | '/painel/campanhas/'
     | '/_authenticated/admin/campaigns/$id'
@@ -1430,6 +1442,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/painel/relatorio/$id': {
+      id: '/painel/relatorio/$id'
+      path: '/relatorio/$id'
+      fullPath: '/painel/relatorio/$id'
+      preLoaderRoute: typeof PainelRelatorioIdRouteImport
+      parentRoute: typeof PainelRoute
     }
     '/painel/demanda/$id': {
       id: '/painel/demanda/$id'
@@ -2114,6 +2133,7 @@ interface PainelRouteChildren {
   PainelCampanhasHistoricoRoute: typeof PainelCampanhasHistoricoRoute
   PainelCampanhasNovaRoute: typeof PainelCampanhasNovaRoute
   PainelDemandaIdRoute: typeof PainelDemandaIdRoute
+  PainelRelatorioIdRoute: typeof PainelRelatorioIdRoute
   PainelCampanhasIndexRoute: typeof PainelCampanhasIndexRoute
 }
 
@@ -2129,6 +2149,7 @@ const PainelRouteChildren: PainelRouteChildren = {
   PainelCampanhasHistoricoRoute: PainelCampanhasHistoricoRoute,
   PainelCampanhasNovaRoute: PainelCampanhasNovaRoute,
   PainelDemandaIdRoute: PainelDemandaIdRoute,
+  PainelRelatorioIdRoute: PainelRelatorioIdRoute,
   PainelCampanhasIndexRoute: PainelCampanhasIndexRoute,
 }
 
