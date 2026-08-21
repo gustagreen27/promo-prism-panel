@@ -60,7 +60,7 @@ export const listApprovalQueue = createServerFn({ method: 'POST' })
           .select('id,display_name,nome_interno,name,display_phone,phone,waba_id')
           .in('id', connIds)
       : { data: [] as any[] }
-    const connById = new Map((conns ?? []).map((c: any) => [c.id, c]))
+    const connById = new Map<string, any>((conns ?? []).map((c: any) => [c.id, c] as [string, any]))
 
     // Quantidade de testes enviados por demanda
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
@@ -78,7 +78,7 @@ export const listApprovalQueue = createServerFn({ method: 'POST' })
 
     return {
       items: campaigns.map((c) => {
-        const conn = c.connection_id ? connById.get(c.connection_id) : null
+        const conn: any = c.connection_id ? connById.get(c.connection_id) : null
         return {
           ...c,
           workspace_name: c.workspaces?.name ?? null,
