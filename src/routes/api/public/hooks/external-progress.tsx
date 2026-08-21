@@ -41,7 +41,7 @@ export const Route = createFileRoute('/api/public/hooks/external-progress')({
         for (const r of (rows ?? []) as any[]) {
           const patch = externalProgressPatch(r, now)
           if (!patch) continue
-          const { error: upErr } = await supabaseAdmin.from('wa_campaigns').update(patch).eq('id', r.id)
+          const { error: upErr } = await supabaseAdmin.from('wa_campaigns').update(patch as never).eq('id', r.id)
           if (!upErr) updated++
         }
 
