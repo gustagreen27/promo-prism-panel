@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SiteRouteImport } from './routes/site'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RecuperarSenhaRouteImport } from './routes/recuperar-senha'
 import { Route as Politica2026RouteImport } from './routes/politica2026'
@@ -101,6 +102,11 @@ import { Route as AuthenticatedAdminCampaignsIdPreviewRouteImport } from './rout
 import { Route as AuthenticatedAdminCampaignsIdEditRouteImport } from './routes/_authenticated/admin.campaigns.$id.edit'
 import { Route as AuthenticatedAdminWhatsappNumerosIdPerfilRouteImport } from './routes/_authenticated/admin.whatsapp.numeros.$id.perfil'
 
+const SiteRoute = SiteRouteImport.update({
+  id: '/site',
+  path: '/site',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
@@ -630,6 +636,7 @@ export interface FileRoutesByFullPath {
   '/politica2026': typeof Politica2026Route
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/site': typeof SiteRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/painel/agenda': typeof PainelAgendaRoute
   '/painel/campanhas': typeof PainelCampanhasRouteWithChildren
@@ -721,6 +728,7 @@ export interface FileRoutesByTo {
   '/politica2026': typeof Politica2026Route
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/site': typeof SiteRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/painel/agenda': typeof PainelAgendaRoute
   '/painel/campanhas': typeof PainelCampanhasRouteWithChildren
@@ -814,6 +822,7 @@ export interface FileRoutesById {
   '/politica2026': typeof Politica2026Route
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/site': typeof SiteRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/painel/agenda': typeof PainelAgendaRoute
   '/painel/campanhas': typeof PainelCampanhasRouteWithChildren
@@ -908,6 +917,7 @@ export interface FileRouteTypes {
     | '/politica2026'
     | '/recuperar-senha'
     | '/reset-password'
+    | '/site'
     | '/campaigns/$id'
     | '/painel/agenda'
     | '/painel/campanhas'
@@ -999,6 +1009,7 @@ export interface FileRouteTypes {
     | '/politica2026'
     | '/recuperar-senha'
     | '/reset-password'
+    | '/site'
     | '/campaigns/$id'
     | '/painel/agenda'
     | '/painel/campanhas'
@@ -1091,6 +1102,7 @@ export interface FileRouteTypes {
     | '/politica2026'
     | '/recuperar-senha'
     | '/reset-password'
+    | '/site'
     | '/campaigns/$id'
     | '/painel/agenda'
     | '/painel/campanhas'
@@ -1185,6 +1197,7 @@ export interface RootRouteChildren {
   Politica2026Route: typeof Politica2026Route
   RecuperarSenhaRoute: typeof RecuperarSenhaRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SiteRoute: typeof SiteRoute
   CampaignsIdRoute: typeof CampaignsIdRoute
   RelatoriosSlugRoute: typeof RelatoriosSlugRoute
   ApiPublicCiSplatRoute: typeof ApiPublicCiSplatRoute
@@ -1203,6 +1216,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/site': {
+      id: '/site'
+      path: '/site'
+      fullPath: '/site'
+      preLoaderRoute: typeof SiteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
@@ -2073,6 +2093,7 @@ const rootRouteChildren: RootRouteChildren = {
   Politica2026Route: Politica2026Route,
   RecuperarSenhaRoute: RecuperarSenhaRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SiteRoute: SiteRoute,
   CampaignsIdRoute: CampaignsIdRoute,
   RelatoriosSlugRoute: RelatoriosSlugRoute,
   ApiPublicCiSplatRoute: ApiPublicCiSplatRoute,
