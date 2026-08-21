@@ -159,12 +159,24 @@ function avgQuality(items: any[]) {
   return avg >= 2.6 ? "alta" : avg >= 1.8 ? "boa" : "baixa";
 }
 
+type RestrictionLevel = "none" | "limited" | "restricted" | "unknown" | null;
+
+function workspaceHealth(w: any) {
+  const levels: RestrictionLevel[] = (w.wabas ?? []).map((x: any) => x.restriction_level);
+  if (levels.some((l) => l === "restricted")) return { level: "restricted", label: "Restrita", cls: "border-destructive/30 bg-destructive/10 text-destructive" } as const;
+  if (levels.some((l) => l === "limited")) return { level: "limited", label: "Limitada", cls: "border-amber-500/30 bg-amber-500/10 text-amber-600" } as const;
+  if (levels.some((l) => l === "unknown")) return { level: "unknown", label: "Não verificada", cls: "border-muted-foreground/30 bg-muted/50 text-muted-foreground" } as const;
+  if (levels.every((l) => l === "none")) return { level: "none", label: "Ativa", cls: "border-emerald-500/30 bg-emerald-500/10 text-emerald-600" } as const;
+  return { level: "unknown", label: "Status não verificado", cls: "border-muted-foreground/30 bg-muted/50 text-muted-foreground" } as const;
+}
+
 function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId, saving, onRecalc, recalcing, onDisconnect, disconnecting }: any) {
   const [bizId, setBizId] = useState<string>(w.meta_business_id ?? "");
   const [bizName, setBizName] = useState<string>(w.meta_business_name ?? "");
   const [defConn, setDefConn] = useState<string>(w.default_connection_id ?? "");
   const [finishId, setFinishId] = useState<string | null>(null);
   const [closed, setClosed] = useState<Record<string, boolean>>({});
+  const health = workspaceHealth(w);
 
   const cap = workspaceCapacity(w);
   const used = Number(w.messages_last_24h ?? 0);
