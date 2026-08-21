@@ -286,9 +286,21 @@ function Page() {
                         : <Badge variant="secondary">{a.status ?? "ativo"}</Badge>}
                     </TableCell>
                     <TableCell className="text-right whitespace-nowrap">
-                      <Button size="sm" onClick={() => openDialog(a, "add")}>Adicionar créditos</Button>
+                      <Button size="sm" onClick={() => openDialog(a, "add")}>Adicionar mensagens</Button>
                       <Button size="sm" variant="outline" className="ml-2" onClick={() => openDialog(a, "remove")}>Remover</Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="ml-2"
+                        onClick={() => {
+                          setPriceTarget(a);
+                          setPriceStr((Number(a.unit_price_cents) / 100).toFixed(2).replace(".", ","));
+                        }}
+                      >
+                        Preço
+                      </Button>
                     </TableCell>
+
                   </TableRow>
                 ))}
               </TableBody>
