@@ -422,6 +422,13 @@ const EXTERNAL_STATUS: Array<{ v: string; label: string }> = [
   { v: "cancelled", label: "Cancelado" },
 ];
 
+/** Primeiro valor definido entre as chaves informadas, como string de input. */
+function pick(item: any, ...keys: string[]) {
+  for (const k of keys) if (item?.[k] != null) return String(item[k]);
+  return "";
+}
+
+
 /** Painel de acompanhamento manual de uma execução externa. */
 function ExternalControls({ item }: { item: Item }) {
   const qc = useQueryClient();
