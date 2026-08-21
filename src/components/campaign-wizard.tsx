@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { useServerFn } from "@tanstack/react-start";
@@ -38,17 +38,6 @@ import { metaVarsIn, renderMapping, buildContext } from "@/lib/wa-variables";
 import { cn } from "@/lib/utils";
 import { formatCallingCode, getCountryCallingCode } from "@/lib/phone-country";
 
-const searchSchema = z.object({
-  event_id: z.string().uuid().optional(),
-  scheduled_for: z.string().optional(),
-});
-
-export const Route = createFileRoute("/painel/campanhas/avancado")({
-  head: () => ({ meta: [{ title: "Nova campanha — Disparos FR" }] }),
-  validateSearch: (s) => searchSchema.parse(s),
-  component: Page,
-});
-
 /**
  * Limite de destinatários únicos em 24h — compartilhado pelo Portfólio
  * Empresarial (BM), retornado pela WABA em
@@ -75,22 +64,6 @@ function formatDailyLimit(n: any): string {
   return "sem dados";
 }
 
-
-function Page() {
-
-  const { workspaceId } = Route.useRouteContext() as { workspaceId: string };
-  const { event_id, scheduled_for } = Route.useSearch();
-  const navigate = useNavigate();
-  return (
-    <CampaignWizard
-      workspaceId={workspaceId}
-      event_id={event_id}
-      scheduled_for={scheduled_for}
-      onExit={() => navigate({ to: "/painel/campanhas" })}
-      onOpenCalendar={() => navigate({ to: "/painel/agenda" })}
-    />
-  );
-}
 
 type NumberRow = {
   id: string; display_name: string; phone_masked: string; status: string;
