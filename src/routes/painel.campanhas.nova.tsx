@@ -30,11 +30,6 @@ export const Route = createFileRoute("/painel/campanhas/nova")({
   component: Page,
 });
 
-type NumberRow = { id: string; display_name: string; phone_masked: string; status: string };
-type TemplateRow = {
-  id: string; name: string; language: string; category: string; body: string;
-  header_type?: string | null; header_text?: string | null; footer?: string | null; buttons?: any[];
-};
 type ContactMode = "manual" | "lista" | "csv";
 
 function fillVars(text: string, vars: Record<string, string>) {
@@ -418,24 +413,15 @@ function Page() {
                 <div className="whitespace-pre-wrap break-words text-[13px] leading-relaxed text-neutral-900">
                   {previewBody || <span className="italic text-neutral-400">Sua mensagem aparece aqui...</span>}
                 </div>
-                {template?.footer && <div className="mt-1 text-[10px] text-neutral-500">{template.footer}</div>}
                 <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-neutral-500">
                   {now} <CheckCheck className="h-3 w-3 text-sky-500" />
                 </div>
               </div>
-              {btnEnabled ? (
+              {btnEnabled && (
                 <div className="max-w-[85%]">
                   <div className="rounded-lg bg-white py-1.5 text-center text-[12px] font-medium text-sky-600 shadow-sm">
                     {btnText || "CLIQUE AQUI"}
                   </div>
-                </div>
-              ) : (template?.buttons ?? []).length > 0 && (
-                <div className="max-w-[85%] space-y-1">
-                  {(template!.buttons as any[]).map((b, i) => (
-                    <div key={i} className="rounded-lg bg-white py-1.5 text-center text-[12px] font-medium text-sky-600 shadow-sm">
-                      {b.text}
-                    </div>
-                  ))}
                 </div>
               )}
 
