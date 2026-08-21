@@ -353,9 +353,18 @@ export const adminListClientAccounts = createServerFn({ method: 'GET' })
     if (ids.length) {
       const { data: members } = await supabase
         .from('workspace_members')
-        .select('workspace_id, role, user_id, profiles(full_name, email)')
+        .select('workspace_id, role, user_id')
         .in('workspace_id', ids)
-      for (const m of members ?? []) {
+      const userIds = [...new Set((members ?? []).map((m: any) => m.user_id).filter(Boolean))]
+      const profileById = new Map<string, any>()
+      if (userIds.length) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .in('id', userIds)
+        for (const pr of profs ?? []) profileById.set(pr.id, pr)
+      }
+      for (const m of (members ?? []).map((m: any) => ({ ...m, profile: profileById.get(m.user_id) ?? null }))) {
         const arr = membersByWs.get(m.workspace_id) ?? []
         arr.push(m)
         membersByWs.set(m.workspace_id, arr)
@@ -385,8 +394,8 @@ export const adminListClientAccounts = createServerFn({ method: 'GET' })
         credits_available: unit > 0 ? Math.floor(available / unit) : 0,
         credits_reserved: unit > 0 ? Math.floor(reserved / unit) : 0,
         members_count: members.length,
-        owner_name: owner?.profiles?.full_name ?? null,
-        owner_email: owner?.profiles?.email ?? null,
+        owner_name: owner?.profile?.full_name ?? null,
+        owner_email: owner?.profile?.email ?? null,
       }
     })
   })
