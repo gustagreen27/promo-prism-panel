@@ -201,58 +201,95 @@ function Page() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">
-            {c.external_finished_at || stage === "completed" ? "Resultado da campanha" : "Andamento da campanha"} · {m.pct}%
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${m.pct}%` }} />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            <Metric icon={<Send className="h-4 w-4 text-emerald-600" />} value={num(m.sent)} label="Enviados com sucesso" />
-            <Metric icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />} value={num(m.delivered)} label="Entregues" />
-            <Metric icon={<XCircle className="h-4 w-4 text-destructive" />} value={num(m.failed)} label="Falhas" />
-            <Metric icon={<Clock className="h-4 w-4 text-muted-foreground" />} value={num(m.pending)} label="Pendentes" />
-            <Metric icon={<Users className="h-4 w-4 text-muted-foreground" />} value={num(m.total)} label="Destinatários" />
-          </div>
-          <p className="text-[11px] text-muted-foreground">Última atualização: {fmt(m.updatedAt)}</p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <Activity className="h-4 w-4" /> Desempenho do envio
-            {workers.active && (
-              <span className="flex items-center gap-1 text-[11px] font-normal text-emerald-600">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" /> ao vivo
-              </span>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {workers.active ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-              <Metric icon={<Gauge className="h-4 w-4" />} value={String(workers.workers)} label="Workers ativos" />
-              <Metric icon={<Send className="h-4 w-4" />} value={`${workers.mps}/s`} label="Velocidade" />
-              <Metric icon={<Activity className="h-4 w-4" />} value={String(workers.in_flight)} label="Em processamento" />
-              <Metric icon={<Clock className="h-4 w-4" />} value={`${workers.latency_ms} ms`} label="Latência média" />
+      {stage === "scheduled" ? (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <CalendarDays className="h-4 w-4" /> Agendamento
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-start gap-2 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-xs text-blue-700">
+              <CalendarDays className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              Envio programado para {fmt(c.scheduled_at)}. A execução e as métricas só começam nesse horário.
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <Metric
-                icon={<CalendarDays className="h-4 w-4" />}
-                value={workers.eta_seconds ? `${Math.ceil(workers.eta_seconds / 60)} min` : "—"}
-                label="Tempo estimado"
+                icon={<CalendarDays className="h-4 w-4 text-muted-foreground" />}
+                value={fmt(c.scheduled_at)}
+                label="Data e horário programados"
+              />
+              <Metric
+                icon={<Users className="h-4 w-4 text-muted-foreground" />}
+                value={num(m.total || c.total_recipients)}
+                label="Total de contatos"
+              />
+              <Metric
+                icon={<Clock className="h-4 w-4 text-muted-foreground" />}
+                value={fmt(c.created_at)}
+                label="Criada em"
               />
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Nenhum worker em atividade no momento para esta demanda.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">
+                {c.external_finished_at || stage === "completed" ? "Resultado da campanha" : "Andamento da campanha"} ·{" "}
+                {m.pct}%
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${m.pct}%` }} />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <Metric icon={<Send className="h-4 w-4 text-emerald-600" />} value={num(m.sent)} label="Enviados com sucesso" />
+                <Metric icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />} value={num(m.delivered)} label="Entregues" />
+                <Metric icon={<XCircle className="h-4 w-4 text-destructive" />} value={num(m.failed)} label="Falhas" />
+                <Metric icon={<Clock className="h-4 w-4 text-muted-foreground" />} value={num(m.pending)} label="Pendentes" />
+                <Metric icon={<Users className="h-4 w-4 text-muted-foreground" />} value={num(m.total)} label="Destinatários" />
+              </div>
+              <p className="text-[11px] text-muted-foreground">Última atualização: {fmt(m.updatedAt)}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Activity className="h-4 w-4" /> Desempenho do envio
+                {workers.active && (
+                  <span className="flex items-center gap-1 text-[11px] font-normal text-emerald-600">
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" /> ao vivo
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {workers.active ? (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                  <Metric icon={<Gauge className="h-4 w-4" />} value={String(workers.workers)} label="Workers ativos" />
+                  <Metric icon={<Send className="h-4 w-4" />} value={`${workers.mps}/s`} label="Velocidade" />
+                  <Metric icon={<Activity className="h-4 w-4" />} value={String(workers.in_flight)} label="Em processamento" />
+                  <Metric icon={<Clock className="h-4 w-4" />} value={`${workers.latency_ms} ms`} label="Latência média" />
+                  <Metric
+                    icon={<CalendarDays className="h-4 w-4" />}
+                    value={workers.eta_seconds ? `${Math.ceil(workers.eta_seconds / 60)} min` : "—"}
+                    label="Tempo estimado"
+                  />
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Nenhum worker em atividade no momento para esta demanda.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
+
 
       <Card>
         <CardHeader className="pb-2">
