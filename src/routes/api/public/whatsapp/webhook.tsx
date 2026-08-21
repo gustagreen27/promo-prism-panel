@@ -129,31 +129,8 @@ function mapTemplateStatus(ev: string | undefined | null): string | null {
   return null;
 }
 
-function computeSig(rawBody: string, secret: string): string {
-  return createHmac("sha256", secret).update(rawBody, "utf8").digest("hex");
-}
+// Validação de assinatura multi-App: ver src/lib/wa-webhook-secrets.server.ts
 
-function safeCompareHex(providedHex: string, expectedHex: string): boolean {
-  try {
-    const a = Buffer.from(providedHex, "hex");
-    const b = Buffer.from(expectedHex, "hex");
-    if (a.length !== b.length || a.length === 0) return false;
-    return timingSafeEqual(a, b);
-  } catch {
-    return false;
-  }
-}
-
-function verifySignatureWithSecret(
-  rawBody: string,
-  signatureHeader: string | null,
-  secret: string | null | undefined,
-): boolean {
-  if (!secret) return false;
-  if (!signatureHeader || !signatureHeader.startsWith("sha256=")) return false;
-  const provided = signatureHeader.slice("sha256=".length).trim();
-  return safeCompareHex(provided, computeSig(rawBody, secret));
-}
 
 /**
  * Extrai phone_number_id / waba_id do payload sem confiar em nenhuma assinatura.
