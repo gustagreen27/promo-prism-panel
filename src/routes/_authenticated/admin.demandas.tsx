@@ -71,13 +71,26 @@ type Item = {
 
 };
 
-const fmt = (v: string | null | undefined) => (v ? new Date(v).toLocaleString("pt-BR") : "—");
+const BR_TZ = "America/Sao_Paulo";
 
-/** ISO → valor de <input type="datetime-local"> no fuso local. */
+const fmt = (v: string | null | undefined) =>
+  v ? new Date(v).toLocaleString("pt-BR", { timeZone: BR_TZ }) : "—";
+
+/** ISO → valor de <input type="datetime-local"> em horário de Brasília. */
 function toLocalInput(iso: string) {
   const d = new Date(iso);
-  const off = d.getTimezoneOffset() * 60_000;
-  return new Date(d.getTime() - off).toISOString().slice(0, 16);
+  if (Number.isNaN(d.getTime())) return "";
+  const p = new Intl.DateTimeFormat("en-CA", {
+    timeZone: BR_TZ,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  }).formatToParts(d).reduce<Record<string, string>>((a, x) => ((a[x.type] = x.value), a), {});
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+}
+
+/** Valor de <input type="datetime-local"> (Brasília) → ISO UTC. */
+function fromLocalInput(v: string) {
+  return v ? new Date(`${v}:00-03:00`).toISOString() : null;
 }
 
 const EXEC_STATE: Record<string, string> = {
