@@ -401,7 +401,7 @@ function Page() {
     }
   }
 
-  const now = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  const clockNow = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
   return (
     <div className="space-y-6">
@@ -693,7 +693,7 @@ function Page() {
             </div>
             <div className="mx-auto max-w-[300px] overflow-hidden rounded-[2rem] border-[6px] border-neutral-900 bg-neutral-900 shadow-xl">
               <div className="flex items-center justify-between px-4 py-1.5 text-[10px] text-white">
-                <span>{now}</span>
+                <span>{clockNow}</span>
                 <span className="flex items-center gap-1"><Signal className="h-3 w-3" /><Wifi className="h-3 w-3" /><BatteryMedium className="h-3.5 w-3.5" /></span>
               </div>
               <div className="flex items-center gap-2 bg-[#075E54] px-3 py-2 text-white">
@@ -718,7 +718,7 @@ function Page() {
                     {previewBody || <span className="italic text-neutral-400">Sua mensagem aparece aqui...</span>}
                   </div>
                   <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-neutral-500">
-                    {now} <CheckCheck className="h-3 w-3 text-sky-500" />
+                    {clockNow} <CheckCheck className="h-3 w-3 text-sky-500" />
                   </div>
                 </div>
                 {btnEnabled && (
