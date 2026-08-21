@@ -35,8 +35,7 @@ export const Route = createFileRoute("/painel/financeiro")({
   component: Page,
 });
 
-const fmt = (cents: number) =>
-  (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
 const nf = (n: number) => Math.max(0, Math.round(n)).toLocaleString("pt-BR");
 
 const TX_LABEL: Record<string, string> = {
@@ -129,20 +128,22 @@ function Page() {
   const [open, setOpen] = useState(false);
   const requiredCents = (w as any)?.required_deposit_cents ?? w?.minimum_deposit_cents ?? 15000;
   const minMessages = (w as any)?.minimum_messages ?? 2500;
-  const [amountStr, setAmountStr] = useState("375,00");
+  const minCreditsRequired = Math.max(minMessages, Math.ceil(requiredCents / unit));
+  const [amountStr, setAmountStr] = useState("2500");
 
   useEffect(() => {
-    if (requiredCents) setAmountStr((requiredCents / 100).toFixed(2).replace(".", ","));
-  }, [requiredCents]);
+    if (minCreditsRequired) setAmountStr(String(minCreditsRequired));
+  }, [minCreditsRequired]);
 
   const deposit = useMutation({
     mutationFn: async () => {
-      const cents = Math.round(Number(amountStr.replace(/\./g, "").replace(",", ".")) * 100);
-      if (!Number.isFinite(cents) || cents < requiredCents) {
-        throw new Error(`O valor mínimo para depósito é ${fmt(requiredCents)}`);
+      const credits = Math.round(Number(amountStr || 0));
+      if (!Number.isFinite(credits) || credits < minCreditsRequired) {
+        throw new Error(`A compra mínima é de ${nf(minCreditsRequired)} créditos`);
       }
-      return createDep({ data: { workspace_id: wsId, amount_cents: cents } });
+      return createDep({ data: { workspace_id: wsId, amount_cents: credits * unit } });
     },
+
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["deposits", wsId] });
       if (res.checkout_url) {
@@ -159,9 +160,9 @@ function Page() {
     <div className="space-y-8">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Mensagens</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Créditos</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Acompanhe seu saldo e histórico de transações · {fmt(unit)} por mensagem
+            Acompanhe seu saldo e histórico de créditos · 1 crédito = 1 mensagem
           </p>
         </div>
       </header>
@@ -169,7 +170,7 @@ function Page() {
       {availableCredits < 1000 && (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
           <span className="font-semibold">Saldo baixo:</span>{" "}
-          restam <span className="font-semibold tabular-nums">{nf(availableCredits)}</span> mensagens.
+          restam <span className="font-semibold tabular-nums">{nf(availableCredits)}</span> créditos.
           Recarregue para não interromper seus disparos.
         </div>
       )}
@@ -188,15 +189,15 @@ function Page() {
               <div className="mt-3 text-3xl font-bold tabular-nums text-emerald-600">
                 {nf(availableCredits)}
               </div>
-              <div className="text-sm text-muted-foreground">mensagens disponíveis</div>
+              <div className="text-sm text-muted-foreground">créditos disponíveis</div>
               <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1">
                   <ArrowUpRight className="h-3.5 w-3.5 text-emerald-600" />
-                  {nf(totals.bought)} compradas
+                  {nf(totals.bought)} adicionados
                 </span>
                 <span className="inline-flex items-center gap-1">
                   <ArrowDownRight className="h-3.5 w-3.5 text-orange-500" />
-                  {nf(totals.used)} usadas
+                  {nf(totals.used)} usados
                 </span>
               </div>
             </CardContent>
@@ -208,7 +209,7 @@ function Page() {
         <Card className="rounded-xl">
           <CardContent className="p-5">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <TrendingUp className="h-4 w-4 text-emerald-600" /> Total Comprado
+              <TrendingUp className="h-4 w-4 text-emerald-600" /> Total adicionado
             </div>
             <div className="mt-2 text-2xl font-bold tabular-nums text-emerald-600">
               {nf(totals.bought)}
@@ -218,7 +219,7 @@ function Page() {
         <Card className="rounded-xl">
           <CardContent className="p-5">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <TrendingDown className="h-4 w-4 text-orange-500" /> Total Utilizado
+              <TrendingDown className="h-4 w-4 text-orange-500" /> Total utilizado
             </div>
             <div className="mt-2 text-2xl font-bold tabular-nums text-orange-500">
               {nf(totals.used)}
@@ -228,13 +229,14 @@ function Page() {
         <Card className="rounded-xl">
           <CardContent className="p-5">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Building2 className="h-4 w-4 text-muted-foreground" /> Custo por mensagem
+              <Building2 className="h-4 w-4 text-muted-foreground" /> Saldo atual
             </div>
-            <div className="mt-2 text-2xl font-bold tabular-nums">{fmt(unit)}</div>
-            <p className="mt-1 text-xs text-muted-foreground">1 mensagem = 1 crédito</p>
+            <div className="mt-2 text-2xl font-bold tabular-nums">{nf(availableCredits)}</div>
+            <p className="mt-1 text-xs text-muted-foreground">1 crédito = 1 mensagem</p>
           </CardContent>
         </Card>
       </div>
+
 
 
       <Card className="rounded-xl">
@@ -323,7 +325,7 @@ function Page() {
               {deps.map((d: any) => (
                 <div key={d.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                   <div className="min-w-0">
-                    <div className="text-sm font-medium">{fmt(d.amount_cents)}</div>
+                    <div className="text-sm font-medium">{nf(Math.round(Number(d.amount_cents ?? 0) / unit))} créditos</div>
                     <div className="text-xs text-muted-foreground">
                       {new Date(d.created_at).toLocaleString("pt-BR")} · {d.payment_method ?? "—"}
                     </div>
@@ -348,23 +350,24 @@ function Page() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Comprar mensagens</DialogTitle>
+            <DialogTitle>Comprar créditos</DialogTitle>
             <DialogDescription>
-              Depósito mínimo para o seu plano: <strong>{fmt(requiredCents)}</strong> ({minMessages.toLocaleString("pt-BR")} mensagens × {fmt(unit)}).
+              Compra mínima: <strong>{nf(minCreditsRequired)}</strong> créditos (1 crédito = 1 mensagem).
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>Valor (R$)</Label>
+              <Label>Quantidade de créditos</Label>
               <Input
-                inputMode="decimal"
+                inputMode="numeric"
                 value={amountStr}
-                onChange={(e) => setAmountStr(e.target.value)}
-                placeholder={(requiredCents / 100).toFixed(2).replace(".", ",")}
+                onChange={(e) => setAmountStr(e.target.value.replace(/\D/g, ""))}
+                placeholder={String(minCreditsRequired)}
               />
-              <p className="mt-1 text-xs text-muted-foreground">Mínimo {fmt(requiredCents)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Mínimo {nf(minCreditsRequired)} créditos</p>
             </div>
           </div>
+
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
             <Button onClick={() => deposit.mutate()} disabled={deposit.isPending}>
