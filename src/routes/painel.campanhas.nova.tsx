@@ -414,7 +414,13 @@ function Page() {
                   {now} <CheckCheck className="h-3 w-3 text-sky-500" />
                 </div>
               </div>
-              {(template?.buttons ?? []).length > 0 && (
+              {btnEnabled ? (
+                <div className="max-w-[85%]">
+                  <div className="rounded-lg bg-white py-1.5 text-center text-[12px] font-medium text-sky-600 shadow-sm">
+                    {btnText || "CLIQUE AQUI"}
+                  </div>
+                </div>
+              ) : (template?.buttons ?? []).length > 0 && (
                 <div className="max-w-[85%] space-y-1">
                   {(template!.buttons as any[]).map((b, i) => (
                     <div key={i} className="rounded-lg bg-white py-1.5 text-center text-[12px] font-medium text-sky-600 shadow-sm">
@@ -423,6 +429,7 @@ function Page() {
                   ))}
                 </div>
               )}
+
             </div>
 
             <div className="flex items-center gap-2 bg-[#f0f0f0] px-3 py-2">
