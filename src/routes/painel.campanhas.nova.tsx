@@ -234,28 +234,6 @@ function Page() {
             <Textarea value={bio} onChange={(e) => setBio(e.target.value)} maxLength={139} rows={3} placeholder="Ex: Atendimento oficial - Seg a Sex das 9h às 18h" />
           </Field>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Número de envio">
-              <Select value={connectionId} onValueChange={setConnectionId}>
-                <SelectTrigger><SelectValue placeholder="Selecione o número..." /></SelectTrigger>
-                <SelectContent>
-                  {numbers.map((n) => (
-                    <SelectItem key={n.id} value={n.id}>{n.display_name} · {n.phone_masked}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label="Template aprovado">
-              <Select value={templateId} onValueChange={setTemplateId} disabled={!connectionId}>
-                <SelectTrigger><SelectValue placeholder="Selecione o template..." /></SelectTrigger>
-                <SelectContent>
-                  {templates.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>{t.name} ({t.language})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-          </div>
 
           <Field label="Mensagem" hint="Use as variáveis do template como {{1}} e {{2}}.">
             <Textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={6} maxLength={2000}
