@@ -644,15 +644,18 @@ export const listMyDemands = createServerFn({ method: 'POST' })
       : { data: [] as any[] }
     const listName = new Map((lists ?? []).map((l: any) => [l.id, l.name]))
 
+    const { simulateExternal } = await import('./external-progression')
     return {
       items: campaigns.map(({ external_note: _adminOnly, ...c }: any) => ({
         ...c,
         stage: demandStage(c),
+        next_update_at: c.execution_type === 'external' ? (simulateExternal(c)?.nextAt ?? null) : null,
         list_name: c.list_id ? (listName.get(c.list_id) ?? null) : null,
         decisions: auditByCampaign.get(c.id) ?? [],
       })),
     }
   })
+
 
 // ---- Histórico de atualizações manuais da execução externa (admin) ----
 export const listExternalProgress = createServerFn({ method: 'POST' })
