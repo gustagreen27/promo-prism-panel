@@ -60,8 +60,8 @@ function Page() {
   const demandsFn = useServerFn(listMyDemands);
   const [filter, setFilter] = useState<Bucket | "all">("all");
 
-  const { data: ctx } = useQuery({ queryKey: ["my-context"], queryFn: () => ctxFn({} as never) });
-  const workspaceId = (ctx as any)?.workspace_id ?? (ctx as any)?.workspaceId ?? null;
+  const { data: ctx } = useQuery({ queryKey: ["my-context"], queryFn: () => ctxFn(), staleTime: 30_000 });
+  const workspaceId = (ctx as any)?.primary_workspace?.id ?? null;
 
   const { data, isLoading } = useQuery({
     queryKey: ["my-demands", workspaceId],
