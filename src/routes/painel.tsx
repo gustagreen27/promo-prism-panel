@@ -37,7 +37,7 @@ const NAV: Array<{ to: string; label: string; icon: typeof LayoutDashboard; exac
   { to: "/painel/agenda", label: "Agenda", icon: CalendarClock },
   { to: "/painel/whatsapp", label: "WhatsApp", icon: MessageCircle },
   { to: "/painel/relatorios", label: "Relatórios", icon: BarChart3 },
-  { to: "/painel/financeiro", label: "Créditos", icon: CreditCard },
+  { to: "/painel/financeiro", label: "Mensagens", icon: CreditCard },
 ];
 
 function PanelLayout() {
