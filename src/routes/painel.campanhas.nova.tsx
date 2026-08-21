@@ -136,8 +136,15 @@ function Page() {
     }).filter((r) => r.phone.length >= 10);
   }, [manual]);
 
-  const audienceCount = mode === "manual" ? manualRows.length
-    : mode === "csv" ? csvRows.length
+  const dddFilter = ddd === "any" ? null : ddd;
+  const byDdd = <T extends { phone: string }>(rows: T[]) =>
+    dddFilter ? rows.filter((r) => extractDddBR(r.phone) === dddFilter) : rows;
+
+  const manualFiltered = useMemo(() => byDdd(manualRows), [manualRows, dddFilter]);
+  const csvFiltered = useMemo(() => byDdd(csvRows), [csvRows, dddFilter]);
+
+  const audienceCount = mode === "manual" ? manualFiltered.length
+    : mode === "csv" ? csvFiltered.length
     : (lists.find((l) => l.id === listId)?.count ?? 0);
 
   const previewBody = fillVars(message, vars);
