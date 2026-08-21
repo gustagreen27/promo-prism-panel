@@ -244,7 +244,7 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
         template_variables: templateVars,
         scheduled_at: data.scheduled_at ?? null,
         status: initialStatus,
-        custom_fields: data.client_brief ?? null,
+        custom_fields: { ...(data.client_brief ?? {}), send_type: isTest ? 'test' : 'full' },
         submitted_at: new Date().toISOString(),
         approval_mode,
         approval_status,
