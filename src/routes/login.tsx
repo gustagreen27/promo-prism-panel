@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { z } from "zod";
@@ -6,10 +6,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AuthShell } from "@/components/auth/AuthShell";
-import { PasswordInput } from "@/components/auth/PasswordInput";
 import { getMyContext, logAuthEvent } from "@/lib/auth.functions";
 import { AlertCircle } from "lucide-react";
+import logoAsset from "@/assets/next-disparos-logo.png.asset.json";
 
 const searchSchema = z.object({
   reason: z.string().optional(),
@@ -19,7 +18,16 @@ const searchSchema = z.object({
 export const Route = createFileRoute("/login")({
   ssr: false,
   validateSearch: searchSchema,
-  head: () => ({ meta: [{ title: "Entrar — Disparos FR" }] }),
+  head: () => ({
+    meta: [
+      { title: "Entrar — next DISPAROS" },
+      { name: "description", content: "Acesse o painel next DISPAROS." },
+      { property: "og:title", content: "Entrar — next DISPAROS" },
+      { property: "og:description", content: "Acesse o painel next DISPAROS." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: LoginPage,
 });
 
@@ -62,7 +70,6 @@ function LoginPage() {
       return;
     }
 
-    // Fetch context to route correctly
     try {
       const ctx = await ctxFn();
       logFn({ data: { type: "login_success" } }).catch(() => {});
@@ -86,50 +93,60 @@ function LoginPage() {
   }
 
   return (
-    <AuthShell
-      title="Entrar na sua conta"
-      subtitle="Acesse o painel do Disparos FR."
-      footer={
-        <div className="text-center text-sm text-muted-foreground">
-          Ainda não tem conta?{" "}
-          <Link to="/cadastro" className="font-medium text-foreground hover:underline">Criar conta grátis</Link>
-        </div>
-      }
-    >
-      <form onSubmit={handleLogin} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="email">E-mail</Label>
-          <Input
-            id="email"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-            className="h-11"
-            placeholder="voce@empresa.com.br"
+    <div className="flex min-h-screen flex-col items-center justify-center bg-black px-4 py-12">
+      <div className="w-full max-w-sm">
+        <div className="mb-10 flex justify-center">
+          <img
+            src={logoAsset.url}
+            alt="next DISPAROS"
+            className="h-12 w-auto object-contain brightness-110"
           />
         </div>
-        <div className="space-y-1">
-          <PasswordInput id="password" label="Senha" value={password} onChange={setPassword} />
-          <div className="flex justify-end">
-            <Link to="/recuperar-senha" className="text-xs text-muted-foreground hover:text-foreground">
-              Esqueci minha senha
-            </Link>
-          </div>
-        </div>
 
-        {error && (
-          <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>{error}</span>
+        <form onSubmit={handleLogin} className="space-y-5">
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-zinc-300">E-mail</Label>
+            <Input
+              id="email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              className="h-12 border-zinc-800 bg-zinc-950 text-white placeholder:text-zinc-600 focus-visible:ring-zinc-600"
+              placeholder="voce@empresa.com.br"
+            />
           </div>
-        )}
+          <div className="space-y-2">
+            <Label htmlFor="password" className="text-zinc-300">Senha</Label>
+            <Input
+              id="password"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              className="h-12 border-zinc-800 bg-zinc-950 text-white placeholder:text-zinc-600 focus-visible:ring-zinc-600"
+              placeholder="••••••••"
+            />
+          </div>
 
-        <Button type="submit" className="h-11 w-full" disabled={loading || locked}>
-          {locked ? "Aguarde 30s…" : loading ? "Entrando…" : "Entrar"}
-        </Button>
-      </form>
-    </AuthShell>
+          {error && (
+            <div className="flex items-start gap-2 rounded-md border border-red-500/30 bg-red-950/30 p-3 text-sm text-red-400">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <Button
+            type="submit"
+            className="h-12 w-full bg-white text-black hover:bg-zinc-200"
+            disabled={loading || locked}
+          >
+            {locked ? "Aguarde 30s…" : loading ? "Entrando…" : "Entrar"}
+          </Button>
+        </form>
+      </div>
+    </div>
   );
 }
