@@ -12,9 +12,9 @@ import { CheckCircle2, Clock, ListChecks, XCircle, Loader2 } from "lucide-react"
 export const Route = createFileRoute("/painel/demandas")({
   head: () => ({
     meta: [
-      { title: "Minhas demandas — Painel" },
+      { title: "Meus disparos — Painel" },
       { name: "description", content: "Acompanhe o status de aprovação de cada disparo solicitado." },
-      { property: "og:title", content: "Minhas demandas — Painel" },
+      { property: "og:title", content: "Meus disparos — Painel" },
       { property: "og:description", content: "Status de aprovação dos seus disparos." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -88,7 +88,7 @@ function Page() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Minhas demandas</h1>
+        <h1 className="text-2xl font-semibold">Meus disparos</h1>
         <p className="text-sm text-muted-foreground">
           Todos os disparos solicitados passam por aprovação da nossa equipe antes do envio real.
         </p>
@@ -114,7 +114,7 @@ function Page() {
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle>
-            {filter === "all" ? "Todas as demandas" : BUCKETS[filter].label}
+            {filter === "all" ? "Todos os disparos" : BUCKETS[filter].label}
           </CardTitle>
           {filter !== "all" && (
             <Button size="sm" variant="ghost" onClick={() => setFilter("all")}>
@@ -128,7 +128,7 @@ function Page() {
               <Loader2 className="h-4 w-4 animate-spin" /> Carregando…
             </p>
           ) : visible.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhuma demanda por aqui.</p>
+            <p className="text-sm text-muted-foreground">Nenhum disparo por aqui.</p>
           ) : (
             <div className="divide-y">
               {visible.map((d) => {
