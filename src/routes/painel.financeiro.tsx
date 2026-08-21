@@ -24,10 +24,10 @@ import {
 export const Route = createFileRoute("/painel/financeiro")({
   head: () => ({
     meta: [
-      { title: "Créditos — Painel next DISPAROS" },
-      { name: "description", content: "Acompanhe seu saldo de créditos, compras e histórico de transações." },
-      { property: "og:title", content: "Créditos — Painel next DISPAROS" },
-      { property: "og:description", content: "Acompanhe seu saldo de créditos, compras e histórico de transações." },
+      { title: "Mensagens — Painel next DISPAROS" },
+      { name: "description", content: "Acompanhe seu saldo de mensagens, compras e histórico de transações." },
+      { property: "og:title", content: "Mensagens — Painel next DISPAROS" },
+      { property: "og:description", content: "Acompanhe seu saldo de mensagens, compras e histórico de transações." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -342,7 +342,7 @@ function Page() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Comprar créditos</DialogTitle>
+            <DialogTitle>Comprar mensagens</DialogTitle>
             <DialogDescription>
               Depósito mínimo para o seu plano: <strong>{fmt(requiredCents)}</strong> ({minMessages.toLocaleString("pt-BR")} mensagens × {fmt(unit)}).
             </DialogDescription>
