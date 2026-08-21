@@ -2835,6 +2835,9 @@ export type Database = {
           delivered_count: number
           distribution_strategy: string
           estimated_cost: number
+          execution_type: string | null
+          external_note: string | null
+          external_status: string | null
           failed_count: number
           fatal_error_code: string | null
           fatal_error_message: string | null
@@ -2937,6 +2940,9 @@ export type Database = {
           delivered_count?: number
           distribution_strategy?: string
           estimated_cost?: number
+          execution_type?: string | null
+          external_note?: string | null
+          external_status?: string | null
           failed_count?: number
           fatal_error_code?: string | null
           fatal_error_message?: string | null
@@ -3039,6 +3045,9 @@ export type Database = {
           delivered_count?: number
           distribution_strategy?: string
           estimated_cost?: number
+          execution_type?: string | null
+          external_note?: string | null
+          external_status?: string | null
           failed_count?: number
           fatal_error_code?: string | null
           fatal_error_message?: string | null
