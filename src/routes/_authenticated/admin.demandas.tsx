@@ -75,12 +75,6 @@ function toLocalInput(iso: string) {
   return new Date(d.getTime() - off).toISOString().slice(0, 16);
 }
 
-const DEMAND_STATE: Record<string, { label: string; className: string }> = {
-  pending: { label: "Aguardando revisão", className: "bg-amber-500/15 text-amber-600 border-amber-500/30" },
-  approved: { label: "Aprovado", className: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30" },
-  rejected: { label: "Recusado", className: "bg-destructive/15 text-destructive border-destructive/30" },
-};
-
 const EXEC_STATE: Record<string, string> = {
   draft: "Rascunho",
   awaiting_approval: "Aguardando revisão",
@@ -93,6 +87,7 @@ const EXEC_STATE: Record<string, string> = {
   rejected: "Recusado",
   error: "Erro",
 };
+
 
 function AuditDialog({ campaignId, onClose }: { campaignId: string | null; onClose: () => void }) {
   const auditFn = useServerFn(getCampaignApprovalAudit);
