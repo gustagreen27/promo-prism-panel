@@ -366,7 +366,7 @@ export const startClientCampaign = createServerFn({ method: 'POST' })
     const { supabase, userId } = context as any
     const { data: c } = await supabase
       .from('wa_campaigns')
-      .select('id, workspace_id, approval_mode, total_recipients, status, custom_fields')
+      .select('id, workspace_id, approval_mode, total_recipients, status, custom_fields, reservation_id')
       .eq('id', data.campaign_id)
       .maybeSingle()
     if (!c) throw new Error('Campanha não encontrada')
@@ -384,9 +384,11 @@ export const startClientCampaign = createServerFn({ method: 'POST' })
     await assertWorkspaceNotBlocked(supabase, c.workspace_id)
 
     // Revalida saldo no backend antes de transformar o rascunho em disparo real.
-    // Envio de teste não consome créditos.
+    // Envio de teste não consome créditos. Se já houver reserva feita no envio,
+    // o saldo já foi debitado e não revalidamos (evita duplicidade).
     const isTestCampaign = (c as any)?.custom_fields?.send_type === 'test'
-    if (!isTestCampaign && c.total_recipients && c.total_recipients > 0) {
+    const alreadyReserved = !!(c as any).reservation_id
+    if (!isTestCampaign && !alreadyReserved && c.total_recipients && c.total_recipients > 0) {
       await assertSufficientCredits(supabase, c.workspace_id, Number(c.total_recipients))
     }
 
@@ -399,7 +401,8 @@ export const startClientCampaign = createServerFn({ method: 'POST' })
     }
 
     // Reserva de saldo em R$ (atômica). Se saldo insuficiente, bloqueia o start.
-    if (c.total_recipients && c.total_recipients > 0) {
+    if (!alreadyReserved && c.total_recipients && c.total_recipients > 0) {
+
       const [{ data: wallet }, { data: settings }] = await Promise.all([
         supabase.from('workspace_wallets').select('custom_price_cents').eq('workspace_id', c.workspace_id).maybeSingle(),
         supabase.from('billing_settings').select('default_price_cents').eq('id', 1).maybeSingle(),
