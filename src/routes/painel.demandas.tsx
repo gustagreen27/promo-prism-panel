@@ -34,6 +34,11 @@ type Demand = {
   scheduled_at: string | null;
   created_at: string;
   list_name: string | null;
+  external_total_count?: number | null;
+  external_sent_count?: number | null;
+  external_delivered_count?: number | null;
+  external_failed_count?: number | null;
+  external_finished_at?: string | null;
   decisions: Array<{ action: string; message: string | null; created_at: string }>;
 };
 
