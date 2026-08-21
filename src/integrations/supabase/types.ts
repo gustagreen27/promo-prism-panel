@@ -5704,6 +5704,10 @@ export type Database = {
           status: string
         }[]
       }
+      wa_client_campaign_report: {
+        Args: { _campaign_id: string }
+        Returns: Json
+      }
       wa_consume_stock: {
         Args: { _client_id: string; _project_id: string; _qty: number }
         Returns: boolean
