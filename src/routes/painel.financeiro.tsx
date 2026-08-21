@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,23 +11,37 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import {
   getMyWallet, listMyTransactions, listMyDeposits, createDepositCheckout,
 } from "@/lib/billing.functions";
-import { Wallet, TrendingUp, Clock, Plus, Loader2 } from "lucide-react";
+import {
+  Building2, TrendingUp, TrendingDown, Plus, Loader2, ArrowUpRight, ArrowDownRight,
+} from "lucide-react";
 
 export const Route = createFileRoute("/painel/financeiro")({
-  head: () => ({ meta: [{ title: "Financeiro — Disparos FR" }] }),
+  head: () => ({
+    meta: [
+      { title: "Créditos — Painel next DISPAROS" },
+      { name: "description", content: "Acompanhe seu saldo de créditos, compras e histórico de transações." },
+      { property: "og:title", content: "Créditos — Painel next DISPAROS" },
+      { property: "og:description", content: "Acompanhe seu saldo de créditos, compras e histórico de transações." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: Page,
 });
 
 const fmt = (cents: number) =>
   (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const nf = (n: number) => Math.max(0, Math.round(n)).toLocaleString("pt-BR");
 
 const TX_LABEL: Record<string, string> = {
-  deposit: "Depósito",
-  message_charge: "Cobrança por mensagem",
+  deposit: "Compra de créditos",
+  message_charge: "Uso em disparo",
   refund: "Reembolso",
   adjustment: "Ajuste manual",
   reservation_hold: "Reserva de saldo",
@@ -41,6 +55,15 @@ const DEP_LABEL: Record<string, string> = {
   cancelled: "Cancelado",
   expired: "Expirado",
 };
+
+const PERIODS = [
+  { key: "all", label: "Todo o período", days: 0 },
+  { key: "7", label: "Últimos 7 dias", days: 7 },
+  { key: "30", label: "Últimos 30 dias", days: 30 },
+  { key: "90", label: "Últimos 90 dias", days: 90 },
+];
+
+const PAGE_SIZE = 8;
 
 function Page() {
   const { workspace } = Route.useRouteContext() as any;
@@ -59,7 +82,7 @@ function Page() {
   });
   const { data: tx = [] } = useQuery({
     queryKey: ["wallet-tx", wsId],
-    queryFn: () => listTx({ data: { workspace_id: wsId, limit: 100 } }),
+    queryFn: () => listTx({ data: { workspace_id: wsId, limit: 200 } }),
     enabled: !!wsId,
   });
   const { data: deps = [] } = useQuery({
@@ -68,15 +91,42 @@ function Page() {
     enabled: !!wsId,
   });
 
+  const unit = w?.unit_price_cents || 15;
+  const availableCredits = Math.floor((w?.available_cents ?? 0) / unit);
+
+  const [period, setPeriod] = useState("all");
+  const [page, setPage] = useState(0);
+  useEffect(() => setPage(0), [period]);
+
+  const filtered = useMemo(() => {
+    const days = PERIODS.find((p) => p.key === period)?.days ?? 0;
+    const rows = (tx as any[]).filter((t) => t.amount_cents !== 0);
+    if (!days) return rows;
+    const cut = Date.now() - days * 86400000;
+    return rows.filter((t) => new Date(t.created_at).getTime() >= cut);
+  }, [tx, period]);
+
+  const totals = useMemo(() => {
+    let bought = 0;
+    let used = 0;
+    for (const t of tx as any[]) {
+      const credits = Math.round(Math.abs(t.amount_cents) / unit);
+      if (t.amount_cents > 0) bought += credits;
+      else if (t.amount_cents < 0) used += credits;
+    }
+    return { bought, used };
+  }, [tx, unit]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageRows = filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+
   const [open, setOpen] = useState(false);
   const requiredCents = (w as any)?.required_deposit_cents ?? w?.minimum_deposit_cents ?? 15000;
   const minMessages = (w as any)?.minimum_messages ?? 2500;
   const [amountStr, setAmountStr] = useState("375,00");
 
   useEffect(() => {
-    if (requiredCents) {
-      setAmountStr((requiredCents / 100).toFixed(2).replace(".", ","));
-    }
+    if (requiredCents) setAmountStr((requiredCents / 100).toFixed(2).replace(".", ","));
   }, [requiredCents]);
 
   const deposit = useMutation({
@@ -100,140 +150,186 @@ function Page() {
   });
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+    <div className="space-y-8">
+      <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Financeiro</h1>
-          <p className="text-sm text-muted-foreground">Saldo, depósitos e histórico de cobrança.</p>
+          <h1 className="text-3xl font-semibold tracking-tight">Créditos</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Acompanhe seu saldo e histórico de transações
+          </p>
         </div>
         <Button onClick={() => setOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" /> Depositar saldo
+          <Plus className="mr-2 h-4 w-4" /> Comprar créditos
         </Button>
-      </div>
+      </header>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <Wallet className="h-4 w-4" /> Saldo disponível
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{fmt(w?.available_cents ?? 0)}</div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              {w?.unit_price_cents ? `≈ ${Math.floor((w.available_cents ?? 0) / w.unit_price_cents)} mensagens` : "—"}
+      <section className="space-y-3">
+        <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+          Saldo por empresa
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Card className="rounded-xl">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                {workspace?.name ?? "Minha empresa"}
+              </div>
+              <div className="mt-3 text-3xl font-bold tabular-nums text-emerald-600">
+                {nf(availableCredits)}
+              </div>
+              <div className="text-sm text-muted-foreground">créditos disponíveis</div>
+              <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1">
+                  <ArrowUpRight className="h-3.5 w-3.5 text-emerald-600" />
+                  {nf(totals.bought)} comprados
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <ArrowDownRight className="h-3.5 w-3.5 text-orange-500" />
+                  {nf(totals.used)} usados
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card className="rounded-xl">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <TrendingUp className="h-4 w-4 text-emerald-600" /> Total Comprado
+            </div>
+            <div className="mt-2 text-2xl font-bold tabular-nums text-emerald-600">
+              {nf(totals.bought)}
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <Clock className="h-4 w-4" /> Reservado em campanhas
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{fmt(w?.reserved_cents ?? 0)}</div>
-            <div className="mt-1 text-xs text-muted-foreground">Devolvido em caso de falha ou cancelamento</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <TrendingUp className="h-4 w-4" /> Preço por mensagem
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{fmt(w?.unit_price_cents ?? 15)}</div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              Mínimo {minMessages.toLocaleString("pt-BR")} mensagens · pacote mínimo {fmt(requiredCents)}
+        <Card className="rounded-xl">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <TrendingDown className="h-4 w-4 text-orange-500" /> Total Utilizado
+            </div>
+            <div className="mt-2 text-2xl font-bold tabular-nums text-orange-500">
+              {nf(totals.used)}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <PriceCalculator unitPriceCents={w?.unit_price_cents ?? 23} />
-
-
-      <Card>
-        <CardHeader><CardTitle>Depósitos</CardTitle></CardHeader>
-        <CardContent>
-          {deps.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum depósito ainda.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Valor</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Método</TableHead>
-                  <TableHead>Recibo</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {deps.map((d: any) => (
-                  <TableRow key={d.id}>
-                    <TableCell>{new Date(d.created_at).toLocaleString("pt-BR")}</TableCell>
-                    <TableCell className="font-medium">{fmt(d.amount_cents)}</TableCell>
-                    <TableCell>
-                      <Badge variant={d.status === "paid" ? "default" : d.status === "pending" ? "secondary" : "destructive"}>
-                        {DEP_LABEL[d.status] ?? d.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{d.payment_method ?? "—"}</TableCell>
-                    <TableCell>
-                      {d.receipt_url ? (
-                        <a href={d.receipt_url} target="_blank" rel="noreferrer" className="text-primary underline">Ver</a>
-                      ) : "—"}
-                    </TableCell>
-                  </TableRow>
+      <Card className="rounded-xl">
+        <CardContent className="p-5">
+          <h2 className="text-lg font-semibold">Histórico de Transações</h2>
+          <div className="mt-4">
+            <Select value={period} onValueChange={setPeriod}>
+              <SelectTrigger className="h-10 w-[220px]">
+                <SelectValue placeholder="Selecionar período" />
+              </SelectTrigger>
+              <SelectContent>
+                {PERIODS.map((p) => (
+                  <SelectItem key={p.key} value={p.key}>{p.label}</SelectItem>
                 ))}
-              </TableBody>
-            </Table>
-          )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="mt-4 divide-y border-t">
+            {pageRows.length === 0 ? (
+              <p className="py-8 text-sm text-muted-foreground">Sem movimentações no período.</p>
+            ) : (
+              pageRows.map((t: any) => {
+                const positive = t.amount_cents > 0;
+                const credits = Math.round(Math.abs(t.amount_cents) / unit);
+                return (
+                  <div key={t.id} className="flex items-center justify-between gap-4 py-4">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div
+                        className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${
+                          positive ? "bg-emerald-500/10 text-emerald-600" : "bg-orange-500/10 text-orange-500"
+                        }`}
+                      >
+                        {positive ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium">
+                          {TX_LABEL[t.type] ?? t.description ?? t.type}
+                        </div>
+                        <div className="truncate text-xs text-muted-foreground">
+                          {(workspace?.name ?? "Conta")} · {new Date(t.created_at).toLocaleString("pt-BR", {
+                            day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      className={`shrink-0 text-sm font-semibold tabular-nums ${
+                        positive ? "text-emerald-600" : "text-orange-500"
+                      }`}
+                    >
+                      {positive ? "+" : "−"}{nf(credits)}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+            <span className="text-xs text-muted-foreground">
+              Página {page + 1} de {pageCount} · {filtered.length} registros
+            </span>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
+                Anterior
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= pageCount - 1}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Seguinte
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader><CardTitle>Histórico de transações</CardTitle></CardHeader>
-        <CardContent>
-          {tx.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Sem movimentações.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
-                  <TableHead className="text-right">Saldo depois</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tx.map((t: any) => (
-                  <TableRow key={t.id}>
-                    <TableCell className="whitespace-nowrap">{new Date(t.created_at).toLocaleString("pt-BR")}</TableCell>
-                    <TableCell><Badge variant="outline">{TX_LABEL[t.type] ?? t.type}</Badge></TableCell>
-                    <TableCell className="max-w-[380px] truncate">{t.description ?? "—"}</TableCell>
-                    <TableCell className={`text-right font-medium ${t.amount_cents < 0 ? "text-destructive" : t.amount_cents > 0 ? "text-emerald-600" : ""}`}>
-                      {t.amount_cents === 0 ? "—" : (t.amount_cents > 0 ? "+ " : "− ") + fmt(Math.abs(t.amount_cents))}
-                    </TableCell>
-                    <TableCell className="text-right">{fmt(t.balance_after_cents)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      {deps.length > 0 && (
+        <Card className="rounded-xl">
+          <CardContent className="p-5">
+            <h2 className="text-lg font-semibold">Compras</h2>
+            <div className="mt-4 divide-y border-t">
+              {deps.map((d: any) => (
+                <div key={d.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium">{fmt(d.amount_cents)}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(d.created_at).toLocaleString("pt-BR")} · {d.payment_method ?? "—"}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Badge variant={d.status === "paid" ? "default" : d.status === "pending" ? "secondary" : "destructive"}>
+                      {DEP_LABEL[d.status] ?? d.status}
+                    </Badge>
+                    {d.receipt_url && (
+                      <a href={d.receipt_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">
+                        Recibo
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Depositar saldo</DialogTitle>
+            <DialogTitle>Comprar créditos</DialogTitle>
             <DialogDescription>
-              Depósito mínimo para o seu plano: <strong>{fmt(requiredCents)}</strong> ({minMessages.toLocaleString("pt-BR")} mensagens × {fmt(w?.unit_price_cents ?? 15)}).
+              Depósito mínimo para o seu plano: <strong>{fmt(requiredCents)}</strong> ({minMessages.toLocaleString("pt-BR")} mensagens × {fmt(unit)}).
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -260,30 +356,3 @@ function Page() {
     </div>
   );
 }
-
-function PriceCalculator({ unitPriceCents }: { unitPriceCents: number }) {
-  const [n, setN] = useState("5000");
-  const qty = parseInt(n, 10) || 0;
-  const totalCents = qty * unitPriceCents;
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-sm">Calculadora de campanha</CardTitle>
-      </CardHeader>
-      <CardContent className="grid gap-4 sm:grid-cols-[1fr_auto_1fr] sm:items-end">
-        <div className="space-y-1.5">
-          <Label className="text-xs">Quero enviar</Label>
-          <Input value={n} onChange={(e) => setN(e.target.value.replace(/\D/g, ""))} placeholder="5000" />
-          <div className="text-[11px] text-muted-foreground">mensagens</div>
-        </div>
-        <div className="text-center text-2xl font-light text-muted-foreground">=</div>
-        <div className="rounded-lg border bg-muted/30 p-4 text-center">
-          <div className="text-[11px] uppercase text-muted-foreground">Custo total</div>
-          <div className="mt-1 text-2xl font-bold text-primary tabular-nums">{fmt(totalCents)}</div>
-          <div className="mt-0.5 text-[11px] text-muted-foreground">@ {fmt(unitPriceCents)} por disparo</div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
