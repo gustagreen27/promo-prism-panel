@@ -306,6 +306,19 @@ export const decideCampaignApproval = createServerFn({ method: 'POST' })
 
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
 
+    // Rejeitou: devolve os créditos reservados no envio da campanha.
+    if (data.decision === 'rejected' && (camp as any).reservation_id) {
+      try {
+        await supabaseAdmin.rpc('wallet_release_reservation' as any, {
+          _reservation_id: (camp as any).reservation_id,
+        })
+        await supabaseAdmin.from('wa_campaigns').update({ reservation_id: null } as any).eq('id', camp.id)
+      } catch {
+        // não bloqueia a rejeição
+      }
+    }
+
+
     // Auditoria: quem decidiu, quando e a justificativa.
     await supabaseAdmin.from('campaign_audit_log').insert({
       campaign_id: camp.id,
