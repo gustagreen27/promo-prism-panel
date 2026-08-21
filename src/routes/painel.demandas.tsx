@@ -73,7 +73,7 @@ function Page() {
 
   const items = useMemo(() => ((data as any)?.items ?? []) as Demand[], [data]);
   const counts = useMemo(() => {
-    const c: Record<Bucket, number> = { pending: 0, queued: 0, approved: 0, rejected: 0 };
+    const c: Record<Bucket, number> = { pending: 0, scheduled: 0, queued: 0, approved: 0, rejected: 0 };
     for (const d of items) c[bucketOf(d)] += 1;
     return c;
   }, [items]);
@@ -89,7 +89,7 @@ function Page() {
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-5">
         {(Object.keys(BUCKETS) as Bucket[]).map((b) => {
           const Icon = BUCKETS[b].icon;
           return (
