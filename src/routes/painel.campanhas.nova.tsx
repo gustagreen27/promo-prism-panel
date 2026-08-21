@@ -86,7 +86,7 @@ function Page() {
   useEffect(() => {
     if (!workspaceId) return;
     fnNumbers({ data: { workspace_id: workspaceId } })
-      .then((r: any) => { setNumbers(r.numbers); if (r.numbers.length === 1) setConnectionId(r.numbers[0].id); })
+      .then((r: any) => { setNumbers(r.numbers); if (r.numbers.length > 0) setConnectionId(r.numbers[0].id); })
       .catch(() => {});
     fnLists({ data: { workspace_id: workspaceId } }).then((r: any) => setLists(r.lists)).catch(() => {});
   }, [workspaceId, fnNumbers, fnLists]);
@@ -94,7 +94,7 @@ function Page() {
   useEffect(() => {
     if (!connectionId) { setTemplates([]); return; }
     fnTemplates({ data: { workspace_id: workspaceId, connection_id: connectionId } })
-      .then((r: any) => setTemplates(r.templates))
+      .then((r: any) => { setTemplates(r.templates); if (r.templates.length > 0) setTemplateId(r.templates[0].id); })
       .catch(() => setTemplates([]));
   }, [connectionId, workspaceId, fnTemplates]);
 
