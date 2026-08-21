@@ -18,7 +18,7 @@ import { getMyWallet } from "@/lib/billing.functions";
 import { getMyContext, ensureWorkspace, logAuthEvent, type MyContext } from "@/lib/auth.functions";
 import {
   LayoutDashboard, Send, Users, BarChart3, CreditCard, CalendarClock,
-  LogOut, Wallet, Building2, AlertTriangle, ChevronDown, UserCircle, MessageCircle,
+  LogOut, Wallet, Building2, AlertTriangle, ChevronDown, UserCircle,
 } from "lucide-react";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import logoAsset from "@/assets/next-disparos-logo.png.asset.json";
