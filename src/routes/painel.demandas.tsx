@@ -17,7 +17,7 @@ import { getMyContext } from "@/lib/auth.functions";
 import { listMyDemands } from "@/lib/campaign-approval.functions";
 import {
   demandStage,
-  pendingCount,
+  demandMetrics,
   STAGE_CLASS,
   STAGE_LABEL,
   type DemandStage,
@@ -121,12 +121,7 @@ const BUCKETS: Record<
 const fmt = (v: string | null | undefined) => (v ? new Date(v).toLocaleString("pt-BR") : "—");
 const num = (v: number | null | undefined) => (v ?? 0).toLocaleString("pt-BR");
 
-function progressOf(d: Demand) {
-  const total = d.external_total_count ?? d.total_recipients ?? 0;
-  if (!total) return 0;
-  const done = (d.external_sent_count ?? 0) + (d.external_failed_count ?? 0);
-  return Math.min(100, Math.round((done / total) * 100));
-}
+
 
 function Page() {
   const ctxFn = useServerFn(getMyContext);
@@ -258,7 +253,8 @@ function Page() {
             const b = bucketOf(d);
             const Icon = BUCKETS[b].icon;
             const decision = d.decisions?.[0];
-            const pct = progressOf(d);
+            const m = demandMetrics(d as any);
+            const pct = m.pct;
             const showProgress =
               !!d.external_total_count || !!d.external_sent_count || b === "queued" || b === "scheduled";
             return (
@@ -318,27 +314,27 @@ function Page() {
                         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                           <Metric
                             icon={<Send className="h-4 w-4 text-emerald-600" />}
-                            value={num(d.external_sent_count)}
+                            value={num(m.sent)}
                             label="Enviados com sucesso"
                           />
                           <Metric
                             icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
-                            value={num(d.external_delivered_count)}
+                            value={num(m.delivered)}
                             label="Entregues"
                           />
                           <Metric
                             icon={<XCircle className="h-4 w-4 text-destructive" />}
-                            value={num(d.external_failed_count)}
+                            value={num(m.failed)}
                             label="Falhas"
                           />
                           <Metric
                             icon={<Clock className="h-4 w-4 text-muted-foreground" />}
-                            value={num(pendingCount(d))}
+                            value={num(m.pending)}
                             label="Pendentes"
                           />
                           <Metric
                             icon={<CalendarDays className="h-4 w-4 text-muted-foreground" />}
-                            value={fmt(d.external_updated_at ?? d.external_finished_at)}
+                            value={fmt(m.updatedAt ?? d.external_finished_at)}
                             label={d.external_finished_at ? "Finalizado em" : "Última atualização"}
                             small
                           />

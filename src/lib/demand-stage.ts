@@ -59,3 +59,30 @@ export function pendingCount(r: {
   const total = r.external_total_count ?? 0
   return Math.max(0, total - (r.external_sent_count ?? 0) - (r.external_failed_count ?? 0))
 }
+
+/** Métricas exibidas ao cliente: externas quando houver, senão os contadores reais do motor. */
+export type MetricsRow = {
+  execution_type?: string | null
+  total_recipients?: number | null
+  external_total_count?: number | null
+  external_sent_count?: number | null
+  external_delivered_count?: number | null
+  external_failed_count?: number | null
+  external_updated_at?: string | null
+  sent_count?: number | null
+  delivered_count?: number | null
+  failed_count?: number | null
+  last_sent_at?: string | null
+}
+
+export function demandMetrics(r: MetricsRow) {
+  const isExternal = r.execution_type === 'external'
+  const total = (isExternal ? r.external_total_count : null) ?? r.total_recipients ?? 0
+  const sent = (isExternal ? r.external_sent_count : r.sent_count) ?? 0
+  const delivered = (isExternal ? r.external_delivered_count : r.delivered_count) ?? 0
+  const failed = (isExternal ? r.external_failed_count : r.failed_count) ?? 0
+  const updatedAt = (isExternal ? r.external_updated_at : r.last_sent_at) ?? null
+  const pending = Math.max(0, total - sent - failed)
+  const pct = total ? Math.min(100, Math.round(((sent + failed) / total) * 100)) : 0
+  return { total, sent, delivered, failed, pending, updatedAt, pct }
+}
