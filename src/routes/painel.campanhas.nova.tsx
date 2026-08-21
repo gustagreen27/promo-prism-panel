@@ -35,13 +35,15 @@ export const Route = createFileRoute("/painel/campanhas/nova")({
       { name: "description", content: "Crie um novo disparo de WhatsApp com preview ao vivo da mensagem." },
     ],
   }),
-  validateSearch: (raw: Record<string, unknown>) => ({
+  validateSearch: (raw: Record<string, unknown>): NovaSearch => ({
     from: raw['from'] ? String(raw['from']) : undefined,
     name: raw['name'] ? String(raw['name']) : undefined,
     duplicate: raw['duplicate'] ? String(raw['duplicate']) : undefined,
   }),
   component: Page,
 });
+
+type NovaSearch = { from?: string; name?: string; duplicate?: string };
 
 type ContactMode = "manual" | "lista" | "csv";
 
