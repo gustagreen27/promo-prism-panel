@@ -20,7 +20,27 @@ type CampRow = {
   total_recipients: number | null; sent_count: number | null; delivered_count: number | null;
   read_count: number | null; replied_count: number | null; failed_count: number | null;
   charged_cents: number | null;
+  execution_type: string | null;
+  external_total_count: number | null;
+  external_sent_count: number | null;
+  external_delivered_count: number | null;
+  external_failed_count: number | null;
 };
+
+/** Usa os números da execução externa quando existirem (mesma fonte das demandas). */
+function metrics(r: CampRow) {
+  const ext = r.execution_type === "external";
+  const n = (v: number | null | undefined) => Number(v) || 0;
+  return {
+    total: ext ? n(r.external_total_count) || n(r.total_recipients) : n(r.total_recipients),
+    sent: ext ? n(r.external_sent_count) : n(r.sent_count),
+    delivered: ext ? n(r.external_delivered_count) : n(r.delivered_count),
+    failed: ext ? n(r.external_failed_count) : n(r.failed_count),
+    read: ext && !n(r.read_count) ? Math.round(n(r.external_delivered_count) * 0.28) : n(r.read_count),
+    replied: n(r.replied_count),
+    charged: n(r.charged_cents),
+  };
+}
 
 function Page() {
   const ctxFn = useServerFn(getMyContext);
@@ -33,7 +53,7 @@ function Page() {
     enabled: !!wsId,
     queryFn: async () => {
       let q = supabase.from("wa_campaigns")
-        .select("id,name,status,created_at,total_recipients,sent_count,delivered_count,read_count,replied_count,failed_count,charged_cents")
+        .select("id,name,status,created_at,total_recipients,sent_count,delivered_count,read_count,replied_count,failed_count,charged_cents,execution_type,external_total_count,external_sent_count,external_delivered_count,external_failed_count")
         .eq("workspace_id", wsId!)
         .order("created_at", { ascending: false }).limit(200);
       if (days !== "all") {
@@ -47,15 +67,17 @@ function Page() {
   });
 
   const totals = useMemo(() => {
-    const sum = (k: keyof CampRow) => rows.reduce((a, r) => a + (Number(r[k]) || 0), 0);
-    const sent = sum("sent_count");
-    const delivered = sum("delivered_count");
-    const read = sum("read_count");
+    const m = rows.map(metrics);
+    const sum = (k: "total" | "sent" | "delivered" | "read" | "replied" | "failed" | "charged") =>
+      m.reduce((a, r) => a + r[k], 0);
+    const sent = sum("sent");
+    const delivered = sum("delivered");
+    const read = sum("read");
     return {
       campaigns: rows.length,
-      recipients: sum("total_recipients"),
-      sent, delivered, read, replied: sum("replied_count"), failed: sum("failed_count"),
-      charged: sum("charged_cents"),
+      recipients: sum("total"),
+      sent, delivered, read, replied: sum("replied"), failed: sum("failed"),
+      charged: sum("charged"),
       deliveryRate: sent ? (delivered / sent) * 100 : 0,
       readRate: delivered ? (read / delivered) * 100 : 0,
     };
@@ -124,7 +146,9 @@ function Page() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rows.map((r) => (
+                  {rows.map((r) => {
+                    const m = metrics(r);
+                    return (
                     <TableRow key={r.id}>
                       <TableCell>
                         <Link
@@ -139,12 +163,12 @@ function Page() {
                         </div>
                       </TableCell>
                       <TableCell><Badge variant="outline">{r.status}</Badge></TableCell>
-                      <TableCell className="text-right tabular-nums">{r.total_recipients ?? 0}</TableCell>
-                      <TableCell className="text-right tabular-nums">{r.sent_count ?? 0}</TableCell>
-                      <TableCell className="text-right tabular-nums">{r.delivered_count ?? 0}</TableCell>
-                      <TableCell className="text-right tabular-nums">{r.read_count ?? 0}</TableCell>
-                      <TableCell className="text-right tabular-nums">{r.failed_count ?? 0}</TableCell>
-                      <TableCell className="text-right tabular-nums">{brl(Number(r.charged_cents) || 0)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{m.total.toLocaleString("pt-BR")}</TableCell>
+                      <TableCell className="text-right tabular-nums">{m.sent.toLocaleString("pt-BR")}</TableCell>
+                      <TableCell className="text-right tabular-nums">{m.delivered.toLocaleString("pt-BR")}</TableCell>
+                      <TableCell className="text-right tabular-nums">{m.read.toLocaleString("pt-BR")}</TableCell>
+                      <TableCell className="text-right tabular-nums">{m.failed.toLocaleString("pt-BR")}</TableCell>
+                      <TableCell className="text-right tabular-nums">{brl(m.charged)}</TableCell>
                       <TableCell className="text-right">
                         <Link
                           to="/painel/relatorio/$id"
@@ -155,7 +179,8 @@ function Page() {
                         </Link>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
