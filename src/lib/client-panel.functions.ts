@@ -289,7 +289,7 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
     // Envio de teste: mantém no máximo 10 destinatários (corte no backend).
     if (isTest && Number(campaign.total_recipients ?? 0) > TEST_MAX_RECIPIENTS) {
       const { data: keep } = await supabase
-        .from('wa_campaign_recipients')
+        .from('campaign_recipients')
         .select('id')
         .eq('campaign_id', campaign.id)
         .order('id', { ascending: true })
@@ -297,7 +297,7 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
       const keepIds = (keep ?? []).map((r: any) => r.id)
       if (keepIds.length) {
         await supabase
-          .from('wa_campaign_recipients')
+          .from('campaign_recipients')
           .delete()
           .eq('campaign_id', campaign.id)
           .not('id', 'in', `(${keepIds.join(',')})`)
