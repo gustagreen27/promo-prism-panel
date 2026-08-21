@@ -40,6 +40,26 @@ export const listApprovalQueue = createServerFn({ method: 'POST' })
     if (error) throw error
 
     const campaigns = (rows ?? []) as any[]
+
+    // Execução externa: ao atingir a data/hora de finalização, marca como concluído.
+    {
+      const nowIso = new Date().toISOString()
+      const due = campaigns.filter(
+        (c) =>
+          c.execution_type === 'external' &&
+          c.external_finished_at &&
+          c.external_finished_at <= nowIso &&
+          c.external_status !== 'completed' &&
+          c.external_status !== 'cancelled',
+      )
+      if (due.length) {
+        await supabase
+          .from('wa_campaigns')
+          .update({ external_status: 'completed' })
+          .in('id', due.map((c) => c.id))
+        for (const c of due) c.external_status = 'completed'
+      }
+    }
     const listIds = [...new Set(campaigns.map((c) => c.list_id).filter(Boolean))]
     const tplIds = [...new Set(campaigns.map((c) => c.template_id).filter(Boolean))]
     const [{ data: lists }, { data: tpls }] = await Promise.all([
