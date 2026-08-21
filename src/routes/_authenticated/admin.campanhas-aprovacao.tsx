@@ -37,6 +37,7 @@ type Item = {
   scheduled_at: string | null;
   approval_status: string | null;
   custom_fields?: Record<string, any> | null;
+  connection_id?: string | null;
   approved_at: string | null;
   rejection_reason: string | null;
   status: string;
