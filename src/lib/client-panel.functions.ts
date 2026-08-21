@@ -286,10 +286,30 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
       }
     }
 
+    // Envio de teste: mantém no máximo 10 destinatários (corte no backend).
+    if (isTest && Number(campaign.total_recipients ?? 0) > TEST_MAX_RECIPIENTS) {
+      const { data: keep } = await supabase
+        .from('wa_campaign_recipients')
+        .select('id')
+        .eq('campaign_id', campaign.id)
+        .order('id', { ascending: true })
+        .limit(TEST_MAX_RECIPIENTS)
+      const keepIds = (keep ?? []).map((r: any) => r.id)
+      if (keepIds.length) {
+        await supabase
+          .from('wa_campaign_recipients')
+          .delete()
+          .eq('campaign_id', campaign.id)
+          .not('id', 'in', `(${keepIds.join(',')})`)
+      }
+      campaign.total_recipients = keepIds.length
+      await supabase.from('wa_campaigns').update({ total_recipients: keepIds.length }).eq('id', campaign.id)
+    }
+
     // Regra de crédito (backend, revalidada agora): disparo real só é aceito
     // com saldo suficiente para os contatos válidos que serão enviados.
-    // Rascunho é sempre permitido.
-    if (!isDraft && !isAdmin) {
+    // Rascunho e testes são sempre permitidos (teste não consome créditos).
+    if (!isDraft && !isTest && !isAdmin) {
       const required = Number(campaign.total_recipients ?? 0)
       const credits = await getWorkspaceCredits(supabase, data.workspace_id)
       if (required > 0 && credits.availableCredits < required) {
