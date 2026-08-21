@@ -17,8 +17,11 @@ import { metaVarsIn } from "@/lib/wa-variables";
 import { DDD_TO_CITY, extractDddBR } from "@/lib/ddd-cities";
 import {
   ArrowLeft, Loader2, Upload, User, Phone, Video, MoreVertical, Mic, ChevronLeft,
-  Signal, Wifi, BatteryMedium, CheckCheck, Tags, ExternalLink,
+  Signal, Wifi, BatteryMedium, CheckCheck, Tags, ExternalLink, Rocket, Tag, Braces,
+  Link2, Check, FileSpreadsheet, ListChecks, Sparkles,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+
 
 export const Route = createFileRoute("/painel/campanhas/nova")({
   head: () => ({
