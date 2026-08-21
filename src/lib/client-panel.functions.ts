@@ -223,6 +223,9 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
     // aguardando aprovação/execução pelo admin.
     const approval_mode = 'manual'
     const isDraft = !!data.save_as_draft
+    // Teste: no máximo 10 destinatários e nunca consome créditos.
+    const isTest = data.send_type === 'test'
+    const TEST_MAX_RECIPIENTS = 10
     const approval_status = isDraft ? 'draft' : 'pending'
     // "Aguardando envio" (sem data) ou "Agendada" (com data/hora escolhidas pelo cliente).
     const initialStatus = isDraft ? 'draft' : data.scheduled_at ? 'scheduled' : 'awaiting_approval'
