@@ -270,14 +270,8 @@ function Page() {
   };
 
   const rawP = (prog?.progress as any) ?? {};
-  // Sem camada de apresentação: "Entregue" só é exibido quando a Meta confirmou
-  // a entrega via webhook. Mensagens apenas aceitas pela API aparecem em "Aceitas".
   const p = rawP;
-  const acceptedOnly = useMemo(() => {
-    const sent = Number(rawP.sent ?? 0) || 0;
-    const delivered = Number(rawP.delivered ?? 0) || 0;
-    return Math.max(0, sent - delivered);
-  }, [rawP]);
+
 
   const total = p.total ?? camp?.total_recipients ?? 0;
   const percent = p.percent ?? 0;
