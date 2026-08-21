@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { listTestOptions, listTestSends, sendCampaignTest } from "@/lib/wa-tests.functions";
-import { usePanelWorkspace } from "@/routes/painel";
+import { getMyContext } from "@/lib/client-panel.functions";
 import { FlaskConical, Loader2, Send } from "lucide-react";
 
 export const Route = createFileRoute("/painel/testes")({
@@ -36,9 +36,10 @@ const STATUS: Record<string, { label: string; className: string }> = {
 };
 
 function Page() {
-  const ws = usePanelWorkspace();
-  const workspaceId = ws?.workspace?.id as string | undefined;
   const qc = useQueryClient();
+  const ctxFn = useServerFn(getMyContext);
+  const { data: ctx } = useQuery({ queryKey: ["my-context"], queryFn: () => ctxFn(), staleTime: 30_000 });
+  const workspaceId = ((ctx as any)?.primary_workspace?.id ?? undefined) as string | undefined;
 
   const optionsFn = useServerFn(listTestOptions);
   const historyFn = useServerFn(listTestSends);
