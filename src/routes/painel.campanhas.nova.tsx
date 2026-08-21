@@ -11,12 +11,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { listMyNumbers, listMyTemplates, createClientCampaign, startClientCampaign } from "@/lib/client-panel.functions";
+import { listMyNumbers, listMyTemplates, createClientCampaign } from "@/lib/client-panel.functions";
 import { listWorkspaceLists, createWorkspaceListWithPhones } from "@/lib/wa-wizard-lists.functions";
 import { metaVarsIn } from "@/lib/wa-variables";
 import {
   ArrowLeft, Loader2, Upload, User, Phone, Video, MoreVertical, Mic, ChevronLeft,
-  Signal, Wifi, BatteryMedium, CheckCheck, Tags, Sliders, ExternalLink,
+  Signal, Wifi, BatteryMedium, CheckCheck, Tags, ExternalLink,
 } from "lucide-react";
 
 export const Route = createFileRoute("/painel/campanhas/nova")({
@@ -65,7 +65,6 @@ function Page() {
   const fnLists = useServerFn(listWorkspaceLists);
   const fnCreateList = useServerFn(createWorkspaceListWithPhones);
   const fnCreate = useServerFn(createClientCampaign);
-  const fnStart = useServerFn(startClientCampaign);
 
   const [numbers, setNumbers] = useState<NumberRow[]>([]);
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
@@ -210,8 +209,7 @@ function Page() {
           scheduled_at,
         },
       });
-      if (!scheduled_at) await fnStart({ data: { campaign_id: campaign.id ?? campaign.campaign_id } });
-      toast.success(scheduled_at ? "Disparo agendado" : "Disparo enviado para a fila");
+      toast.success(scheduled_at ? "Disparo agendado — aguardando aprovação" : "Disparo enviado para a fila — aguardando aprovação");
       navigate({ to: "/painel/campanhas" });
     } catch (err: any) {
       toast.error(err?.message ?? "Não foi possível criar o disparo");
@@ -232,9 +230,6 @@ function Page() {
           <h1 className="text-2xl font-bold tracking-tight">Novo Disparo</h1>
           <p className="text-sm text-muted-foreground">Preencha os dados da campanha e acompanhe o preview ao vivo.</p>
         </div>
-        <Button asChild variant="outline" size="sm" className="rounded-xl">
-          <Link to="/painel/campanhas/avancado"><Sliders className="mr-1.5 h-4 w-4" />Modo avançado</Link>
-        </Button>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
