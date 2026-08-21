@@ -54,6 +54,59 @@ function fillVars(text: string, vars: Record<string, string>) {
   return (text || "").replace(/\{\{\s*(\d+)\s*\}\}/g, (m, n) => vars[String(n)] || m);
 }
 
+/* ── Agendamento (sempre em horário de Brasília, UTC-03:00) ───────────── */
+const LEAD_MINUTES = 120;
+
+function spParts(d: Date) {
+  const p = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  }).formatToParts(d).reduce<Record<string, string>>((a, x) => ((a[x.type] = x.value), a), {});
+  return {
+    date: `${p['year']}-${p['month']}-${p['day']}`,
+    time: `${p['hour'] === "24" ? "00" : p['hour']}:${p['minute']}`,
+  };
+}
+
+/** Data/hora (Brasília) do primeiro horário válido: agora + 2h. */
+function earliestSlot(now: Date = new Date()) {
+  return spParts(new Date(now.getTime() + LEAD_MINUTES * 60_000));
+}
+
+/** Sugestão amigável: primeiro horário válido arredondado para cima (15 min). */
+function suggestedSlot(now: Date = new Date()) {
+  const base = new Date(now.getTime() + LEAD_MINUTES * 60_000);
+  const rounded = new Date(Math.ceil(base.getTime() / (15 * 60_000)) * 15 * 60_000);
+  return spParts(rounded);
+}
+
+function spDateOffset(days: number, now: Date = new Date()) {
+  return spParts(new Date(now.getTime() + days * 86_400_000)).date;
+}
+
+function scheduleToDate(date: string, time: string) {
+  const d = new Date(`${date}T${time}:00-03:00`);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+const WEEKDAYS = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+const MONTHS = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+
+function humanSchedule(date: string, time: string, now: Date = new Date()) {
+  const d = scheduleToDate(date, time);
+  if (!d) return "";
+  const [y, m, day] = date.split("-").map(Number);
+  const local = new Date(Date.UTC(y ?? 0, (m ?? 1) - 1, day ?? 1));
+  const prefix =
+    date === spDateOffset(0, now) ? "Hoje" :
+    date === spDateOffset(1, now) ? "Amanhã" :
+    date === spDateOffset(2, now) ? "Depois de amanhã" :
+    WEEKDAYS[local.getUTCDay()]!.replace(/^./, (c) => c.toUpperCase());
+  return `${prefix}, ${day} de ${MONTHS[(m ?? 1) - 1]} às ${time}`;
+}
+
+
 const MESSAGE_PRESETS = [
   {
     id: "novidade",
@@ -114,6 +167,44 @@ function Page() {
   const [schedule, setSchedule] = useState(false);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
+  const [dayChoice, setDayChoice] = useState<"today" | "tomorrow" | "after" | "other">("today");
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+  const earliest = useMemo(() => earliestSlot(now), [now]);
+  const suggested = useMemo(() => suggestedSlot(now), [now]);
+  const scheduleDate = useMemo(() => (date && time ? scheduleToDate(date, time) : null), [date, time]);
+  const scheduleTooSoon = !!scheduleDate && scheduleDate.getTime() < now.getTime() + LEAD_MINUTES * 60_000 - 60_000;
+  const scheduleValid = !schedule || (!!scheduleDate && !scheduleTooSoon);
+
+  // Pré-preenche com o primeiro horário disponível ao ligar o agendamento.
+  useEffect(() => {
+    if (!schedule) return;
+    if (date && time) return;
+    const s = suggestedSlot(new Date());
+    setDate(s.date);
+    setTime(s.time);
+    setDayChoice(s.date === spDateOffset(0) ? "today" : s.date === spDateOffset(1) ? "tomorrow" : "other");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [schedule]);
+
+  function pickDay(choice: "today" | "tomorrow" | "after" | "other") {
+    setDayChoice(choice);
+    if (choice === "other") return;
+    const offset = choice === "today" ? 0 : choice === "tomorrow" ? 1 : 2;
+    const target = spDateOffset(offset);
+    setDate(target);
+    // Se o horário atual ficar inválido para o dia escolhido, sugere o próximo válido.
+    const candidate = time ? scheduleToDate(target, time) : null;
+    if (!candidate || candidate.getTime() < Date.now() + LEAD_MINUTES * 60_000) {
+      const s = suggestedSlot(new Date());
+      setTime(offset === 0 ? s.time : (time || s.time));
+      if (offset === 0) setDate(s.date);
+    }
+  }
+
   const [submitting, setSubmitting] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const { availableCredits } = useWallet(workspaceId || null);
@@ -235,6 +326,10 @@ function Page() {
       return toast.error(`Envio de teste permite no máximo ${TEST_MAX} destinatários`);
     if (!asDraft && btnEnabled && !/^https?:\/\/.+/i.test(btnUrl.trim())) return toast.error("Informe o destino (link) do botão");
     if (!asDraft && schedule && (!date || !time)) return toast.error("Informe data e hora do agendamento");
+    if (!asDraft && schedule && scheduleTooSoon)
+      return toast.error("Horário indisponível", {
+        description: "Programe sua campanha com pelo menos 2 horas de antecedência.",
+      });
     // Rascunho é sempre permitido; disparo real exige saldo.
     if (!asDraft && !enoughCredits) {
       return toast.error("Créditos insuficientes", {
@@ -310,7 +405,7 @@ function Page() {
     }
   }
 
-  const now = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  const clockNow = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
   return (
     <div className="space-y-6">
@@ -531,14 +626,74 @@ function Page() {
           </div>
 
           <div className="flex items-center gap-3 text-sm font-medium">
-            <Switch checked={schedule} onCheckedChange={setSchedule} /> Agendar envio
+            <Switch checked={schedule} onCheckedChange={setSchedule} /> Programe sua campanha
           </div>
           {schedule && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Data de envio"><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
-              <Field label="Hora de envio"><Input type="time" value={time} onChange={(e) => setTime(e.target.value)} /></Field>
+            <div className="space-y-4 rounded-2xl border bg-muted/20 p-4">
+              <div>
+                <div className="mb-2 text-sm font-medium">Quando deseja enviar?</div>
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    ["today", "Hoje"],
+                    ["tomorrow", "Amanhã"],
+                    ["after", "Depois de amanhã"],
+                    ["other", "Outra data"],
+                  ] as const).map(([key, label]) => (
+                    <Button
+                      key={key}
+                      type="button"
+                      size="sm"
+                      variant={dayChoice === key ? "default" : "outline"}
+                      className="rounded-full"
+                      onClick={() => pickDay(key)}
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                {dayChoice === "other" && (
+                  <Field label="Data de envio">
+                    <Input type="date" min={earliest.date} value={date} onChange={(e) => setDate(e.target.value)} />
+                  </Field>
+                )}
+                <Field label="Horário do envio">
+                  <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+                </Field>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Primeiro horário disponível: <span className="font-medium tabular-nums">{earliest.time}</span>
+                {earliest.date !== spDateOffset(0, now) ? " (amanhã)" : ""} · o envio precisa ser programado com pelo
+                menos 2 horas de antecedência.
+              </p>
+
+              {scheduleTooSoon ? (
+                <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm">
+                  <div className="font-semibold">Horário indisponível</div>
+                  <p className="mt-1">
+                    Programe sua campanha com pelo menos 2 horas de antecedência. Sugestão:{" "}
+                    <button
+                      type="button"
+                      className="font-semibold underline underline-offset-2"
+                      onClick={() => { setDate(suggested.date); setTime(suggested.time); setDayChoice(suggested.date === spDateOffset(0, now) ? "today" : suggested.date === spDateOffset(1, now) ? "tomorrow" : "other"); }}
+                    >
+                      {suggested.time}
+                    </button>
+                    .
+                  </p>
+                </div>
+              ) : date && time ? (
+                <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm">
+                  <div className="text-muted-foreground">Seu envio está programado para:</div>
+                  <div className="mt-0.5 font-semibold">{humanSchedule(date, time, now)}</div>
+                </div>
+              ) : null}
             </div>
           )}
+
 
           {audienceCount > 0 && (
             <div
@@ -580,12 +735,12 @@ function Page() {
             <Button
               type="submit"
               className="h-12 w-full rounded-xl text-base"
-              disabled={submitting || savingDraft || !enoughCredits}
+              disabled={submitting || savingDraft || !enoughCredits || !scheduleValid}
             >
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {importProgress
                 ? `Importando contatos… ${importProgress.done.toLocaleString("pt-BR")}/${importProgress.total.toLocaleString("pt-BR")}`
-                : schedule ? "Agendar campanha" : "Enviar campanha"}
+                : schedule ? "Programar campanha" : "Enviar campanha"}
             </Button>
           </div>
 
@@ -602,7 +757,7 @@ function Page() {
             </div>
             <div className="mx-auto max-w-[300px] overflow-hidden rounded-[2rem] border-[6px] border-neutral-900 bg-neutral-900 shadow-xl">
               <div className="flex items-center justify-between px-4 py-1.5 text-[10px] text-white">
-                <span>{now}</span>
+                <span>{clockNow}</span>
                 <span className="flex items-center gap-1"><Signal className="h-3 w-3" /><Wifi className="h-3 w-3" /><BatteryMedium className="h-3.5 w-3.5" /></span>
               </div>
               <div className="flex items-center gap-2 bg-[#075E54] px-3 py-2 text-white">
@@ -627,7 +782,7 @@ function Page() {
                     {previewBody || <span className="italic text-neutral-400">Sua mensagem aparece aqui...</span>}
                   </div>
                   <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-neutral-500">
-                    {now} <CheckCheck className="h-3 w-3 text-sky-500" />
+                    {clockNow} <CheckCheck className="h-3 w-3 text-sky-500" />
                   </div>
                 </div>
                 {btnEnabled && (
