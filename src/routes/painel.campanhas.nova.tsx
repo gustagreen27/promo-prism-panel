@@ -220,8 +220,11 @@ function Page() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-4 rounded-2xl border bg-card p-5 shadow-sm">
+        <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary">
+          <Rocket className="h-6 w-6" />
+        </span>
+        <div className="min-w-0">
           <Link to="/painel/campanhas" className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" /> Meus Disparos
           </Link>
@@ -234,8 +237,11 @@ function Page() {
         {/* ── Formulário ── */}
         <form onSubmit={submit} className="space-y-5 rounded-2xl border bg-card p-6 shadow-sm">
           <Field label="Nome da campanha">
-            <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder="Ex: Campanha de Black Friday" required />
+            <IconInput icon={Tag}>
+              <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} className="pl-9" placeholder="Ex: Campanha de Black Friday" required />
+            </IconInput>
           </Field>
+
 
           <Field label="Nome do perfil">
             <Input value={profileName} onChange={(e) => setProfileName(e.target.value)} maxLength={50} placeholder="Ex: Loja Virtual" />
