@@ -341,18 +341,23 @@ function Page() {
             </Field>
           </div>
 
-          {urlVars.length > 0 && (
-            <div className="rounded-xl border bg-muted/30 p-4">
-              <div className="mb-3 flex items-center gap-2 text-sm font-medium"><ExternalLink className="h-4 w-4" /> Link do botão</div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {urlVars.map((v) => (
-                  <Field key={v} label={`Variável do link {{${v}}}`}>
-                    <Input value={btnVars[v] ?? ""} onChange={(e) => setBtnVars((s) => ({ ...s, [v]: e.target.value }))} placeholder="Ex: promo-agosto" />
-                  </Field>
-                ))}
+          <div className="rounded-xl border bg-muted/30 p-4">
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <Checkbox checked={btnEnabled} onCheckedChange={(v) => setBtnEnabled(!!v)} />
+              <ExternalLink className="h-4 w-4" /> Adicionar botão
+            </label>
+            {btnEnabled && (
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <Field label="Nome do botão">
+                  <Input value={btnText} onChange={(e) => setBtnText(e.target.value)} placeholder="CLIQUE AQUI" />
+                </Field>
+                <Field label="Destino do botão (link)">
+                  <Input value={btnUrl} onChange={(e) => setBtnUrl(e.target.value)} placeholder="Ex: https://www.seusite.com.br" />
+                </Field>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+
 
           <label className="flex items-center gap-2 text-sm">
             <Checkbox checked={schedule} onCheckedChange={(v) => setSchedule(!!v)} /> Agendar envio
