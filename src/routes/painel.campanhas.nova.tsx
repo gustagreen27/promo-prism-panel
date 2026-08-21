@@ -40,6 +40,20 @@ function fillVars(text: string, vars: Record<string, string>) {
   return (text || "").replace(/\{\{\s*(\d+)\s*\}\}/g, (m, n) => vars[String(n)] || m);
 }
 
+const MESSAGE_PRESETS = [
+  {
+    id: "novidade",
+    label: "Modelo 1 · Novidade",
+    body: "Olá {{1}}!\n\nTemos uma novidade: {{2}}.\n\n{{3}}.\n\nPara {{4}}, use o botão abaixo 👇",
+  },
+  {
+    id: "informativo",
+    label: "Modelo 2 · Informativo",
+    body: "Olá {{1}}!\n\nInformamos que {{2}}.\n\n{{3}}.\n\nPara {{4}}, clique no botão logo abaixo 👇",
+  },
+] as const;
+
+
 function Page() {
   const ctxFn = useServerFn(getMyContext);
   const { data: ctx } = useQuery({ queryKey: ["my-context"], queryFn: () => ctxFn(), staleTime: 30_000 });
@@ -99,17 +113,17 @@ function Page() {
   }, [connectionId, workspaceId, fnTemplates]);
 
   const template = useMemo(() => templates.find((t) => t.id === templateId) ?? null, [templates, templateId]);
-  const bodyVars = useMemo(() => (template ? metaVarsIn(template.body ?? "") : []), [template]);
+  const bodyVars = useMemo(() => metaVarsIn(message), [message]);
   const urlButton = useMemo(
     () => (template?.buttons ?? []).find((b: any) => String(b?.type).toUpperCase() === "URL"),
     [template],
   );
   const urlVars = useMemo(() => (urlButton?.url ? metaVarsIn(String(urlButton.url)) : []), [urlButton]);
 
-  // Ao escolher o template, a mensagem já vem preenchida para a pessoa editar.
+  // Modelos de mensagem disponíveis (apenas dois).
   useEffect(() => {
-    if (template) { setMessage(template.body ?? ""); setVars({}); }
-  }, [templateId]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!message) setMessage(MESSAGE_PRESETS[0].body);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const manualRows = useMemo(() => {
     return manual.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
@@ -234,9 +248,21 @@ function Page() {
             <Textarea value={bio} onChange={(e) => setBio(e.target.value)} maxLength={139} rows={3} placeholder="Ex: Atendimento oficial - Seg a Sex das 9h às 18h" />
           </Field>
 
+          <div className="space-y-3">
+            <Label>Modelo de mensagem</Label>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {MESSAGE_PRESETS.map((p) => (
+                <button key={p.id} type="button" onClick={() => { setMessage(p.body); setVars({}); }}
+                  className={`rounded-xl border p-3 text-left text-xs whitespace-pre-line transition ${message === p.body ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}>
+                  <span className="mb-1 block text-sm font-medium">{p.label}</span>
+                  <span className="text-muted-foreground">{p.body}</span>
+                </button>
+              ))}
+            </div>
+          </div>
 
-          <Field label="Mensagem" hint="Use as variáveis do template como {{1}} e {{2}}.">
-            <Textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={6} maxLength={2000}
+          <Field label="Mensagem" hint={"Use as variáveis do modelo como {{1}} e {{2}}."}>
+            <Textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={8} maxLength={2000}
               placeholder="Digite aqui o texto da sua campanha." required />
           </Field>
 
