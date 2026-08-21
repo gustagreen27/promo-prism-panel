@@ -224,6 +224,19 @@ function Page() {
 
   return (
     <div className="space-y-6">
+      <ContactImportDialog
+        sheet={sheet}
+        open={mapOpen}
+        onOpenChange={setMapOpen}
+        onConfirm={(rows, summary) => {
+          setCsvRows(rows);
+          setCsvSummary(summary);
+          setCsvName(sheet?.fileName ?? "");
+          setMapOpen(false);
+          toast.success(`${rows.length.toLocaleString("pt-BR")} contatos importados e padronizados`);
+        }}
+      />
+
       <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-4 rounded-2xl border bg-card p-5 shadow-sm">
         <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary">
           <Rocket className="h-6 w-6" />
