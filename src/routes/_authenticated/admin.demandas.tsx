@@ -292,10 +292,22 @@ function Page() {
     }
     setBusy(true);
     try {
-      await decideFn({
-        data: { campaign_id: decision.item.id, decision: decision.kind, reason: reason.trim() || null },
+      const campaignId = decision.item.id;
+      const res: any = await decideFn({
+        data: { campaign_id: campaignId, decision: decision.kind, reason: reason.trim() || null },
       });
-      toast.success(decision.kind === "approved" ? "Demanda aprovada e enviada para a fila de disparos" : "Demanda recusada");
+      if (res?.already) {
+        toast.info("Esta demanda já havia sido decidida.");
+      } else if (decision.kind === "approved") {
+        toast.success("Demanda aprovada — disparo pronto para execução", {
+          action: {
+            label: "Abrir disparo",
+            onClick: () => void navigate({ to: "/admin/disparos/$id", params: { id: campaignId } }),
+          },
+        });
+      } else {
+        toast.success("Demanda recusada");
+      }
       setDecision(null);
       setReason("");
       qc.invalidateQueries({ queryKey: ["approval-queue"] });
