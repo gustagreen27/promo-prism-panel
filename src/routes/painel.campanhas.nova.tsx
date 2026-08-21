@@ -54,6 +54,59 @@ function fillVars(text: string, vars: Record<string, string>) {
   return (text || "").replace(/\{\{\s*(\d+)\s*\}\}/g, (m, n) => vars[String(n)] || m);
 }
 
+/* ── Agendamento (sempre em horário de Brasília, UTC-03:00) ───────────── */
+const LEAD_MINUTES = 120;
+
+function spParts(d: Date) {
+  const p = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  }).formatToParts(d).reduce<Record<string, string>>((a, x) => ((a[x.type] = x.value), a), {});
+  return {
+    date: `${p['year']}-${p['month']}-${p['day']}`,
+    time: `${p['hour'] === "24" ? "00" : p['hour']}:${p['minute']}`,
+  };
+}
+
+/** Data/hora (Brasília) do primeiro horário válido: agora + 2h. */
+function earliestSlot(now: Date = new Date()) {
+  return spParts(new Date(now.getTime() + LEAD_MINUTES * 60_000));
+}
+
+/** Sugestão amigável: primeiro horário válido arredondado para cima (15 min). */
+function suggestedSlot(now: Date = new Date()) {
+  const base = new Date(now.getTime() + LEAD_MINUTES * 60_000);
+  const rounded = new Date(Math.ceil(base.getTime() / (15 * 60_000)) * 15 * 60_000);
+  return spParts(rounded);
+}
+
+function spDateOffset(days: number, now: Date = new Date()) {
+  return spParts(new Date(now.getTime() + days * 86_400_000)).date;
+}
+
+function scheduleToDate(date: string, time: string) {
+  const d = new Date(`${date}T${time}:00-03:00`);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+const WEEKDAYS = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+const MONTHS = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+
+function humanSchedule(date: string, time: string, now: Date = new Date()) {
+  const d = scheduleToDate(date, time);
+  if (!d) return "";
+  const [y, m, day] = date.split("-").map(Number);
+  const local = new Date(Date.UTC(y ?? 0, (m ?? 1) - 1, day ?? 1));
+  const prefix =
+    date === spDateOffset(0, now) ? "Hoje" :
+    date === spDateOffset(1, now) ? "Amanhã" :
+    date === spDateOffset(2, now) ? "Depois de amanhã" :
+    WEEKDAYS[local.getUTCDay()]!.replace(/^./, (c) => c.toUpperCase());
+  return `${prefix}, ${day} de ${MONTHS[(m ?? 1) - 1]} às ${time}`;
+}
+
+
 const MESSAGE_PRESETS = [
   {
     id: "novidade",
