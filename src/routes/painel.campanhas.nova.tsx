@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { createClientCampaign } from "@/lib/client-panel.functions";
+import { useWallet } from "@/lib/use-panel-workspace";
 import { listWorkspaceLists, createWorkspaceListWithPhones } from "@/lib/wa-wizard-lists.functions";
 import { metaVarsIn } from "@/lib/wa-variables";
 import { DDD_TO_CITY, extractDddBR } from "@/lib/ddd-cities";
@@ -56,6 +57,8 @@ const MESSAGE_PRESETS = [
 ] as const;
 
 
+const nfmt = (n: number) => new Intl.NumberFormat("pt-BR").format(Math.max(0, Math.round(n)));
+
 function Page() {
   const ctxFn = useServerFn(getMyContext);
   const { data: ctx } = useQuery({ queryKey: ["my-context"], queryFn: () => ctxFn(), staleTime: 30_000 });
@@ -96,6 +99,8 @@ function Page() {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const { availableCredits } = useWallet(workspaceId || null);
   const avatarInput = useRef<HTMLInputElement>(null);
   const mediaInput = useRef<HTMLInputElement>(null);
 
@@ -131,6 +136,10 @@ function Page() {
     : mode === "csv" ? csvFiltered.length
     : (lists.find((l) => l.id === listId)?.count ?? 0);
 
+  // Créditos: 1 crédito = 1 contato válido que será realmente disparado.
+  const requiredCredits = audienceCount;
+  const enoughCredits = availableCredits >= requiredCredits;
+
   const previewBody = fillVars(message, vars);
   const previewUrl = btnEnabled ? btnUrl : "";
 
@@ -163,14 +172,20 @@ function Page() {
   }
 
 
-  async function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent, asDraft = false) {
     e.preventDefault();
     if (name.trim().length < 2) return toast.error("Informe o nome da campanha");
-    if (!audienceCount) return toast.error("Adicione os contatos do disparo");
-    if (btnEnabled && !/^https?:\/\/.+/i.test(btnUrl.trim())) return toast.error("Informe o destino (link) do botão");
-    if (schedule && (!date || !time)) return toast.error("Informe data e hora do agendamento");
+    if (!asDraft && !audienceCount) return toast.error("Adicione os contatos do disparo");
+    if (!asDraft && btnEnabled && !/^https?:\/\/.+/i.test(btnUrl.trim())) return toast.error("Informe o destino (link) do botão");
+    if (!asDraft && schedule && (!date || !time)) return toast.error("Informe data e hora do agendamento");
+    // Rascunho é sempre permitido; disparo real exige saldo.
+    if (!asDraft && !enoughCredits) {
+      return toast.error("Créditos insuficientes", {
+        description: `Você possui ${nfmt(availableCredits)} créditos, mas esta campanha precisa de ${nfmt(requiredCredits)} créditos. Adicione mais créditos para continuar.`,
+      });
+    }
 
-    setSubmitting(true);
+    if (asDraft) setSavingDraft(true); else setSubmitting(true);
     try {
       let finalListId = listId;
       if (mode !== "lista") {
@@ -207,14 +222,22 @@ function Page() {
             ddd_filter: dddFilter,
           },
           scheduled_at,
+          save_as_draft: asDraft,
         },
       });
-      toast.success(scheduled_at ? "Campanha agendada e enviada ao administrador" : "Campanha enviada ao administrador — aguardando envio");
+      toast.success(
+        asDraft
+          ? "Rascunho salvo"
+          : scheduled_at
+            ? "Campanha agendada e enviada ao administrador"
+            : "Campanha enviada ao administrador — aguardando envio",
+      );
       navigate({ to: "/painel/campanhas" });
     } catch (err: any) {
       toast.error(err?.message ?? "Não foi possível criar o disparo");
     } finally {
       setSubmitting(false);
+      setSavingDraft(false);
     }
   }
 
@@ -427,10 +450,52 @@ function Page() {
             </div>
           )}
 
-          <Button type="submit" className="h-12 w-full rounded-xl text-base" disabled={submitting}>
-            {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {schedule ? "Agendar campanha" : "Enviar campanha"}
-          </Button>
+          {audienceCount > 0 && (
+            <div
+              className={`rounded-xl border p-4 text-sm ${
+                enoughCredits ? "border-border bg-muted/30" : "border-destructive/40 bg-destructive/10"
+              }`}
+            >
+              {enoughCredits ? (
+                <>
+                  Esta campanha usará <span className="font-semibold tabular-nums">{nfmt(requiredCredits)}</span>{" "}
+                  créditos (contatos válidos). Saldo disponível:{" "}
+                  <span className="font-semibold tabular-nums">{nfmt(availableCredits)}</span>.
+                </>
+              ) : (
+                <>
+                  <div className="font-semibold">Créditos insuficientes</div>
+                  <p className="mt-1">
+                    Você possui <span className="font-semibold tabular-nums">{nfmt(availableCredits)}</span> créditos,
+                    mas esta campanha precisa de{" "}
+                    <span className="font-semibold tabular-nums">{nfmt(requiredCredits)}</span> créditos. Adicione mais
+                    créditos para continuar — você ainda pode salvar como rascunho e enviar testes.
+                  </p>
+                </>
+              )}
+            </div>
+          )}
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-12 w-full rounded-xl text-base"
+              disabled={submitting || savingDraft}
+              onClick={(e) => submit(e as unknown as React.FormEvent, true)}
+            >
+              {savingDraft && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Salvar rascunho
+            </Button>
+            <Button
+              type="submit"
+              className="h-12 w-full rounded-xl text-base"
+              disabled={submitting || savingDraft || !enoughCredits}
+            >
+              {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {schedule ? "Agendar campanha" : "Enviar campanha"}
+            </Button>
+          </div>
 
         </form>
 
