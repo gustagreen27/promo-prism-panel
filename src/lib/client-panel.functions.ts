@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware'
 import { z } from 'zod'
-import { assertSufficientCredits, getWorkspaceCredits, InsufficientCreditsError } from '@/lib/wallet-guard.server'
+import { assertSufficientCredits, getWorkspaceCredits, InsufficientCreditsError } from '@/lib/wallet-guard'
 import { getCountryCallingCode } from '@/lib/phone-country'
 
 async function assertWorkspaceMember(supabase: any, userId: string, workspaceId: string) {

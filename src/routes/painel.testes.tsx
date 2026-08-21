@@ -73,8 +73,8 @@ function Page() {
       toast.error("Informe pelo menos um número de teste");
       return;
     }
-    if (list.length > 5) {
-      toast.error("Máximo de 5 números por teste");
+    if (list.length > 10) {
+      toast.error("Você pode enviar testes para no máximo 10 destinatários por vez.");
       return;
     }
     setBusy(true);
@@ -143,7 +143,7 @@ function Page() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Números de teste (até 5)</Label>
+              <Label>Números de teste (até 10)</Label>
               <Textarea
                 value={phones}
                 onChange={(e) => setPhones(e.target.value)}

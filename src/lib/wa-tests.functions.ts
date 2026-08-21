@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware'
 import { z } from 'zod'
 import { normalizeBRPhone } from '@/lib/phone-normalize'
+import { TEST_RECIPIENTS_LIMIT } from '@/lib/wallet-guard'
 
 async function assertStaff(supabase: any, userId: string) {
   const { data } = await supabase.rpc('is_internal_staff', { _user: userId })
@@ -136,7 +137,10 @@ export const sendCampaignTest = createServerFn({ method: 'POST' })
         workspace_id: z.string().uuid(),
         campaign_id: z.string().uuid().nullish(),
         template_id: z.string().uuid().nullish(),
-        phones: z.array(z.string()).min(1).max(5),
+        phones: z
+          .array(z.string())
+          .min(1)
+          .max(TEST_RECIPIENTS_LIMIT, `Você pode enviar testes para no máximo ${TEST_RECIPIENTS_LIMIT} destinatários por vez.`),
         variables: z.record(z.string(), z.string()).optional().nullable(),
       })
       .parse(d),
@@ -156,6 +160,10 @@ export const sendCampaignTest = createServerFn({ method: 'POST' })
       })
     const valid = normalized.filter((n) => n.phone)
     if (!valid.length) throw new Error('Nenhum número de teste válido informado')
+    if (valid.length > TEST_RECIPIENTS_LIMIT) {
+      throw new Error(`Você pode enviar testes para no máximo ${TEST_RECIPIENTS_LIMIT} destinatários por vez.`)
+    }
+    // Testes são gratuitos: nenhuma reserva/débito de créditos acontece aqui.
 
     // 2) Campanha (opcional) para herdar template/variáveis
     let campaign: any = null
