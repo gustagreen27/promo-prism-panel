@@ -233,6 +233,14 @@ function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId
         </div>
       </div>
 
+      {health.level !== "none" && health.level !== "unknown" && (
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-5 py-4 text-sm text-destructive md:px-6">
+          <div className="font-semibold">Esta BM/WABA está marcada como {health.label.toLowerCase()} na Meta.</div>
+          <div className="mt-1 text-destructive/80">
+            Disparos podem ser aceitos pela API sem entregar. Verifique a aba <strong>WABAs</strong> para detalhes.
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_400px]">
         {/* Configurações do BM */}
