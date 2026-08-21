@@ -349,23 +349,24 @@ function Page() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Comprar mensagens</DialogTitle>
+            <DialogTitle>Comprar créditos</DialogTitle>
             <DialogDescription>
-              Depósito mínimo para o seu plano: <strong>{fmt(requiredCents)}</strong> ({minMessages.toLocaleString("pt-BR")} mensagens × {fmt(unit)}).
+              Compra mínima: <strong>{nf(minCreditsRequired)}</strong> créditos (1 crédito = 1 mensagem).
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>Valor (R$)</Label>
+              <Label>Quantidade de créditos</Label>
               <Input
-                inputMode="decimal"
+                inputMode="numeric"
                 value={amountStr}
-                onChange={(e) => setAmountStr(e.target.value)}
-                placeholder={(requiredCents / 100).toFixed(2).replace(".", ",")}
+                onChange={(e) => setAmountStr(e.target.value.replace(/\D/g, ""))}
+                placeholder={String(minCreditsRequired)}
               />
-              <p className="mt-1 text-xs text-muted-foreground">Mínimo {fmt(requiredCents)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Mínimo {nf(minCreditsRequired)} créditos</p>
             </div>
           </div>
+
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
             <Button onClick={() => deposit.mutate()} disabled={deposit.isPending}>
