@@ -328,7 +328,22 @@ function Page() {
               </Field>
             )}
 
-            <p className="text-xs text-muted-foreground">{audienceCount.toLocaleString("pt-BR")} contatos selecionados</p>
+            <Field label="DDD de envio" hint="Escolha “Qualquer” para enviar a todos os DDDs.">
+              <Select value={ddd} onValueChange={setDdd}>
+                <SelectTrigger><SelectValue placeholder="Qualquer" /></SelectTrigger>
+                <SelectContent className="max-h-72">
+                  <SelectItem value="any">Qualquer</SelectItem>
+                  {Object.keys(DDD_TO_CITY).sort().map((d) => (
+                    <SelectItem key={d} value={d}>+{d} · {DDD_TO_CITY[d]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+
+            <p className="text-xs text-muted-foreground">
+              {audienceCount.toLocaleString("pt-BR")} contatos selecionados
+              {dddFilter ? ` · filtrando DDD +${dddFilter}` : ""}
+            </p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
