@@ -86,7 +86,7 @@ function Page() {
   useEffect(() => {
     if (!workspaceId) return;
     fnNumbers({ data: { workspace_id: workspaceId } })
-      .then((r: any) => { setNumbers(r.numbers); if (r.numbers.length === 1) setConnectionId(r.numbers[0].id); })
+      .then((r: any) => { setNumbers(r.numbers); if (r.numbers.length > 0) setConnectionId(r.numbers[0].id); })
       .catch(() => {});
     fnLists({ data: { workspace_id: workspaceId } }).then((r: any) => setLists(r.lists)).catch(() => {});
   }, [workspaceId, fnNumbers, fnLists]);
@@ -94,7 +94,7 @@ function Page() {
   useEffect(() => {
     if (!connectionId) { setTemplates([]); return; }
     fnTemplates({ data: { workspace_id: workspaceId, connection_id: connectionId } })
-      .then((r: any) => setTemplates(r.templates))
+      .then((r: any) => { setTemplates(r.templates); if (r.templates.length > 0) setTemplateId(r.templates[0].id); })
       .catch(() => setTemplates([]));
   }, [connectionId, workspaceId, fnTemplates]);
 
@@ -234,28 +234,6 @@ function Page() {
             <Textarea value={bio} onChange={(e) => setBio(e.target.value)} maxLength={139} rows={3} placeholder="Ex: Atendimento oficial - Seg a Sex das 9h às 18h" />
           </Field>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Número de envio">
-              <Select value={connectionId} onValueChange={setConnectionId}>
-                <SelectTrigger><SelectValue placeholder="Selecione o número..." /></SelectTrigger>
-                <SelectContent>
-                  {numbers.map((n) => (
-                    <SelectItem key={n.id} value={n.id}>{n.display_name} · {n.phone_masked}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label="Template aprovado">
-              <Select value={templateId} onValueChange={setTemplateId} disabled={!connectionId}>
-                <SelectTrigger><SelectValue placeholder="Selecione o template..." /></SelectTrigger>
-                <SelectContent>
-                  {templates.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>{t.name} ({t.language})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-          </div>
 
           <Field label="Mensagem" hint="Use as variáveis do template como {{1}} e {{2}}.">
             <Textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={6} maxLength={2000}
