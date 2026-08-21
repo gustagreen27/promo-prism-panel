@@ -164,6 +164,37 @@ export function DemandPreviewDialog({ campaignId, onClose }: { campaignId: strin
                 <Row label="Número de envio" value={d?.connection ? `${d.connection.label} (${d.connection.phone ?? "—"})` : "a definir"} />
                 <Row label="BM / WABA" value={d?.connection ? `${d.connection.business_id ?? "—"} / ${d.connection.waba_id ?? "—"}` : "—"} />
                 <Row label="Velocidade" value={`${campaign?.rate_per_second ?? "—"} msg/s · conc. ${campaign?.max_concurrency ?? "—"}`} />
+                <Row
+                  label="Foto de perfil (cliente)"
+                  value={
+                    avatarUrl ? (
+                      <a href={avatarUrl} target="_blank" rel="noreferrer" className="underline">
+                        ver imagem
+                      </a>
+                    ) : (
+                      "não enviada"
+                    )
+                  }
+                />
+                <Row label="Texto do botão" value={buttons[0]?.text ?? "—"} />
+                <Row
+                  label="Destino do botão"
+                  value={
+                    buttons.length && buttonUrlOf(buttons[0], 0) ? (
+                      <a
+                        href={buttonUrlOf(buttons[0], 0) as string}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="break-all underline"
+                      >
+                        {buttonUrlOf(buttons[0], 0)}
+                      </a>
+                    ) : (
+                      "—"
+                    )
+                  }
+                />
+
               </div>
 
               <Separator />
