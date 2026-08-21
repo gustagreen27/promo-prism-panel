@@ -21,6 +21,9 @@ import {
   Link2, Check, FileSpreadsheet, ListChecks, Sparkles,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { ContactImportDialog, parseContactFile, type ParsedSheet } from "@/components/import/ContactImportDialog";
+import { buildImportSummary, type ImportSummary } from "@/lib/phone-normalize";
+
 
 
 export const Route = createFileRoute("/painel/campanhas/nova")({
@@ -80,6 +83,10 @@ function Page() {
   const [listId, setListId] = useState("");
   const [csvRows, setCsvRows] = useState<Array<{ phone: string; name?: string }>>([]);
   const [csvName, setCsvName] = useState("");
+  const [sheet, setSheet] = useState<ParsedSheet | null>(null);
+  const [mapOpen, setMapOpen] = useState(false);
+  const [csvSummary, setCsvSummary] = useState<ImportSummary | null>(null);
+
   const [ddd, setDdd] = useState("any");
 
   const [avatarUrl, setAvatarUrl] = useState("");
@@ -143,22 +150,17 @@ function Page() {
     }
   }
 
-  function onCsv(file: File) {
-    setCsvName(file.name);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const rows = String(reader.result || "")
-        .split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
-        .map((l) => {
-          const parts = l.split(/[;,]/);
-          return { phone: (parts[0] || "").replace(/\D/g, ""), name: (parts[1] || "").trim() || undefined };
-        })
-        .filter((r) => r.phone.length >= 10);
-      setCsvRows(rows);
-      toast.success(`${rows.length} contatos detectados`);
-    };
-    reader.readAsText(file);
+  async function onCsv(file: File) {
+    try {
+      const parsed = await parseContactFile(file);
+      if (!parsed.headers.length) return toast.error("Arquivo vazio ou ilegível");
+      setSheet(parsed);
+      setMapOpen(true);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Não foi possível ler o arquivo");
+    }
   }
+
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
