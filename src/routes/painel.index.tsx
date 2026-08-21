@@ -83,6 +83,15 @@ function PanelHome() {
     ? { campaigns: 1, done: selected.bucket === "realizado" ? 1 : 0, used: selected.sent }
     : { campaigns: data?.totals.campaigns ?? 0, done: counts?.realizado ?? 0, used: data?.totals.sent ?? 0 };
 
+  const recent = useMemo(() => {
+    if (range === "all") return campaigns;
+    const now = Date.now();
+    const cutoff = range === "today"
+      ? new Date(new Date().setHours(0, 0, 0, 0)).getTime()
+      : now - 7 * 24 * 60 * 60 * 1000;
+    return campaigns.filter((c) => new Date(c.created_at).getTime() >= cutoff);
+  }, [campaigns, range]);
+
   const usedPct = credits && credits.purchased > 0
     ? Math.min(100, Math.round((credits.used / credits.purchased) * 100))
     : 0;
