@@ -44,6 +44,14 @@ const BUCKET_CLASS: Record<string, string> = {
   cancelado: "bg-destructive/10 text-destructive border-destructive/20",
 };
 
+type RangeKey = "all" | "today" | "7d";
+
+const RANGES: Array<{ key: RangeKey; label: string }> = [
+  { key: "all", label: "Todos" },
+  { key: "today", label: "Hoje" },
+  { key: "7d", label: "Últimos 7 dias" },
+];
+
 function PanelHome() {
   const ctxFn = useServerFn(getMyContext);
   const dashFn = useServerFn(getClientDashboard);
