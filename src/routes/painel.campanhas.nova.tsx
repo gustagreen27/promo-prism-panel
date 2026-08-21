@@ -622,14 +622,74 @@ function Page() {
           </div>
 
           <div className="flex items-center gap-3 text-sm font-medium">
-            <Switch checked={schedule} onCheckedChange={setSchedule} /> Agendar envio
+            <Switch checked={schedule} onCheckedChange={setSchedule} /> Programe sua campanha
           </div>
           {schedule && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Data de envio"><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
-              <Field label="Hora de envio"><Input type="time" value={time} onChange={(e) => setTime(e.target.value)} /></Field>
+            <div className="space-y-4 rounded-2xl border bg-muted/20 p-4">
+              <div>
+                <div className="mb-2 text-sm font-medium">Quando deseja enviar?</div>
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    ["today", "Hoje"],
+                    ["tomorrow", "Amanhã"],
+                    ["after", "Depois de amanhã"],
+                    ["other", "Outra data"],
+                  ] as const).map(([key, label]) => (
+                    <Button
+                      key={key}
+                      type="button"
+                      size="sm"
+                      variant={dayChoice === key ? "default" : "outline"}
+                      className="rounded-full"
+                      onClick={() => pickDay(key)}
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                {dayChoice === "other" && (
+                  <Field label="Data de envio">
+                    <Input type="date" min={earliest.date} value={date} onChange={(e) => setDate(e.target.value)} />
+                  </Field>
+                )}
+                <Field label="Horário do envio">
+                  <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+                </Field>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Primeiro horário disponível: <span className="font-medium tabular-nums">{earliest.time}</span>
+                {earliest.date !== spDateOffset(0, now) ? " (amanhã)" : ""} · o envio precisa ser programado com pelo
+                menos 2 horas de antecedência.
+              </p>
+
+              {scheduleTooSoon ? (
+                <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm">
+                  <div className="font-semibold">Horário indisponível</div>
+                  <p className="mt-1">
+                    Programe sua campanha com pelo menos 2 horas de antecedência. Sugestão:{" "}
+                    <button
+                      type="button"
+                      className="font-semibold underline underline-offset-2"
+                      onClick={() => { setDate(suggested.date); setTime(suggested.time); setDayChoice(suggested.date === spDateOffset(0, now) ? "today" : suggested.date === spDateOffset(1, now) ? "tomorrow" : "other"); }}
+                    >
+                      {suggested.time}
+                    </button>
+                    .
+                  </p>
+                </div>
+              ) : date && time ? (
+                <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm">
+                  <div className="text-muted-foreground">Seu envio está programado para:</div>
+                  <div className="mt-0.5 font-semibold">{humanSchedule(date, time, now)}</div>
+                </div>
+              ) : null}
             </div>
           )}
+
 
           {audienceCount > 0 && (
             <div
