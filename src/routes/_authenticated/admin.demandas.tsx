@@ -811,10 +811,22 @@ function Page() {
           />
           <DialogFooter>
             <Button variant="outline" onClick={() => setDecision(null)} disabled={busy}>Cancelar</Button>
-            <Button onClick={() => void submit()} disabled={busy}>
-              {busy ? "Salvando…" : decision?.kind === "approved" ? "Aprovar e enviar para a fila" : "Recusar demanda"}
-            </Button>
+            {decision?.kind === "approved" ? (
+              <>
+                <Button variant="secondary" onClick={() => void submit("scheduled")} disabled={busy}>
+                  {busy ? "Salvando…" : "Aprovar e agendar"}
+                </Button>
+                <Button onClick={() => void submit("queued")} disabled={busy}>
+                  {busy ? "Salvando…" : "Aprovar e colocar em fila"}
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => void submit()} disabled={busy}>
+                {busy ? "Salvando…" : "Recusar demanda"}
+              </Button>
+            )}
           </DialogFooter>
+
         </DialogContent>
       </Dialog>
     </div>
