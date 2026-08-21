@@ -24,7 +24,6 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PainelIndexRouteImport } from './routes/painel.index'
 import { Route as RelatoriosSlugRouteImport } from './routes/relatorios.$slug'
-import { Route as PainelTestesRouteImport } from './routes/painel.testes'
 import { Route as PainelTemplatesRouteImport } from './routes/painel.templates'
 import { Route as PainelRelatoriosRouteImport } from './routes/painel.relatorios'
 import { Route as PainelNotificacoesRouteImport } from './routes/painel.notificacoes'
@@ -178,11 +177,6 @@ const RelatoriosSlugRoute = RelatoriosSlugRouteImport.update({
   id: '/relatorios/$slug',
   path: '/relatorios/$slug',
   getParentRoute: () => rootRouteImport,
-} as any)
-const PainelTestesRoute = PainelTestesRouteImport.update({
-  id: '/testes',
-  path: '/testes',
-  getParentRoute: () => PainelRoute,
 } as any)
 const PainelTemplatesRoute = PainelTemplatesRouteImport.update({
   id: '/templates',
@@ -666,7 +660,6 @@ export interface FileRoutesByFullPath {
   '/painel/notificacoes': typeof PainelNotificacoesRoute
   '/painel/relatorios': typeof PainelRelatoriosRoute
   '/painel/templates': typeof PainelTemplatesRoute
-  '/painel/testes': typeof PainelTestesRoute
   '/relatorios/$slug': typeof RelatoriosSlugRoute
   '/painel/': typeof PainelIndexRoute
   '/admin/agenda': typeof AuthenticatedAdminAgendaRoute
@@ -761,7 +754,6 @@ export interface FileRoutesByTo {
   '/painel/notificacoes': typeof PainelNotificacoesRoute
   '/painel/relatorios': typeof PainelRelatoriosRoute
   '/painel/templates': typeof PainelTemplatesRoute
-  '/painel/testes': typeof PainelTestesRoute
   '/relatorios/$slug': typeof RelatoriosSlugRoute
   '/painel': typeof PainelIndexRoute
   '/admin/agenda': typeof AuthenticatedAdminAgendaRoute
@@ -858,7 +850,6 @@ export interface FileRoutesById {
   '/painel/notificacoes': typeof PainelNotificacoesRoute
   '/painel/relatorios': typeof PainelRelatoriosRoute
   '/painel/templates': typeof PainelTemplatesRoute
-  '/painel/testes': typeof PainelTestesRoute
   '/relatorios/$slug': typeof RelatoriosSlugRoute
   '/painel/': typeof PainelIndexRoute
   '/_authenticated/admin/agenda': typeof AuthenticatedAdminAgendaRoute
@@ -956,7 +947,6 @@ export interface FileRouteTypes {
     | '/painel/notificacoes'
     | '/painel/relatorios'
     | '/painel/templates'
-    | '/painel/testes'
     | '/relatorios/$slug'
     | '/painel/'
     | '/admin/agenda'
@@ -1051,7 +1041,6 @@ export interface FileRouteTypes {
     | '/painel/notificacoes'
     | '/painel/relatorios'
     | '/painel/templates'
-    | '/painel/testes'
     | '/relatorios/$slug'
     | '/painel'
     | '/admin/agenda'
@@ -1147,7 +1136,6 @@ export interface FileRouteTypes {
     | '/painel/notificacoes'
     | '/painel/relatorios'
     | '/painel/templates'
-    | '/painel/testes'
     | '/relatorios/$slug'
     | '/painel/'
     | '/_authenticated/admin/agenda'
@@ -1358,13 +1346,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/relatorios/$slug'
       preLoaderRoute: typeof RelatoriosSlugRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/painel/testes': {
-      id: '/painel/testes'
-      path: '/testes'
-      fullPath: '/painel/testes'
-      preLoaderRoute: typeof PainelTestesRouteImport
-      parentRoute: typeof PainelRoute
     }
     '/painel/templates': {
       id: '/painel/templates'
@@ -2109,7 +2090,6 @@ interface PainelRouteChildren {
   PainelNotificacoesRoute: typeof PainelNotificacoesRoute
   PainelRelatoriosRoute: typeof PainelRelatoriosRoute
   PainelTemplatesRoute: typeof PainelTemplatesRoute
-  PainelTestesRoute: typeof PainelTestesRoute
   PainelIndexRoute: typeof PainelIndexRoute
   PainelCampanhasHistoricoRoute: typeof PainelCampanhasHistoricoRoute
   PainelCampanhasNovaRoute: typeof PainelCampanhasNovaRoute
@@ -2125,7 +2105,6 @@ const PainelRouteChildren: PainelRouteChildren = {
   PainelNotificacoesRoute: PainelNotificacoesRoute,
   PainelRelatoriosRoute: PainelRelatoriosRoute,
   PainelTemplatesRoute: PainelTemplatesRoute,
-  PainelTestesRoute: PainelTestesRoute,
   PainelIndexRoute: PainelIndexRoute,
   PainelCampanhasHistoricoRoute: PainelCampanhasHistoricoRoute,
   PainelCampanhasNovaRoute: PainelCampanhasNovaRoute,
