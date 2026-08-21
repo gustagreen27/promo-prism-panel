@@ -2836,8 +2836,14 @@ export type Database = {
           distribution_strategy: string
           estimated_cost: number
           execution_type: string | null
+          external_delivered_count: number | null
+          external_failed_count: number | null
+          external_finished_at: string | null
           external_note: string | null
+          external_sent_count: number | null
+          external_started_at: string | null
           external_status: string | null
+          external_total_count: number | null
           failed_count: number
           fatal_error_code: string | null
           fatal_error_message: string | null
@@ -2859,6 +2865,7 @@ export type Database = {
           max_concurrency: number | null
           max_per_day: number | null
           max_per_hour: number | null
+          metrics_source: string | null
           min_processed_for_abort: number
           name: string
           notes: string | null
@@ -2941,8 +2948,14 @@ export type Database = {
           distribution_strategy?: string
           estimated_cost?: number
           execution_type?: string | null
+          external_delivered_count?: number | null
+          external_failed_count?: number | null
+          external_finished_at?: string | null
           external_note?: string | null
+          external_sent_count?: number | null
+          external_started_at?: string | null
           external_status?: string | null
+          external_total_count?: number | null
           failed_count?: number
           fatal_error_code?: string | null
           fatal_error_message?: string | null
@@ -2964,6 +2977,7 @@ export type Database = {
           max_concurrency?: number | null
           max_per_day?: number | null
           max_per_hour?: number | null
+          metrics_source?: string | null
           min_processed_for_abort?: number
           name: string
           notes?: string | null
@@ -3046,8 +3060,14 @@ export type Database = {
           distribution_strategy?: string
           estimated_cost?: number
           execution_type?: string | null
+          external_delivered_count?: number | null
+          external_failed_count?: number | null
+          external_finished_at?: string | null
           external_note?: string | null
+          external_sent_count?: number | null
+          external_started_at?: string | null
           external_status?: string | null
+          external_total_count?: number | null
           failed_count?: number
           fatal_error_code?: string | null
           fatal_error_message?: string | null
@@ -3069,6 +3089,7 @@ export type Database = {
           max_concurrency?: number | null
           max_per_day?: number | null
           max_per_hour?: number | null
+          metrics_source?: string | null
           min_processed_for_abort?: number
           name?: string
           notes?: string | null
