@@ -209,8 +209,10 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
     if (data.header_media_url) templateVars._header_image_url = data.header_media_url
 
 
-    const approval_mode = ws?.approval_mode || 'auto'
-    const approval_status = approval_mode === 'manual' ? 'pending' : 'not_required'
+    // Painel do cliente: nunca dispara direto. Toda campanha entra na fila
+    // aguardando aprovação/execução pelo admin.
+    const approval_mode = 'manual'
+    const approval_status = 'pending'
 
     const { data: campaign, error } = await supabase
       .from('wa_campaigns')
