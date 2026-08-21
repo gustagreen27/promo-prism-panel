@@ -18,7 +18,7 @@ async function assertMember(supabase: any, userId: string, workspaceId: string) 
 }
 
 const APPROVAL_FIELDS =
-  'id,name,workspace_id,project_id,status,approval_status,approval_mode,rejection_reason,approved_at,approved_by,total_recipients,scheduled_at,created_at,created_by,connection_id,template_id,list_id'
+  'id,name,workspace_id,project_id,status,approval_status,approval_mode,rejection_reason,approved_at,approved_by,total_recipients,scheduled_at,created_at,created_by,connection_id,template_id,list_id,custom_fields,variables_mapping,button_url_mapping,template_variables'
 
 // ---- Fila de aprovação (admin) ----
 export const listApprovalQueue = createServerFn({ method: 'POST' })
