@@ -320,7 +320,38 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
           .eq('id', campaign.id)
         throw new InsufficientCreditsError(credits.availableCredits, required)
       }
+
+      // Debita (reserva) os créditos já no envio da campanha, para que o saldo
+      // disponível do cliente caia imediatamente ao enviar para aprovação.
+      if (required > 0) {
+        const unit = credits.unitPriceCents
+        const { data: reservation, error: resErr } = await supabase.rpc('wallet_reserve', {
+          _ws: data.workspace_id,
+          _campaign_id: campaign.id,
+          _qty: required,
+          _unit_price_cents: unit,
+        })
+        if (resErr) {
+          await supabase
+            .from('wa_campaigns')
+            .update({ status: 'draft', approval_status: 'draft' })
+            .eq('id', campaign.id)
+          if (String(resErr.message).includes('INSUFFICIENT_BALANCE')) {
+            throw new InsufficientCreditsError(credits.availableCredits, required)
+          }
+          throw resErr
+        }
+        const reservationId = Array.isArray(reservation) ? reservation[0]?.id : (reservation as any)?.id
+        if (reservationId) {
+          await supabase
+            .from('wa_campaigns')
+            .update({ reservation_id: reservationId, price_cents_at_start: unit })
+            .eq('id', campaign.id)
+          ;(campaign as any).reservation_id = reservationId
+        }
+      }
     }
+
 
     return { campaign }
   })
