@@ -234,7 +234,7 @@ export const decideCampaignApproval = createServerFn({ method: 'POST' })
 
     const { data: camp } = await supabase
       .from('wa_campaigns')
-      .select('id,name,workspace_id,status,approval_status,total_recipients,scheduled_at,custom_fields,connection_id,template_id,execution_type')
+      .select('id,name,workspace_id,status,approval_status,total_recipients,scheduled_at,custom_fields,connection_id,template_id,execution_type,reservation_id')
       .eq('id', data.campaign_id)
       .maybeSingle()
     if (!camp) throw new Error('Demanda não encontrada')
