@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -11,6 +11,9 @@ import { Plus, History, Send } from "lucide-react";
 
 export const Route = createFileRoute("/painel/campanhas/")({
   head: () => ({ meta: [{ title: "Meus Disparos — Painel" }] }),
+  beforeLoad: async () => {
+    throw redirect({ to: "/painel/campanhas/nova" });
+  },
   component: Page,
 });
 
