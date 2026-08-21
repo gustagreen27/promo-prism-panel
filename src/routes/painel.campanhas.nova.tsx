@@ -1,6 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
+import { getMyContext } from "@/lib/auth.functions";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,7 +41,9 @@ function fillVars(text: string, vars: Record<string, string>) {
 }
 
 function Page() {
-  const { workspaceId } = Route.useRouteContext() as { workspaceId: string };
+  const ctxFn = useServerFn(getMyContext);
+  const { data: ctx } = useQuery({ queryKey: ["my-context"], queryFn: () => ctxFn(), staleTime: 30_000 });
+  const workspaceId = ctx?.primary_workspace?.id ?? "";
   const navigate = useNavigate();
 
   const fnNumbers = useServerFn(listMyNumbers);
@@ -80,6 +84,7 @@ function Page() {
   const mediaInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (!workspaceId) return;
     fnNumbers({ data: { workspace_id: workspaceId } })
       .then((r: any) => { setNumbers(r.numbers); if (r.numbers.length === 1) setConnectionId(r.numbers[0].id); })
       .catch(() => {});

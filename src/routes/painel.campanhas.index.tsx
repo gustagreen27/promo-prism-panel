@@ -1,6 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getMyContext } from "@/lib/auth.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -75,7 +77,9 @@ const PERIODS = [
 const PAGE_SIZE = 10;
 
 function Page() {
-  const { workspaceId } = Route.useRouteContext() as { workspaceId: string };
+  const ctxFn = useServerFn(getMyContext);
+  const { data: ctx } = useQuery({ queryKey: ["my-context"], queryFn: () => ctxFn(), staleTime: 30_000 });
+  const workspaceId = ctx?.primary_workspace?.id ?? "";
   const navigate = useNavigate();
   const [tab, setTab] = useState<Bucket>("all");
   const [q, setQ] = useState("");
@@ -84,6 +88,7 @@ function Page() {
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["campaigns", workspaceId],
+    enabled: !!workspaceId,
     queryFn: async () => {
       const { data } = await supabase
         .from("wa_campaigns")
