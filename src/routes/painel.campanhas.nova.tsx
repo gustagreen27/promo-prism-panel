@@ -212,6 +212,7 @@ function Page() {
           connection_id: connectionId,
           template_id: templateId,
           list_id: finalListId,
+          ddd_filter: mode === "lista" ? dddFilter : null,
           variables_mapping: vars,
           button_url_mapping: btnEnabled ? { ...btnVars, "1": btnUrl.trim() } : btnVars,
           header_media_url: mediaUrl || null,
