@@ -140,7 +140,7 @@ function Page() {
     : (lists.find((l) => l.id === listId)?.count ?? 0);
 
   const previewBody = fillVars(message, vars);
-  const previewUrl = urlButton?.url ? fillVars(String(urlButton.url), btnVars) : "";
+  const previewUrl = btnEnabled ? btnUrl : (urlButton?.url ? fillVars(String(urlButton.url), btnVars) : "");
 
   async function upload(file: File, kind: "avatar" | "media") {
     setUploading(kind);
@@ -182,6 +182,7 @@ function Page() {
     if (!connectionId) return toast.error("Selecione o número de envio");
     if (!templateId) return toast.error("Selecione o template aprovado");
     if (!audienceCount) return toast.error("Adicione os contatos do disparo");
+    if (btnEnabled && !/^https?:\/\/.+/i.test(btnUrl.trim())) return toast.error("Informe o destino (link) do botão");
     if (schedule && (!date || !time)) return toast.error("Informe data e hora do agendamento");
 
     setSubmitting(true);
@@ -204,7 +205,7 @@ function Page() {
           template_id: templateId,
           list_id: finalListId,
           variables_mapping: vars,
-          button_url_mapping: btnVars,
+          button_url_mapping: btnEnabled ? { ...btnVars, "1": btnUrl.trim() } : btnVars,
           header_media_url: mediaUrl || null,
           scheduled_at,
         },
