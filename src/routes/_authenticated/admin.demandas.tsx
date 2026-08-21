@@ -466,8 +466,8 @@ function ExternalControls({ item }: { item: Item }) {
   }
 
   async function saveMetrics() {
-    const t = n(total), s = n(sent), d = n(delivered), f = n(failed);
-    for (const [label, v] of [["Total", t], ["Enviados", s], ["Entregues", d], ["Falhas", f]] as const) {
+    const s = n(sent), d = n(delivered), f = n(failed);
+    for (const [label, v] of [["Enviados", s], ["Entregues", d], ["Falhas", f]] as const) {
       if (v != null && (!Number.isInteger(v) || v < 0)) {
         toast.error(`${label}: informe um número inteiro maior ou igual a zero.`);
         return;
@@ -499,7 +499,7 @@ function ExternalControls({ item }: { item: Item }) {
           <div className="h-full rounded-full bg-violet-500 transition-all" style={{ width: `${progressPct}%` }} />
         </div>
         <div className="grid gap-0.5 text-muted-foreground sm:grid-cols-2">
-          <span>Total: {(item.external_total_count ?? 0).toLocaleString("pt-BR")}</span>
+          <span>Total (leads): {(item.external_total_count ?? item.total_recipients ?? 0).toLocaleString("pt-BR")}</span>
           <span>Enviados: {(item.external_sent_count ?? 0).toLocaleString("pt-BR")}</span>
           <span>Entregues: {(item.external_delivered_count ?? 0).toLocaleString("pt-BR")}</span>
           <span>Falhas: {(item.external_failed_count ?? 0).toLocaleString("pt-BR")}</span>
@@ -556,10 +556,6 @@ function ExternalControls({ item }: { item: Item }) {
               <div className="space-y-1.5">
                 <Label className="text-xs">Pendentes (calculado)</Label>
                 <Input value={previewPending.toLocaleString("pt-BR")} readOnly className="bg-muted/50" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Início do disparo</Label>
-                <Input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} />
               </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <Label className="text-xs">Finalizar em (opcional)</Label>
