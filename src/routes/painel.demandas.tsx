@@ -80,7 +80,7 @@ function Page() {
 
   const items = useMemo(() => ((data as any)?.items ?? []) as Demand[], [data]);
   const counts = useMemo(() => {
-    const c: Record<Bucket, number> = { pending: 0, scheduled: 0, queued: 0, approved: 0, rejected: 0 };
+    const c: Record<Bucket, number> = { pending: 0, scheduled: 0, queued: 0, completed: 0, rejected: 0 };
     for (const d of items) c[bucketOf(d)] += 1;
     return c;
   }, [items]);
