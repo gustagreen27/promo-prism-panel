@@ -73,8 +73,6 @@ export const previewWorkspaceList = createServerFn({ method: "POST" })
       .from("contact_list_items")
       .select("contact:contacts!inner(id,name,phone,opt_in,opt_out)")
       .eq("list_id", data.list_id)
-      .eq("contact.opt_in", true)
-      .eq("contact.opt_out", false)
       .not("contact.phone", "is", null)
       .limit(SAMPLE);
     if (sampleErr) throw sampleErr;
@@ -90,8 +88,6 @@ export const previewWorkspaceList = createServerFn({ method: "POST" })
         .from("contact_list_items")
         .select("contact:contacts!inner(id)", { count: "exact", head: true })
         .eq("list_id", data.list_id)
-        .eq("contact.opt_in", true)
-        .eq("contact.opt_out", false)
         .not("contact.phone", "is", null);
       valid = validRes.count ?? 0;
     } catch {

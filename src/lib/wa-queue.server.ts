@@ -945,21 +945,7 @@ export async function processCampaignTick(
           .eq("status", "processing");
         return;
       }
-      // Opt-out/contact são pré-carregados por chunk para não fazer 2 consultas
-      // por destinatário no hot path.
-      if ((r as any)._optedOut) {
-        await supabaseAdmin
-          .from("campaign_recipients")
-          .update({ status: "opt_out", failed_reason: "Contato em opt-out" })
-          .eq("id", r.id);
-        if ((camp as any).reservation_id) {
-          await supabaseAdmin.rpc("wallet_release_reservation" as any, {
-            _reservation_id: (camp as any).reservation_id,
-            _qty: 1,
-          });
-        }
-        return;
-      }
+      // Opt-out do contato NÃO remove o destinatário do disparo (decisão do produto).
 
       const campVars = (camp.template_variables as Record<string, string> | null) || {};
       const recVars = (r.variables as Record<string, string> | null) || {};
@@ -1490,10 +1476,7 @@ export async function processCampaignTick(
       }
       const rawPhones: string[] = [...new Set((chunk as any[]).map((r: any) => String(r.phone ?? "")).filter(Boolean))];
       const contactIds: string[] = [...new Set((chunk as any[]).map((r: any) => String(r.contact_id ?? "")).filter(Boolean))];
-      const [optOutRes, contactByIdRes, contactByPhoneRes] = await Promise.all([
-        rawPhones.length
-          ? supabaseAdmin.from("opt_outs").select("phone").in("phone", rawPhones)
-          : Promise.resolve({ data: [] } as any),
+      const [contactByIdRes, contactByPhoneRes] = await Promise.all([
         contactIds.length
           ? supabaseAdmin.from("contacts").select("*").in("id", contactIds)
           : Promise.resolve({ data: [] } as any),
@@ -1501,11 +1484,9 @@ export async function processCampaignTick(
           ? supabaseAdmin.from("contacts").select("*").in("phone", rawPhones)
           : Promise.resolve({ data: [] } as any),
       ]);
-      const optedOut = new Set(((optOutRes as any).data ?? []).map((x: any) => String(x.phone)));
       const contactsById = new Map(((contactByIdRes as any).data ?? []).map((x: any) => [String(x.id), x]));
       const contactsByPhone = new Map(((contactByPhoneRes as any).data ?? []).map((x: any) => [String(x.phone), x]));
       for (const r of chunk as any[]) {
-        (r as any)._optedOut = optedOut.has(String(r.phone));
         (r as any)._contact = (r.contact_id ? contactsById.get(String(r.contact_id)) : null) ?? contactsByPhone.get(String(r.phone)) ?? null;
       }
       localQueue.push(...chunk);
