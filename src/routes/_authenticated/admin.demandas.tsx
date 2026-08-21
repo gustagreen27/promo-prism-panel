@@ -632,6 +632,8 @@ function Page() {
     refetchInterval: 30_000,
   });
   const items = useMemo(() => ((data as any)?.items ?? []) as Item[], [data]);
+  const counts = ((data as any)?.counts ?? {}) as Record<string, number>;
+
 
   async function submit() {
     if (!decision) return;
