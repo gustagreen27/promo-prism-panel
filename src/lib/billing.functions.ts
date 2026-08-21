@@ -712,3 +712,85 @@ export const adminDeleteClientAccount = createServerFn({ method: 'POST' })
 
     return { ok: true }
   })
+
+// ---------- Conciliação de créditos (admin) ----------
+
+/**
+ * Compara, por workspace, três fontes de verdade do saldo:
+ *  1. workspace_wallets.balance_cents (saldo atual gravado)
+ *  2. soma de wallet_transactions.amount_cents (histórico)
+ *  3. balance_after_cents da última transação (trilha de auditoria)
+ * e devolve as divergências para depuração.
+ */
+export const adminReconcileWallets = createServerFn({ method: 'GET' })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context as any
+    await assertStaff(supabase, userId)
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
+
+    const [{ data: workspaces }, { data: wallets }, { data: txs }, { data: settings }] = await Promise.all([
+      supabaseAdmin.from('workspaces').select('id, name, slug'),
+      supabaseAdmin.from('workspace_wallets').select('*'),
+      supabaseAdmin
+        .from('wallet_transactions')
+        .select('workspace_id, amount_cents, balance_after_cents, created_at')
+        .order('created_at', { ascending: true }),
+      supabaseAdmin.from('billing_settings').select('default_price_cents').eq('id', 1).maybeSingle(),
+    ])
+
+    const defaultPrice = (settings as any)?.default_price_cents ?? 20
+    const byWs = new Map<string, { sum: number; count: number; last: number | null; lastAt: string | null }>()
+    for (const t of (txs ?? []) as any[]) {
+      const cur = byWs.get(t.workspace_id) ?? { sum: 0, count: 0, last: null, lastAt: null }
+      cur.sum += Number(t.amount_cents ?? 0)
+      cur.count += 1
+      if (t.balance_after_cents != null) {
+        cur.last = Number(t.balance_after_cents)
+        cur.lastAt = t.created_at
+      }
+      byWs.set(t.workspace_id, cur)
+    }
+
+    const walletByWs = new Map<string, any>()
+    for (const w of (wallets ?? []) as any[]) walletByWs.set(w.workspace_id, w)
+
+    const rows = ((workspaces ?? []) as any[]).map((ws) => {
+      const w = walletByWs.get(ws.id)
+      const agg = byWs.get(ws.id) ?? { sum: 0, count: 0, last: null, lastAt: null }
+      const unit = Number(w?.custom_price_cents ?? defaultPrice) || defaultPrice
+      const balance = Number(w?.balance_cents ?? 0)
+      const reserved = Number(w?.reserved_cents ?? 0)
+      const available = balance - reserved
+      const diffTx = balance - agg.sum
+      const diffAudit = agg.last == null ? 0 : balance - agg.last
+      return {
+        workspace_id: ws.id,
+        workspace_name: ws.name,
+        slug: ws.slug,
+        has_wallet: !!w,
+        unit_price_cents: unit,
+        balance_cents: balance,
+        reserved_cents: reserved,
+        available_cents: available,
+        available_credits: Math.floor(available / unit),
+        balance_credits: Math.floor(balance / unit),
+        tx_sum_cents: agg.sum,
+        tx_count: agg.count,
+        last_balance_after_cents: agg.last,
+        last_tx_at: agg.lastAt,
+        diff_tx_cents: diffTx,
+        diff_audit_cents: diffAudit,
+        ok: diffTx === 0 && diffAudit === 0 && (!!w || agg.count === 0),
+      }
+    })
+
+    rows.sort((a, b) => Math.abs(b.diff_tx_cents) - Math.abs(a.diff_tx_cents))
+    return {
+      generated_at: new Date().toISOString(),
+      default_price_cents: defaultPrice,
+      total: rows.length,
+      diverging: rows.filter((r) => !r.ok).length,
+      rows,
+    }
+  })

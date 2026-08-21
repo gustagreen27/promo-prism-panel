@@ -69,6 +69,7 @@ export const FINANCEIRO_TABS: HubTab[] = [
   { to: "/admin/custos", label: "Custos" },
   { to: "/admin/estoque", label: "Estoque" },
   { to: "/admin/fechamento", label: "Fechamentos" },
+  { to: "/admin/conciliacao", label: "Conciliação" },
   { to: "/admin/historico", label: "Histórico" },
 ];
 
