@@ -39,11 +39,13 @@ export const Route = createFileRoute("/painel/campanhas/nova")({
     from: raw['from'] ? String(raw['from']) : undefined,
     name: raw['name'] ? String(raw['name']) : undefined,
     duplicate: raw['duplicate'] ? String(raw['duplicate']) : undefined,
+    event_id: raw['event_id'] ? String(raw['event_id']) : undefined,
+    scheduled_for: raw['scheduled_for'] ? String(raw['scheduled_for']) : undefined,
   }),
   component: Page,
 });
 
-type NovaSearch = { from?: string; name?: string; duplicate?: string };
+type NovaSearch = { from?: string; name?: string; duplicate?: string; event_id?: string; scheduled_for?: string };
 
 type ContactMode = "manual" | "lista" | "csv";
 
@@ -123,7 +125,15 @@ function Page() {
   // Pré-preenchimento vindo de outra página (ex.: /painel/demandas).
   useEffect(() => {
     if (sp.name && !name) setName(sp.name);
-  }, [sp.name]);
+    if (sp.scheduled_for) {
+      const d = new Date(sp.scheduled_for);
+      if (!Number.isNaN(d.getTime())) {
+        setSchedule(true);
+        setDate(d.toISOString().slice(0, 10));
+        setTime(d.toTimeString().slice(0, 5));
+      }
+    }
+  }, [sp.name, sp.scheduled_for]);
 
   useEffect(() => {
     if (!sp.duplicate) return;
