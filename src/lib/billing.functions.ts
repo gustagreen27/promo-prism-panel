@@ -212,9 +212,15 @@ export const adminSetCustomPrice = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any
     await assertStaff(supabase, userId)
-    const { error } = await supabase
+    // A carteira é protegida por RLS (só leitura para membros). A escrita
+    // administrativa acontece com o cliente de serviço, após validar o staff.
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
+    const { error } = await supabaseAdmin
       .from('workspace_wallets')
-      .upsert({ workspace_id: data.workspace_id, custom_price_cents: data.custom_price_cents, updated_at: new Date().toISOString() })
+      .upsert(
+        { workspace_id: data.workspace_id, custom_price_cents: data.custom_price_cents, updated_at: new Date().toISOString() } as any,
+        { onConflict: 'workspace_id' },
+      )
     if (error) throw error
     return { ok: true }
   })
@@ -230,9 +236,15 @@ export const adminSetCustomMinimumMessages = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any
     await assertStaff(supabase, userId)
-    const { error } = await supabase
+    // A carteira é protegida por RLS (só leitura para membros). A escrita
+    // administrativa acontece com o cliente de serviço, após validar o staff.
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
+    const { error } = await supabaseAdmin
       .from('workspace_wallets')
-      .upsert({ workspace_id: data.workspace_id, custom_minimum_messages: data.custom_minimum_messages, updated_at: new Date().toISOString() })
+      .upsert(
+        { workspace_id: data.workspace_id, custom_minimum_messages: data.custom_minimum_messages, updated_at: new Date().toISOString() } as any,
+        { onConflict: 'workspace_id' },
+      )
     if (error) throw error
     return { ok: true }
   })
