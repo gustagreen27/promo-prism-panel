@@ -9,6 +9,18 @@ export async function assertCampaignApproved(
   campaignId: string,
   opts?: { userId?: string | null },
 ) {
+  // Demanda marcada como execução externa nunca dispara pela plataforma.
+  {
+    const { data: exec } = await supabase
+      .from('wa_campaigns')
+      .select('execution_type')
+      .eq('id', campaignId)
+      .maybeSingle()
+    if (exec?.execution_type === 'external') {
+      throw new Error('⛔ Demanda marcada como execução externa — o disparo não roda pela plataforma.')
+    }
+  }
+
   // Admin/staff não passa pela fila: a trava existe apenas para clientes.
   if (opts?.userId) {
     const { data: isStaff } = await supabase.rpc('is_internal_staff', { _user: opts.userId })

@@ -19,7 +19,7 @@ async function assertMember(supabase: any, userId: string, workspaceId: string) 
 }
 
 const APPROVAL_FIELDS =
-  'id,name,workspace_id,project_id,status,approval_status,approval_mode,rejection_reason,approved_at,approved_by,total_recipients,scheduled_at,created_at,created_by,connection_id,template_id,list_id,custom_fields,variables_mapping,button_url_mapping,template_variables'
+  'id,name,workspace_id,project_id,status,approval_status,approval_mode,rejection_reason,approved_at,approved_by,total_recipients,scheduled_at,created_at,created_by,connection_id,template_id,list_id,custom_fields,variables_mapping,button_url_mapping,template_variables,execution_type,external_status,external_note'
 
 // ---- Fila de aprovação (admin) ----
 export const listApprovalQueue = createServerFn({ method: 'POST' })
@@ -105,6 +105,8 @@ export const configureCampaignDemand = createServerFn({ method: 'POST' })
         template_id: z.string().uuid().nullish(),
         scheduled_at: z.string().nullish(),
         name: z.string().trim().min(1).max(200).optional(),
+        execution_type: z.enum(['internal', 'external']).optional(),
+        external_note: z.string().trim().max(2000).nullish(),
       })
       .parse(d),
   )
@@ -114,12 +116,14 @@ export const configureCampaignDemand = createServerFn({ method: 'POST' })
 
     const { data: camp } = await supabase
       .from('wa_campaigns')
-      .select('id,workspace_id,connection_id,template_id,scheduled_at,name,status')
+      .select('id,workspace_id,connection_id,template_id,scheduled_at,name,status,execution_type,external_status,external_note')
       .eq('id', data.campaign_id)
       .maybeSingle()
     if (!camp) throw new Error('Demanda não encontrada')
 
     const patch: Record<string, any> = {}
+    if (data.execution_type) patch['execution_type'] = data.execution_type
+    if (data.external_note !== undefined) patch['external_note'] = data.external_note ?? null
     if (data.connection_id !== undefined) patch['connection_id'] = data.connection_id ?? null
     if (data.template_id !== undefined) patch['template_id'] = data.template_id ?? null
     if (data.scheduled_at !== undefined) {
@@ -168,7 +172,7 @@ export const decideCampaignApproval = createServerFn({ method: 'POST' })
 
     const { data: camp } = await supabase
       .from('wa_campaigns')
-      .select('id,name,workspace_id,status,approval_status,total_recipients,scheduled_at,custom_fields,connection_id,template_id')
+      .select('id,name,workspace_id,status,approval_status,total_recipients,scheduled_at,custom_fields,connection_id,template_id,execution_type')
       .eq('id', data.campaign_id)
       .maybeSingle()
     if (!camp) throw new Error('Demanda não encontrada')
@@ -179,7 +183,8 @@ export const decideCampaignApproval = createServerFn({ method: 'POST' })
     if (camp.approval_status === data.decision) {
       return { ok: true, decision: data.decision, already: true }
     }
-    if (data.decision === 'approved') {
+    const isExternal = camp.execution_type === 'external'
+    if (data.decision === 'approved' && !isExternal) {
       if (!camp.connection_id) throw new Error('Defina o número/conexão de envio antes de aprovar')
       if (!camp.template_id) throw new Error('Defina o template do WhatsApp antes de aprovar')
       // Revalida o saldo do cliente no momento da aprovação (pode ter sido
@@ -195,7 +200,17 @@ export const decideCampaignApproval = createServerFn({ method: 'POST' })
     const scheduledFuture = camp.scheduled_at ? new Date(camp.scheduled_at).getTime() > Date.now() : false
     const patch =
       data.decision === 'approved'
-        ? {
+        ? isExternal
+          ? {
+              // Execução externa: não entra na fila da plataforma.
+              status: 'draft',
+              approval_status: 'approved',
+              approved_by: userId,
+              approved_at: nowIso,
+              rejection_reason: null,
+              external_status: 'approved_external',
+            }
+          : {
             status: scheduledFuture ? 'scheduled' : 'queued',
             approval_status: 'approved',
             approved_by: userId,
@@ -244,7 +259,9 @@ export const decideCampaignApproval = createServerFn({ method: 'POST' })
           _title: data.decision === 'approved' ? 'Demanda aprovada' : 'Demanda rejeitada',
           _body:
             data.decision === 'approved'
-              ? `Seu disparo "${camp.name}" foi aprovado e entrou na fila de envio.`
+              ? isExternal
+                ? `Seu disparo "${camp.name}" foi aprovado e será executado pela nossa equipe.`
+                : `Seu disparo "${camp.name}" foi aprovado e entrou na fila de envio.`
               : `Seu disparo "${camp.name}" foi rejeitado. Motivo: ${data.reason}`,
           _link: '/painel/demandas',
           _severity: data.decision === 'approved' ? 'success' : 'error',
@@ -255,7 +272,53 @@ export const decideCampaignApproval = createServerFn({ method: 'POST' })
       }
     }
 
-    return { ok: true, decision: data.decision }
+    return { ok: true, decision: data.decision, external: isExternal }
+  })
+
+// ---- Status manual de execução externa (admin) ----
+export const updateExternalExecution = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: any) =>
+    z
+      .object({
+        campaign_id: z.string().uuid(),
+        external_status: z.enum(['approved_external', 'in_progress', 'completed', 'cancelled']).optional(),
+        external_note: z.string().trim().max(2000).nullish(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any
+    await assertStaff(supabase, userId)
+
+    const { data: camp } = await supabase
+      .from('wa_campaigns')
+      .select('id,workspace_id,execution_type,external_status,external_note')
+      .eq('id', data.campaign_id)
+      .maybeSingle()
+    if (!camp) throw new Error('Demanda não encontrada')
+    if (camp.execution_type !== 'external') throw new Error('Esta demanda não está marcada como execução externa')
+
+    const patch: Record<string, any> = {}
+    if (data.external_status) patch['external_status'] = data.external_status
+    if (data.external_note !== undefined) patch['external_note'] = data.external_note ?? null
+    if (!Object.keys(patch).length) return { ok: true }
+
+    const { error } = await supabase.from('wa_campaigns').update(patch).eq('id', camp.id)
+    if (error) throw error
+
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
+    await supabaseAdmin.from('campaign_audit_log').insert({
+      campaign_id: camp.id,
+      workspace_id: camp.workspace_id,
+      actor_id: userId,
+      action: 'external.status_updated',
+      message: data.external_note ?? null,
+      from_data: { external_status: camp.external_status, external_note: camp.external_note },
+      to_data: patch,
+    } as any)
+
+    return { ok: true }
   })
 
 // ---- Detalhe completo da demanda (preview fiel para o admin) ----
@@ -398,7 +461,7 @@ export const listMyDemands = createServerFn({ method: 'POST' })
     const listName = new Map((lists ?? []).map((l: any) => [l.id, l.name]))
 
     return {
-      items: campaigns.map((c) => ({
+      items: campaigns.map(({ external_note: _adminOnly, ...c }: any) => ({
         ...c,
         list_name: c.list_id ? (listName.get(c.list_id) ?? null) : null,
         decisions: auditByCampaign.get(c.id) ?? [],
