@@ -1,3 +1,4 @@
+import { usePanelWorkspace } from "@/lib/use-panel-workspace";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -41,7 +42,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 function Page() {
-  const { workspaceId } = Route.useRouteContext() as { workspaceId: string };
+  const { workspaceId } = usePanelWorkspace();
   const navigate = useNavigate();
   const calRef = useRef<any>(null);
   const [range, setRange] = useState<{ from: string; to: string }>(() => {
