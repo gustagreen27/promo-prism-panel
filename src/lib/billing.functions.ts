@@ -525,19 +525,44 @@ export const adminCreateClientAccount = createServerFn({ method: 'POST' })
     }
     if (!ownerId) throw new Error('Não foi possível determinar o usuário dono')
 
-    // 2) Cria o workspace
-    const { data: ws, error: wsErr } = await supabaseAdmin
+    // 2) Reaproveita o workspace criado automaticamente no signup (evita conta duplicada sem créditos)
+    let ws: any = null
+    const { data: autoWs } = await supabaseAdmin
       .from('workspaces')
-      .insert({
-        name: data.name.trim(),
-        slug,
-        plan: data.plan?.trim() || 'starter',
-        status: 'active',
-        owner_id: ownerId,
-      })
-      .select('id, name, slug, plan')
-      .single()
-    if (wsErr) throw new Error(`Falha ao criar a conta: ${wsErr.message}`)
+      .select('id, name, slug, plan, created_at, workspace_wallets(balance_cents)')
+      .eq('owner_id', ownerId)
+      .order('created_at', { ascending: true })
+    for (const cand of autoWs ?? []) {
+      const wal = Array.isArray(cand.workspace_wallets) ? cand.workspace_wallets[0] : cand.workspace_wallets
+      if (Number(wal?.balance_cents ?? 0) !== 0) continue
+      const { count } = await supabaseAdmin
+        .from('wa_campaigns').select('id', { count: 'exact', head: true }).eq('workspace_id', cand.id)
+      if ((count ?? 0) > 0) continue
+      const { data: updated, error: updErr } = await supabaseAdmin
+        .from('workspaces')
+        .update({ name: data.name.trim(), slug, plan: data.plan?.trim() || 'starter', status: 'active' })
+        .eq('id', cand.id)
+        .select('id, name, slug, plan')
+        .single()
+      if (!updErr && updated) { ws = updated; break }
+    }
+
+    if (!ws) {
+      const { data: created, error: wsErr } = await supabaseAdmin
+        .from('workspaces')
+        .insert({
+          name: data.name.trim(),
+          slug,
+          plan: data.plan?.trim() || 'starter',
+          status: 'active',
+          owner_id: ownerId,
+        })
+        .select('id, name, slug, plan')
+        .single()
+      if (wsErr) throw new Error(`Falha ao criar a conta: ${wsErr.message}`)
+      ws = created
+    }
+
 
     // 3) Vincula o dono como membro
     const { error: memberErr } = await supabaseAdmin
