@@ -79,6 +79,9 @@ function Page() {
   const [templateId, setTemplateId] = useState("");
   const [vars, setVars] = useState<Record<string, string>>({});
   const [btnVars, setBtnVars] = useState<Record<string, string>>({});
+  const [btnEnabled, setBtnEnabled] = useState(true);
+  const [btnText, setBtnText] = useState("CLIQUE AQUI");
+  const [btnUrl, setBtnUrl] = useState("");
 
   const [mode, setMode] = useState<ContactMode>("manual");
   const [manual, setManual] = useState("");
