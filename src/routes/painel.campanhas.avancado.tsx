@@ -43,7 +43,7 @@ const searchSchema = z.object({
   scheduled_for: z.string().optional(),
 });
 
-export const Route = createFileRoute("/painel/campanhas/nova")({
+export const Route = createFileRoute("/painel/campanhas/avancado")({
   head: () => ({ meta: [{ title: "Nova campanha — Disparos FR" }] }),
   validateSearch: (s) => searchSchema.parse(s),
   component: Page,
