@@ -196,8 +196,8 @@ function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId
             <h3 className="text-2xl font-bold tracking-tight">{w.name}</h3>
             <div className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               <span>{w.slug} · {w.plan}</span>
-              <Badge variant="outline" className={cn("gap-1.5 rounded-full", health.cls)}>
-                <span className={cn("h-1.5 w-1.5 rounded-full", health.level === "restricted" ? "bg-destructive" : health.level === "limited" ? "bg-amber-500" : health.level === "none" ? "bg-emerald-500" : "bg-muted-foreground")} />
+              <Badge variant="outline" className={`gap-1.5 rounded-full ${health.cls}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${health.level === "restricted" ? "bg-destructive" : health.level === "limited" ? "bg-amber-500" : health.level === "none" ? "bg-emerald-500" : "bg-muted-foreground"}`} />
                 {health.label}
               </Badge>
             </div>
