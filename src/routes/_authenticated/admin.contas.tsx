@@ -87,13 +87,99 @@ function Page() {
     setTarget(a); setDirection(dir); setMode("messages"); setQty(""); setDescription("");
   };
 
+  // ---- Criar conta ----
+  const createAccount = useServerFn(adminCreateClientAccount);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [form, setForm] = useState({ name: "", slug: "", plan: "starter", owner_email: "", owner_name: "", owner_password: "", initial_credits: "" });
+  const setField = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  const create = useMutation({
+    mutationFn: () => createAccount({ data: {
+      name: form.name.trim(),
+      slug: form.slug.trim() || null,
+      plan: form.plan.trim() || null,
+      owner_email: form.owner_email.trim(),
+      owner_name: form.owner_name.trim() || null,
+      owner_password: form.owner_password.trim() || null,
+      initial_credits: form.initial_credits ? Math.round(Number(form.initial_credits.replace(/\D/g, ""))) : null,
+    } }),
+    onSuccess: (res: any) => {
+      toast.success(
+        res?.generated_password
+          ? `Conta criada. Senha temporária: ${res.generated_password}`
+          : "Conta criada com sucesso",
+        { duration: res?.generated_password ? 20000 : 4000 },
+      );
+      qc.invalidateQueries({ queryKey: ["admin-client-accounts"] });
+      setCreateOpen(false);
+      setForm({ name: "", slug: "", plan: "starter", owner_email: "", owner_name: "", owner_password: "", initial_credits: "" });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao criar conta"),
+  });
+
   return (
     <>
       <PageHeader
         tabs={CLIENTES_TABS}
         title="Contas e créditos"
         description="Veja todas as contas de clientes, o saldo em créditos e adicione ou remova créditos."
+        actions={
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" /> Nova conta
+          </Button>
+        }
       />
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Nova conta de cliente</DialogTitle>
+            <DialogDescription>
+              Cria a conta, o usuário responsável (se ainda não existir) e, opcionalmente, créditos iniciais.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <Label>Nome da conta *</Label>
+              <Input value={form.name} onChange={(e) => setField("name", e.target.value)} placeholder="Ex.: Magistrar Cursos" />
+            </div>
+            <div>
+              <Label>Slug (opcional)</Label>
+              <Input value={form.slug} onChange={(e) => setField("slug", e.target.value)} placeholder="magistrar" />
+            </div>
+            <div>
+              <Label>Plano</Label>
+              <Input value={form.plan} onChange={(e) => setField("plan", e.target.value)} placeholder="starter" />
+            </div>
+            <div>
+              <Label>E-mail do responsável *</Label>
+              <Input type="email" value={form.owner_email} onChange={(e) => setField("owner_email", e.target.value)} placeholder="cliente@empresa.com" />
+            </div>
+            <div>
+              <Label>Nome do responsável</Label>
+              <Input value={form.owner_name} onChange={(e) => setField("owner_name", e.target.value)} placeholder="João Silva" />
+            </div>
+            <div>
+              <Label>Senha (opcional)</Label>
+              <Input value={form.owner_password} onChange={(e) => setField("owner_password", e.target.value)} placeholder="Gerada automaticamente" />
+            </div>
+            <div>
+              <Label>Créditos iniciais (msgs)</Label>
+              <Input value={form.initial_credits} onChange={(e) => setField("initial_credits", e.target.value.replace(/\D/g, ""))} placeholder="0" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+            <Button
+              onClick={() => create.mutate()}
+              disabled={create.isPending || form.name.trim().length < 2 || !form.owner_email.includes("@")}
+            >
+              {create.isPending ? "Criando…" : "Criar conta"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <Card>
