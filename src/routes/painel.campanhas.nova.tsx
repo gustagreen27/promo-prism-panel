@@ -70,7 +70,6 @@ function Page() {
 
   const [name, setName] = useState("");
   const [profileName, setProfileName] = useState("");
-  const [bio, setBio] = useState("");
   const [message, setMessage] = useState("");
   const [vars, setVars] = useState<Record<string, string>>({});
   const [btnVars, setBtnVars] = useState<Record<string, string>>({});
@@ -197,7 +196,6 @@ function Page() {
           client_brief: {
             message,
             profile_name: profileName || null,
-            bio: bio || null,
             avatar_url: avatarUrl || null,
             media_url: mediaUrl || null,
             button_enabled: btnEnabled,
@@ -266,11 +264,6 @@ function Page() {
             </IconInput>
           </Field>
 
-          <Field label="Biografia do perfil" hint="Máximo de 139 caracteres (limite do WhatsApp)." counter={`${bio.length}/139`}>
-            <IconInput icon={Tag} align="top">
-              <Textarea value={bio} onChange={(e) => setBio(e.target.value)} maxLength={139} rows={3} className="pl-9" placeholder="Ex: Atendimento oficial - Seg a Sex das 9h às 18h" />
-            </IconInput>
-          </Field>
 
           <div className="space-y-3">
             <Label>Modelo de mensagem</Label>
@@ -462,7 +455,7 @@ function Page() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-medium">{profileName || "Atendimento"}</div>
-                  <div className="truncate text-[10px] opacity-80">{bio || "online"}</div>
+                  <div className="truncate text-[10px] opacity-80">online</div>
                 </div>
                 <Video className="h-4 w-4" /><Phone className="h-4 w-4" /><MoreVertical className="h-4 w-4" />
               </div>
