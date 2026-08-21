@@ -221,7 +221,7 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
     setLoadedFor(item.id);
     setConnectionId(item.connection_id ?? "");
     setTemplateId(item.template_id ?? "");
-    setScheduledAt(item.scheduled_at ? new Date(item.scheduled_at).toISOString().slice(0, 16) : "");
+    setScheduledAt(item.scheduled_at ? toLocalInput(item.scheduled_at) : "");
     setExecType(item.execution_type === "external" ? "external" : "internal");
     setNote(item.external_note ?? "");
     setMSent(item.external_sent_count != null ? String(item.external_sent_count) : "");
@@ -245,7 +245,7 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
           external_note: execType === "external" ? (note.trim() || null) : null,
           connection_id: execType === "external" ? null : (connectionId || null),
           template_id: execType === "external" ? null : (templateId || null),
-          scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
+          scheduled_at: fromLocalInput(scheduledAt),
         },
       });
 
@@ -274,7 +274,7 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
             external_sent_count: sent,
             external_delivered_count: delivered,
             external_failed_count: failed,
-            external_finished_at: mFinish ? new Date(mFinish).toISOString() : null,
+            external_finished_at: fromLocalInput(mFinish),
           } as any,
         });
       }
