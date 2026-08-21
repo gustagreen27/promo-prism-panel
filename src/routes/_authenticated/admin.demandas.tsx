@@ -406,6 +406,8 @@ function Page() {
       });
       if (res?.already) {
         toast.info("Esta demanda já havia sido decidida.");
+      } else if (decision.kind === "approved" && res?.external) {
+        toast.success("Demanda aprovada para execução externa — nada foi enviado para a fila da plataforma");
       } else if (decision.kind === "approved") {
         toast.success("Demanda aprovada — disparo pronto para execução", {
           action: {
