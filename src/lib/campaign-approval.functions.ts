@@ -83,7 +83,11 @@ export const listApprovalQueue = createServerFn({ method: 'POST' })
         for (const c of due) c.external_status = 'completed'
       }
 
+      // Progressão automática das métricas (janelas de 10 minutos).
+      const { applyExternalProgression } = await import('./external-progression.server')
+      await applyExternalProgression(supabase, campaigns)
     }
+
 
     const counts = { pending: 0, scheduled: 0, queued: 0, completed: 0, rejected: 0 } as Record<string, number>
     for (const c of campaigns) counts[demandStage(c)] = (counts[demandStage(c)] ?? 0) + 1
