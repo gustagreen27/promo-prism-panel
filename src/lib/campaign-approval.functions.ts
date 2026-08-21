@@ -607,8 +607,52 @@ export const listMyDemands = createServerFn({ method: 'POST' })
     return {
       items: campaigns.map(({ external_note: _adminOnly, ...c }: any) => ({
         ...c,
+        stage: demandStage(c),
         list_name: c.list_id ? (listName.get(c.list_id) ?? null) : null,
         decisions: auditByCampaign.get(c.id) ?? [],
       })),
     }
   })
+
+// ---- Histórico de atualizações manuais da execução externa (admin) ----
+export const listExternalProgress = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { campaign_id: string }) => z.object({ campaign_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any
+    await assertStaff(supabase, userId)
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
+    const { data: rows, error } = await supabaseAdmin
+      .from('campaign_audit_log')
+      .select('id,actor_id,created_at,to_data,message')
+      .eq('campaign_id', data.campaign_id)
+      .eq('action', 'external.progress')
+      .order('created_at', { ascending: false })
+      .limit(100)
+    if (error) throw error
+
+    const actorIds = [...new Set((rows ?? []).map((r: any) => r.actor_id).filter(Boolean))] as string[]
+    const nameById = new Map<string, string>()
+    if (actorIds.length) {
+      const { data: profiles } = await supabaseAdmin
+        .from('profiles')
+        .select('id,full_name,email')
+        .in('id', actorIds)
+      for (const p of (profiles ?? []) as any[]) nameById.set(p.id, p.full_name || p.email || p.id)
+    }
+
+    return {
+      entries: (rows ?? []).map((r: any) => ({
+        id: r.id,
+        created_at: r.created_at,
+        actor_name: r.actor_id ? (nameById.get(r.actor_id) ?? '—') : 'Sistema',
+        message: r.message ?? null,
+        total: r.to_data?.external_total_count ?? null,
+        sent: r.to_data?.external_sent_count ?? null,
+        delivered: r.to_data?.external_delivered_count ?? null,
+        failed: r.to_data?.external_failed_count ?? null,
+        status: r.to_data?.external_status ?? null,
+      })),
+    }
+  })
+
