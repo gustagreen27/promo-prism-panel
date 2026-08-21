@@ -249,6 +249,75 @@ export const decideCampaignApproval = createServerFn({ method: 'POST' })
     return { ok: true, decision: data.decision }
   })
 
+// ---- Detalhe completo da demanda (preview fiel para o admin) ----
+export const getDemandDetail = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { campaign_id: string }) => z.object({ campaign_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any
+    await assertStaff(supabase, userId)
+
+    const { data: camp, error } = await supabase
+      .from('wa_campaigns')
+      .select('*,workspaces(name)')
+      .eq('id', data.campaign_id)
+      .maybeSingle()
+    if (error) throw error
+    if (!camp) throw new Error('Demanda não encontrada')
+
+    const [tplRes, connRes, listRes] = await Promise.all([
+      camp.template_id
+        ? supabase
+            .from('whatsapp_templates')
+            .select('id,name,language,category,status,body,footer,header_type,header_text,header_media_url,buttons,variables')
+            .eq('id', camp.template_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      camp.connection_id
+        ? supabase
+            .from('whatsapp_connections')
+            .select('id,display_name,nome_interno,name,display_phone,phone,waba_id,business_id')
+            .eq('id', camp.connection_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      camp.list_id
+        ? supabase.from('contact_lists').select('id,name').eq('id', camp.list_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ])
+
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
+    const { count: recipientsCount } = await supabaseAdmin
+      .from('campaign_recipients')
+      .select('id', { count: 'exact', head: true })
+      .eq('campaign_id', camp.id)
+
+    const { data: sample } = await supabaseAdmin
+      .from('campaign_recipients')
+      .select('phone,variables')
+      .eq('campaign_id', camp.id)
+      .limit(1)
+      .maybeSingle()
+
+    const conn: any = (connRes as any)?.data ?? null
+    return {
+      campaign: {
+        ...camp,
+        workspace_name: camp.workspaces?.name ?? null,
+      },
+      template: (tplRes as any)?.data ?? null,
+      list: (listRes as any)?.data ?? null,
+      connection: conn
+        ? {
+            ...conn,
+            label: conn.display_name ?? conn.nome_interno ?? conn.name ?? conn.display_phone ?? null,
+            phone: conn.display_phone ?? conn.phone ?? null,
+          }
+        : null,
+      recipients_count: recipientsCount ?? camp.total_recipients ?? 0,
+      sample_recipient: sample ?? null,
+    }
+  })
+
 // ---- Trilha de auditoria de uma demanda (admin) ----
 export const getCampaignApprovalAudit = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
