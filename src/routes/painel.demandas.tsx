@@ -7,7 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getMyContext } from "@/lib/auth.functions";
 import { listMyDemands } from "@/lib/campaign-approval.functions";
+import { demandStage, pendingCount, STAGE_CLASS, STAGE_LABEL, type DemandStage } from "@/lib/demand-stage";
 import { CheckCircle2, Clock, ListChecks, XCircle, Loader2 } from "lucide-react";
+
 
 export const Route = createFileRoute("/painel/demandas")({
   head: () => ({
