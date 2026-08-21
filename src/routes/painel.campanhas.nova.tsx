@@ -102,7 +102,7 @@ function Page() {
     fnNumbers({ data: { workspace_id: workspaceId } })
       .then((r: any) => { setNumbers(r.numbers); if (r.numbers.length > 0) setConnectionId(r.numbers[0].id); })
       .catch(() => {});
-    fnLists({ data: { workspace_id: workspaceId } }).then((r: any) => setLists(r.lists)).catch(() => {});
+    fnLists({ data: { workspace_id: workspaceId, only_mine: true } }).then((r: any) => setLists(r.lists)).catch(() => {});
   }, [workspaceId, fnNumbers, fnLists]);
 
   useEffect(() => {

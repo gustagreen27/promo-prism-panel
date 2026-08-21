@@ -18,15 +18,17 @@ async function assertWsMember(ctx: { supabase: any; userId: string }, workspaceI
 /** Lista listas do workspace com contagem. */
 export const listWorkspaceLists = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { workspace_id: string }) => z.object({ workspace_id: z.string().uuid() }).parse(d))
+  .inputValidator((d: { workspace_id: string; only_mine?: boolean }) =>
+    z.object({ workspace_id: z.string().uuid(), only_mine: z.boolean().optional() }).parse(d))
   .handler(async ({ data, context }) => {
     await assertWsMember(context as any, data.workspace_id);
-    const { supabase } = context as any;
-    const { data: lists } = await supabase
+    const { supabase, userId } = context as any;
+    let q = supabase
       .from("contact_lists")
       .select("id,name,description,created_at")
-      .eq("workspace_id", data.workspace_id)
-      .order("created_at", { ascending: false });
+      .eq("workspace_id", data.workspace_id);
+    if (data.only_mine) q = q.eq("created_by", userId);
+    const { data: lists } = await q.order("created_at", { ascending: false });
     const ids = (lists ?? []).map((l: any) => l.id);
     const counts: Record<string, number> = {};
     if (ids.length) {
@@ -125,7 +127,7 @@ export const createWorkspaceListWithPhones = createServerFn({ method: "POST" })
     // 1. Cria a lista
     const { data: list, error: listErr } = await supabase
       .from("contact_lists")
-      .insert({ name: data.name, workspace_id: data.workspace_id })
+      .insert({ name: data.name, workspace_id: data.workspace_id, created_by: (context as any).userId })
       .select("id,name")
       .single();
     if (listErr) throw listErr;
