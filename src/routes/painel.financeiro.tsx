@@ -18,7 +18,7 @@ import {
   getMyWallet, listMyTransactions, listMyDeposits, createDepositCheckout,
 } from "@/lib/billing.functions";
 import {
-  Building2, TrendingUp, TrendingDown, Plus, Loader2, ArrowUpRight, ArrowDownRight,
+  Building2, TrendingUp, TrendingDown, Loader2, ArrowUpRight, ArrowDownRight,
 } from "lucide-react";
 
 export const Route = createFileRoute("/painel/financeiro")({
@@ -158,9 +158,6 @@ function Page() {
             Acompanhe seu saldo e histórico de transações
           </p>
         </div>
-        <Button onClick={() => setOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" /> Comprar créditos
-        </Button>
       </header>
 
       <section className="space-y-3">
