@@ -422,10 +422,20 @@ export const updateExternalExecution = createServerFn({ method: 'POST' })
         throw new Error('A finalização não pode ser anterior ao início.')
 
       patch['metrics_source'] = 'manual'
+      patch['external_updated_at'] = new Date().toISOString()
       // Finalização no passado (ou já atingida) conclui a demanda automaticamente.
       if (finishedAt && new Date(finishedAt).getTime() <= Date.now() && !data.external_status) {
         patch['external_status'] = 'completed'
       }
+    }
+
+    // Finalização manual: grava o horário de término e conclui.
+    if (data.finalize_now) {
+      const now = new Date().toISOString()
+      patch['external_finished_at'] = now
+      patch['external_status'] = 'completed'
+      patch['external_updated_at'] = now
+      patch['metrics_source'] = 'manual'
     }
 
     if (!Object.keys(patch).length) return { ok: true }
@@ -438,14 +448,22 @@ export const updateExternalExecution = createServerFn({ method: 'POST' })
       campaign_id: camp.id,
       workspace_id: camp.workspace_id,
       actor_id: userId,
-      action: 'external.status_updated',
+      action: touchedMetrics || data.finalize_now ? 'external.progress' : 'external.status_updated',
       message: data.external_note ?? null,
-      from_data: { external_status: camp.external_status, external_note: camp.external_note },
+      from_data: {
+        external_status: camp.external_status,
+        external_note: camp.external_note,
+        external_total_count: camp.external_total_count,
+        external_sent_count: camp.external_sent_count,
+        external_delivered_count: camp.external_delivered_count,
+        external_failed_count: camp.external_failed_count,
+      },
       to_data: patch,
     } as any)
 
     return { ok: true }
   })
+
 
 // ---- Detalhe completo da demanda (preview fiel para o admin) ----
 export const getDemandDetail = createServerFn({ method: 'POST' })
