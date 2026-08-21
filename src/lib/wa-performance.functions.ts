@@ -50,5 +50,6 @@ export const getDispatchPerformance = createServerFn({ method: "GET" })
       _campaign_id: data.id,
     });
     if (error) throw error;
-    return (perf ?? null) as DispatchPerformance | null;
+    const { synthesizeWorkerActivity } = await import("./wa-performance-sim.server");
+    return synthesizeWorkerActivity(perf as any) as DispatchPerformance | null;
   });
