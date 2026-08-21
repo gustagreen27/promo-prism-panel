@@ -17,9 +17,9 @@ import {
 import {
   listMyTransactions, listMyDeposits, createDepositCheckout,
 } from "@/lib/billing.functions";
-import { usePanelWorkspace, useWallet } from "@/lib/use-panel-workspace";
+import { usePanelWorkspace, useWallet, useBalanceConsistency } from "@/lib/use-panel-workspace";
 import {
-  Building2, TrendingUp, TrendingDown, Loader2, ArrowUpRight, ArrowDownRight,
+  Building2, TrendingUp, TrendingDown, Loader2, ArrowUpRight, ArrowDownRight, Download, AlertTriangle,
 } from "lucide-react";
 
 export const Route = createFileRoute("/painel/financeiro")({
@@ -90,6 +90,9 @@ function Page() {
   });
 
 
+  // Aviso de depuração se o header e esta página mostrarem saldos diferentes.
+  const divergence = useBalanceConsistency("financeiro", wsId ? availableCredits : null, !!wsId);
+
   const [period, setPeriod] = useState("all");
   const [page, setPage] = useState(0);
   useEffect(() => setPage(0), [period]);
@@ -126,6 +129,38 @@ function Page() {
     if (minCreditsRequired) setAmountStr(String(minCreditsRequired));
   }, [minCreditsRequired]);
 
+  function exportCsv() {
+    const header = [
+      "data", "tipo", "motivo", "creditos", "sinal",
+      "saldo_anterior_creditos", "saldo_posterior_creditos",
+      "valor_centavos", "saldo_anterior_centavos", "saldo_posterior_centavos",
+    ];
+    const lines = (filtered as any[]).map((t) => {
+      const credits = Math.round(Math.abs(t.amount_cents) / unit);
+      return [
+        new Date(t.created_at).toLocaleString("pt-BR"),
+        TX_LABEL[t.type] ?? t.type,
+        t.description ?? "",
+        credits,
+        t.amount_cents > 0 ? "+" : "-",
+        t.balance_before_cents != null ? Math.floor(Number(t.balance_before_cents) / unit) : "",
+        t.balance_after_cents != null ? Math.floor(Number(t.balance_after_cents) / unit) : "",
+        t.amount_cents,
+        t.balance_before_cents ?? "",
+        t.balance_after_cents ?? "",
+      ];
+    });
+    const csv = [header, ...lines]
+      .map((cols) => cols.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";"))
+      .join("\n");
+    const url = URL.createObjectURL(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `historico-creditos-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const deposit = useMutation({
     mutationFn: async () => {
       const credits = Math.round(Number(amountStr || 0));
@@ -158,6 +193,19 @@ function Page() {
           </p>
         </div>
       </header>
+
+      {divergence && (
+        <div className="flex items-start gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+          <div>
+            <span className="font-semibold">Divergência de saldo detectada.</span>{" "}
+            Esta página mostra <span className="tabular-nums">{nf(divergence.mine)}</span> créditos e
+            a área "{divergence.surface}" mostra{" "}
+            <span className="tabular-nums">{nf(divergence.credits)}</span>. Recarregue a página; se
+            persistir, avise o suporte informando o horário.
+          </div>
+        </div>
+      )}
 
       {availableCredits < 1000 && (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
@@ -233,7 +281,18 @@ function Page() {
 
       <Card className="rounded-xl">
         <CardContent className="p-5">
-          <h2 className="text-lg font-semibold">Histórico de Transações</h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">Histórico de Transações</h2>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={exportCsv}
+              disabled={filtered.length === 0}
+              data-testid="export-credits-csv"
+            >
+              <Download className="mr-2 h-4 w-4" /> Exportar CSV
+            </Button>
+          </div>
           <div className="mt-4">
             <Select value={period} onValueChange={setPeriod}>
               <SelectTrigger className="h-10 w-[220px]">
