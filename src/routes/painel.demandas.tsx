@@ -150,6 +150,18 @@ function Page() {
                         Rejeitada em {fmt(d.approved_at)}. Motivo: {d.rejection_reason || decision?.message || "não informado"}
                       </div>
                     )}
+                    {d.external_finished_at && (
+                      <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs">
+                        <div className="mb-1 font-medium">Resultado</div>
+                        <div className="grid gap-0.5 text-muted-foreground sm:grid-cols-2">
+                          <span>{(d.external_total_count ?? d.total_recipients ?? 0).toLocaleString("pt-BR")} destinatários</span>
+                          <span>{(d.external_sent_count ?? 0).toLocaleString("pt-BR")} enviados com sucesso</span>
+                          <span>{(d.external_delivered_count ?? 0).toLocaleString("pt-BR")} entregues</span>
+                          <span>{(d.external_failed_count ?? 0).toLocaleString("pt-BR")} falhas</span>
+                        </div>
+                        <div className="mt-1">Finalizado em: {fmt(d.external_finished_at)}</div>
+                      </div>
+                    )}
                     {(b === "approved" || b === "queued") && d.approved_at && (
                       <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700">
                         Aprovada em {fmt(d.approved_at)}
