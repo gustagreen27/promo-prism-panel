@@ -20,9 +20,14 @@ export function demandStage(r: StageRow): DemandStage {
   if (r.execution_type === 'external') {
     const es = r.external_status ?? ''
     if (es === 'completed' || es === 'cancelled') return 'completed'
-    if (es === 'scheduled_external') return 'scheduled'
+    if (r.external_finished_at && new Date(r.external_finished_at).getTime() <= Date.now()) return 'completed'
+    if (es === 'scheduled_external') {
+      if (r.scheduled_at && new Date(r.scheduled_at).getTime() <= Date.now()) return 'queued'
+      return 'scheduled'
+    }
     return 'queued'
   }
+
 
   if (r.status === 'completed' || r.status === 'cancelled') return 'completed'
   if (r.status === 'scheduled') return 'scheduled'
