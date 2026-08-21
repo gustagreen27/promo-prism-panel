@@ -37,17 +37,18 @@ type Demand = {
   decisions: Array<{ action: string; message: string | null; created_at: string }>;
 };
 
-type Bucket = "pending" | "queued" | "approved" | "rejected";
+type Bucket = "pending" | "scheduled" | "queued" | "approved" | "rejected";
 
 function bucketOf(d: Demand): Bucket {
   if (d.approval_status === "rejected") return "rejected";
-  if (d.approval_status === "pending") return "pending";
+  if (d.approval_status === "pending") return d.scheduled_at ? "scheduled" : "pending";
   if (["queued", "scheduled"].includes(d.status)) return "queued";
   return "approved";
 }
 
 const BUCKETS: Record<Bucket, { label: string; className: string; icon: typeof Clock }> = {
-  pending: { label: "Aguardando aprovação", className: "bg-amber-500/15 text-amber-600 border-amber-500/30", icon: Clock },
+  pending: { label: "Aguardando envio", className: "bg-amber-500/15 text-amber-600 border-amber-500/30", icon: Clock },
+  scheduled: { label: "Agendada", className: "bg-amber-500/15 text-amber-600 border-amber-500/30", icon: Clock },
   queued: { label: "Em fila", className: "bg-sky-500/15 text-sky-600 border-sky-500/30", icon: ListChecks },
   approved: { label: "Aprovada", className: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30", icon: CheckCircle2 },
   rejected: { label: "Rejeitada", className: "bg-destructive/15 text-destructive border-destructive/30", icon: XCircle },
