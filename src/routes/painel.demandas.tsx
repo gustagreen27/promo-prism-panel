@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
@@ -47,8 +47,29 @@ export const Route = createFileRoute("/painel/demandas")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
+  validateSearch: (raw: Record<string, unknown>): DemandSearch => {
+    const status = String(raw['status'] ?? "all");
+    const period = String(raw['period'] ?? "all");
+    return {
+      status: (["pending", "scheduled", "queued", "completed", "rejected"].includes(status)
+        ? status
+        : "all") as DemandSearch["status"],
+      q: raw['q'] ? String(raw['q']) : undefined,
+      period: (["7", "30", "custom"].includes(period) ? period : "all") as DemandSearch["period"],
+      from: raw['from'] ? String(raw['from']) : undefined,
+      to: raw['to'] ? String(raw['to']) : undefined,
+    };
+  },
   component: Page,
 });
+
+type DemandSearch = {
+  status: DemandStage | "all";
+  q?: string;
+  period: "all" | "7" | "30" | "custom";
+  from?: string;
+  to?: string;
+};
 
 type Demand = {
   id: string;
@@ -126,9 +147,21 @@ const num = (v: number | null | undefined) => (v ?? 0).toLocaleString("pt-BR");
 function Page() {
   const ctxFn = useServerFn(getMyContext);
   const demandsFn = useServerFn(listMyDemands);
-  const [filter, setFilter] = useState<Bucket | "all">("all");
-  const [search, setSearch] = useState("");
-  const [period, setPeriod] = useState<"all" | "7" | "30">("all");
+  const sp = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const patch = (next: Partial<DemandSearch>) =>
+    navigate({ search: (prev: DemandSearch) => ({ ...prev, ...next }), replace: true });
+
+  const filter = sp.status;
+  const period = sp.period;
+  const [search, setSearchInput] = useState(sp.q ?? "");
+
+  const setFilter = (v: Bucket | "all") => patch({ status: v });
+  const setPeriod = (v: DemandSearch["period"]) => patch({ period: v });
+  const setSearch = (v: string) => {
+    setSearchInput(v);
+    patch({ q: v || undefined });
+  };
 
   const { data: ctx } = useQuery({ queryKey: ["my-context"], queryFn: () => ctxFn(), staleTime: 30_000 });
   const workspaceId = (ctx as any)?.primary_workspace?.id ?? null;
@@ -149,14 +182,20 @@ function Page() {
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const cutoff = period === "all" ? 0 : Date.now() - Number(period) * 86_400_000;
+    const cutoff =
+      period === "7" || period === "30" ? Date.now() - Number(period) * 86_400_000 : 0;
+    const fromMs = period === "custom" && sp.from ? new Date(`${sp.from}T00:00:00`).getTime() : 0;
+    const toMs = period === "custom" && sp.to ? new Date(`${sp.to}T23:59:59`).getTime() : 0;
     return items.filter((d) => {
       if (filter !== "all" && bucketOf(d) !== filter) return false;
-      if (cutoff && new Date(d.created_at).getTime() < cutoff) return false;
+      const created = new Date(d.created_at).getTime();
+      if (cutoff && created < cutoff) return false;
+      if (fromMs && created < fromMs) return false;
+      if (toMs && created > toMs) return false;
       if (q && !`${d.name} ${d.list_name ?? ""}`.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [items, filter, search, period]);
+  }, [items, filter, search, period, sp.from, sp.to]);
 
   return (
     <div className="space-y-6">
@@ -227,13 +266,31 @@ function Page() {
               <SelectItem value="all">Todas as datas</SelectItem>
               <SelectItem value="7">Últimos 7 dias</SelectItem>
               <SelectItem value="30">Últimos 30 dias</SelectItem>
+              <SelectItem value="custom">Intervalo personalizado</SelectItem>
             </SelectContent>
           </Select>
           <Button asChild>
-            <Link to="/painel/campanhas/nova">
+            <Link to="/painel/campanhas/nova" search={{ from: "demandas", name: search || undefined }}>
               Nova campanha <Plus className="ml-1 h-4 w-4" />
             </Link>
           </Button>
+          {period === "custom" && (
+            <div className="flex items-center gap-2 md:col-span-4">
+              <Input
+                type="date"
+                value={sp.from ?? ""}
+                onChange={(e) => patch({ from: e.target.value || undefined })}
+                className="md:w-44"
+              />
+              <span className="text-xs text-muted-foreground">até</span>
+              <Input
+                type="date"
+                value={sp.to ?? ""}
+                onChange={(e) => patch({ to: e.target.value || undefined })}
+                className="md:w-44"
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 
