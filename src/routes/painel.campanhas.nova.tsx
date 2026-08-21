@@ -248,9 +248,21 @@ function Page() {
             <Textarea value={bio} onChange={(e) => setBio(e.target.value)} maxLength={139} rows={3} placeholder="Ex: Atendimento oficial - Seg a Sex das 9h às 18h" />
           </Field>
 
+          <div className="space-y-3">
+            <Label>Modelo de mensagem</Label>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {MESSAGE_PRESETS.map((p) => (
+                <button key={p.id} type="button" onClick={() => { setMessage(p.body); setVars({}); }}
+                  className={`rounded-xl border p-3 text-left text-xs whitespace-pre-line transition ${message === p.body ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}>
+                  <span className="mb-1 block text-sm font-medium">{p.label}</span>
+                  <span className="text-muted-foreground">{p.body}</span>
+                </button>
+              ))}
+            </div>
+          </div>
 
-          <Field label="Mensagem" hint="Use as variáveis do template como {{1}} e {{2}}.">
-            <Textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={6} maxLength={2000}
+          <Field label="Mensagem" hint={"Use as variáveis do modelo como {{1}} e {{2}}."}>
+            <Textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={8} maxLength={2000}
               placeholder="Digite aqui o texto da sua campanha." required />
           </Field>
 
