@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware'
 import { z } from 'zod'
+import { assertSufficientCredits, getWorkspaceCredits, InsufficientCreditsError } from '@/lib/wallet-guard.server'
 import { getCountryCallingCode } from '@/lib/phone-country'
 
 async function assertWorkspaceMember(supabase: any, userId: string, workspaceId: string) {
@@ -164,6 +165,8 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
       // Fluxo de resposta (auto-reply na janela 24h) — aplicado pelo webhook
       response_flow_enabled: z.boolean().optional(),
       response_flow_config: z.any().optional().nullable(),
+      // Rascunho: permitido mesmo sem créditos (não vira demanda de disparo real).
+      save_as_draft: z.boolean().optional(),
     }).parse(d)
   )
   .handler(async ({ data, context }) => {
@@ -217,9 +220,10 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
     // Painel do cliente: nunca dispara direto. Toda campanha entra na fila
     // aguardando aprovação/execução pelo admin.
     const approval_mode = 'manual'
-    const approval_status = 'pending'
+    const isDraft = !!data.save_as_draft
+    const approval_status = isDraft ? 'draft' : 'pending'
     // "Aguardando envio" (sem data) ou "Agendada" (com data/hora escolhidas pelo cliente).
-    const initialStatus = data.scheduled_at ? 'scheduled' : 'awaiting_approval'
+    const initialStatus = isDraft ? 'draft' : data.scheduled_at ? 'scheduled' : 'awaiting_approval'
 
     const { data: campaign, error } = await supabase
       .from('wa_campaigns')
@@ -277,6 +281,22 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
       }
     }
 
+    // Regra de crédito (backend, revalidada agora): disparo real só é aceito
+    // com saldo suficiente para os contatos válidos que serão enviados.
+    // Rascunho é sempre permitido.
+    if (!isDraft && !isAdmin) {
+      const required = Number(campaign.total_recipients ?? 0)
+      const credits = await getWorkspaceCredits(supabase, data.workspace_id)
+      if (required > 0 && credits.availableCredits < required) {
+        // Não perdemos o trabalho do cliente: a campanha fica salva como rascunho.
+        await supabase
+          .from('wa_campaigns')
+          .update({ status: 'draft', approval_status: 'draft' })
+          .eq('id', campaign.id)
+        throw new InsufficientCreditsError(credits.availableCredits, required)
+      }
+    }
+
     return { campaign }
   })
 
@@ -306,6 +326,11 @@ export const startClientCampaign = createServerFn({ method: 'POST' })
 
     await assertWorkspaceMember(supabase, userId, c.workspace_id)
     await assertWorkspaceNotBlocked(supabase, c.workspace_id)
+
+    // Revalida saldo no backend antes de transformar o rascunho em disparo real.
+    if (c.total_recipients && c.total_recipients > 0) {
+      await assertSufficientCredits(supabase, c.workspace_id, Number(c.total_recipients))
+    }
 
     if (c.approval_mode === 'manual') {
       await supabase
