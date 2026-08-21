@@ -286,7 +286,15 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
           .filter(Boolean);
         await supabaseAdmin.from("whatsapp_webhook_logs").insert({
           event_type: fields[0] ?? "unknown",
-          payload: { ...payload, __fields: fields, __entries: entries.length },
+          payload: {
+            ...payload,
+            __fields: fields,
+            __entries: entries.length,
+            __sig_matched_by: matchedBy,
+            __sig_app_id: matched?.appId ?? null,
+            __sig_source: matched?.source ?? null,
+          },
+
         });
 
         // Processamento resiliente — nunca falhe a resposta 200 por causa
