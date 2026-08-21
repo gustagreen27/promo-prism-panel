@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useServerFn } from '@tanstack/react-start'
 import { getMyContext } from '@/lib/auth.functions'
@@ -50,4 +51,53 @@ export function useWallet(workspaceId: string | null | undefined) {
     balanceCredits: Math.floor((w?.balance_cents ?? 0) / unitPriceCents),
     reservedCredits: Math.floor((w?.reserved_cents ?? 0) / unitPriceCents),
   }
+}
+
+/* -------------------------------------------------------------------------
+ * Detecção de divergência de saldo entre superfícies (header vs financeiro).
+ * Cada tela registra o valor que está exibindo; se duas superfícies mostrarem
+ * números diferentes ao mesmo tempo, o hook devolve o conflito para exibirmos
+ * um aviso de depuração em vez de o usuário ver saldos incoerentes.
+ * ---------------------------------------------------------------------- */
+
+type BalanceReading = { credits: number; at: number }
+const balanceReadings = new Map<string, BalanceReading>()
+const balanceListeners = new Set<() => void>()
+const READING_TTL_MS = 60_000
+
+export type BalanceDivergence = { surface: string; credits: number; mine: number }
+
+export function useBalanceConsistency(
+  surface: string,
+  credits: number | null | undefined,
+  enabled = true,
+): BalanceDivergence | null {
+  const [divergence, setDivergence] = useState<BalanceDivergence | null>(null)
+
+  useEffect(() => {
+    if (!enabled || credits == null) return
+    balanceReadings.set(surface, { credits, at: Date.now() })
+
+    const check = () => {
+      const now = Date.now()
+      const conflict = [...balanceReadings.entries()].find(
+        ([s, r]) => s !== surface && now - r.at < READING_TTL_MS && r.credits !== credits,
+      )
+      setDivergence(conflict ? { surface: conflict[0], credits: conflict[1].credits, mine: credits } : null)
+      if (conflict) {
+        console.warn(
+          `[saldo] Divergência detectada: "${surface}" mostra ${credits} créditos e "${conflict[0]}" mostra ${conflict[1].credits}.`,
+        )
+      }
+    }
+
+    balanceListeners.add(check)
+    balanceListeners.forEach((l) => l())
+    return () => {
+      balanceListeners.delete(check)
+      balanceReadings.delete(surface)
+    }
+  }, [surface, credits, enabled])
+
+  return divergence
 }
