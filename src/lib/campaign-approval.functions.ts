@@ -186,7 +186,8 @@ export const decideCampaignApproval = createServerFn({ method: 'POST' })
       // Revalida o saldo do cliente no momento da aprovação (pode ter sido
       // consumido por outra campanha depois que a demanda foi criada).
       const required = Number(camp.total_recipients ?? 0)
-      if (required > 0 && camp.workspace_id) {
+      const isTestCampaign = (camp as any)?.custom_fields?.send_type === 'test'
+      if (!isTestCampaign && required > 0 && camp.workspace_id) {
         await assertSufficientCredits(supabase, camp.workspace_id, required)
       }
     }
