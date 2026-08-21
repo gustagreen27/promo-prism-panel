@@ -326,6 +326,10 @@ function Page() {
       return toast.error(`Envio de teste permite no máximo ${TEST_MAX} destinatários`);
     if (!asDraft && btnEnabled && !/^https?:\/\/.+/i.test(btnUrl.trim())) return toast.error("Informe o destino (link) do botão");
     if (!asDraft && schedule && (!date || !time)) return toast.error("Informe data e hora do agendamento");
+    if (!asDraft && schedule && scheduleTooSoon)
+      return toast.error("Horário indisponível", {
+        description: "Programe sua campanha com pelo menos 2 horas de antecedência.",
+      });
     // Rascunho é sempre permitido; disparo real exige saldo.
     if (!asDraft && !enoughCredits) {
       return toast.error("Créditos insuficientes", {
@@ -731,12 +735,12 @@ function Page() {
             <Button
               type="submit"
               className="h-12 w-full rounded-xl text-base"
-              disabled={submitting || savingDraft || !enoughCredits}
+              disabled={submitting || savingDraft || !enoughCredits || !scheduleValid}
             >
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {importProgress
                 ? `Importando contatos… ${importProgress.done.toLocaleString("pt-BR")}/${importProgress.total.toLocaleString("pt-BR")}`
-                : schedule ? "Agendar campanha" : "Enviar campanha"}
+                : schedule ? "Programar campanha" : "Enviar campanha"}
             </Button>
           </div>
 
