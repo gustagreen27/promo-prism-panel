@@ -457,3 +457,121 @@ export const adminAddCredits = createServerFn({ method: 'POST' })
     }
     return { ok: true, amount_cents: cents, unit_price_cents: unit }
   })
+
+export const adminCreateClientAccount = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: {
+    name: string
+    slug?: string | null
+    plan?: string | null
+    owner_email: string
+    owner_name?: string | null
+    owner_password?: string | null
+    initial_credits?: number | null
+  }) =>
+    z.object({
+      name: z.string().min(2).max(120),
+      slug: z.string().min(2).max(60).regex(/^[a-z0-9-]+$/, 'slug inválido').nullish(),
+      plan: z.string().max(40).nullish(),
+      owner_email: z.string().email(),
+      owner_name: z.string().max(120).nullish(),
+      owner_password: z.string().min(8).max(72).nullish(),
+      initial_credits: z.number().int().min(0).nullish(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any
+    await assertStaff(supabase, userId)
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
+
+    const email = data.owner_email.trim().toLowerCase()
+    const slug = (data.slug?.trim() || data.name)
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 60)
+
+    const { data: slugTaken } = await supabaseAdmin
+      .from('workspaces').select('id').eq('slug', slug).maybeSingle()
+    if (slugTaken) throw new Error(`Já existe uma conta com o slug "${slug}"`)
+
+    // 1) Encontra ou cria o usuário dono
+    let ownerId: string | null = null
+    let generatedPassword: string | null = null
+    const { data: existingProfile } = await supabaseAdmin
+      .from('profiles').select('id').eq('email', email).maybeSingle()
+    if (existingProfile) {
+      ownerId = existingProfile.id
+    } else {
+      const password = data.owner_password?.trim() || `Np${Math.random().toString(36).slice(2, 10)}!${Math.floor(Math.random() * 90 + 10)}`
+      const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { full_name: data.owner_name?.trim() || data.name },
+      })
+      if (createErr) throw new Error(`Falha ao criar usuário: ${createErr.message}`)
+      ownerId = created.user?.id ?? null
+      generatedPassword = data.owner_password?.trim() ? null : password
+      if (ownerId) {
+        await supabaseAdmin.from('profiles').upsert({
+          id: ownerId,
+          email,
+          full_name: data.owner_name?.trim() || data.name,
+        })
+      }
+    }
+    if (!ownerId) throw new Error('Não foi possível determinar o usuário dono')
+
+    // 2) Cria o workspace
+    const { data: ws, error: wsErr } = await supabaseAdmin
+      .from('workspaces')
+      .insert({
+        name: data.name.trim(),
+        slug,
+        plan: data.plan?.trim() || 'starter',
+        status: 'active',
+        owner_id: ownerId,
+      })
+      .select('id, name, slug, plan')
+      .single()
+    if (wsErr) throw new Error(`Falha ao criar a conta: ${wsErr.message}`)
+
+    // 3) Vincula o dono como membro
+    const { error: memberErr } = await supabaseAdmin
+      .from('workspace_members')
+      .upsert({ workspace_id: ws.id, user_id: ownerId, role: 'owner' }, { onConflict: 'workspace_id,user_id' })
+    if (memberErr) throw new Error(`Conta criada, mas falhou ao vincular o usuário: ${memberErr.message}`)
+
+    // 4) Créditos iniciais (opcional)
+    let creditedCents = 0
+    if (data.initial_credits && data.initial_credits > 0) {
+      const { data: settings } = await supabaseAdmin
+        .from('billing_settings').select('default_price_cents').eq('id', 1).maybeSingle()
+      const { data: wallet } = await supabaseAdmin
+        .from('workspace_wallets').select('custom_price_cents').eq('workspace_id', ws.id).maybeSingle()
+      const unit = Number(wallet?.custom_price_cents ?? settings?.default_price_cents ?? 15) || 15
+      creditedCents = data.initial_credits * unit
+      const { error: credErr } = await supabaseAdmin.rpc('wallet_credit', {
+        _ws: ws.id,
+        _amount_cents: creditedCents,
+        _type: 'adjustment',
+        _description: `Créditos iniciais (${data.initial_credits.toLocaleString('pt-BR')}) na criação da conta`,
+        _campaign_id: undefined,
+        _deposit_id: undefined,
+        _created_by: userId,
+      })
+      if (credErr) creditedCents = 0
+    }
+
+    return {
+      ok: true,
+      workspace: ws,
+      owner_email: email,
+      owner_created: !existingProfile,
+      generated_password: generatedPassword,
+      credited_cents: creditedCents,
+    }
+  })
