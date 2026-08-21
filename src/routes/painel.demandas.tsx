@@ -422,6 +422,7 @@ function Page() {
                               rate: (d as any).rate_per_second,
                               nowMs: Date.now() + tick,
                             });
+                            if (!w.active) return null;
                             return (
                               <p className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-emerald-600">
                                 <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
