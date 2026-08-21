@@ -4010,6 +4010,57 @@ export type Database = {
         }
         Relationships: []
       }
+      wa_test_sends: {
+        Row: {
+          campaign_id: string | null
+          connection_id: string | null
+          created_at: string
+          created_by: string | null
+          error_code: string | null
+          error_message: string | null
+          id: string
+          meta_message_id: string | null
+          phone: string
+          phone_raw: string | null
+          status: string
+          template_id: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          connection_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          meta_message_id?: string | null
+          phone: string
+          phone_raw?: string | null
+          status?: string
+          template_id?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          campaign_id?: string | null
+          connection_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          meta_message_id?: string | null
+          phone?: string
+          phone_raw?: string | null
+          status?: string
+          template_id?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       wa_tick_lease: {
         Row: {
           acquired_at: string | null
@@ -4218,6 +4269,7 @@ export type Database = {
         Row: {
           access_token: string | null
           adaptive_rate_enabled: boolean
+          allow_tests: boolean
           api_key: string | null
           app_id: string | null
           app_secret: string | null
@@ -4276,6 +4328,7 @@ export type Database = {
         Insert: {
           access_token?: string | null
           adaptive_rate_enabled?: boolean
+          allow_tests?: boolean
           api_key?: string | null
           app_id?: string | null
           app_secret?: string | null
@@ -4334,6 +4387,7 @@ export type Database = {
         Update: {
           access_token?: string | null
           adaptive_rate_enabled?: boolean
+          allow_tests?: boolean
           api_key?: string | null
           app_id?: string | null
           app_secret?: string | null

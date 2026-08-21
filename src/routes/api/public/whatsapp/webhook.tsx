@@ -598,6 +598,17 @@ async function handleChange(supabaseAdmin: any, change: any, entryId: string | n
       });
     }
 
+    // Espelha nos envios de teste do painel do cliente.
+    {
+      const testPatch: Record<string, any> = { status };
+      if (status === "failed") {
+        const err = extractError(s?.errors?.[0]);
+        testPatch['error_message'] = err.reason;
+        testPatch['error_code'] = err.code;
+      }
+      await supabaseAdmin.from("wa_test_sends").update(testPatch).eq("meta_message_id", id);
+    }
+
     // Espelha no message_logs (auditoria por mensagem).
     const logPatch: Record<string, any> = { message_status: status };
     if (status === "failed") {

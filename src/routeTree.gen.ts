@@ -48,6 +48,7 @@ import { Route as AuthenticatedAdminFechamentoRouteImport } from './routes/_auth
 import { Route as AuthenticatedAdminFaturamentoRouteImport } from './routes/_authenticated/admin.faturamento'
 import { Route as AuthenticatedAdminEstoqueRouteImport } from './routes/_authenticated/admin.estoque'
 import { Route as AuthenticatedAdminDisparosRouteImport } from './routes/_authenticated/admin.disparos'
+import { Route as AuthenticatedAdminDemandasRouteImport } from './routes/_authenticated/admin.demandas'
 import { Route as AuthenticatedAdminCustosRouteImport } from './routes/_authenticated/admin.custos'
 import { Route as AuthenticatedAdminContasRouteImport } from './routes/_authenticated/admin.contas'
 import { Route as AuthenticatedAdminConfiguracoesRouteImport } from './routes/_authenticated/admin.configuracoes'
@@ -305,6 +306,12 @@ const AuthenticatedAdminDisparosRoute =
   AuthenticatedAdminDisparosRouteImport.update({
     id: '/admin/disparos',
     path: '/admin/disparos',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminDemandasRoute =
+  AuthenticatedAdminDemandasRouteImport.update({
+    id: '/admin/demandas',
+    path: '/admin/demandas',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAdminCustosRoute =
@@ -656,6 +663,7 @@ export interface FileRoutesByFullPath {
   '/admin/configuracoes': typeof AuthenticatedAdminConfiguracoesRoute
   '/admin/contas': typeof AuthenticatedAdminContasRoute
   '/admin/custos': typeof AuthenticatedAdminCustosRoute
+  '/admin/demandas': typeof AuthenticatedAdminDemandasRoute
   '/admin/disparos': typeof AuthenticatedAdminDisparosRouteWithChildren
   '/admin/estoque': typeof AuthenticatedAdminEstoqueRoute
   '/admin/faturamento': typeof AuthenticatedAdminFaturamentoRoute
@@ -748,6 +756,7 @@ export interface FileRoutesByTo {
   '/admin/configuracoes': typeof AuthenticatedAdminConfiguracoesRoute
   '/admin/contas': typeof AuthenticatedAdminContasRoute
   '/admin/custos': typeof AuthenticatedAdminCustosRoute
+  '/admin/demandas': typeof AuthenticatedAdminDemandasRoute
   '/admin/estoque': typeof AuthenticatedAdminEstoqueRoute
   '/admin/faturamento': typeof AuthenticatedAdminFaturamentoRoute
   '/admin/fechamento': typeof AuthenticatedAdminFechamentoRoute
@@ -842,6 +851,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/configuracoes': typeof AuthenticatedAdminConfiguracoesRoute
   '/_authenticated/admin/contas': typeof AuthenticatedAdminContasRoute
   '/_authenticated/admin/custos': typeof AuthenticatedAdminCustosRoute
+  '/_authenticated/admin/demandas': typeof AuthenticatedAdminDemandasRoute
   '/_authenticated/admin/disparos': typeof AuthenticatedAdminDisparosRouteWithChildren
   '/_authenticated/admin/estoque': typeof AuthenticatedAdminEstoqueRoute
   '/_authenticated/admin/faturamento': typeof AuthenticatedAdminFaturamentoRoute
@@ -937,6 +947,7 @@ export interface FileRouteTypes {
     | '/admin/configuracoes'
     | '/admin/contas'
     | '/admin/custos'
+    | '/admin/demandas'
     | '/admin/disparos'
     | '/admin/estoque'
     | '/admin/faturamento'
@@ -1029,6 +1040,7 @@ export interface FileRouteTypes {
     | '/admin/configuracoes'
     | '/admin/contas'
     | '/admin/custos'
+    | '/admin/demandas'
     | '/admin/estoque'
     | '/admin/faturamento'
     | '/admin/fechamento'
@@ -1122,6 +1134,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/configuracoes'
     | '/_authenticated/admin/contas'
     | '/_authenticated/admin/custos'
+    | '/_authenticated/admin/demandas'
     | '/_authenticated/admin/disparos'
     | '/_authenticated/admin/estoque'
     | '/_authenticated/admin/faturamento'
@@ -1487,6 +1500,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/disparos'
       fullPath: '/admin/disparos'
       preLoaderRoute: typeof AuthenticatedAdminDisparosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/demandas': {
+      id: '/_authenticated/admin/demandas'
+      path: '/admin/demandas'
+      fullPath: '/admin/demandas'
+      preLoaderRoute: typeof AuthenticatedAdminDemandasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/admin/custos': {
@@ -1970,6 +1990,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminConfiguracoesRoute: typeof AuthenticatedAdminConfiguracoesRoute
   AuthenticatedAdminContasRoute: typeof AuthenticatedAdminContasRoute
   AuthenticatedAdminCustosRoute: typeof AuthenticatedAdminCustosRoute
+  AuthenticatedAdminDemandasRoute: typeof AuthenticatedAdminDemandasRoute
   AuthenticatedAdminDisparosRoute: typeof AuthenticatedAdminDisparosRouteWithChildren
   AuthenticatedAdminEstoqueRoute: typeof AuthenticatedAdminEstoqueRoute
   AuthenticatedAdminFaturamentoRoute: typeof AuthenticatedAdminFaturamentoRoute
@@ -2004,6 +2025,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminConfiguracoesRoute: AuthenticatedAdminConfiguracoesRoute,
   AuthenticatedAdminContasRoute: AuthenticatedAdminContasRoute,
   AuthenticatedAdminCustosRoute: AuthenticatedAdminCustosRoute,
+  AuthenticatedAdminDemandasRoute: AuthenticatedAdminDemandasRoute,
   AuthenticatedAdminDisparosRoute: AuthenticatedAdminDisparosRouteWithChildren,
   AuthenticatedAdminEstoqueRoute: AuthenticatedAdminEstoqueRoute,
   AuthenticatedAdminFaturamentoRoute: AuthenticatedAdminFaturamentoRoute,
