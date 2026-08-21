@@ -17,7 +17,7 @@ import {
 import { useWallet, useBalanceConsistency } from "@/lib/use-panel-workspace";
 import { getMyContext, ensureWorkspace, logAuthEvent, type MyContext } from "@/lib/auth.functions";
 import {
-  LayoutDashboard, Send, Users, BarChart3, CreditCard, CalendarClock,
+  LayoutDashboard, Send, Users, BarChart3, CreditCard,
   LogOut, Wallet, Building2, AlertTriangle, ChevronDown, UserCircle,
 } from "lucide-react";
 import { NotificationsBell } from "@/components/NotificationsBell";
