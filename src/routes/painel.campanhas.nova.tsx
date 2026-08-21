@@ -244,11 +244,15 @@ function Page() {
 
 
           <Field label="Nome do perfil">
-            <Input value={profileName} onChange={(e) => setProfileName(e.target.value)} maxLength={50} placeholder="Ex: Loja Virtual" />
+            <IconInput icon={User}>
+              <Input value={profileName} onChange={(e) => setProfileName(e.target.value)} maxLength={50} className="pl-9" placeholder="Ex: Loja Virtual" />
+            </IconInput>
           </Field>
 
-          <Field label="Biografia do perfil" hint="Máximo de 139 caracteres (limite do WhatsApp).">
-            <Textarea value={bio} onChange={(e) => setBio(e.target.value)} maxLength={139} rows={3} placeholder="Ex: Atendimento oficial - Seg a Sex das 9h às 18h" />
+          <Field label="Biografia do perfil" hint="Máximo de 139 caracteres (limite do WhatsApp)." counter={`${bio.length}/139`}>
+            <IconInput icon={Tag} align="top">
+              <Textarea value={bio} onChange={(e) => setBio(e.target.value)} maxLength={139} rows={3} className="pl-9" placeholder="Ex: Atendimento oficial - Seg a Sex das 9h às 18h" />
+            </IconInput>
           </Field>
 
           <div className="space-y-3">
@@ -256,8 +260,12 @@ function Page() {
             <div className="grid gap-2 sm:grid-cols-2">
               {MESSAGE_PRESETS.map((p) => (
                 <button key={p.id} type="button" onClick={() => { setMessage(p.body); setVars({}); }}
-                  className={`rounded-xl border p-3 text-left text-xs whitespace-pre-line transition ${message === p.body ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}>
+                  className={`relative rounded-xl border p-3 pr-9 text-left text-xs whitespace-pre-line transition ${message === p.body ? "border-primary bg-primary/5 ring-1 ring-primary/30" : "hover:bg-muted/50"}`}>
+                  <span className={`absolute right-3 top-3 grid h-5 w-5 place-items-center rounded-full border ${message === p.body ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/30"}`}>
+                    {message === p.body && <Check className="h-3 w-3" />}
+                  </span>
                   <span className="mb-1 block text-sm font-medium">{p.label}</span>
+
                   <span className="text-muted-foreground">{p.body}</span>
                 </button>
               ))}
