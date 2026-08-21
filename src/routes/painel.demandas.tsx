@@ -321,7 +321,10 @@ function Page() {
             const m = demandMetrics(d as any);
             const pct = m.pct;
             const showProgress =
-              !!d.external_total_count || !!d.external_sent_count || b === "queued" || b === "scheduled";
+              b !== "scheduled" &&
+              b !== "pending" &&
+              b !== "rejected" &&
+              (!!d.external_total_count || !!d.external_sent_count || b === "queued" || b === "completed");
             return (
               <Card
                 key={d.id}
