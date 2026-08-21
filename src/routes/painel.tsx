@@ -32,12 +32,12 @@ export const Route = createFileRoute("/painel")({
 
 const NAV: Array<{ to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean }> = [
   { to: "/painel", label: "Início", icon: LayoutDashboard, exact: true },
-  { to: "/painel/campanhas", label: "Campanhas", icon: Send },
+  { to: "/painel/campanhas", label: "Disparos", icon: Send },
+  { to: "/painel/contatos", label: "Listas de Leads", icon: Users },
   { to: "/painel/agenda", label: "Agenda", icon: CalendarClock },
   { to: "/painel/whatsapp", label: "WhatsApp", icon: MessageCircle },
-  { to: "/painel/contatos", label: "Contatos", icon: Users },
   { to: "/painel/relatorios", label: "Relatórios", icon: BarChart3 },
-  { to: "/painel/financeiro", label: "Financeiro", icon: CreditCard },
+  { to: "/painel/financeiro", label: "Créditos", icon: CreditCard },
 ];
 
 function PanelLayout() {
