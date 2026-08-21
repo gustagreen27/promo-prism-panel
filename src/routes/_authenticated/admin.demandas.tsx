@@ -635,7 +635,7 @@ function Page() {
   const counts = ((data as any)?.counts ?? {}) as Record<string, number>;
 
 
-  async function submit() {
+  async function submit(target: "scheduled" | "queued" = "queued") {
     if (!decision) return;
     if (decision.kind === "rejected" && reason.trim().length < 3) {
       toast.error("Informe o motivo da recusa");
@@ -645,14 +645,18 @@ function Page() {
     try {
       const campaignId = decision.item.id;
       const res: any = await decideFn({
-        data: { campaign_id: campaignId, decision: decision.kind, reason: reason.trim() || null },
+        data: { campaign_id: campaignId, decision: decision.kind, reason: reason.trim() || null, target },
       });
       if (res?.already) {
         toast.info("Esta demanda já havia sido decidida.");
       } else if (decision.kind === "approved" && res?.external) {
-        toast.success("Demanda aprovada para execução externa — nada foi enviado para a fila da plataforma");
+        toast.success(
+          target === "scheduled"
+            ? "Demanda agendada para execução externa"
+            : "Demanda em fila — atualize as métricas manualmente conforme o envio avança",
+        );
       } else if (decision.kind === "approved") {
-        toast.success("Demanda aprovada — disparo pronto para execução", {
+        toast.success(target === "scheduled" ? "Demanda agendada" : "Demanda em fila — pronta para execução", {
           action: {
             label: "Abrir disparo",
             onClick: () => void navigate({ to: "/admin/disparos/$id", params: { id: campaignId } }),
@@ -661,6 +665,7 @@ function Page() {
       } else {
         toast.success("Demanda recusada");
       }
+
       setDecision(null);
       setReason("");
       qc.invalidateQueries({ queryKey: ["approval-queue"] });
