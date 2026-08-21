@@ -167,6 +167,44 @@ function Page() {
   const [schedule, setSchedule] = useState(false);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
+  const [dayChoice, setDayChoice] = useState<"today" | "tomorrow" | "after" | "other">("today");
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+  const earliest = useMemo(() => earliestSlot(now), [now]);
+  const suggested = useMemo(() => suggestedSlot(now), [now]);
+  const scheduleDate = useMemo(() => (date && time ? scheduleToDate(date, time) : null), [date, time]);
+  const scheduleTooSoon = !!scheduleDate && scheduleDate.getTime() < now.getTime() + LEAD_MINUTES * 60_000 - 60_000;
+  const scheduleValid = !schedule || (!!scheduleDate && !scheduleTooSoon);
+
+  // Pré-preenche com o primeiro horário disponível ao ligar o agendamento.
+  useEffect(() => {
+    if (!schedule) return;
+    if (date && time) return;
+    const s = suggestedSlot(new Date());
+    setDate(s.date);
+    setTime(s.time);
+    setDayChoice(s.date === spDateOffset(0) ? "today" : s.date === spDateOffset(1) ? "tomorrow" : "other");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [schedule]);
+
+  function pickDay(choice: "today" | "tomorrow" | "after" | "other") {
+    setDayChoice(choice);
+    if (choice === "other") return;
+    const offset = choice === "today" ? 0 : choice === "tomorrow" ? 1 : 2;
+    const target = spDateOffset(offset);
+    setDate(target);
+    // Se o horário atual ficar inválido para o dia escolhido, sugere o próximo válido.
+    const candidate = time ? scheduleToDate(target, time) : null;
+    if (!candidate || candidate.getTime() < Date.now() + LEAD_MINUTES * 60_000) {
+      const s = suggestedSlot(new Date());
+      setTime(offset === 0 ? s.time : (time || s.time));
+      if (offset === 0) setDate(s.date);
+    }
+  }
+
   const [submitting, setSubmitting] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const { availableCredits } = useWallet(workspaceId || null);
