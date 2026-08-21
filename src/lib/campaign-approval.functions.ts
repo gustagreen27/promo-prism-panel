@@ -217,9 +217,12 @@ export const decideCampaignApproval = createServerFn({ method: 'POST' })
         campaign_id: z.string().uuid(),
         decision: z.enum(['approved', 'rejected']),
         reason: z.string().trim().max(1000).optional().nullable(),
+        // Para onde a aprovação move a demanda: agendada ou direto para a fila.
+        target: z.enum(['scheduled', 'queued']).optional(),
       })
       .parse(d),
   )
+
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any
     await assertStaff(supabase, userId)
