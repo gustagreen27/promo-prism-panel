@@ -324,7 +324,7 @@ function Page() {
               {deps.map((d: any) => (
                 <div key={d.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                   <div className="min-w-0">
-                    <div className="text-sm font-medium">{fmt(d.amount_cents)}</div>
+                    <div className="text-sm font-medium">{nf(Math.round(Number(d.amount_cents ?? 0) / unit))} créditos</div>
                     <div className="text-xs text-muted-foreground">
                       {new Date(d.created_at).toLocaleString("pt-BR")} · {d.payment_method ?? "—"}
                     </div>
