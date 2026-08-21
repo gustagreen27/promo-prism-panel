@@ -21,6 +21,9 @@ import {
   Link2, Check, FileSpreadsheet, ListChecks, Sparkles,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { ContactImportDialog, parseContactFile, type ParsedSheet } from "@/components/import/ContactImportDialog";
+import { buildImportSummary, type ImportSummary } from "@/lib/phone-normalize";
+
 
 
 export const Route = createFileRoute("/painel/campanhas/nova")({
@@ -80,6 +83,10 @@ function Page() {
   const [listId, setListId] = useState("");
   const [csvRows, setCsvRows] = useState<Array<{ phone: string; name?: string }>>([]);
   const [csvName, setCsvName] = useState("");
+  const [sheet, setSheet] = useState<ParsedSheet | null>(null);
+  const [mapOpen, setMapOpen] = useState(false);
+  const [csvSummary, setCsvSummary] = useState<ImportSummary | null>(null);
+
   const [ddd, setDdd] = useState("any");
 
   const [avatarUrl, setAvatarUrl] = useState("");
@@ -106,11 +113,13 @@ function Page() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const manualRows = useMemo(() => {
-    return manual.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
+    const raw = manual.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
       const [phone, nome] = l.split(/[;,]/);
-      return { phone: (phone || "").replace(/\D/g, ""), name: (nome || "").trim() || undefined };
-    }).filter((r) => r.phone.length >= 10);
+      return { phone: phone || "", name: (nome || "").trim() || undefined };
+    });
+    return buildImportSummary(raw).rows;
   }, [manual]);
+
 
   const dddFilter = ddd === "any" ? null : ddd;
   const byDdd = <T extends { phone: string }>(rows: T[]) =>
@@ -143,22 +152,17 @@ function Page() {
     }
   }
 
-  function onCsv(file: File) {
-    setCsvName(file.name);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const rows = String(reader.result || "")
-        .split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
-        .map((l) => {
-          const parts = l.split(/[;,]/);
-          return { phone: (parts[0] || "").replace(/\D/g, ""), name: (parts[1] || "").trim() || undefined };
-        })
-        .filter((r) => r.phone.length >= 10);
-      setCsvRows(rows);
-      toast.success(`${rows.length} contatos detectados`);
-    };
-    reader.readAsText(file);
+  async function onCsv(file: File) {
+    try {
+      const parsed = await parseContactFile(file);
+      if (!parsed.headers.length) return toast.error("Arquivo vazio ou ilegível");
+      setSheet(parsed);
+      setMapOpen(true);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Não foi possível ler o arquivo");
+    }
   }
+
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -220,6 +224,19 @@ function Page() {
 
   return (
     <div className="space-y-6">
+      <ContactImportDialog
+        sheet={sheet}
+        open={mapOpen}
+        onOpenChange={setMapOpen}
+        onConfirm={(rows, summary) => {
+          setCsvRows(rows);
+          setCsvSummary(summary);
+          setCsvName(sheet?.fileName ?? "");
+          setMapOpen(false);
+          toast.success(`${rows.length.toLocaleString("pt-BR")} contatos importados e padronizados`);
+        }}
+      />
+
       <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-4 rounded-2xl border bg-card p-5 shadow-sm">
         <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary">
           <Rocket className="h-6 w-6" />
@@ -335,11 +352,19 @@ function Page() {
             )}
 
             {mode === "csv" && (
-              <Field label="Anexar arquivo CSV" hint="Formato do arquivo (sem cabeçalho): NUMERO | NOME">
-                <Input type="file" accept=".csv,text/csv" onChange={(e) => { const f = e.target.files?.[0]; if (f) onCsv(f); }} />
-                {csvName && <p className="mt-2 text-xs text-muted-foreground">{csvName} · {csvRows.length} contatos detectados</p>}
+              <Field label="Anexar Excel (.xlsx) ou CSV" hint="Após anexar você escolhe as colunas de nome e número; os números são padronizados para 55DDDNÚMERO.">
+                <Input type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) onCsv(f); e.target.value = ""; }} />
+                {csvName && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {csvName} · {csvRows.length.toLocaleString("pt-BR")} contatos válidos
+                    {csvSummary ? ` · ${csvSummary.fixed} corrigidos · ${csvSummary.duplicates} duplicados · ${csvSummary.invalid} inválidos` : ""}
+                    {sheet && <button type="button" className="ml-2 underline" onClick={() => setMapOpen(true)}>revisar mapeamento</button>}
+                  </p>
+                )}
               </Field>
             )}
+
 
             <Field label="DDD de envio" hint="Escolha “Qualquer” para enviar a todos os DDDs.">
               <Select value={ddd} onValueChange={setDdd}>
