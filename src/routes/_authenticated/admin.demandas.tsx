@@ -257,17 +257,57 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
           </div>
 
           {execType === "external" ? (
-            <div className="space-y-1.5">
-              <Label>Observação interna (visível apenas para o admin)</Label>
-              <Textarea
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Ex.: Disparo realizado por ferramenta externa."
-                rows={3}
-              />
-              <p className="text-xs text-muted-foreground">
-                Não exige BM, WABA, número, template ou conexão. Ao aprovar, nada é enviado para a fila da plataforma.
-              </p>
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>Observação interna (visível apenas para o admin)</Label>
+                <Textarea
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Ex.: Disparo realizado por ferramenta externa."
+                  rows={3}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Não exige BM, WABA, número, template ou conexão. Ao aprovar, nada é enviado para a fila da plataforma.
+                </p>
+              </div>
+
+              <div className="space-y-3 rounded-lg border border-violet-500/30 bg-violet-500/5 p-3">
+                <div className="text-sm font-medium">Resultado do envio externo</div>
+                <p className="text-xs text-muted-foreground">
+                  Métricas informadas manualmente pelo admin (marcadas como <code>metrics_source = manual</code>), sem
+                  relação com webhooks da API do WhatsApp.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {([
+                    ["Quantidade total de mensagens", mTotal, setMTotal],
+                    ["Enviadas com sucesso", mSent, setMSent],
+                    ["Entregues", mDelivered, setMDelivered],
+                    ["Falhas", mFailed, setMFailed],
+                  ] as const).map(([label, value, setter]) => (
+                    <div key={label} className="space-y-1.5">
+                      <Label className="text-xs">{label}</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={value}
+                        onChange={(e) => (setter as (v: string) => void)(e.target.value)}
+                        placeholder="0"
+                      />
+                    </div>
+                  ))}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Início do disparo</Label>
+                    <Input type="datetime-local" value={mStart} onChange={(e) => setMStart(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Finalização do disparo</Label>
+                    <Input type="datetime-local" value={mFinish} onChange={(e) => setMFinish(e.target.value)} />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Ao atingir a data/hora de finalização (ou ao marcar manualmente), a demanda fica como Concluído.
+                </p>
+              </div>
             </div>
           ) : (
           <>
