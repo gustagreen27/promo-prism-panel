@@ -129,10 +129,12 @@ export const listApprovalQueue = createServerFn({ method: 'POST' })
     }
 
     return {
+      counts,
       items: campaigns.map((c) => {
         const conn: any = c.connection_id ? connById.get(c.connection_id) : null
         return {
           ...c,
+          stage: demandStage(c),
           workspace_name: c.workspaces?.name ?? null,
           list_name: c.list_id ? (listName.get(c.list_id) ?? null) : null,
           template_name: c.template_id ? (tplName.get(c.template_id) ?? null) : null,
@@ -143,6 +145,7 @@ export const listApprovalQueue = createServerFn({ method: 'POST' })
         }
       }),
     }
+
   })
 
 // ---- Configurar infraestrutura da demanda (admin) ----
