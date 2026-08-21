@@ -197,11 +197,9 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
   const [execType, setExecType] = useState<"internal" | "external">("internal");
   const [note, setNote] = useState<string>("");
   const externalFn = useServerFn(updateExternalExecution);
-  const [mTotal, setMTotal] = useState<string>("");
   const [mSent, setMSent] = useState<string>("");
   const [mDelivered, setMDelivered] = useState<string>("");
   const [mFailed, setMFailed] = useState<string>("");
-  const [mStart, setMStart] = useState<string>("");
   const [mFinish, setMFinish] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
@@ -213,11 +211,9 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
     setScheduledAt(item.scheduled_at ? new Date(item.scheduled_at).toISOString().slice(0, 16) : "");
     setExecType(item.execution_type === "external" ? "external" : "internal");
     setNote(item.external_note ?? "");
-    setMTotal(item.external_total_count != null ? String(item.external_total_count) : "");
     setMSent(item.external_sent_count != null ? String(item.external_sent_count) : "");
     setMDelivered(item.external_delivered_count != null ? String(item.external_delivered_count) : "");
     setMFailed(item.external_failed_count != null ? String(item.external_failed_count) : "");
-    setMStart(item.external_started_at ? toLocalInput(item.external_started_at) : "");
     setMFinish(item.external_finished_at ? toLocalInput(item.external_finished_at) : "");
   }
 
@@ -242,18 +238,19 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
 
       if (execType === "external") {
         const num = (v: string) => (v.trim() === "" ? null : Number(v));
-        const total = num(mTotal), sent = num(mSent), delivered = num(mDelivered), failed = num(mFailed);
-        for (const [label, v] of [["Total", total], ["Enviados", sent], ["Entregues", delivered], ["Falhas", failed]] as const) {
+        const total = item.total_recipients ?? null;
+        const sent = num(mSent), delivered = num(mDelivered), failed = num(mFailed);
+        for (const [label, v] of [["Enviados", sent], ["Entregues", delivered], ["Falhas", failed]] as const) {
           if (v != null && (!Number.isFinite(v) || v < 0 || !Number.isInteger(v))) {
             throw new Error(`${label}: informe um número inteiro maior ou igual a zero.`);
           }
         }
         if (total != null) {
-          if (sent != null && sent > total) throw new Error("Enviados não podem ser maiores que o total.");
-          if (failed != null && failed > total) throw new Error("Falhas não podem ser maiores que o total.");
-          if (delivered != null && delivered > total) throw new Error("Entregues não podem ser maiores que o total.");
+          if (sent != null && sent > total) throw new Error("Enviados não podem ser maiores que o total de leads.");
+          if (failed != null && failed > total) throw new Error("Falhas não podem ser maiores que o total de leads.");
+          if (delivered != null && delivered > total) throw new Error("Entregues não podem ser maiores que o total de leads.");
           if (sent != null && failed != null && sent + failed > total)
-            throw new Error("Enviados + falhas não podem ultrapassar o total.");
+            throw new Error("Enviados + falhas não podem ultrapassar o total de leads.");
         }
         if (delivered != null && sent != null && delivered > sent)
           throw new Error("Entregues não podem ser maiores que os enviados com sucesso.");
@@ -261,11 +258,9 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
         await externalFn({
           data: {
             campaign_id: item.id,
-            external_total_count: total,
             external_sent_count: sent,
             external_delivered_count: delivered,
             external_failed_count: failed,
-            external_started_at: mStart ? new Date(mStart).toISOString() : null,
             external_finished_at: mFinish ? new Date(mFinish).toISOString() : null,
           } as any,
         });
@@ -324,15 +319,17 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
               </div>
 
               <div className="space-y-3 rounded-lg border border-violet-500/30 bg-violet-500/5 p-3">
-                <div className="text-sm font-medium">Resultado final e período do envio externo</div>
+                <div className="text-sm font-medium">Resultado final e prazo do envio externo</div>
                 <p className="text-xs text-muted-foreground">
-                  Informe os números <strong>finais</strong> e o período: o sistema distribui a evolução
-                  automaticamente a cada 10 minutos até a finalização (<code>metrics_source = estimated_external</code>),
-                  sem relação com webhooks da API do WhatsApp.
+                  O total é a quantidade de leads da demanda
+                  {item?.total_recipients != null ? ` (${(item.total_recipients ?? 0).toLocaleString("pt-BR")})` : ""} e o
+                  início é o horário agendado pelo cliente
+                  {item?.scheduled_at ? ` (${fmt(item.scheduled_at)})` : ""}. Informe apenas os números{" "}
+                  <strong>finais</strong> e o horário de finalização: o sistema distribui a evolução ao longo de todo o
+                  prazo (<code>metrics_source = estimated_external</code>).
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {([
-                    ["Quantidade total de mensagens", mTotal, setMTotal],
                     ["Enviadas com sucesso (final)", mSent, setMSent],
                     ["Entregues (final)", mDelivered, setMDelivered],
                     ["Falhas (final)", mFailed, setMFailed],
@@ -349,10 +346,6 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
                       />
                     </div>
                   ))}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Início do disparo</Label>
-                    <Input type="datetime-local" value={mStart} onChange={(e) => setMStart(e.target.value)} />
-                  </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Finalização do disparo</Label>
                     <Input type="datetime-local" value={mFinish} onChange={(e) => setMFinish(e.target.value)} />
@@ -437,12 +430,11 @@ function ExternalControls({ item }: { item: Item }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState(item.external_note ?? "");
-  const [total, setTotal] = useState(item.external_total_count != null ? String(item.external_total_count) : "");
+  const total = item.total_recipients != null ? String(item.total_recipients) : "";
   const [sent, setSent] = useState(pick(item, "external_target_sent_count", "external_sent_count"));
   const [delivered, setDelivered] = useState(pick(item, "external_target_delivered_count", "external_delivered_count"));
   const [failed, setFailed] = useState(pick(item, "external_target_failed_count", "external_failed_count"));
 
-  const [start, setStart] = useState(item.external_started_at ? toLocalInput(item.external_started_at) : "");
   const [finish, setFinish] = useState(item.external_finished_at ? toLocalInput(item.external_finished_at) : "");
 
   const { data: hist } = useQuery({
@@ -474,19 +466,17 @@ function ExternalControls({ item }: { item: Item }) {
   }
 
   async function saveMetrics() {
-    const t = n(total), s = n(sent), d = n(delivered), f = n(failed);
-    for (const [label, v] of [["Total", t], ["Enviados", s], ["Entregues", d], ["Falhas", f]] as const) {
+    const s = n(sent), d = n(delivered), f = n(failed);
+    for (const [label, v] of [["Enviados", s], ["Entregues", d], ["Falhas", f]] as const) {
       if (v != null && (!Number.isInteger(v) || v < 0)) {
         toast.error(`${label}: informe um número inteiro maior ou igual a zero.`);
         return;
       }
     }
     await push({
-      external_total_count: t,
       external_sent_count: s,
       external_delivered_count: d,
       external_failed_count: f,
-      external_started_at: start ? new Date(start).toISOString() : null,
       external_finished_at: finish ? new Date(finish).toISOString() : null,
       external_note: note.trim() || null,
     }, "Resultados atualizados");
@@ -509,7 +499,7 @@ function ExternalControls({ item }: { item: Item }) {
           <div className="h-full rounded-full bg-violet-500 transition-all" style={{ width: `${progressPct}%` }} />
         </div>
         <div className="grid gap-0.5 text-muted-foreground sm:grid-cols-2">
-          <span>Total: {(item.external_total_count ?? 0).toLocaleString("pt-BR")}</span>
+          <span>Total (leads): {(item.external_total_count ?? item.total_recipients ?? 0).toLocaleString("pt-BR")}</span>
           <span>Enviados: {(item.external_sent_count ?? 0).toLocaleString("pt-BR")}</span>
           <span>Entregues: {(item.external_delivered_count ?? 0).toLocaleString("pt-BR")}</span>
           <span>Falhas: {(item.external_failed_count ?? 0).toLocaleString("pt-BR")}</span>
@@ -548,7 +538,6 @@ function ExternalControls({ item }: { item: Item }) {
           <div className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
               {([
-                ["Total de destinatários", total, setTotal],
                 ["Enviados com sucesso", sent, setSent],
                 ["Entregues", delivered, setDelivered],
                 ["Falhas", failed, setFailed],
@@ -567,10 +556,6 @@ function ExternalControls({ item }: { item: Item }) {
               <div className="space-y-1.5">
                 <Label className="text-xs">Pendentes (calculado)</Label>
                 <Input value={previewPending.toLocaleString("pt-BR")} readOnly className="bg-muted/50" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Início do disparo</Label>
-                <Input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} />
               </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <Label className="text-xs">Finalizar em (opcional)</Label>

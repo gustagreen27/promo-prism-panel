@@ -13,6 +13,16 @@
 
 export const EXTERNAL_TICK_MS = 10 * 60 * 1000
 
+/**
+ * Tamanho da janela de atualização: 10 min por padrão, mas em períodos curtos
+ * (ex.: 10 mil disparos em 1 hora) as janelas encolhem para que a progressão
+ * seja distribuída ao longo de todo o prazo configurado.
+ */
+export function tickMsFor(startMs: number, finishMs: number): number {
+  const duration = Math.max(1, finishMs - startMs)
+  return Math.max(60_000, Math.min(EXTERNAL_TICK_MS, Math.ceil(duration / 12)))
+}
+
 export type ExternalTargets = {
   id: string
   external_total_count?: number | null
@@ -109,13 +119,14 @@ export function simulateExternal(row: ExternalTargets, now: Date = new Date()): 
     }
   }
 
-  const buckets = Math.max(1, Math.ceil((finish - start) / EXTERNAL_TICK_MS))
+  const tick = tickMsFor(start, finish)
+  const buckets = Math.max(1, Math.ceil((finish - start) / tick))
   const curve = progressCurve(row.id, buckets)
 
-  // Janela atual de 10 minutos desde o início (antes do início: primeira janela).
-  const k = Math.max(0, Math.min(buckets - 1, Math.floor((t - start) / EXTERNAL_TICK_MS)))
-  const windowStart = start + k * EXTERNAL_TICK_MS
-  const nextTick = Math.min(finish, windowStart + EXTERNAL_TICK_MS)
+  // Janela atual desde o início (antes do início: primeira janela).
+  const k = Math.max(0, Math.min(buckets - 1, Math.floor((t - start) / tick)))
+  const windowStart = start + k * tick
+  const nextTick = Math.min(finish, windowStart + tick)
 
   const pSent = curve[k + 1] ?? 1
   // Entregas ficam ~uma janela atrás do processamento.

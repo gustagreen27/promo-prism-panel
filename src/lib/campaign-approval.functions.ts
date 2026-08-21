@@ -371,7 +371,7 @@ export const updateExternalExecution = createServerFn({ method: 'POST' })
     const { data: camp } = await supabase
       .from('wa_campaigns')
       .select(
-        'id,workspace_id,execution_type,external_status,external_note,external_total_count,external_sent_count,external_delivered_count,external_failed_count,external_target_sent_count,external_target_delivered_count,external_target_failed_count,external_started_at,external_finished_at',
+        'id,workspace_id,execution_type,external_status,external_note,external_total_count,external_sent_count,external_delivered_count,external_failed_count,external_target_sent_count,external_target_delivered_count,external_target_failed_count,external_started_at,external_finished_at,scheduled_at,total_recipients',
       )
       .eq('id', data.campaign_id)
       .maybeSingle()
@@ -395,11 +395,20 @@ export const updateExternalExecution = createServerFn({ method: 'POST' })
         touchedMetrics = true
       }
     }
-    for (const k of ['external_started_at', 'external_finished_at'] as const) {
-      if (data[k] !== undefined) {
-        patch[k] = data[k] ? new Date(data[k] as string).toISOString() : null
-        touchedMetrics = true
-      }
+    // Finalização é a única data configurável: o início vem do horário agendado
+    // pelo cliente e o total vem da quantidade de leads da demanda.
+    if (data.external_finished_at !== undefined) {
+      patch['external_finished_at'] = data.external_finished_at
+        ? new Date(data.external_finished_at as string).toISOString()
+        : null
+      touchedMetrics = true
+    }
+    if (touchedMetrics) {
+      const autoStart =
+        (camp as any).scheduled_at ?? camp.external_started_at ?? new Date().toISOString()
+      patch['external_started_at'] = new Date(autoStart).toISOString()
+      const autoTotal = (camp as any).total_recipients
+      if (autoTotal != null) patch['external_total_count'] = autoTotal
     }
 
     if (touchedMetrics) {

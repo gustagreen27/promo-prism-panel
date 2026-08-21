@@ -157,22 +157,22 @@ function Page() {
                         Rejeitada em {fmt(d.approved_at)}. Motivo: {d.rejection_reason || decision?.message || "não informado"}
                       </div>
                     )}
-                    {(d.external_total_count || d.external_sent_count) && (
+                    {(d.external_total_count || d.external_sent_count || b === "queued" || b === "scheduled") && (
                       <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs">
                         <div className="mb-1 flex items-center justify-between">
                           <span className="font-medium">{d.external_finished_at ? "Resultado" : "Andamento"}</span>
                           <span className="text-muted-foreground">
-                            {d.external_total_count
-                              ? `${Math.min(100, Math.round((((d.external_sent_count ?? 0) + (d.external_failed_count ?? 0)) / d.external_total_count) * 100))}%`
+                            {(d.external_total_count ?? d.total_recipients)
+                              ? `${Math.min(100, Math.round((((d.external_sent_count ?? 0) + (d.external_failed_count ?? 0)) / (d.external_total_count ?? d.total_recipients ?? 1)) * 100))}%`
                               : ""}
                           </span>
                         </div>
-                        {!!d.external_total_count && (
+                        {!!(d.external_total_count ?? d.total_recipients) && (
                           <div className="mb-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                             <div
                               className="h-full rounded-full bg-primary transition-all"
                               style={{
-                                width: `${Math.min(100, Math.round((((d.external_sent_count ?? 0) + (d.external_failed_count ?? 0)) / d.external_total_count) * 100))}%`,
+                                width: `${Math.min(100, Math.round((((d.external_sent_count ?? 0) + (d.external_failed_count ?? 0)) / (d.external_total_count ?? d.total_recipients ?? 1)) * 100))}%`,
                               }}
                             />
                           </div>
