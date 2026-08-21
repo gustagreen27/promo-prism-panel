@@ -355,7 +355,7 @@ function Page() {
 
                   <div className="col-span-2 flex flex-wrap items-start justify-end gap-2 lg:col-span-1">
                     <Button asChild size="sm" variant="outline">
-                      <Link to="/painel/campanhas/$id" params={{ id: d.id }}>
+                      <Link to={b === "completed" ? "/painel/relatorios" : "/painel/campanhas/historico"}>
                         {b === "completed" ? (
                           <>
                             <BarChart3 className="mr-1 h-4 w-4" /> Ver relatório
@@ -366,6 +366,7 @@ function Page() {
                       </Link>
                     </Button>
                   </div>
+
                 </CardContent>
               </Card>
             );
