@@ -28,25 +28,45 @@ const APPROVAL_FIELDS =
 export const listApprovalQueue = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { status?: string } | undefined) =>
-    z.object({ status: z.enum(['pending', 'approved', 'rejected', 'all']).default('pending') }).parse(d ?? {}),
+    z
+      .object({
+        status: z
+          .enum(['pending', 'scheduled', 'queued', 'completed', 'rejected', 'all'])
+          .default('pending'),
+      })
+      .parse(d ?? {}),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any
     await assertStaff(supabase, userId)
-    let q = supabase
+    const { data: rows, error } = await supabase
       .from('wa_campaigns')
       .select(`${APPROVAL_FIELDS},workspaces(name)`)
       .order('created_at', { ascending: false })
-      .limit(200)
-    if (data.status !== 'all') q = q.eq('approval_status', data.status)
-    const { data: rows, error } = await q
+      .limit(400)
     if (error) throw error
 
-    const campaigns = (rows ?? []) as any[]
+    let campaigns = (rows ?? []) as any[]
 
-    // Execução externa: ao atingir a data/hora de finalização, marca como concluído.
+    // Execução externa: transições automáticas por horário.
     {
       const nowIso = new Date().toISOString()
+      // Agendada → Em fila quando chega o horário definido.
+      const starting = campaigns.filter(
+        (c) =>
+          c.execution_type === 'external' &&
+          c.external_status === 'scheduled_external' &&
+          c.scheduled_at &&
+          c.scheduled_at <= nowIso,
+      )
+      if (starting.length) {
+        await supabase
+          .from('wa_campaigns')
+          .update({ external_status: 'in_progress' })
+          .in('id', starting.map((c) => c.id))
+        for (const c of starting) c.external_status = 'in_progress'
+      }
+      // Em fila → Finalizado ao atingir a finalização programada.
       const due = campaigns.filter(
         (c) =>
           c.execution_type === 'external' &&
@@ -62,6 +82,7 @@ export const listApprovalQueue = createServerFn({ method: 'POST' })
           .in('id', due.map((c) => c.id))
         for (const c of due) c.external_status = 'completed'
       }
+
     }
     const listIds = [...new Set(campaigns.map((c) => c.list_id).filter(Boolean))]
     const tplIds = [...new Set(campaigns.map((c) => c.template_id).filter(Boolean))]
