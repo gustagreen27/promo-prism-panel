@@ -431,9 +431,10 @@ function ExternalControls({ item }: { item: Item }) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState(item.external_note ?? "");
   const [total, setTotal] = useState(item.external_total_count != null ? String(item.external_total_count) : "");
-  const [sent, setSent] = useState(item.external_sent_count != null ? String(item.external_sent_count) : "");
-  const [delivered, setDelivered] = useState(item.external_delivered_count != null ? String(item.external_delivered_count) : "");
-  const [failed, setFailed] = useState(item.external_failed_count != null ? String(item.external_failed_count) : "");
+  const [sent, setSent] = useState(pick(item, "external_target_sent_count", "external_sent_count"));
+  const [delivered, setDelivered] = useState(pick(item, "external_target_delivered_count", "external_delivered_count"));
+  const [failed, setFailed] = useState(pick(item, "external_target_failed_count", "external_failed_count"));
+
   const [start, setStart] = useState(item.external_started_at ? toLocalInput(item.external_started_at) : "");
   const [finish, setFinish] = useState(item.external_finished_at ? toLocalInput(item.external_finished_at) : "");
 
