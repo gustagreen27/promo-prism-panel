@@ -153,12 +153,20 @@ function Page() {
     <div className="space-y-8">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Créditos</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Mensagens</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Acompanhe seu saldo e histórico de transações
+            Acompanhe seu saldo e histórico de transações · {fmt(unit)} por mensagem
           </p>
         </div>
       </header>
+
+      {availableCredits < 1000 && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+          <span className="font-semibold">Saldo baixo:</span>{" "}
+          restam <span className="font-semibold tabular-nums">{nf(availableCredits)}</span> mensagens.
+          Recarregue para não interromper seus disparos.
+        </div>
+      )}
 
       <section className="space-y-3">
         <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
@@ -174,15 +182,15 @@ function Page() {
               <div className="mt-3 text-3xl font-bold tabular-nums text-emerald-600">
                 {nf(availableCredits)}
               </div>
-              <div className="text-sm text-muted-foreground">créditos disponíveis</div>
+              <div className="text-sm text-muted-foreground">mensagens disponíveis</div>
               <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1">
                   <ArrowUpRight className="h-3.5 w-3.5 text-emerald-600" />
-                  {nf(totals.bought)} comprados
+                  {nf(totals.bought)} compradas
                 </span>
                 <span className="inline-flex items-center gap-1">
                   <ArrowDownRight className="h-3.5 w-3.5 text-orange-500" />
-                  {nf(totals.used)} usados
+                  {nf(totals.used)} usadas
                 </span>
               </div>
             </CardContent>
@@ -190,7 +198,7 @@ function Page() {
         </div>
       </section>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-3">
         <Card className="rounded-xl">
           <CardContent className="p-5">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -211,7 +219,17 @@ function Page() {
             </div>
           </CardContent>
         </Card>
+        <Card className="rounded-xl">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Building2 className="h-4 w-4 text-muted-foreground" /> Custo por mensagem
+            </div>
+            <div className="mt-2 text-2xl font-bold tabular-nums">{fmt(unit)}</div>
+            <p className="mt-1 text-xs text-muted-foreground">1 mensagem = 1 crédito</p>
+          </CardContent>
+        </Card>
       </div>
+
 
       <Card className="rounded-xl">
         <CardContent className="p-5">
