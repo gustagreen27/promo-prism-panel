@@ -328,3 +328,132 @@ export const adminMarkDepositPaid = createServerFn({ method: 'POST' })
     if (error) throw error
     return { ok: true }
   })
+
+// ---------- Contas de clientes (admin) ----------
+
+export const adminListClientAccounts = createServerFn({ method: 'GET' })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context as any
+    await assertStaff(supabase, userId)
+
+    const [{ data: settings }, { data: workspaces, error }] = await Promise.all([
+      supabase.from('billing_settings').select('default_price_cents').eq('id', 1).maybeSingle(),
+      supabase
+        .from('workspaces')
+        .select('id, name, slug, plan, status, blocked_at, created_at, workspace_wallets(balance_cents, reserved_cents, custom_price_cents, custom_minimum_messages)')
+        .order('created_at', { ascending: false }),
+    ])
+    if (error) throw error
+
+    const defaultPrice = Number(settings?.default_price_cents ?? 15)
+    const ids = (workspaces ?? []).map((w: any) => w.id)
+
+    const membersByWs = new Map<string, any[]>()
+    if (ids.length) {
+      const { data: members } = await supabase
+        .from('workspace_members')
+        .select('workspace_id, role, user_id')
+        .in('workspace_id', ids)
+      const userIds = [...new Set((members ?? []).map((m: any) => m.user_id).filter(Boolean))]
+      const profileById = new Map<string, any>()
+      if (userIds.length) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .in('id', userIds)
+        for (const pr of profs ?? []) profileById.set(pr.id, pr)
+      }
+      for (const m of (members ?? []).map((m: any) => ({ ...m, profile: profileById.get(m.user_id) ?? null }))) {
+        const arr = membersByWs.get(m.workspace_id) ?? []
+        arr.push(m)
+        membersByWs.set(m.workspace_id, arr)
+      }
+    }
+
+    return (workspaces ?? []).map((w: any) => {
+      const wal = Array.isArray(w.workspace_wallets) ? (w.workspace_wallets[0] ?? {}) : (w.workspace_wallets ?? {})
+      const unit = Number(wal?.custom_price_cents ?? defaultPrice) || defaultPrice
+      const balance = Number(wal?.balance_cents ?? 0)
+      const reserved = Number(wal?.reserved_cents ?? 0)
+      const available = balance - reserved
+      const members = membersByWs.get(w.id) ?? []
+      const owner = members.find((m: any) => m.role === 'owner') ?? members[0] ?? null
+      return {
+        id: w.id,
+        name: w.name,
+        slug: w.slug,
+        plan: w.plan,
+        status: w.status,
+        blocked_at: w.blocked_at,
+        created_at: w.created_at,
+        unit_price_cents: unit,
+        balance_cents: balance,
+        reserved_cents: reserved,
+        available_cents: available,
+        credits_available: unit > 0 ? Math.floor(available / unit) : 0,
+        credits_reserved: unit > 0 ? Math.floor(reserved / unit) : 0,
+        members_count: members.length,
+        owner_name: owner?.profile?.full_name ?? null,
+        owner_email: owner?.profile?.email ?? null,
+      }
+    })
+  })
+
+export const adminAddCredits = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { workspace_id: string; mode: 'messages' | 'money'; quantity: number; description?: string; direction?: 'add' | 'remove' }) =>
+    z.object({
+      workspace_id: z.string().uuid(),
+      mode: z.enum(['messages', 'money']),
+      quantity: z.number().positive(),
+      description: z.string().max(255).optional(),
+      direction: z.enum(['add', 'remove']).default('add'),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any
+    await assertStaff(supabase, userId)
+
+    const [{ data: settings }, { data: wallet }] = await Promise.all([
+      supabase.from('billing_settings').select('default_price_cents').eq('id', 1).maybeSingle(),
+      supabase.from('workspace_wallets').select('custom_price_cents').eq('workspace_id', data.workspace_id).maybeSingle(),
+    ])
+    const unit = Number(wallet?.custom_price_cents ?? settings?.default_price_cents ?? 15) || 15
+
+    const cents = data.mode === 'messages'
+      ? Math.round(data.quantity) * unit
+      : Math.round(data.quantity * 100)
+    if (cents <= 0) throw new Error('Valor inválido')
+
+    const description = data.description?.trim()
+      || (data.mode === 'messages'
+        ? `${data.direction === 'remove' ? 'Remoção' : 'Adição'} de ${Math.round(data.quantity).toLocaleString('pt-BR')} créditos (admin)`
+        : `${data.direction === 'remove' ? 'Remoção' : 'Adição'} de saldo (admin)`)
+
+    if (data.direction === 'remove') {
+      const { error } = await supabase.rpc('wallet_debit', {
+        _ws: data.workspace_id,
+        _amount_cents: cents,
+        _type: 'adjustment',
+        _description: description,
+        _campaign_id: null,
+        _recipient_id: null,
+        _created_by: userId,
+        _allow_negative: true,
+      })
+      if (error) throw error
+    } else {
+      const { error } = await supabase.rpc('wallet_credit', {
+        _ws: data.workspace_id,
+        _amount_cents: cents,
+        _type: 'adjustment',
+        _description: description,
+        _campaign_id: null,
+        _deposit_id: null,
+        _created_by: userId,
+      })
+      if (error) throw error
+    }
+    return { ok: true, amount_cents: cents, unit_price_cents: unit }
+  })

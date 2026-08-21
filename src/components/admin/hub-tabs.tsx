@@ -74,6 +74,7 @@ export const FINANCEIRO_TABS: HubTab[] = [
 
 export const CLIENTES_TABS: HubTab[] = [
   { to: "/admin/clientes", label: "Clientes" },
+  { to: "/admin/contas", label: "Contas e créditos" },
   { to: "/admin/projetos", label: "Projetos" },
   { to: "/admin/contatos", label: "Contatos" },
   { to: "/admin/contatos/listas", label: "Listas" },

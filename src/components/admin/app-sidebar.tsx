@@ -132,6 +132,7 @@ const GROUPS: NavGroup[] = [
         ],
       },
       { title: "Clientes", to: "/admin/clientes", icon: Briefcase },
+      { title: "Contas e créditos", to: "/admin/contas", icon: Wallet },
       { title: "Projetos", to: "/admin/projetos", icon: FolderKanban },
       {
         title: "Configurações",
