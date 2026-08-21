@@ -5792,6 +5792,10 @@ export type Database = {
           variables: Json
         }[]
       }
+      wa_simulate_campaign_tick: {
+        Args: { _campaign_id: string }
+        Returns: number
+      }
       wa_simulate_rate_limiter: {
         Args: {
           _conc?: number
