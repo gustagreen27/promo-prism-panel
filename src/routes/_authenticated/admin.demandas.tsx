@@ -189,6 +189,12 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
   const [scheduledAt, setScheduledAt] = useState<string>("");
   const [execType, setExecType] = useState<"internal" | "external">("internal");
   const [note, setNote] = useState<string>("");
+  const [mTotal, setMTotal] = useState<string>("");
+  const [mSent, setMSent] = useState<string>("");
+  const [mDelivered, setMDelivered] = useState<string>("");
+  const [mFailed, setMFailed] = useState<string>("");
+  const [mStart, setMStart] = useState<string>("");
+  const [mFinish, setMFinish] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
 
@@ -199,6 +205,12 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
     setScheduledAt(item.scheduled_at ? new Date(item.scheduled_at).toISOString().slice(0, 16) : "");
     setExecType(item.execution_type === "external" ? "external" : "internal");
     setNote(item.external_note ?? "");
+    setMTotal(item.external_total_count != null ? String(item.external_total_count) : "");
+    setMSent(item.external_sent_count != null ? String(item.external_sent_count) : "");
+    setMDelivered(item.external_delivered_count != null ? String(item.external_delivered_count) : "");
+    setMFailed(item.external_failed_count != null ? String(item.external_failed_count) : "");
+    setMStart(item.external_started_at ? toLocalInput(item.external_started_at) : "");
+    setMFinish(item.external_finished_at ? toLocalInput(item.external_finished_at) : "");
   }
 
   const numbers = ((numbersData as any)?.numbers ?? []) as Array<any>;
