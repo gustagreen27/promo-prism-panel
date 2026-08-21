@@ -56,6 +56,13 @@ type Item = {
   execution_type?: string | null;
   external_status?: string | null;
   external_note?: string | null;
+  metrics_source?: string | null;
+  external_total_count?: number | null;
+  external_sent_count?: number | null;
+  external_delivered_count?: number | null;
+  external_failed_count?: number | null;
+  external_started_at?: string | null;
+  external_finished_at?: string | null;
   status: string;
 };
 
