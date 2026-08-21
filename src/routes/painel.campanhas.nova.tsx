@@ -197,7 +197,7 @@ function Page() {
     try {
       let finalListId = listId;
       if (mode !== "lista") {
-        const rows = mode === "manual" ? manualRows : csvRows;
+        const rows = mode === "manual" ? manualFiltered : csvFiltered;
         const created: any = await fnCreateList({
           data: { workspace_id: workspaceId, name: `${name.trim()} — contatos`, source: "novo-disparo", rows },
         });
