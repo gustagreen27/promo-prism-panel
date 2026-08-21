@@ -709,7 +709,9 @@ function Page() {
           ) : (
             <div className="divide-y">
               {items.map((r) => {
-                const badge = DEMAND_STATE[r.approval_status ?? ""] ?? { label: r.approval_status ?? "—", className: "" };
+                const stage = r.stage ?? demandStage(r as any);
+                const badge = { label: STAGE_LABEL[stage], className: STAGE_CLASS[stage] };
+
                 const brief = r.custom_fields ?? {};
                 return (
                   <div key={r.id} className="space-y-2 py-4 text-sm">
