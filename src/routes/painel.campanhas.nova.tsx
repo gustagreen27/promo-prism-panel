@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { listMyNumbers, listMyTemplates, createClientCampaign } from "@/lib/client-panel.functions";
 import { listWorkspaceLists, createWorkspaceListWithPhones } from "@/lib/wa-wizard-lists.functions";
 import { metaVarsIn } from "@/lib/wa-variables";
+import { DDD_TO_CITY, extractDddBR } from "@/lib/ddd-cities";
 import {
   ArrowLeft, Loader2, Upload, User, Phone, Video, MoreVertical, Mic, ChevronLeft,
   Signal, Wifi, BatteryMedium, CheckCheck, Tags, ExternalLink,
