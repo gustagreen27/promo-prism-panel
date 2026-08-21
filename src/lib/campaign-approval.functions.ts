@@ -234,7 +234,7 @@ export const decideCampaignApproval = createServerFn({ method: 'POST' })
 
     const { data: camp } = await supabase
       .from('wa_campaigns')
-      .select('id,name,workspace_id,status,approval_status,total_recipients,scheduled_at,custom_fields,connection_id,template_id,execution_type')
+      .select('id,name,workspace_id,status,approval_status,total_recipients,scheduled_at,custom_fields,connection_id,template_id,execution_type,reservation_id')
       .eq('id', data.campaign_id)
       .maybeSingle()
     if (!camp) throw new Error('Demanda não encontrada')
@@ -253,9 +253,10 @@ export const decideCampaignApproval = createServerFn({ method: 'POST' })
       // consumido por outra campanha depois que a demanda foi criada).
       const required = Number(camp.total_recipients ?? 0)
       const isTestCampaign = (camp as any)?.custom_fields?.send_type === 'test'
-      if (!isTestCampaign && required > 0 && camp.workspace_id) {
+      if (!isTestCampaign && required > 0 && camp.workspace_id && !(camp as any).reservation_id) {
         await assertSufficientCredits(supabase, camp.workspace_id, required)
       }
+
     }
 
     const nowIso = new Date().toISOString()
@@ -305,6 +306,19 @@ export const decideCampaignApproval = createServerFn({ method: 'POST' })
     }
 
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
+
+    // Rejeitou: devolve os créditos reservados no envio da campanha.
+    if (data.decision === 'rejected' && (camp as any).reservation_id) {
+      try {
+        await supabaseAdmin.rpc('wallet_release_reservation' as any, {
+          _reservation_id: (camp as any).reservation_id,
+        })
+        await supabaseAdmin.from('wa_campaigns').update({ reservation_id: null } as any).eq('id', camp.id)
+      } catch {
+        // não bloqueia a rejeição
+      }
+    }
+
 
     // Auditoria: quem decidiu, quando e a justificativa.
     await supabaseAdmin.from('campaign_audit_log').insert({
