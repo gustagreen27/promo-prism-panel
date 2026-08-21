@@ -408,6 +408,7 @@ function Page() {
 
       <ConfigureDialog item={configItem} onClose={() => setConfigItem(null)} />
       <AuditDialog campaignId={auditId} onClose={() => setAuditId(null)} />
+      <DemandPreviewDialog campaignId={previewId} onClose={() => setPreviewId(null)} />
 
       <Dialog open={!!decision} onOpenChange={(o) => !o && setDecision(null)}>
         <DialogContent>
