@@ -15,8 +15,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  getMyWallet, listMyTransactions, listMyDeposits, createDepositCheckout,
+  listMyTransactions, listMyDeposits, createDepositCheckout,
 } from "@/lib/billing.functions";
+import { usePanelWorkspace, useWallet } from "@/lib/use-panel-workspace";
 import {
   Building2, TrendingUp, TrendingDown, Loader2, ArrowUpRight, ArrowDownRight,
 } from "lucide-react";
@@ -65,26 +66,18 @@ const PERIODS = [
 const PAGE_SIZE = 8;
 
 function Page() {
-  const { workspace } = Route.useRouteContext() as any;
-  const wsId = workspace?.id;
+  // Fonte única de saldo: mesmo contexto/wallet usados pelo header do painel.
+  const { workspace, workspaceId: wsId } = usePanelWorkspace();
   const qc = useQueryClient();
 
-  const wallet = useServerFn(getMyWallet);
   const listTx = useServerFn(listMyTransactions);
   const listDep = useServerFn(listMyDeposits);
   const createDep = useServerFn(createDepositCheckout);
 
-  const { data: w } = useQuery({
-    queryKey: ["wallet", wsId],
-    queryFn: () => wallet({ data: { workspace_id: wsId } }),
-    enabled: !!wsId,
-    staleTime: 0,
-    refetchInterval: 30000,
-    refetchOnWindowFocus: true,
-  });
+  const { wallet: w, unitPriceCents: unit, availableCredits } = useWallet(wsId);
   const { data: tx = [] } = useQuery({
     queryKey: ["wallet-tx", wsId],
-    queryFn: () => listTx({ data: { workspace_id: wsId, limit: 200 } }),
+    queryFn: () => listTx({ data: { workspace_id: wsId as string, limit: 200 } }),
     enabled: !!wsId,
     staleTime: 0,
     refetchInterval: 30000,
@@ -92,12 +85,10 @@ function Page() {
   });
   const { data: deps = [] } = useQuery({
     queryKey: ["deposits", wsId],
-    queryFn: () => listDep({ data: { workspace_id: wsId } }),
+    queryFn: () => listDep({ data: { workspace_id: wsId as string } }),
     enabled: !!wsId,
   });
 
-  const unit = w?.unit_price_cents || 20;
-  const availableCredits = Math.floor((w?.available_cents ?? 0) / unit);
 
   const [period, setPeriod] = useState("all");
   const [page, setPage] = useState(0);
@@ -141,11 +132,12 @@ function Page() {
       if (!Number.isFinite(credits) || credits < minCreditsRequired) {
         throw new Error(`A compra mínima é de ${nf(minCreditsRequired)} créditos`);
       }
-      return createDep({ data: { workspace_id: wsId, amount_cents: credits * unit } });
+      return createDep({ data: { workspace_id: wsId as string, amount_cents: credits * unit } });
     },
 
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["deposits", wsId] });
+      qc.invalidateQueries({ queryKey: ["wallet"] });
       if (res.checkout_url) {
         window.location.href = res.checkout_url;
       } else {
@@ -276,10 +268,21 @@ function Page() {
                         <div className="truncate text-sm font-medium">
                           {TX_LABEL[t.type] ?? t.description ?? t.type}
                         </div>
+                        {t.description && (
+                          <div className="truncate text-xs text-muted-foreground">
+                            Motivo: {t.description}
+                          </div>
+                        )}
                         <div className="truncate text-xs text-muted-foreground">
-                          {(workspace?.name ?? "Conta")} · {new Date(t.created_at).toLocaleString("pt-BR", {
+                          {new Date(t.created_at).toLocaleString("pt-BR", {
                             day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
                           })}
+                          {t.balance_after_cents != null && (
+                            <>
+                              {" · "}Saldo: {nf(Math.floor(Number(t.balance_before_cents ?? 0) / unit))} →{" "}
+                              {nf(Math.floor(Number(t.balance_after_cents ?? 0) / unit))}
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
