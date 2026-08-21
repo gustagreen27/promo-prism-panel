@@ -31,9 +31,9 @@ import { Route as PainelNotificacoesRouteImport } from './routes/painel.notifica
 import { Route as PainelFinanceiroRouteImport } from './routes/painel.financeiro'
 import { Route as PainelContatosRouteImport } from './routes/painel.contatos'
 import { Route as PainelConfiguracoesRouteImport } from './routes/painel.configuracoes'
-import { Route as PainelCampanhasRouteImport } from './routes/painel.campanhas'
 import { Route as PainelAgendaRouteImport } from './routes/painel.agenda'
 import { Route as CampaignsIdRouteImport } from './routes/campaigns.$id'
+import { Route as PainelCampanhasIndexRouteImport } from './routes/painel.campanhas.index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as PainelCampanhasNovaRouteImport } from './routes/painel.campanhas.nova'
 import { Route as PainelCampanhasHistoricoRouteImport } from './routes/painel.campanhas.historico'
@@ -212,11 +212,6 @@ const PainelConfiguracoesRoute = PainelConfiguracoesRouteImport.update({
   path: '/configuracoes',
   getParentRoute: () => PainelRoute,
 } as any)
-const PainelCampanhasRoute = PainelCampanhasRouteImport.update({
-  id: '/campanhas',
-  path: '/campanhas',
-  getParentRoute: () => PainelRoute,
-} as any)
 const PainelAgendaRoute = PainelAgendaRouteImport.update({
   id: '/agenda',
   path: '/agenda',
@@ -227,26 +222,31 @@ const CampaignsIdRoute = CampaignsIdRouteImport.update({
   path: '/campaigns/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PainelCampanhasIndexRoute = PainelCampanhasIndexRouteImport.update({
+  id: '/campanhas/',
+  path: '/campanhas/',
+  getParentRoute: () => PainelRoute,
+} as any)
 const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const PainelCampanhasNovaRoute = PainelCampanhasNovaRouteImport.update({
-  id: '/nova',
-  path: '/nova',
-  getParentRoute: () => PainelCampanhasRoute,
+  id: '/campanhas/nova',
+  path: '/campanhas/nova',
+  getParentRoute: () => PainelRoute,
 } as any)
 const PainelCampanhasHistoricoRoute =
   PainelCampanhasHistoricoRouteImport.update({
-    id: '/historico',
-    path: '/historico',
-    getParentRoute: () => PainelCampanhasRoute,
+    id: '/campanhas/historico',
+    path: '/campanhas/historico',
+    getParentRoute: () => PainelRoute,
   } as any)
 const PainelCampanhasAvancadoRoute = PainelCampanhasAvancadoRouteImport.update({
-  id: '/avancado',
-  path: '/avancado',
-  getParentRoute: () => PainelCampanhasRoute,
+  id: '/campanhas/avancado',
+  path: '/campanhas/avancado',
+  getParentRoute: () => PainelRoute,
 } as any)
 const AuthenticatedAdminWhatsappRoute =
   AuthenticatedAdminWhatsappRouteImport.update({
@@ -645,7 +645,6 @@ export interface FileRoutesByFullPath {
   '/site': typeof SiteRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/painel/agenda': typeof PainelAgendaRoute
-  '/painel/campanhas': typeof PainelCampanhasRouteWithChildren
   '/painel/configuracoes': typeof PainelConfiguracoesRoute
   '/painel/contatos': typeof PainelContatosRoute
   '/painel/financeiro': typeof PainelFinanceiroRoute
@@ -678,6 +677,7 @@ export interface FileRoutesByFullPath {
   '/painel/campanhas/historico': typeof PainelCampanhasHistoricoRoute
   '/painel/campanhas/nova': typeof PainelCampanhasNovaRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/painel/campanhas/': typeof PainelCampanhasIndexRoute
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
   '/admin/contatos/auditoria': typeof AuthenticatedAdminContatosAuditoriaRoute
   '/admin/contatos/listas': typeof AuthenticatedAdminContatosListasRoute
@@ -738,7 +738,6 @@ export interface FileRoutesByTo {
   '/site': typeof SiteRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/painel/agenda': typeof PainelAgendaRoute
-  '/painel/campanhas': typeof PainelCampanhasRouteWithChildren
   '/painel/configuracoes': typeof PainelConfiguracoesRoute
   '/painel/contatos': typeof PainelContatosRoute
   '/painel/financeiro': typeof PainelFinanceiroRoute
@@ -770,6 +769,7 @@ export interface FileRoutesByTo {
   '/painel/campanhas/historico': typeof PainelCampanhasHistoricoRoute
   '/painel/campanhas/nova': typeof PainelCampanhasNovaRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
+  '/painel/campanhas': typeof PainelCampanhasIndexRoute
   '/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
   '/admin/contatos/auditoria': typeof AuthenticatedAdminContatosAuditoriaRoute
   '/admin/contatos/listas': typeof AuthenticatedAdminContatosListasRoute
@@ -833,7 +833,6 @@ export interface FileRoutesById {
   '/site': typeof SiteRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/painel/agenda': typeof PainelAgendaRoute
-  '/painel/campanhas': typeof PainelCampanhasRouteWithChildren
   '/painel/configuracoes': typeof PainelConfiguracoesRoute
   '/painel/contatos': typeof PainelContatosRoute
   '/painel/financeiro': typeof PainelFinanceiroRoute
@@ -866,6 +865,7 @@ export interface FileRoutesById {
   '/painel/campanhas/historico': typeof PainelCampanhasHistoricoRoute
   '/painel/campanhas/nova': typeof PainelCampanhasNovaRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/painel/campanhas/': typeof PainelCampanhasIndexRoute
   '/_authenticated/admin/campaigns/$id': typeof AuthenticatedAdminCampaignsIdRouteWithChildren
   '/_authenticated/admin/contatos/auditoria': typeof AuthenticatedAdminContatosAuditoriaRoute
   '/_authenticated/admin/contatos/listas': typeof AuthenticatedAdminContatosListasRoute
@@ -929,7 +929,6 @@ export interface FileRouteTypes {
     | '/site'
     | '/campaigns/$id'
     | '/painel/agenda'
-    | '/painel/campanhas'
     | '/painel/configuracoes'
     | '/painel/contatos'
     | '/painel/financeiro'
@@ -962,6 +961,7 @@ export interface FileRouteTypes {
     | '/painel/campanhas/historico'
     | '/painel/campanhas/nova'
     | '/admin/'
+    | '/painel/campanhas/'
     | '/admin/campaigns/$id'
     | '/admin/contatos/auditoria'
     | '/admin/contatos/listas'
@@ -1022,7 +1022,6 @@ export interface FileRouteTypes {
     | '/site'
     | '/campaigns/$id'
     | '/painel/agenda'
-    | '/painel/campanhas'
     | '/painel/configuracoes'
     | '/painel/contatos'
     | '/painel/financeiro'
@@ -1054,6 +1053,7 @@ export interface FileRouteTypes {
     | '/painel/campanhas/historico'
     | '/painel/campanhas/nova'
     | '/admin'
+    | '/painel/campanhas'
     | '/admin/campaigns/$id'
     | '/admin/contatos/auditoria'
     | '/admin/contatos/listas'
@@ -1116,7 +1116,6 @@ export interface FileRouteTypes {
     | '/site'
     | '/campaigns/$id'
     | '/painel/agenda'
-    | '/painel/campanhas'
     | '/painel/configuracoes'
     | '/painel/contatos'
     | '/painel/financeiro'
@@ -1149,6 +1148,7 @@ export interface FileRouteTypes {
     | '/painel/campanhas/historico'
     | '/painel/campanhas/nova'
     | '/_authenticated/admin/'
+    | '/painel/campanhas/'
     | '/_authenticated/admin/campaigns/$id'
     | '/_authenticated/admin/contatos/auditoria'
     | '/_authenticated/admin/contatos/listas'
@@ -1382,13 +1382,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PainelConfiguracoesRouteImport
       parentRoute: typeof PainelRoute
     }
-    '/painel/campanhas': {
-      id: '/painel/campanhas'
-      path: '/campanhas'
-      fullPath: '/painel/campanhas'
-      preLoaderRoute: typeof PainelCampanhasRouteImport
-      parentRoute: typeof PainelRoute
-    }
     '/painel/agenda': {
       id: '/painel/agenda'
       path: '/agenda'
@@ -1403,6 +1396,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CampaignsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/painel/campanhas/': {
+      id: '/painel/campanhas/'
+      path: '/campanhas'
+      fullPath: '/painel/campanhas/'
+      preLoaderRoute: typeof PainelCampanhasIndexRouteImport
+      parentRoute: typeof PainelRoute
+    }
     '/_authenticated/admin/': {
       id: '/_authenticated/admin/'
       path: '/admin'
@@ -1412,24 +1412,24 @@ declare module '@tanstack/react-router' {
     }
     '/painel/campanhas/nova': {
       id: '/painel/campanhas/nova'
-      path: '/nova'
+      path: '/campanhas/nova'
       fullPath: '/painel/campanhas/nova'
       preLoaderRoute: typeof PainelCampanhasNovaRouteImport
-      parentRoute: typeof PainelCampanhasRoute
+      parentRoute: typeof PainelRoute
     }
     '/painel/campanhas/historico': {
       id: '/painel/campanhas/historico'
-      path: '/historico'
+      path: '/campanhas/historico'
       fullPath: '/painel/campanhas/historico'
       preLoaderRoute: typeof PainelCampanhasHistoricoRouteImport
-      parentRoute: typeof PainelCampanhasRoute
+      parentRoute: typeof PainelRoute
     }
     '/painel/campanhas/avancado': {
       id: '/painel/campanhas/avancado'
-      path: '/avancado'
+      path: '/campanhas/avancado'
       fullPath: '/painel/campanhas/avancado'
       preLoaderRoute: typeof PainelCampanhasAvancadoRouteImport
-      parentRoute: typeof PainelCampanhasRoute
+      parentRoute: typeof PainelRoute
     }
     '/_authenticated/admin/whatsapp': {
       id: '/_authenticated/admin/whatsapp'
@@ -2056,25 +2056,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
-interface PainelCampanhasRouteChildren {
-  PainelCampanhasAvancadoRoute: typeof PainelCampanhasAvancadoRoute
-  PainelCampanhasHistoricoRoute: typeof PainelCampanhasHistoricoRoute
-  PainelCampanhasNovaRoute: typeof PainelCampanhasNovaRoute
-}
-
-const PainelCampanhasRouteChildren: PainelCampanhasRouteChildren = {
-  PainelCampanhasAvancadoRoute: PainelCampanhasAvancadoRoute,
-  PainelCampanhasHistoricoRoute: PainelCampanhasHistoricoRoute,
-  PainelCampanhasNovaRoute: PainelCampanhasNovaRoute,
-}
-
-const PainelCampanhasRouteWithChildren = PainelCampanhasRoute._addFileChildren(
-  PainelCampanhasRouteChildren,
-)
-
 interface PainelRouteChildren {
   PainelAgendaRoute: typeof PainelAgendaRoute
-  PainelCampanhasRoute: typeof PainelCampanhasRouteWithChildren
   PainelConfiguracoesRoute: typeof PainelConfiguracoesRoute
   PainelContatosRoute: typeof PainelContatosRoute
   PainelFinanceiroRoute: typeof PainelFinanceiroRoute
@@ -2083,11 +2066,14 @@ interface PainelRouteChildren {
   PainelTemplatesRoute: typeof PainelTemplatesRoute
   PainelWhatsappRoute: typeof PainelWhatsappRoute
   PainelIndexRoute: typeof PainelIndexRoute
+  PainelCampanhasAvancadoRoute: typeof PainelCampanhasAvancadoRoute
+  PainelCampanhasHistoricoRoute: typeof PainelCampanhasHistoricoRoute
+  PainelCampanhasNovaRoute: typeof PainelCampanhasNovaRoute
+  PainelCampanhasIndexRoute: typeof PainelCampanhasIndexRoute
 }
 
 const PainelRouteChildren: PainelRouteChildren = {
   PainelAgendaRoute: PainelAgendaRoute,
-  PainelCampanhasRoute: PainelCampanhasRouteWithChildren,
   PainelConfiguracoesRoute: PainelConfiguracoesRoute,
   PainelContatosRoute: PainelContatosRoute,
   PainelFinanceiroRoute: PainelFinanceiroRoute,
@@ -2096,6 +2082,10 @@ const PainelRouteChildren: PainelRouteChildren = {
   PainelTemplatesRoute: PainelTemplatesRoute,
   PainelWhatsappRoute: PainelWhatsappRoute,
   PainelIndexRoute: PainelIndexRoute,
+  PainelCampanhasAvancadoRoute: PainelCampanhasAvancadoRoute,
+  PainelCampanhasHistoricoRoute: PainelCampanhasHistoricoRoute,
+  PainelCampanhasNovaRoute: PainelCampanhasNovaRoute,
+  PainelCampanhasIndexRoute: PainelCampanhasIndexRoute,
 }
 
 const PainelRouteWithChildren =

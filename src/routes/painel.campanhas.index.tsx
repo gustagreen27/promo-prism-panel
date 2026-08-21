@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, History, Send } from "lucide-react";
 
-export const Route = createFileRoute("/painel/campanhas")({
+export const Route = createFileRoute("/painel/campanhas/")({
   head: () => ({ meta: [{ title: "Meus Disparos — Painel" }] }),
   component: Page,
 });
