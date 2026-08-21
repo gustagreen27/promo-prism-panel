@@ -255,6 +255,8 @@ export const decideCampaignApproval = createServerFn({ method: 'POST' })
 
     const nowIso = new Date().toISOString()
     const scheduledFuture = camp.scheduled_at ? new Date(camp.scheduled_at).getTime() > Date.now() : false
+    // Aprovar não é um status: escolhe explicitamente Agendada ou Em fila.
+    const goScheduled = data.target ? data.target === 'scheduled' : scheduledFuture
     const patch =
       data.decision === 'approved'
         ? isExternal
@@ -265,16 +267,19 @@ export const decideCampaignApproval = createServerFn({ method: 'POST' })
               approved_by: userId,
               approved_at: nowIso,
               rejection_reason: null,
-              external_status: 'approved_external',
+              external_status: goScheduled ? 'scheduled_external' : 'in_progress',
+              external_started_at: goScheduled ? null : nowIso,
+              metrics_source: 'manual',
             }
           : {
-            status: scheduledFuture ? 'scheduled' : 'queued',
+            status: goScheduled ? 'scheduled' : 'queued',
             approval_status: 'approved',
             approved_by: userId,
             approved_at: nowIso,
             rejection_reason: null,
           }
         : {
+
             status: 'rejected',
             approval_status: 'rejected',
             approved_by: userId,
