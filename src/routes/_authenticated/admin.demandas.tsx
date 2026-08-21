@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -273,6 +273,7 @@ function Page() {
   const [configItem, setConfigItem] = useState<Item | null>(null);
   const [auditId, setAuditId] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const navigate = useNavigate();
   const [decision, setDecision] = useState<{ item: Item; kind: "approved" | "rejected" } | null>(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
