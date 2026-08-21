@@ -72,10 +72,15 @@ function Page() {
       // em execução e finalizadas. Rascunhos, rejeitadas e canceladas ficam fora.
       return ((data as CampRow[]) || []).filter((r) => {
         const raw = (r.status ?? "").toLowerCase();
-        if (raw === "draft" || raw === "cancelled" || raw === "canceled" || raw === "rejected") return false;
+        const approved = r.approval_status === "approved" || r.execution_type === "external";
+        // Rascunho só é descartado quando a demanda não foi aprovada: execuções
+        // externas continuam com status "draft" no motor mesmo já rodando.
+        if (raw === "cancelled" || raw === "canceled" || raw === "rejected") return false;
+        if (raw === "draft" && !approved) return false;
         const stage = demandStage(r);
         return stage === "scheduled" || stage === "queued" || stage === "completed";
       });
+
     },
   });
 
