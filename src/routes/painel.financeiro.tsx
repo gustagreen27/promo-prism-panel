@@ -79,11 +79,17 @@ function Page() {
     queryKey: ["wallet", wsId],
     queryFn: () => wallet({ data: { workspace_id: wsId } }),
     enabled: !!wsId,
+    staleTime: 0,
+    refetchInterval: 30000,
+    refetchOnWindowFocus: true,
   });
   const { data: tx = [] } = useQuery({
     queryKey: ["wallet-tx", wsId],
     queryFn: () => listTx({ data: { workspace_id: wsId, limit: 200 } }),
     enabled: !!wsId,
+    staleTime: 0,
+    refetchInterval: 30000,
+    refetchOnWindowFocus: true,
   });
   const { data: deps = [] } = useQuery({
     queryKey: ["deposits", wsId],
