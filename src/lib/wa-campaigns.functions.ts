@@ -31,6 +31,9 @@ export const listWaCampaigns = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("wa_campaigns")
       .select("*, client:clients(id,name), project:projects(id,name), template:whatsapp_templates(id,name,language), connection:whatsapp_connections(id,name,display_phone)")
+      // Demandas de clientes só entram em /admin/disparos depois de aprovadas.
+      // Enquanto estiverem "pending", vivem exclusivamente em /admin/demandas.
+      .or("approval_status.is.null,approval_status.neq.pending")
       .order("created_at", { ascending: false });
     if (error) throw error;
     const rows = (data ?? []) as any[];

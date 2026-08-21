@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import { Link, useNavigate, useRouterState, useRouteContext } from "@tanstack/react-router";
 import {
+  ClipboardCheck,
   LayoutDashboard,
   Megaphone,
   CalendarDays,
@@ -67,6 +68,7 @@ const GROUPS: NavGroup[] = [
     items: [
       { title: "Visão geral", to: "/admin", icon: LayoutDashboard },
       { title: "Disparos", to: "/admin/disparos", icon: Megaphone },
+      { title: "Demandas de disparo", to: "/admin/demandas", icon: ClipboardCheck },
       { title: "Agenda", to: "/admin/agenda", icon: CalendarDays },
     ],
   },

@@ -52,14 +52,101 @@ export const listApprovalQueue = createServerFn({ method: 'POST' })
     const listName = new Map((lists ?? []).map((l: any) => [l.id, l.name]))
     const tplName = new Map((tpls ?? []).map((t: any) => [t.id, t.name]))
 
-    return {
-      items: campaigns.map((c) => ({
-        ...c,
-        workspace_name: c.workspaces?.name ?? null,
-        list_name: c.list_id ? (listName.get(c.list_id) ?? null) : null,
-        template_name: c.template_id ? (tplName.get(c.template_id) ?? null) : null,
-      })),
+    // Conexões (número remetente definido pelo admin)
+    const connIds = [...new Set(campaigns.map((c) => c.connection_id).filter(Boolean))]
+    const { data: conns } = connIds.length
+      ? await supabase
+          .from('whatsapp_connections')
+          .select('id,display_name,nome_interno,name,display_phone,phone,waba_id')
+          .in('id', connIds)
+      : { data: [] as any[] }
+    const connById = new Map<string, any>((conns ?? []).map((c: any) => [c.id, c] as [string, any]))
+
+    // Quantidade de testes enviados por demanda
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
+    const testCount = new Map<string, number>()
+    if (campaigns.length) {
+      const { data: tests } = await supabaseAdmin
+        .from('wa_test_sends')
+        .select('campaign_id')
+        .in('campaign_id', campaigns.map((c) => c.id))
+      for (const t of (tests ?? []) as any[]) {
+        if (!t.campaign_id) continue
+        testCount.set(t.campaign_id, (testCount.get(t.campaign_id) ?? 0) + 1)
+      }
     }
+
+    return {
+      items: campaigns.map((c) => {
+        const conn: any = c.connection_id ? connById.get(c.connection_id) : null
+        return {
+          ...c,
+          workspace_name: c.workspaces?.name ?? null,
+          list_name: c.list_id ? (listName.get(c.list_id) ?? null) : null,
+          template_name: c.template_id ? (tplName.get(c.template_id) ?? null) : null,
+          connection_name: conn ? (conn.display_name ?? conn.nome_interno ?? conn.name ?? conn.display_phone ?? null) : null,
+          connection_phone: conn?.display_phone ?? conn?.phone ?? null,
+          connection_waba_id: conn?.waba_id ?? null,
+          test_sends_count: testCount.get(c.id) ?? 0,
+        }
+      }),
+    }
+  })
+
+// ---- Configurar infraestrutura da demanda (admin) ----
+export const configureCampaignDemand = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: any) =>
+    z
+      .object({
+        campaign_id: z.string().uuid(),
+        connection_id: z.string().uuid().nullish(),
+        template_id: z.string().uuid().nullish(),
+        scheduled_at: z.string().nullish(),
+        name: z.string().trim().min(1).max(200).optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any
+    await assertStaff(supabase, userId)
+
+    const { data: camp } = await supabase
+      .from('wa_campaigns')
+      .select('id,workspace_id,connection_id,template_id,scheduled_at,name,status')
+      .eq('id', data.campaign_id)
+      .maybeSingle()
+    if (!camp) throw new Error('Demanda não encontrada')
+
+    const patch: Record<string, any> = {}
+    if (data.connection_id !== undefined) patch['connection_id'] = data.connection_id ?? null
+    if (data.template_id !== undefined) patch['template_id'] = data.template_id ?? null
+    if (data.scheduled_at !== undefined) {
+      patch['scheduled_at'] = data.scheduled_at ?? null
+      if (data.scheduled_at && ['awaiting_approval', 'draft'].includes(camp.status)) patch['status'] = 'scheduled'
+    }
+    if (data.name) patch['name'] = data.name
+    if (!Object.keys(patch).length) return { ok: true }
+
+    const { error } = await supabase.from('wa_campaigns').update(patch).eq('id', camp.id)
+    if (error) throw error
+
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
+    await supabaseAdmin.from('campaign_audit_log').insert({
+      campaign_id: camp.id,
+      workspace_id: camp.workspace_id,
+      actor_id: userId,
+      action: 'demand.configured',
+      message: 'Infraestrutura definida pelo admin',
+      from_data: {
+        connection_id: camp.connection_id,
+        template_id: camp.template_id,
+        scheduled_at: camp.scheduled_at,
+      },
+      to_data: patch,
+    } as any)
+
+    return { ok: true }
   })
 
 // ---- Decidir (aprovar / rejeitar) ----
@@ -86,6 +173,15 @@ export const decideCampaignApproval = createServerFn({ method: 'POST' })
     if (!camp) throw new Error('Demanda não encontrada')
     if (data.decision === 'rejected' && (!data.reason || data.reason.length < 3)) {
       throw new Error('Informe a justificativa da rejeição')
+    }
+    if (data.decision === 'approved') {
+      const { data: infra } = await supabase
+        .from('wa_campaigns')
+        .select('connection_id,template_id')
+        .eq('id', data.campaign_id)
+        .maybeSingle()
+      if (!infra?.connection_id) throw new Error('Defina o número/conexão de envio antes de aprovar')
+      if (!infra?.template_id) throw new Error('Defina o template do WhatsApp antes de aprovar')
     }
 
     const nowIso = new Date().toISOString()

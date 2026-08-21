@@ -24,6 +24,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PainelIndexRouteImport } from './routes/painel.index'
 import { Route as RelatoriosSlugRouteImport } from './routes/relatorios.$slug'
+import { Route as PainelTestesRouteImport } from './routes/painel.testes'
 import { Route as PainelTemplatesRouteImport } from './routes/painel.templates'
 import { Route as PainelRelatoriosRouteImport } from './routes/painel.relatorios'
 import { Route as PainelNotificacoesRouteImport } from './routes/painel.notificacoes'
@@ -48,6 +49,7 @@ import { Route as AuthenticatedAdminFechamentoRouteImport } from './routes/_auth
 import { Route as AuthenticatedAdminFaturamentoRouteImport } from './routes/_authenticated/admin.faturamento'
 import { Route as AuthenticatedAdminEstoqueRouteImport } from './routes/_authenticated/admin.estoque'
 import { Route as AuthenticatedAdminDisparosRouteImport } from './routes/_authenticated/admin.disparos'
+import { Route as AuthenticatedAdminDemandasRouteImport } from './routes/_authenticated/admin.demandas'
 import { Route as AuthenticatedAdminCustosRouteImport } from './routes/_authenticated/admin.custos'
 import { Route as AuthenticatedAdminContasRouteImport } from './routes/_authenticated/admin.contas'
 import { Route as AuthenticatedAdminConfiguracoesRouteImport } from './routes/_authenticated/admin.configuracoes'
@@ -175,6 +177,11 @@ const RelatoriosSlugRoute = RelatoriosSlugRouteImport.update({
   id: '/relatorios/$slug',
   path: '/relatorios/$slug',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PainelTestesRoute = PainelTestesRouteImport.update({
+  id: '/testes',
+  path: '/testes',
+  getParentRoute: () => PainelRoute,
 } as any)
 const PainelTemplatesRoute = PainelTemplatesRouteImport.update({
   id: '/templates',
@@ -305,6 +312,12 @@ const AuthenticatedAdminDisparosRoute =
   AuthenticatedAdminDisparosRouteImport.update({
     id: '/admin/disparos',
     path: '/admin/disparos',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminDemandasRoute =
+  AuthenticatedAdminDemandasRouteImport.update({
+    id: '/admin/demandas',
+    path: '/admin/demandas',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAdminCustosRoute =
@@ -646,6 +659,7 @@ export interface FileRoutesByFullPath {
   '/painel/notificacoes': typeof PainelNotificacoesRoute
   '/painel/relatorios': typeof PainelRelatoriosRoute
   '/painel/templates': typeof PainelTemplatesRoute
+  '/painel/testes': typeof PainelTestesRoute
   '/relatorios/$slug': typeof RelatoriosSlugRoute
   '/painel/': typeof PainelIndexRoute
   '/admin/agenda': typeof AuthenticatedAdminAgendaRoute
@@ -656,6 +670,7 @@ export interface FileRoutesByFullPath {
   '/admin/configuracoes': typeof AuthenticatedAdminConfiguracoesRoute
   '/admin/contas': typeof AuthenticatedAdminContasRoute
   '/admin/custos': typeof AuthenticatedAdminCustosRoute
+  '/admin/demandas': typeof AuthenticatedAdminDemandasRoute
   '/admin/disparos': typeof AuthenticatedAdminDisparosRouteWithChildren
   '/admin/estoque': typeof AuthenticatedAdminEstoqueRoute
   '/admin/faturamento': typeof AuthenticatedAdminFaturamentoRoute
@@ -738,6 +753,7 @@ export interface FileRoutesByTo {
   '/painel/notificacoes': typeof PainelNotificacoesRoute
   '/painel/relatorios': typeof PainelRelatoriosRoute
   '/painel/templates': typeof PainelTemplatesRoute
+  '/painel/testes': typeof PainelTestesRoute
   '/relatorios/$slug': typeof RelatoriosSlugRoute
   '/painel': typeof PainelIndexRoute
   '/admin/agenda': typeof AuthenticatedAdminAgendaRoute
@@ -748,6 +764,7 @@ export interface FileRoutesByTo {
   '/admin/configuracoes': typeof AuthenticatedAdminConfiguracoesRoute
   '/admin/contas': typeof AuthenticatedAdminContasRoute
   '/admin/custos': typeof AuthenticatedAdminCustosRoute
+  '/admin/demandas': typeof AuthenticatedAdminDemandasRoute
   '/admin/estoque': typeof AuthenticatedAdminEstoqueRoute
   '/admin/faturamento': typeof AuthenticatedAdminFaturamentoRoute
   '/admin/fechamento': typeof AuthenticatedAdminFechamentoRoute
@@ -832,6 +849,7 @@ export interface FileRoutesById {
   '/painel/notificacoes': typeof PainelNotificacoesRoute
   '/painel/relatorios': typeof PainelRelatoriosRoute
   '/painel/templates': typeof PainelTemplatesRoute
+  '/painel/testes': typeof PainelTestesRoute
   '/relatorios/$slug': typeof RelatoriosSlugRoute
   '/painel/': typeof PainelIndexRoute
   '/_authenticated/admin/agenda': typeof AuthenticatedAdminAgendaRoute
@@ -842,6 +860,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/configuracoes': typeof AuthenticatedAdminConfiguracoesRoute
   '/_authenticated/admin/contas': typeof AuthenticatedAdminContasRoute
   '/_authenticated/admin/custos': typeof AuthenticatedAdminCustosRoute
+  '/_authenticated/admin/demandas': typeof AuthenticatedAdminDemandasRoute
   '/_authenticated/admin/disparos': typeof AuthenticatedAdminDisparosRouteWithChildren
   '/_authenticated/admin/estoque': typeof AuthenticatedAdminEstoqueRoute
   '/_authenticated/admin/faturamento': typeof AuthenticatedAdminFaturamentoRoute
@@ -927,6 +946,7 @@ export interface FileRouteTypes {
     | '/painel/notificacoes'
     | '/painel/relatorios'
     | '/painel/templates'
+    | '/painel/testes'
     | '/relatorios/$slug'
     | '/painel/'
     | '/admin/agenda'
@@ -937,6 +957,7 @@ export interface FileRouteTypes {
     | '/admin/configuracoes'
     | '/admin/contas'
     | '/admin/custos'
+    | '/admin/demandas'
     | '/admin/disparos'
     | '/admin/estoque'
     | '/admin/faturamento'
@@ -1019,6 +1040,7 @@ export interface FileRouteTypes {
     | '/painel/notificacoes'
     | '/painel/relatorios'
     | '/painel/templates'
+    | '/painel/testes'
     | '/relatorios/$slug'
     | '/painel'
     | '/admin/agenda'
@@ -1029,6 +1051,7 @@ export interface FileRouteTypes {
     | '/admin/configuracoes'
     | '/admin/contas'
     | '/admin/custos'
+    | '/admin/demandas'
     | '/admin/estoque'
     | '/admin/faturamento'
     | '/admin/fechamento'
@@ -1112,6 +1135,7 @@ export interface FileRouteTypes {
     | '/painel/notificacoes'
     | '/painel/relatorios'
     | '/painel/templates'
+    | '/painel/testes'
     | '/relatorios/$slug'
     | '/painel/'
     | '/_authenticated/admin/agenda'
@@ -1122,6 +1146,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/configuracoes'
     | '/_authenticated/admin/contas'
     | '/_authenticated/admin/custos'
+    | '/_authenticated/admin/demandas'
     | '/_authenticated/admin/disparos'
     | '/_authenticated/admin/estoque'
     | '/_authenticated/admin/faturamento'
@@ -1321,6 +1346,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RelatoriosSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/painel/testes': {
+      id: '/painel/testes'
+      path: '/testes'
+      fullPath: '/painel/testes'
+      preLoaderRoute: typeof PainelTestesRouteImport
+      parentRoute: typeof PainelRoute
+    }
     '/painel/templates': {
       id: '/painel/templates'
       path: '/templates'
@@ -1487,6 +1519,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/disparos'
       fullPath: '/admin/disparos'
       preLoaderRoute: typeof AuthenticatedAdminDisparosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/demandas': {
+      id: '/_authenticated/admin/demandas'
+      path: '/admin/demandas'
+      fullPath: '/admin/demandas'
+      preLoaderRoute: typeof AuthenticatedAdminDemandasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/admin/custos': {
@@ -1970,6 +2009,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminConfiguracoesRoute: typeof AuthenticatedAdminConfiguracoesRoute
   AuthenticatedAdminContasRoute: typeof AuthenticatedAdminContasRoute
   AuthenticatedAdminCustosRoute: typeof AuthenticatedAdminCustosRoute
+  AuthenticatedAdminDemandasRoute: typeof AuthenticatedAdminDemandasRoute
   AuthenticatedAdminDisparosRoute: typeof AuthenticatedAdminDisparosRouteWithChildren
   AuthenticatedAdminEstoqueRoute: typeof AuthenticatedAdminEstoqueRoute
   AuthenticatedAdminFaturamentoRoute: typeof AuthenticatedAdminFaturamentoRoute
@@ -2004,6 +2044,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminConfiguracoesRoute: AuthenticatedAdminConfiguracoesRoute,
   AuthenticatedAdminContasRoute: AuthenticatedAdminContasRoute,
   AuthenticatedAdminCustosRoute: AuthenticatedAdminCustosRoute,
+  AuthenticatedAdminDemandasRoute: AuthenticatedAdminDemandasRoute,
   AuthenticatedAdminDisparosRoute: AuthenticatedAdminDisparosRouteWithChildren,
   AuthenticatedAdminEstoqueRoute: AuthenticatedAdminEstoqueRoute,
   AuthenticatedAdminFaturamentoRoute: AuthenticatedAdminFaturamentoRoute,
@@ -2046,6 +2087,7 @@ interface PainelRouteChildren {
   PainelNotificacoesRoute: typeof PainelNotificacoesRoute
   PainelRelatoriosRoute: typeof PainelRelatoriosRoute
   PainelTemplatesRoute: typeof PainelTemplatesRoute
+  PainelTestesRoute: typeof PainelTestesRoute
   PainelIndexRoute: typeof PainelIndexRoute
   PainelCampanhasHistoricoRoute: typeof PainelCampanhasHistoricoRoute
   PainelCampanhasNovaRoute: typeof PainelCampanhasNovaRoute
@@ -2061,6 +2103,7 @@ const PainelRouteChildren: PainelRouteChildren = {
   PainelNotificacoesRoute: PainelNotificacoesRoute,
   PainelRelatoriosRoute: PainelRelatoriosRoute,
   PainelTemplatesRoute: PainelTemplatesRoute,
+  PainelTestesRoute: PainelTestesRoute,
   PainelIndexRoute: PainelIndexRoute,
   PainelCampanhasHistoricoRoute: PainelCampanhasHistoricoRoute,
   PainelCampanhasNovaRoute: PainelCampanhasNovaRoute,
