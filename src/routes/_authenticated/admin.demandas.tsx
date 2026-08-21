@@ -23,7 +23,7 @@ import {
 import { adminListAllNumbers } from "@/lib/admin-dispatch.functions";
 import { listTemplates } from "@/lib/whatsapp-templates.functions";
 import { adminListTestConnections, adminSetConnectionTestFlag } from "@/lib/wa-tests.functions";
-import { History, Loader2, Settings2, FlaskConical, Eye, Gauge, CheckCircle2 } from "lucide-react";
+import { History, Loader2, Settings2, FlaskConical, Eye, Gauge, CheckCircle2, Clock, CalendarDays, PlayCircle, XCircle, Search, Filter } from "lucide-react";
 import { DemandPreviewDialog } from "@/components/admin/DemandPreviewDialog";
 import { demandStage, pendingCount, STAGE_CLASS, STAGE_LABEL, type DemandStage } from "@/lib/demand-stage";
 
@@ -635,6 +635,9 @@ function Page() {
   const [decision, setDecision] = useState<{ item: Item; kind: "approved" | "rejected" } | null>(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
+  const [search, setSearch] = useState("");
+  const [client, setClient] = useState("all");
+  const [day, setDay] = useState("");
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["approval-queue", tab],
@@ -686,18 +689,79 @@ function Page() {
     }
   }
 
+  const clients = useMemo(() => {
+    const set = new Set<string>();
+    for (const i of items) if (i.workspace_name) set.add(i.workspace_name);
+    return Array.from(set).sort();
+  }, [items]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter((i) => {
+      if (client !== "all" && (i.workspace_name ?? "") !== client) return false;
+      if (day) {
+        const ref = i.scheduled_at ?? i.created_at;
+        if (!ref || toLocalInput(ref).slice(0, 10) !== day) return false;
+      }
+      if (!q) return true;
+      return (
+        i.name.toLowerCase().includes(q) ||
+        (i.workspace_name ?? "").toLowerCase().includes(q) ||
+        (i.list_name ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [items, search, client, day]);
+
+  const kpis: Array<{ key: DemandStage; label: string; icon: any; tone: string }> = [
+    { key: "pending", label: "Aguardando", icon: Clock, tone: "text-amber-600 bg-amber-500/10" },
+    { key: "scheduled", label: "Agendadas", icon: CalendarDays, tone: "text-sky-600 bg-sky-500/10" },
+    { key: "queued", label: "Em fila", icon: PlayCircle, tone: "text-violet-600 bg-violet-500/10" },
+    { key: "completed", label: "Finalizadas", icon: CheckCircle2, tone: "text-emerald-600 bg-emerald-500/10" },
+    { key: "rejected", label: "Rejeitadas", icon: XCircle, tone: "text-rose-600 bg-rose-500/10" },
+  ];
+
+  const stageIcon: Record<DemandStage, any> = {
+    pending: Clock,
+    scheduled: CalendarDays,
+    queued: PlayCircle,
+    completed: CheckCircle2,
+    rejected: XCircle,
+  };
+
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+    <div className="space-y-5">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Demandas de disparo</h1>
+        <p className="text-sm text-muted-foreground">
+          Gerencie, configure e acompanhe as solicitações enviadas pelos clientes.
+        </p>
+      </div>
+
+      <Card className="overflow-hidden">
+        <div className="grid divide-y sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-5 lg:divide-x">
+          {kpis.map(({ key, label, icon: Icon, tone }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setTab(key)}
+              className={`flex items-center gap-3 p-4 text-left transition hover:bg-muted/40 ${tab === key ? "bg-muted/50" : ""}`}
+            >
+              <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${tone}`}>
+                <Icon className="h-5 w-5" />
+              </span>
+              <span>
+                <span className="block text-xl font-semibold leading-none">{counts[key] ?? 0}</span>
+                <span className="text-xs text-muted-foreground">{label}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </Card>
+
       <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <div>
-            <CardTitle>Demandas de disparo</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Solicitações dos clientes. Só entram em /admin/disparos após aprovação.
-            </p>
-          </div>
+        <CardHeader className="space-y-4">
           <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
-            <TabsList>
+            <TabsList className="flex-wrap">
               {(["pending", "scheduled", "queued", "completed", "rejected"] as DemandStage[]).map((s) => (
                 <TabsTrigger key={s} value={s}>
                   {STAGE_LABEL[s]}
@@ -708,86 +772,134 @@ function Page() {
             </TabsList>
           </Tabs>
 
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-[220px] flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar cliente ou campanha..."
+                className="pl-9"
+              />
+            </div>
+            <Select value={client} onValueChange={setClient}>
+              <SelectTrigger className="w-[200px]"><SelectValue placeholder="Filtrar por cliente" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os clientes</SelectItem>
+                {clients.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Input type="date" value={day} onChange={(e) => setDay(e.target.value)} className="w-[170px]" />
+            <Button variant="ghost" onClick={() => { setSearch(""); setClient("all"); setDay(""); }}>
+              <Filter className="mr-1 h-4 w-4" /> Limpar filtros
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Carregando…</p>
           ) : error ? (
             <ErrorCard error={error} onRetry={() => refetch()} />
-          ) : items.length === 0 ? (
+          ) : filtered.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhuma demanda nesta aba.</p>
           ) : (
-            <div className="divide-y">
-              {items.map((r) => {
+            <div className="space-y-3">
+              {filtered.map((r) => {
                 const stage = r.stage ?? demandStage(r as any);
                 const badge = { label: STAGE_LABEL[stage], className: STAGE_CLASS[stage] };
-
+                const Icon = stageIcon[stage] ?? Clock;
                 const brief = r.custom_fields ?? {};
                 return (
-                  <div key={r.id} className="space-y-2 py-4 text-sm">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium">{r.name}</span>
-                      <Badge variant="outline" className={badge.className}>{badge.label}</Badge>
-                      <Badge variant="secondary">{EXEC_STATE[r.status] ?? r.status}</Badge>
-                      {(r.test_sends_count ?? 0) > 0 && (
-                        <Badge variant="outline" className="border-sky-500/30 bg-sky-500/10 text-sky-600">
-                          {r.test_sends_count} teste(s)
-                        </Badge>
-                      )}
-                      {r.execution_type === "external" && (
-                        <Badge variant="outline" className="border-violet-500/30 bg-violet-500/10 text-violet-600">
-                          Execução externa
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
-                      <span>Cliente: {r.workspace_name ?? "—"}</span>
-                      <span>Contatos: {(r.total_recipients ?? 0).toLocaleString("pt-BR")}</span>
-                      <span>Criada em: {fmt(r.created_at)}</span>
-                      <span>Agendada: {fmt(r.scheduled_at)}</span>
-                      <span>Lista/arquivo: {r.list_name ?? brief.recipients_source ?? "—"}</span>
-                      <span>DDD: {brief.ddd_filter ? `+${brief.ddd_filter}` : "Qualquer"}</span>
-                      <span>Número de envio: {r.connection_name ? `${r.connection_name} (${r.connection_phone ?? "—"})` : "a definir"}</span>
-                      <span>Template: {r.template_name ?? "a definir"}</span>
-                    </div>
-                    {brief.message && (
-                      <div className="max-w-2xl whitespace-pre-wrap rounded-lg border bg-muted/30 p-3 text-xs">
-                        {brief.message}
-                        {brief.media_url && (
-                          <a href={brief.media_url} target="_blank" rel="noreferrer" className="mt-2 block underline">
-                            Ver mídia enviada
-                          </a>
+                  <div key={r.id} className="rounded-xl border p-4 text-sm transition hover:border-primary/40 hover:shadow-sm">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+                      <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${STAGE_CLASS[stage]}`}>
+                        <Icon className="h-5 w-5" />
+                      </span>
+
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-base font-semibold">{r.name}</span>
+                          <Badge variant="outline" className={badge.className}>{badge.label}</Badge>
+                          <Badge variant="secondary">{EXEC_STATE[r.status] ?? r.status}</Badge>
+                          {(r.test_sends_count ?? 0) > 0 && (
+                            <Badge variant="outline" className="border-sky-500/30 bg-sky-500/10 text-sky-600">
+                              {r.test_sends_count} teste(s)
+                            </Badge>
+                          )}
+                          {r.execution_type === "external" && (
+                            <Badge variant="outline" className="border-violet-500/30 bg-violet-500/10 text-violet-600">
+                              Execução externa
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Cliente: {r.workspace_name ?? "—"} · Criada em {fmt(r.created_at)}
+                          {r.list_name || brief.recipients_source ? ` · Lista: ${r.list_name ?? brief.recipients_source}` : ""}
+                        </div>
+                        <div className="flex flex-wrap gap-2 text-xs">
+                          <span className="rounded-full bg-muted px-2.5 py-1 font-medium">
+                            {(r.total_recipients ?? 0).toLocaleString("pt-BR")} contatos válidos
+                          </span>
+                          <span className="rounded-full bg-muted px-2.5 py-1 font-medium">
+                            DDD: {brief.ddd_filter ? `+${brief.ddd_filter}` : "Qualquer"}
+                          </span>
+                          <span className="rounded-full bg-muted px-2.5 py-1 font-medium">
+                            Número: {r.connection_name ? `${r.connection_name} (${r.connection_phone ?? "—"})` : "a definir"}
+                          </span>
+                          <span className="rounded-full bg-muted px-2.5 py-1 font-medium">
+                            Template: {r.template_name ?? "a definir"}
+                          </span>
+                          {r.scheduled_at && (
+                            <span className="rounded-full bg-muted px-2.5 py-1 font-medium">
+                              Agendada para {fmt(r.scheduled_at)}
+                            </span>
+                          )}
+                        </div>
+                        {brief.message && (
+                          <div className="max-w-2xl whitespace-pre-wrap rounded-lg border bg-muted/30 p-3 text-xs">
+                            {brief.message}
+                            {brief.media_url && (
+                              <a href={brief.media_url} target="_blank" rel="noreferrer" className="mt-2 block underline">
+                                Ver mídia enviada
+                              </a>
+                            )}
+                            {brief.test_numbers && (
+                              <div className="mt-2">Números de teste do cliente: {String(brief.test_numbers)}</div>
+                            )}
+                          </div>
                         )}
-                        {brief.test_numbers && (
-                          <div className="mt-2">Números de teste do cliente: {String(brief.test_numbers)}</div>
+                        {r.approval_status === "rejected" && r.rejection_reason && (
+                          <div className="text-xs text-destructive">Motivo da recusa: {r.rejection_reason}</div>
+                        )}
+                        {r.execution_type === "external" && <ExternalControls item={r} />}
+                      </div>
+
+                      <div className="flex w-full shrink-0 flex-col gap-2 lg:w-52">
+                        <Button size="sm" variant="outline" onClick={() => setPreviewId(r.id)}>
+                          <Eye className="mr-1 h-4 w-4" /> Ver preview
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setAuditId(r.id)}>
+                          <History className="mr-1 h-4 w-4" /> Histórico
+                        </Button>
+                        <Button size="sm" variant="outline" className="border-primary/40 text-primary hover:bg-primary/10" onClick={() => setConfigItem(r)}>
+                          <Settings2 className="mr-1 h-4 w-4" /> Configurar
+                        </Button>
+                        {stage === "pending" && (
+                          <>
+                            <Button size="sm" onClick={() => { setReason(""); setDecision({ item: r, kind: "approved" }); }}>
+                              Aprovar
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                              onClick={() => { setReason(""); setDecision({ item: r, kind: "rejected" }); }}
+                            >
+                              <XCircle className="mr-1 h-4 w-4" /> Rejeitar
+                            </Button>
+                          </>
                         )}
                       </div>
-                    )}
-                    {r.approval_status === "rejected" && r.rejection_reason && (
-                      <div className="text-xs text-destructive">Motivo da recusa: {r.rejection_reason}</div>
-                    )}
-                    {r.execution_type === "external" && <ExternalControls item={r} />}
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      <Button size="sm" variant="secondary" onClick={() => setPreviewId(r.id)}>
-                        <Eye className="mr-1 h-4 w-4" /> Ver preview
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => setAuditId(r.id)}>
-                        <History className="mr-1 h-4 w-4" /> Histórico
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => setConfigItem(r)}>
-                        <Settings2 className="mr-1 h-4 w-4" /> Configurar
-                      </Button>
-                      {stage === "pending" && (
-                        <Button size="sm" variant="outline" onClick={() => { setReason(""); setDecision({ item: r, kind: "rejected" }); }}>
-                          Recusar
-                        </Button>
-                      )}
-                      {stage === "pending" && (
-                        <Button size="sm" onClick={() => { setReason(""); setDecision({ item: r, kind: "approved" }); }}>
-                          Aprovar
-                        </Button>
-                      )}
-
                     </div>
                   </div>
                 );
@@ -798,6 +910,7 @@ function Page() {
       </Card>
 
       <TestNumbersCard />
+
 
       <ConfigureDialog item={configItem} onClose={() => setConfigItem(null)} />
       <AuditDialog campaignId={auditId} onClose={() => setAuditId(null)} />
