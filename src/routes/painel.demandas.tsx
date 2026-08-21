@@ -315,7 +315,16 @@ function Page() {
             const showProgress =
               !!d.external_total_count || !!d.external_sent_count || b === "queued" || b === "scheduled";
             return (
-              <Card key={d.id}>
+              <Card
+                key={d.id}
+                role="link"
+                tabIndex={0}
+                onClick={() => navigate({ to: "/painel/demandas/$id", params: { id: d.id } })}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") navigate({ to: "/painel/demandas/$id", params: { id: d.id } });
+                }}
+                className="cursor-pointer transition-shadow hover:shadow-md"
+              >
                 <CardContent className="grid grid-cols-[auto_minmax(0,1fr)] gap-4 p-4 lg:grid-cols-[auto_minmax(0,1fr)_auto]">
                   <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${BUCKETS[b].tile}`}>
                     <Icon className="h-6 w-6" />
@@ -406,7 +415,10 @@ function Page() {
                     )}
                   </div>
 
-                  <div className="col-span-2 flex flex-wrap items-start justify-end gap-2 lg:col-span-1">
+                  <div
+                    className="col-span-2 flex flex-wrap items-start justify-end gap-2 lg:col-span-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Button asChild size="sm" variant="outline">
                       <Link to={b === "completed" ? "/painel/relatorios" : "/painel/campanhas/historico"}>
                         {b === "completed" ? (
