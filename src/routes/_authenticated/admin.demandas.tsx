@@ -68,6 +68,13 @@ type Item = {
 
 const fmt = (v: string | null | undefined) => (v ? new Date(v).toLocaleString("pt-BR") : "—");
 
+/** ISO → valor de <input type="datetime-local"> no fuso local. */
+function toLocalInput(iso: string) {
+  const d = new Date(iso);
+  const off = d.getTimezoneOffset() * 60_000;
+  return new Date(d.getTime() - off).toISOString().slice(0, 16);
+}
+
 const DEMAND_STATE: Record<string, { label: string; className: string }> = {
   pending: { label: "Aguardando revisão", className: "bg-amber-500/15 text-amber-600 border-amber-500/30" },
   approved: { label: "Aprovado", className: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30" },
