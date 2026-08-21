@@ -271,7 +271,7 @@ function Page() {
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Building2 className="h-4 w-4 text-muted-foreground" /> Saldo atual
             </div>
-            <div className="mt-2 text-2xl font-bold tabular-nums">{nf(availableCredits)}</div>
+            <div className="mt-2 text-2xl font-bold tabular-nums" data-testid="financeiro-credits">{nf(availableCredits)}</div>
             <p className="mt-1 text-xs text-muted-foreground">1 crédito = 1 mensagem</p>
           </CardContent>
         </Card>

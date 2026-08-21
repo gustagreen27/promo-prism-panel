@@ -285,7 +285,7 @@ function WalletBadge({ workspaceId }: { workspaceId?: string }) {
       className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition hover:bg-muted ${low ? "border-destructive/60 text-destructive" : ""}`}
     >
       <Wallet className="h-3.5 w-3.5" />
-      {messages.toLocaleString("pt-BR")} msgs
+      <span data-testid="header-credits">{messages.toLocaleString("pt-BR")}</span> msgs
     </Link>
   );
 }
