@@ -56,10 +56,24 @@ type Item = {
   execution_type?: string | null;
   external_status?: string | null;
   external_note?: string | null;
+  metrics_source?: string | null;
+  external_total_count?: number | null;
+  external_sent_count?: number | null;
+  external_delivered_count?: number | null;
+  external_failed_count?: number | null;
+  external_started_at?: string | null;
+  external_finished_at?: string | null;
   status: string;
 };
 
 const fmt = (v: string | null | undefined) => (v ? new Date(v).toLocaleString("pt-BR") : "—");
+
+/** ISO → valor de <input type="datetime-local"> no fuso local. */
+function toLocalInput(iso: string) {
+  const d = new Date(iso);
+  const off = d.getTimezoneOffset() * 60_000;
+  return new Date(d.getTime() - off).toISOString().slice(0, 16);
+}
 
 const DEMAND_STATE: Record<string, { label: string; className: string }> = {
   pending: { label: "Aguardando revisão", className: "bg-amber-500/15 text-amber-600 border-amber-500/30" },
@@ -182,6 +196,13 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
   const [scheduledAt, setScheduledAt] = useState<string>("");
   const [execType, setExecType] = useState<"internal" | "external">("internal");
   const [note, setNote] = useState<string>("");
+  const externalFn = useServerFn(updateExternalExecution);
+  const [mTotal, setMTotal] = useState<string>("");
+  const [mSent, setMSent] = useState<string>("");
+  const [mDelivered, setMDelivered] = useState<string>("");
+  const [mFailed, setMFailed] = useState<string>("");
+  const [mStart, setMStart] = useState<string>("");
+  const [mFinish, setMFinish] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
 
@@ -192,6 +213,12 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
     setScheduledAt(item.scheduled_at ? new Date(item.scheduled_at).toISOString().slice(0, 16) : "");
     setExecType(item.execution_type === "external" ? "external" : "internal");
     setNote(item.external_note ?? "");
+    setMTotal(item.external_total_count != null ? String(item.external_total_count) : "");
+    setMSent(item.external_sent_count != null ? String(item.external_sent_count) : "");
+    setMDelivered(item.external_delivered_count != null ? String(item.external_delivered_count) : "");
+    setMFailed(item.external_failed_count != null ? String(item.external_failed_count) : "");
+    setMStart(item.external_started_at ? toLocalInput(item.external_started_at) : "");
+    setMFinish(item.external_finished_at ? toLocalInput(item.external_finished_at) : "");
   }
 
   const numbers = ((numbersData as any)?.numbers ?? []) as Array<any>;
@@ -212,6 +239,38 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
           scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
         },
       });
+
+      if (execType === "external") {
+        const num = (v: string) => (v.trim() === "" ? null : Number(v));
+        const total = num(mTotal), sent = num(mSent), delivered = num(mDelivered), failed = num(mFailed);
+        for (const [label, v] of [["Total", total], ["Enviados", sent], ["Entregues", delivered], ["Falhas", failed]] as const) {
+          if (v != null && (!Number.isFinite(v) || v < 0 || !Number.isInteger(v))) {
+            throw new Error(`${label}: informe um número inteiro maior ou igual a zero.`);
+          }
+        }
+        if (total != null) {
+          if (sent != null && sent > total) throw new Error("Enviados não podem ser maiores que o total.");
+          if (failed != null && failed > total) throw new Error("Falhas não podem ser maiores que o total.");
+          if (delivered != null && delivered > total) throw new Error("Entregues não podem ser maiores que o total.");
+          if (sent != null && failed != null && sent + failed > total)
+            throw new Error("Enviados + falhas não podem ultrapassar o total.");
+        }
+        if (delivered != null && sent != null && delivered > sent)
+          throw new Error("Entregues não podem ser maiores que os enviados com sucesso.");
+
+        await externalFn({
+          data: {
+            campaign_id: item.id,
+            external_total_count: total,
+            external_sent_count: sent,
+            external_delivered_count: delivered,
+            external_failed_count: failed,
+            external_started_at: mStart ? new Date(mStart).toISOString() : null,
+            external_finished_at: mFinish ? new Date(mFinish).toISOString() : null,
+          } as any,
+        });
+      }
+
       toast.success("Configuração salva");
       qc.invalidateQueries({ queryKey: ["approval-queue"] });
       onClose();
@@ -250,17 +309,57 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
           </div>
 
           {execType === "external" ? (
-            <div className="space-y-1.5">
-              <Label>Observação interna (visível apenas para o admin)</Label>
-              <Textarea
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Ex.: Disparo realizado por ferramenta externa."
-                rows={3}
-              />
-              <p className="text-xs text-muted-foreground">
-                Não exige BM, WABA, número, template ou conexão. Ao aprovar, nada é enviado para a fila da plataforma.
-              </p>
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>Observação interna (visível apenas para o admin)</Label>
+                <Textarea
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Ex.: Disparo realizado por ferramenta externa."
+                  rows={3}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Não exige BM, WABA, número, template ou conexão. Ao aprovar, nada é enviado para a fila da plataforma.
+                </p>
+              </div>
+
+              <div className="space-y-3 rounded-lg border border-violet-500/30 bg-violet-500/5 p-3">
+                <div className="text-sm font-medium">Resultado do envio externo</div>
+                <p className="text-xs text-muted-foreground">
+                  Métricas informadas manualmente pelo admin (marcadas como <code>metrics_source = manual</code>), sem
+                  relação com webhooks da API do WhatsApp.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {([
+                    ["Quantidade total de mensagens", mTotal, setMTotal],
+                    ["Enviadas com sucesso", mSent, setMSent],
+                    ["Entregues", mDelivered, setMDelivered],
+                    ["Falhas", mFailed, setMFailed],
+                  ] as const).map(([label, value, setter]) => (
+                    <div key={label} className="space-y-1.5">
+                      <Label className="text-xs">{label}</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={value}
+                        onChange={(e) => (setter as (v: string) => void)(e.target.value)}
+                        placeholder="0"
+                      />
+                    </div>
+                  ))}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Início do disparo</Label>
+                    <Input type="datetime-local" value={mStart} onChange={(e) => setMStart(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Finalização do disparo</Label>
+                    <Input type="datetime-local" value={mFinish} onChange={(e) => setMFinish(e.target.value)} />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Ao atingir a data/hora de finalização (ou ao marcar manualmente), a demanda fica como Concluído.
+                </p>
+              </div>
             </div>
           ) : (
           <>
@@ -343,6 +442,23 @@ function ExternalControls({ item }: { item: Item }) {
   return (
     <div className="max-w-2xl space-y-2 rounded-lg border border-violet-500/30 bg-violet-500/5 p-3">
       <div className="text-xs font-medium">Execução externa (somente admin)</div>
+      {(item.external_total_count != null ||
+        item.external_sent_count != null ||
+        item.external_delivered_count != null ||
+        item.external_failed_count != null ||
+        item.external_finished_at) && (
+        <div className="rounded-md border bg-background/60 p-2 text-xs">
+          <div className="mb-1 font-medium">Resultado (informado manualmente)</div>
+          <div className="grid gap-0.5 text-muted-foreground sm:grid-cols-2">
+            <span>{(item.external_total_count ?? 0).toLocaleString("pt-BR")} destinatários</span>
+            <span>{(item.external_sent_count ?? 0).toLocaleString("pt-BR")} enviados com sucesso</span>
+            <span>{(item.external_delivered_count ?? 0).toLocaleString("pt-BR")} entregues</span>
+            <span>{(item.external_failed_count ?? 0).toLocaleString("pt-BR")} falhas</span>
+            {item.external_started_at && <span>Início: {fmt(item.external_started_at)}</span>}
+            {item.external_finished_at && <span>Finalizado em: {fmt(item.external_finished_at)}</span>}
+          </div>
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <Select
           value={item.external_status ?? ""}

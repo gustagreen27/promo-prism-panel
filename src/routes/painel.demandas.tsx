@@ -34,6 +34,11 @@ type Demand = {
   scheduled_at: string | null;
   created_at: string;
   list_name: string | null;
+  external_total_count?: number | null;
+  external_sent_count?: number | null;
+  external_delivered_count?: number | null;
+  external_failed_count?: number | null;
+  external_finished_at?: string | null;
   decisions: Array<{ action: string; message: string | null; created_at: string }>;
 };
 
@@ -148,6 +153,18 @@ function Page() {
                     {b === "rejected" && (
                       <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
                         Rejeitada em {fmt(d.approved_at)}. Motivo: {d.rejection_reason || decision?.message || "não informado"}
+                      </div>
+                    )}
+                    {d.external_finished_at && (
+                      <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs">
+                        <div className="mb-1 font-medium">Resultado</div>
+                        <div className="grid gap-0.5 text-muted-foreground sm:grid-cols-2">
+                          <span>{(d.external_total_count ?? d.total_recipients ?? 0).toLocaleString("pt-BR")} destinatários</span>
+                          <span>{(d.external_sent_count ?? 0).toLocaleString("pt-BR")} enviados com sucesso</span>
+                          <span>{(d.external_delivered_count ?? 0).toLocaleString("pt-BR")} entregues</span>
+                          <span>{(d.external_failed_count ?? 0).toLocaleString("pt-BR")} falhas</span>
+                        </div>
+                        <div className="mt-1">Finalizado em: {fmt(d.external_finished_at)}</div>
                       </div>
                     )}
                     {(b === "approved" || b === "queued") && d.approved_at && (

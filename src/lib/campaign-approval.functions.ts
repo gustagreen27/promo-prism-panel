@@ -19,7 +19,7 @@ async function assertMember(supabase: any, userId: string, workspaceId: string) 
 }
 
 const APPROVAL_FIELDS =
-  'id,name,workspace_id,project_id,status,approval_status,approval_mode,rejection_reason,approved_at,approved_by,total_recipients,scheduled_at,created_at,created_by,connection_id,template_id,list_id,custom_fields,variables_mapping,button_url_mapping,template_variables,execution_type,external_status,external_note'
+  'id,name,workspace_id,project_id,status,approval_status,approval_mode,rejection_reason,approved_at,approved_by,total_recipients,scheduled_at,created_at,created_by,connection_id,template_id,list_id,custom_fields,variables_mapping,button_url_mapping,template_variables,execution_type,external_status,external_note,metrics_source,external_total_count,external_sent_count,external_delivered_count,external_failed_count,external_started_at,external_finished_at'
 
 // ---- Fila de aprovação (admin) ----
 export const listApprovalQueue = createServerFn({ method: 'POST' })
@@ -40,6 +40,26 @@ export const listApprovalQueue = createServerFn({ method: 'POST' })
     if (error) throw error
 
     const campaigns = (rows ?? []) as any[]
+
+    // Execução externa: ao atingir a data/hora de finalização, marca como concluído.
+    {
+      const nowIso = new Date().toISOString()
+      const due = campaigns.filter(
+        (c) =>
+          c.execution_type === 'external' &&
+          c.external_finished_at &&
+          c.external_finished_at <= nowIso &&
+          c.external_status !== 'completed' &&
+          c.external_status !== 'cancelled',
+      )
+      if (due.length) {
+        await supabase
+          .from('wa_campaigns')
+          .update({ external_status: 'completed' })
+          .in('id', due.map((c) => c.id))
+        for (const c of due) c.external_status = 'completed'
+      }
+    }
     const listIds = [...new Set(campaigns.map((c) => c.list_id).filter(Boolean))]
     const tplIds = [...new Set(campaigns.map((c) => c.template_id).filter(Boolean))]
     const [{ data: lists }, { data: tpls }] = await Promise.all([
@@ -284,6 +304,12 @@ export const updateExternalExecution = createServerFn({ method: 'POST' })
         campaign_id: z.string().uuid(),
         external_status: z.enum(['approved_external', 'in_progress', 'completed', 'cancelled']).optional(),
         external_note: z.string().trim().max(2000).nullish(),
+        external_total_count: z.number().int().min(0).max(100_000_000).nullish(),
+        external_sent_count: z.number().int().min(0).max(100_000_000).nullish(),
+        external_delivered_count: z.number().int().min(0).max(100_000_000).nullish(),
+        external_failed_count: z.number().int().min(0).max(100_000_000).nullish(),
+        external_started_at: z.string().nullish(),
+        external_finished_at: z.string().nullish(),
       })
       .parse(d),
   )
@@ -293,7 +319,9 @@ export const updateExternalExecution = createServerFn({ method: 'POST' })
 
     const { data: camp } = await supabase
       .from('wa_campaigns')
-      .select('id,workspace_id,execution_type,external_status,external_note')
+      .select(
+        'id,workspace_id,execution_type,external_status,external_note,external_total_count,external_sent_count,external_delivered_count,external_failed_count,external_started_at,external_finished_at',
+      )
       .eq('id', data.campaign_id)
       .maybeSingle()
     if (!camp) throw new Error('Demanda não encontrada')
@@ -302,6 +330,58 @@ export const updateExternalExecution = createServerFn({ method: 'POST' })
     const patch: Record<string, any> = {}
     if (data.external_status) patch['external_status'] = data.external_status
     if (data.external_note !== undefined) patch['external_note'] = data.external_note ?? null
+
+    const METRIC_KEYS = [
+      'external_total_count',
+      'external_sent_count',
+      'external_delivered_count',
+      'external_failed_count',
+    ] as const
+    let touchedMetrics = false
+    for (const k of METRIC_KEYS) {
+      if (data[k] !== undefined) {
+        patch[k] = data[k] ?? null
+        touchedMetrics = true
+      }
+    }
+    for (const k of ['external_started_at', 'external_finished_at'] as const) {
+      if (data[k] !== undefined) {
+        patch[k] = data[k] ? new Date(data[k] as string).toISOString() : null
+        touchedMetrics = true
+      }
+    }
+
+    if (touchedMetrics) {
+      const val = (k: (typeof METRIC_KEYS)[number]) =>
+        (patch[k] !== undefined ? patch[k] : (camp as any)[k]) as number | null
+      const total = val('external_total_count')
+      const sent = val('external_sent_count')
+      const delivered = val('external_delivered_count')
+      const failed = val('external_failed_count')
+
+      if (total != null) {
+        if (sent != null && sent > total) throw new Error('Enviados não podem ser maiores que o total.')
+        if (failed != null && failed > total) throw new Error('Falhas não podem ser maiores que o total.')
+        if (delivered != null && delivered > total) throw new Error('Entregues não podem ser maiores que o total.')
+        if (sent != null && failed != null && sent + failed > total)
+          throw new Error('Enviados + falhas não podem ultrapassar o total.')
+      }
+      if (delivered != null && sent != null && delivered > sent)
+        throw new Error('Entregues não podem ser maiores que os enviados com sucesso.')
+
+      const startedAt = patch['external_started_at'] !== undefined ? patch['external_started_at'] : camp.external_started_at
+      const finishedAt =
+        patch['external_finished_at'] !== undefined ? patch['external_finished_at'] : camp.external_finished_at
+      if (startedAt && finishedAt && new Date(finishedAt) < new Date(startedAt))
+        throw new Error('A finalização não pode ser anterior ao início.')
+
+      patch['metrics_source'] = 'manual'
+      // Finalização no passado (ou já atingida) conclui a demanda automaticamente.
+      if (finishedAt && new Date(finishedAt).getTime() <= Date.now() && !data.external_status) {
+        patch['external_status'] = 'completed'
+      }
+    }
+
     if (!Object.keys(patch).length) return { ok: true }
 
     const { error } = await supabase.from('wa_campaigns').update(patch).eq('id', camp.id)
