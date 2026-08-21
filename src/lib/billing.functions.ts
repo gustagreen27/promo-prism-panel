@@ -559,8 +559,8 @@ export const adminCreateClientAccount = createServerFn({ method: 'POST' })
         _amount_cents: creditedCents,
         _type: 'adjustment',
         _description: `Créditos iniciais (${data.initial_credits.toLocaleString('pt-BR')}) na criação da conta`,
-        _campaign_id: null,
-        _deposit_id: null,
+        _campaign_id: undefined,
+        _deposit_id: undefined,
         _created_by: userId,
       })
       if (credErr) creditedCents = 0
