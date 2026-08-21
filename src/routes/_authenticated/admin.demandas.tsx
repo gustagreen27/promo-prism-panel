@@ -272,6 +272,7 @@ function Page() {
   const [tab, setTab] = useState<"pending" | "approved" | "rejected" | "all">("pending");
   const [configItem, setConfigItem] = useState<Item | null>(null);
   const [auditId, setAuditId] = useState<string | null>(null);
+  const [previewId, setPreviewId] = useState<string | null>(null);
   const [decision, setDecision] = useState<{ item: Item; kind: "approved" | "rejected" } | null>(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
