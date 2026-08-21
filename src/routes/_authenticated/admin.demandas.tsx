@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -22,7 +22,8 @@ import {
 import { adminListAllNumbers } from "@/lib/admin-dispatch.functions";
 import { listTemplates } from "@/lib/whatsapp-templates.functions";
 import { adminListTestConnections, adminSetConnectionTestFlag } from "@/lib/wa-tests.functions";
-import { History, Loader2, Settings2, FlaskConical } from "lucide-react";
+import { History, Loader2, Settings2, FlaskConical, Eye } from "lucide-react";
+import { DemandPreviewDialog } from "@/components/admin/DemandPreviewDialog";
 
 export const Route = createFileRoute("/_authenticated/admin/demandas")({
   head: () => ({
@@ -271,6 +272,8 @@ function Page() {
   const [tab, setTab] = useState<"pending" | "approved" | "rejected" | "all">("pending");
   const [configItem, setConfigItem] = useState<Item | null>(null);
   const [auditId, setAuditId] = useState<string | null>(null);
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const navigate = useNavigate();
   const [decision, setDecision] = useState<{ item: Item; kind: "approved" | "rejected" } | null>(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -290,10 +293,22 @@ function Page() {
     }
     setBusy(true);
     try {
-      await decideFn({
-        data: { campaign_id: decision.item.id, decision: decision.kind, reason: reason.trim() || null },
+      const campaignId = decision.item.id;
+      const res: any = await decideFn({
+        data: { campaign_id: campaignId, decision: decision.kind, reason: reason.trim() || null },
       });
-      toast.success(decision.kind === "approved" ? "Demanda aprovada e enviada para a fila de disparos" : "Demanda recusada");
+      if (res?.already) {
+        toast.info("Esta demanda já havia sido decidida.");
+      } else if (decision.kind === "approved") {
+        toast.success("Demanda aprovada — disparo pronto para execução", {
+          action: {
+            label: "Abrir disparo",
+            onClick: () => void navigate({ to: "/admin/disparos/$id", params: { id: campaignId } }),
+          },
+        });
+      } else {
+        toast.success("Demanda recusada");
+      }
       setDecision(null);
       setReason("");
       qc.invalidateQueries({ queryKey: ["approval-queue"] });
@@ -374,6 +389,9 @@ function Page() {
                       <div className="text-xs text-destructive">Motivo da recusa: {r.rejection_reason}</div>
                     )}
                     <div className="flex flex-wrap gap-2 pt-1">
+                      <Button size="sm" variant="secondary" onClick={() => setPreviewId(r.id)}>
+                        <Eye className="mr-1 h-4 w-4" /> Ver preview
+                      </Button>
                       <Button size="sm" variant="ghost" onClick={() => setAuditId(r.id)}>
                         <History className="mr-1 h-4 w-4" /> Histórico
                       </Button>
@@ -403,6 +421,7 @@ function Page() {
 
       <ConfigureDialog item={configItem} onClose={() => setConfigItem(null)} />
       <AuditDialog campaignId={auditId} onClose={() => setAuditId(null)} />
+      <DemandPreviewDialog campaignId={previewId} onClose={() => setPreviewId(null)} />
 
       <Dialog open={!!decision} onOpenChange={(o) => !o && setDecision(null)}>
         <DialogContent>
