@@ -65,9 +65,9 @@ export const Route = createFileRoute("/painel/demandas")({
 });
 
 type DemandSearch = {
-  status: DemandStage | "all";
+  status?: DemandStage | "all";
   q?: string;
-  period: "all" | "7" | "30" | "custom";
+  period?: "all" | "7" | "30" | "custom";
   from?: string;
   to?: string;
 };
@@ -153,8 +153,8 @@ function Page() {
   const patch = (next: Partial<DemandSearch>) =>
     navigate({ search: (prev: DemandSearch) => ({ ...prev, ...next }), replace: true });
 
-  const filter = sp.status;
-  const period = sp.period;
+  const filter = sp.status ?? "all";
+  const period = sp.period ?? "all";
   const [search, setSearchInput] = useState(sp.q ?? "");
 
   const setFilter = (v: Bucket | "all") => patch({ status: v });
@@ -327,9 +327,9 @@ function Page() {
                 key={d.id}
                 role="link"
                 tabIndex={0}
-                onClick={() => navigate({ to: "/painel/demandas/$id", params: { id: d.id } })}
+                onClick={() => navigate({ to: "/painel/demanda/$id", params: { id: d.id } })}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") navigate({ to: "/painel/demandas/$id", params: { id: d.id } });
+                  if (e.key === "Enter") navigate({ to: "/painel/demanda/$id", params: { id: d.id } });
                 }}
                 className="cursor-pointer transition-shadow hover:shadow-md"
               >

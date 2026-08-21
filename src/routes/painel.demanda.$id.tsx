@@ -25,7 +25,7 @@ import {
   XCircle,
 } from "lucide-react";
 
-export const Route = createFileRoute("/painel/demandas/$id")({
+export const Route = createFileRoute("/painel/demanda/$id")({
   head: () => ({
     meta: [
       { title: "Detalhes do disparo — Painel" },
