@@ -18,13 +18,15 @@ import {
 import { ErrorCard } from "@/components/admin/query-state";
 import {
   listApprovalQueue, decideCampaignApproval, configureCampaignDemand, getCampaignApprovalAudit,
-  updateExternalExecution,
+  updateExternalExecution, listExternalProgress,
 } from "@/lib/campaign-approval.functions";
 import { adminListAllNumbers } from "@/lib/admin-dispatch.functions";
 import { listTemplates } from "@/lib/whatsapp-templates.functions";
 import { adminListTestConnections, adminSetConnectionTestFlag } from "@/lib/wa-tests.functions";
-import { History, Loader2, Settings2, FlaskConical, Eye } from "lucide-react";
+import { History, Loader2, Settings2, FlaskConical, Eye, Gauge, CheckCircle2 } from "lucide-react";
 import { DemandPreviewDialog } from "@/components/admin/DemandPreviewDialog";
+import { demandStage, pendingCount, STAGE_CLASS, STAGE_LABEL, type DemandStage } from "@/lib/demand-stage";
+
 
 export const Route = createFileRoute("/_authenticated/admin/demandas")({
   head: () => ({
