@@ -419,7 +419,7 @@ export const adminAddCredits = createServerFn({ method: 'POST' })
       supabase.from('billing_settings').select('default_price_cents').eq('id', 1).maybeSingle(),
       supabase.from('workspace_wallets').select('custom_price_cents').eq('workspace_id', data.workspace_id).maybeSingle(),
     ])
-    const unit = Number(wallet?.custom_price_cents ?? settings?.default_price_cents ?? 20) || 15
+    const unit = Number(wallet?.custom_price_cents ?? settings?.default_price_cents ?? 20) || 20
 
     const cents = data.mode === 'messages'
       ? Math.round(data.quantity) * unit
@@ -552,7 +552,7 @@ export const adminCreateClientAccount = createServerFn({ method: 'POST' })
         .from('billing_settings').select('default_price_cents').eq('id', 1).maybeSingle()
       const { data: wallet } = await supabaseAdmin
         .from('workspace_wallets').select('custom_price_cents').eq('workspace_id', ws.id).maybeSingle()
-      const unit = Number(wallet?.custom_price_cents ?? settings?.default_price_cents ?? 20) || 15
+      const unit = Number(wallet?.custom_price_cents ?? settings?.default_price_cents ?? 20) || 20
       creditedCents = data.initial_credits * unit
       const { error: credErr } = await supabaseAdmin.rpc('wallet_credit', {
         _ws: ws.id,
