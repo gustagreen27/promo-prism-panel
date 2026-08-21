@@ -273,8 +273,13 @@ export const decideCampaignApproval = createServerFn({ method: 'POST' })
               approved_by: userId,
               approved_at: nowIso,
               rejection_reason: null,
-              external_status: goScheduled ? 'scheduled_external' : 'in_progress',
-              ...(goScheduled ? {} : { external_started_at: nowIso }),
+              // Com horário programado no futuro, a execução só começa na hora
+              // marcada: fica agendada e o início é o próprio scheduled_at.
+              external_status: goScheduled || scheduledFuture ? 'scheduled_external' : 'in_progress',
+              external_started_at:
+                (goScheduled || scheduledFuture) && camp.scheduled_at
+                  ? new Date(camp.scheduled_at).toISOString()
+                  : nowIso,
               metrics_source: 'manual',
             }
           : {

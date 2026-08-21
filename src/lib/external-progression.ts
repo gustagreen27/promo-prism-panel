@@ -43,6 +43,8 @@ export type ExternalSnapshot = {
   /** Próxima atualização prevista (null quando já finalizou). */
   nextAt: string | null
   finished: boolean
+  /** false enquanto o horário agendado ainda não chegou (demanda em fila). */
+  started: boolean
 }
 
 /** PRNG determinístico (0..1) a partir de uma string. */
@@ -104,6 +106,21 @@ export function simulateExternal(row: ExternalTargets, now: Date = new Date()): 
   const tDelivered = Math.min(tSent, Math.max(0, row.external_target_delivered_count ?? 0))
 
   const t = now.getTime()
+
+  // Antes do horário agendado a demanda fica em fila: 0% de andamento.
+  if (t < start) {
+    return {
+      sent: 0,
+      delivered: 0,
+      failed: 0,
+      pending: total,
+      updatedAt: new Date(start).toISOString(),
+      nextAt: new Date(start).toISOString(),
+      finished: false,
+      started: false,
+    }
+  }
+
   const finishedNow = t >= finish
 
   // Valores finais exatos assim que atinge o horário previsto.
@@ -116,8 +133,10 @@ export function simulateExternal(row: ExternalTargets, now: Date = new Date()): 
       updatedAt: new Date(finish).toISOString(),
       nextAt: null,
       finished: true,
+      started: true,
     }
   }
+
 
   const tick = tickMsFor(start, finish)
   const buckets = Math.max(1, Math.ceil((finish - start) / tick))
@@ -148,6 +167,7 @@ export function simulateExternal(row: ExternalTargets, now: Date = new Date()): 
     updatedAt: new Date(windowStart).toISOString(),
     nextAt: new Date(nextTick).toISOString(),
     finished: false,
+    started: true,
   }
 }
 
@@ -166,6 +186,8 @@ export function externalProgressPatch(
 ): Record<string, any> | null {
   const snap = simulateExternal(row, now)
   if (!snap) return null
+  // Ainda em fila: nada a persistir, mantém 0% até o horário agendado.
+  if (!snap.started) return null
 
   const sent = Math.max(snap.sent, row.external_sent_count ?? 0)
   const delivered = Math.min(sent, Math.max(snap.delivered, row.external_delivered_count ?? 0))

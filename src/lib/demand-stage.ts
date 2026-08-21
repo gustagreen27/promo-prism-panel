@@ -10,6 +10,7 @@ export type StageRow = {
   scheduled_at?: string | null
   execution_type?: string | null
   external_status?: string | null
+  external_started_at?: string | null
   external_finished_at?: string | null
 }
 
@@ -20,6 +21,9 @@ export function demandStage(r: StageRow): DemandStage {
   if (r.execution_type === 'external') {
     const es = r.external_status ?? ''
     if (es === 'completed' || es === 'cancelled') return 'completed'
+    // Antes do horário programado a demanda permanece agendada (0% de andamento).
+    const startAt = r.external_started_at ?? r.scheduled_at
+    if (startAt && new Date(startAt).getTime() > Date.now()) return 'scheduled'
     if (r.external_finished_at && new Date(r.external_finished_at).getTime() <= Date.now()) return 'completed'
     if (es === 'scheduled_external') {
       if (r.scheduled_at && new Date(r.scheduled_at).getTime() <= Date.now()) return 'queued'
@@ -68,6 +72,8 @@ export type MetricsRow = {
   external_sent_count?: number | null
   external_delivered_count?: number | null
   external_failed_count?: number | null
+  external_started_at?: string | null
+  scheduled_at?: string | null
   external_updated_at?: string | null
   sent_count?: number | null
   delivered_count?: number | null
@@ -78,10 +84,13 @@ export type MetricsRow = {
 
 export function demandMetrics(r: MetricsRow) {
   const isExternal = r.execution_type === 'external'
+  // Execução externa ainda não iniciada (horário programado no futuro) = 0%.
+  const startAt = isExternal ? (r.external_started_at ?? r.scheduled_at ?? null) : null
+  const notStarted = !!startAt && new Date(startAt).getTime() > Date.now()
   const total = (isExternal ? r.external_total_count : null) ?? r.total_recipients ?? 0
-  const sent = (isExternal ? r.external_sent_count : r.sent_count) ?? 0
-  const delivered = (isExternal ? r.external_delivered_count : r.delivered_count) ?? 0
-  const failed = (isExternal ? r.external_failed_count : r.failed_count) ?? 0
+  const sent = notStarted ? 0 : ((isExternal ? r.external_sent_count : r.sent_count) ?? 0)
+  const delivered = notStarted ? 0 : ((isExternal ? r.external_delivered_count : r.delivered_count) ?? 0)
+  const failed = notStarted ? 0 : ((isExternal ? r.external_failed_count : r.failed_count) ?? 0)
   const times = (isExternal ? [r.external_updated_at] : [r.last_sent_at, r.updated_at])
     .filter((t): t is string => !!t)
     .map((t) => new Date(t).getTime())
