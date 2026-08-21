@@ -409,7 +409,7 @@ function Page() {
                           <Metric
                             icon={<CalendarDays className="h-4 w-4 text-muted-foreground" />}
                             value={fmt(m.updatedAt ?? d.external_finished_at)}
-                            label={d.external_finished_at ? "Finalizado em" : "Última atualização"}
+                            label="Última atualização"
                             small
                           />
                         </div>
