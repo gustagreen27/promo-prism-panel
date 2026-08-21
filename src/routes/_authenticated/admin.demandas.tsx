@@ -324,15 +324,17 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
               </div>
 
               <div className="space-y-3 rounded-lg border border-violet-500/30 bg-violet-500/5 p-3">
-                <div className="text-sm font-medium">Resultado final e período do envio externo</div>
+                <div className="text-sm font-medium">Resultado final e prazo do envio externo</div>
                 <p className="text-xs text-muted-foreground">
-                  Informe os números <strong>finais</strong> e o período: o sistema distribui a evolução
-                  automaticamente a cada 10 minutos até a finalização (<code>metrics_source = estimated_external</code>),
-                  sem relação com webhooks da API do WhatsApp.
+                  O total é a quantidade de leads da demanda
+                  {item?.total_recipients != null ? ` (${(item.total_recipients ?? 0).toLocaleString("pt-BR")})` : ""} e o
+                  início é o horário agendado pelo cliente
+                  {item?.scheduled_at ? ` (${fmt(item.scheduled_at)})` : ""}. Informe apenas os números{" "}
+                  <strong>finais</strong> e o horário de finalização: o sistema distribui a evolução ao longo de todo o
+                  prazo (<code>metrics_source = estimated_external</code>).
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {([
-                    ["Quantidade total de mensagens", mTotal, setMTotal],
                     ["Enviadas com sucesso (final)", mSent, setMSent],
                     ["Entregues (final)", mDelivered, setMDelivered],
                     ["Falhas (final)", mFailed, setMFailed],
@@ -349,10 +351,6 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
                       />
                     </div>
                   ))}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Início do disparo</Label>
-                    <Input type="datetime-local" value={mStart} onChange={(e) => setMStart(e.target.value)} />
-                  </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Finalização do disparo</Label>
                     <Input type="datetime-local" value={mFinish} onChange={(e) => setMFinish(e.target.value)} />
