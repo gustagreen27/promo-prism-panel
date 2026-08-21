@@ -39,7 +39,9 @@ function fillVars(text: string, vars: Record<string, string>) {
 }
 
 function Page() {
-  const { workspaceId } = Route.useRouteContext() as { workspaceId: string };
+  const ctxFn = useServerFn(getMyContext);
+  const { data: ctx } = useQuery({ queryKey: ["my-context"], queryFn: () => ctxFn(), staleTime: 30_000 });
+  const workspaceId = ctx?.primary_workspace?.id ?? "";
   const navigate = useNavigate();
 
   const fnNumbers = useServerFn(listMyNumbers);
