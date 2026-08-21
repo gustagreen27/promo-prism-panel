@@ -34,30 +34,30 @@ type Demand = {
   scheduled_at: string | null;
   created_at: string;
   list_name: string | null;
+  execution_type?: string | null;
+  external_status?: string | null;
   external_total_count?: number | null;
   external_sent_count?: number | null;
   external_delivered_count?: number | null;
   external_failed_count?: number | null;
+  external_started_at?: string | null;
+  external_updated_at?: string | null;
   external_finished_at?: string | null;
   decisions: Array<{ action: string; message: string | null; created_at: string }>;
 };
 
-type Bucket = "pending" | "scheduled" | "queued" | "approved" | "rejected";
+type Bucket = DemandStage;
 
-function bucketOf(d: Demand): Bucket {
-  if (d.approval_status === "rejected") return "rejected";
-  if (d.approval_status === "pending") return d.scheduled_at ? "scheduled" : "pending";
-  if (["queued", "scheduled"].includes(d.status)) return "queued";
-  return "approved";
-}
+const bucketOf = (d: Demand): Bucket => demandStage(d as any);
 
 const BUCKETS: Record<Bucket, { label: string; className: string; icon: typeof Clock }> = {
-  pending: { label: "Aguardando envio", className: "bg-amber-500/15 text-amber-600 border-amber-500/30", icon: Clock },
-  scheduled: { label: "Agendada", className: "bg-amber-500/15 text-amber-600 border-amber-500/30", icon: Clock },
-  queued: { label: "Em fila", className: "bg-sky-500/15 text-sky-600 border-sky-500/30", icon: ListChecks },
-  approved: { label: "Aprovada", className: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30", icon: CheckCircle2 },
-  rejected: { label: "Rejeitada", className: "bg-destructive/15 text-destructive border-destructive/30", icon: XCircle },
+  pending: { label: STAGE_LABEL.pending, className: STAGE_CLASS.pending, icon: Clock },
+  scheduled: { label: STAGE_LABEL.scheduled, className: STAGE_CLASS.scheduled, icon: Clock },
+  queued: { label: STAGE_LABEL.queued, className: STAGE_CLASS.queued, icon: ListChecks },
+  completed: { label: STAGE_LABEL.completed, className: STAGE_CLASS.completed, icon: CheckCircle2 },
+  rejected: { label: STAGE_LABEL.rejected, className: STAGE_CLASS.rejected, icon: XCircle },
 };
+
 
 const fmt = (v: string | null | undefined) => (v ? new Date(v).toLocaleString("pt-BR") : "—");
 
