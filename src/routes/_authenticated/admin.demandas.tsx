@@ -767,16 +767,17 @@ function Page() {
                       <Button size="sm" variant="outline" onClick={() => setConfigItem(r)}>
                         <Settings2 className="mr-1 h-4 w-4" /> Configurar
                       </Button>
-                      {r.approval_status !== "rejected" && (
+                      {stage === "pending" && (
                         <Button size="sm" variant="outline" onClick={() => { setReason(""); setDecision({ item: r, kind: "rejected" }); }}>
                           Recusar
                         </Button>
                       )}
-                      {r.approval_status !== "approved" && (
+                      {stage === "pending" && (
                         <Button size="sm" onClick={() => { setReason(""); setDecision({ item: r, kind: "approved" }); }}>
                           Aprovar
                         </Button>
                       )}
+
                     </div>
                   </div>
                 );
