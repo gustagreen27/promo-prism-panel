@@ -282,10 +282,10 @@ function Page() {
             </div>
           </div>
 
-          <Field label="Mensagem" hint={"Use as variáveis do modelo como {{1}} e {{2}}."}>
+          <Field label="Mensagem" hint={"O modelo não pode ser alterado. Preencha apenas as variáveis abaixo."}>
             <div className="relative">
-              <Textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={8} maxLength={2000}
-                placeholder="Digite aqui o texto da sua campanha." required />
+              <Textarea value={message} readOnly rows={8} maxLength={2000}
+                placeholder="Modelo de mensagem selecionado" required className="bg-muted/30 cursor-not-allowed" />
               <Sparkles className="pointer-events-none absolute right-3 top-3 h-4 w-4 text-primary/70" />
             </div>
           </Field>
