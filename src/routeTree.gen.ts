@@ -29,6 +29,7 @@ import { Route as PainelTemplatesRouteImport } from './routes/painel.templates'
 import { Route as PainelRelatoriosRouteImport } from './routes/painel.relatorios'
 import { Route as PainelNotificacoesRouteImport } from './routes/painel.notificacoes'
 import { Route as PainelFinanceiroRouteImport } from './routes/painel.financeiro'
+import { Route as PainelDemandasRouteImport } from './routes/painel.demandas'
 import { Route as PainelContatosRouteImport } from './routes/painel.contatos'
 import { Route as PainelConfiguracoesRouteImport } from './routes/painel.configuracoes'
 import { Route as PainelAgendaRouteImport } from './routes/painel.agenda'
@@ -199,6 +200,11 @@ const PainelNotificacoesRoute = PainelNotificacoesRouteImport.update({
 const PainelFinanceiroRoute = PainelFinanceiroRouteImport.update({
   id: '/financeiro',
   path: '/financeiro',
+  getParentRoute: () => PainelRoute,
+} as any)
+const PainelDemandasRoute = PainelDemandasRouteImport.update({
+  id: '/demandas',
+  path: '/demandas',
   getParentRoute: () => PainelRoute,
 } as any)
 const PainelContatosRoute = PainelContatosRouteImport.update({
@@ -641,6 +647,7 @@ export interface FileRoutesByFullPath {
   '/painel/agenda': typeof PainelAgendaRoute
   '/painel/configuracoes': typeof PainelConfiguracoesRoute
   '/painel/contatos': typeof PainelContatosRoute
+  '/painel/demandas': typeof PainelDemandasRoute
   '/painel/financeiro': typeof PainelFinanceiroRoute
   '/painel/notificacoes': typeof PainelNotificacoesRoute
   '/painel/relatorios': typeof PainelRelatoriosRoute
@@ -733,6 +740,7 @@ export interface FileRoutesByTo {
   '/painel/agenda': typeof PainelAgendaRoute
   '/painel/configuracoes': typeof PainelConfiguracoesRoute
   '/painel/contatos': typeof PainelContatosRoute
+  '/painel/demandas': typeof PainelDemandasRoute
   '/painel/financeiro': typeof PainelFinanceiroRoute
   '/painel/notificacoes': typeof PainelNotificacoesRoute
   '/painel/relatorios': typeof PainelRelatoriosRoute
@@ -827,6 +835,7 @@ export interface FileRoutesById {
   '/painel/agenda': typeof PainelAgendaRoute
   '/painel/configuracoes': typeof PainelConfiguracoesRoute
   '/painel/contatos': typeof PainelContatosRoute
+  '/painel/demandas': typeof PainelDemandasRoute
   '/painel/financeiro': typeof PainelFinanceiroRoute
   '/painel/notificacoes': typeof PainelNotificacoesRoute
   '/painel/relatorios': typeof PainelRelatoriosRoute
@@ -922,6 +931,7 @@ export interface FileRouteTypes {
     | '/painel/agenda'
     | '/painel/configuracoes'
     | '/painel/contatos'
+    | '/painel/demandas'
     | '/painel/financeiro'
     | '/painel/notificacoes'
     | '/painel/relatorios'
@@ -1014,6 +1024,7 @@ export interface FileRouteTypes {
     | '/painel/agenda'
     | '/painel/configuracoes'
     | '/painel/contatos'
+    | '/painel/demandas'
     | '/painel/financeiro'
     | '/painel/notificacoes'
     | '/painel/relatorios'
@@ -1107,6 +1118,7 @@ export interface FileRouteTypes {
     | '/painel/agenda'
     | '/painel/configuracoes'
     | '/painel/contatos'
+    | '/painel/demandas'
     | '/painel/financeiro'
     | '/painel/notificacoes'
     | '/painel/relatorios'
@@ -1354,6 +1366,13 @@ declare module '@tanstack/react-router' {
       path: '/financeiro'
       fullPath: '/painel/financeiro'
       preLoaderRoute: typeof PainelFinanceiroRouteImport
+      parentRoute: typeof PainelRoute
+    }
+    '/painel/demandas': {
+      id: '/painel/demandas'
+      path: '/demandas'
+      fullPath: '/painel/demandas'
+      preLoaderRoute: typeof PainelDemandasRouteImport
       parentRoute: typeof PainelRoute
     }
     '/painel/contatos': {
@@ -2041,6 +2060,7 @@ interface PainelRouteChildren {
   PainelAgendaRoute: typeof PainelAgendaRoute
   PainelConfiguracoesRoute: typeof PainelConfiguracoesRoute
   PainelContatosRoute: typeof PainelContatosRoute
+  PainelDemandasRoute: typeof PainelDemandasRoute
   PainelFinanceiroRoute: typeof PainelFinanceiroRoute
   PainelNotificacoesRoute: typeof PainelNotificacoesRoute
   PainelRelatoriosRoute: typeof PainelRelatoriosRoute
@@ -2056,6 +2076,7 @@ const PainelRouteChildren: PainelRouteChildren = {
   PainelAgendaRoute: PainelAgendaRoute,
   PainelConfiguracoesRoute: PainelConfiguracoesRoute,
   PainelContatosRoute: PainelContatosRoute,
+  PainelDemandasRoute: PainelDemandasRoute,
   PainelFinanceiroRoute: PainelFinanceiroRoute,
   PainelNotificacoesRoute: PainelNotificacoesRoute,
   PainelRelatoriosRoute: PainelRelatoriosRoute,

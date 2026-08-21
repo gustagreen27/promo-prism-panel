@@ -198,6 +198,10 @@ export const startWaCampaign = createServerFn({ method: "POST" })
     await assertAdmin(context);
     const { data: camp } = await context.supabase.from("wa_campaigns").select("*").eq("id", data.id).single();
     if (!camp) throw new Error("Campanha não encontrada");
+    {
+      const { assertCampaignApproved } = await import("@/lib/campaign-approval.server");
+      await assertCampaignApproved(context.supabase, data.id);
+    }
     if (!camp.connection_id || !camp.template_id) throw new Error("Configure número e template antes de iniciar.");
     if (!camp.total_recipients) throw new Error("Gere a fila de destinatários antes de iniciar.");
     if ((camp as any).fatal_locked) {

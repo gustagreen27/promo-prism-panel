@@ -158,6 +158,14 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
 
           for (const camp of due ?? []) {
             const errors: string[] = [];
+            const { data: appr } = await supabaseAdmin
+              .from("wa_campaigns")
+              .select("approval_status")
+              .eq("id", camp.id)
+              .maybeSingle();
+            if (appr?.approval_status === "pending" || appr?.approval_status === "rejected") {
+              errors.push("Demanda sem aprovação do admin");
+            }
             if (!camp.connection_id) errors.push("Sem número de WhatsApp");
             if (!camp.template_id) errors.push("Sem template");
             if (!camp.total_recipients) errors.push("Sem destinatários");

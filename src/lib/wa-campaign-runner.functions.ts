@@ -298,6 +298,11 @@ export const startCampaignAsync = createServerFn({ method: "POST" })
     const { data: camp } = await supabase.from("wa_campaigns").select("*").eq("id", data.id).single();
     if (!camp) throw new Error("Campanha não encontrada");
     if (camp.status === "running") return { ok: true, alreadyRunning: true };
+    // Bloqueio de envio real: só dispara depois da aprovação do admin.
+    {
+      const { assertCampaignApproved } = await import("@/lib/campaign-approval.server");
+      await assertCampaignApproved(supabase, data.id);
+    }
 
     // Basic guards
     if (!camp.connection_id || !camp.template_id) throw new Error("Configure número e template antes de iniciar.");
