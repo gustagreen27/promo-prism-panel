@@ -17,8 +17,11 @@ import { metaVarsIn } from "@/lib/wa-variables";
 import { DDD_TO_CITY, extractDddBR } from "@/lib/ddd-cities";
 import {
   ArrowLeft, Loader2, Upload, User, Phone, Video, MoreVertical, Mic, ChevronLeft,
-  Signal, Wifi, BatteryMedium, CheckCheck, Tags, ExternalLink,
+  Signal, Wifi, BatteryMedium, CheckCheck, Tags, ExternalLink, Rocket, Tag, Braces,
+  Link2, Check, FileSpreadsheet, ListChecks, Sparkles,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+
 
 export const Route = createFileRoute("/painel/campanhas/nova")({
   head: () => ({
@@ -217,8 +220,11 @@ function Page() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-4 rounded-2xl border bg-card p-5 shadow-sm">
+        <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary">
+          <Rocket className="h-6 w-6" />
+        </span>
+        <div className="min-w-0">
           <Link to="/painel/campanhas" className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" /> Meus Disparos
           </Link>
@@ -231,15 +237,22 @@ function Page() {
         {/* ── Formulário ── */}
         <form onSubmit={submit} className="space-y-5 rounded-2xl border bg-card p-6 shadow-sm">
           <Field label="Nome da campanha">
-            <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder="Ex: Campanha de Black Friday" required />
+            <IconInput icon={Tag}>
+              <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} className="pl-9" placeholder="Ex: Campanha de Black Friday" required />
+            </IconInput>
           </Field>
+
 
           <Field label="Nome do perfil">
-            <Input value={profileName} onChange={(e) => setProfileName(e.target.value)} maxLength={50} placeholder="Ex: Loja Virtual" />
+            <IconInput icon={User}>
+              <Input value={profileName} onChange={(e) => setProfileName(e.target.value)} maxLength={50} className="pl-9" placeholder="Ex: Loja Virtual" />
+            </IconInput>
           </Field>
 
-          <Field label="Biografia do perfil" hint="Máximo de 139 caracteres (limite do WhatsApp).">
-            <Textarea value={bio} onChange={(e) => setBio(e.target.value)} maxLength={139} rows={3} placeholder="Ex: Atendimento oficial - Seg a Sex das 9h às 18h" />
+          <Field label="Biografia do perfil" hint="Máximo de 139 caracteres (limite do WhatsApp)." counter={`${bio.length}/139`}>
+            <IconInput icon={Tag} align="top">
+              <Textarea value={bio} onChange={(e) => setBio(e.target.value)} maxLength={139} rows={3} className="pl-9" placeholder="Ex: Atendimento oficial - Seg a Sex das 9h às 18h" />
+            </IconInput>
           </Field>
 
           <div className="space-y-3">
@@ -247,8 +260,12 @@ function Page() {
             <div className="grid gap-2 sm:grid-cols-2">
               {MESSAGE_PRESETS.map((p) => (
                 <button key={p.id} type="button" onClick={() => { setMessage(p.body); setVars({}); }}
-                  className={`rounded-xl border p-3 text-left text-xs whitespace-pre-line transition ${message === p.body ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}>
+                  className={`relative rounded-xl border p-3 pr-9 text-left text-xs whitespace-pre-line transition ${message === p.body ? "border-primary bg-primary/5 ring-1 ring-primary/30" : "hover:bg-muted/50"}`}>
+                  <span className={`absolute right-3 top-3 grid h-5 w-5 place-items-center rounded-full border ${message === p.body ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/30"}`}>
+                    {message === p.body && <Check className="h-3 w-3" />}
+                  </span>
                   <span className="mb-1 block text-sm font-medium">{p.label}</span>
+
                   <span className="text-muted-foreground">{p.body}</span>
                 </button>
               ))}
@@ -256,8 +273,11 @@ function Page() {
           </div>
 
           <Field label="Mensagem" hint={"Use as variáveis do modelo como {{1}} e {{2}}."}>
-            <Textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={8} maxLength={2000}
-              placeholder="Digite aqui o texto da sua campanha." required />
+            <div className="relative">
+              <Textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={8} maxLength={2000}
+                placeholder="Digite aqui o texto da sua campanha." required />
+              <Sparkles className="pointer-events-none absolute right-3 top-3 h-4 w-4 text-primary/70" />
+            </div>
           </Field>
 
           {bodyVars.length > 0 && (
@@ -266,7 +286,9 @@ function Page() {
               <div className="grid gap-3 sm:grid-cols-2">
                 {bodyVars.map((v) => (
                   <Field key={v} label={`Variável {{${v}}}`}>
-                    <Input value={vars[v] ?? ""} onChange={(e) => setVars((s) => ({ ...s, [v]: e.target.value }))} placeholder="Ex: {nome}" />
+                    <IconInput icon={Braces}>
+                      <Input value={vars[v] ?? ""} onChange={(e) => setVars((s) => ({ ...s, [v]: e.target.value }))} className="pl-9" placeholder="Ex: {nome}" />
+                    </IconInput>
                   </Field>
                 ))}
               </div>
@@ -277,23 +299,29 @@ function Page() {
             <Label>Selecione a base de contatos</Label>
             <div className="grid gap-2 sm:grid-cols-3">
               {([
-                ["manual", "Digitar números manualmente"],
-                ["lista", "Usar lista de leads"],
-                ["csv", "Anexar Excel / CSV"],
-              ] as Array<[ContactMode, string]>).map(([k, label]) => (
+                ["manual", "Digitar números manualmente", User],
+                ["lista", "Usar lista de leads", ListChecks],
+                ["csv", "Anexar Excel / CSV", FileSpreadsheet],
+              ] as Array<[ContactMode, string, typeof User]>).map(([k, label, Icon]) => (
                 <button key={k} type="button" onClick={() => setMode(k)}
-                  className={`rounded-xl border p-3 text-left text-sm transition ${mode === k ? "border-primary bg-primary/5 font-medium" : "hover:bg-muted/50"}`}>
-                  {label}
+                  className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-3 text-center text-sm transition ${mode === k ? "border-primary bg-primary/5 font-medium text-primary" : "text-muted-foreground hover:bg-muted/50"}`}>
+                  <Icon className="h-4 w-4 shrink-0" /> {label}
                 </button>
               ))}
             </div>
 
             {mode === "manual" && (
-              <Field label="Números manualmente:" hint="Apenas dígitos. Um contato por linha — Formato: Número;Nome">
-                <Textarea value={manual} onChange={(e) => setManual(e.target.value)} rows={8}
-                  placeholder={"Cole ou digite os dados aqui, um contato por linha.\nEx: 5511999998888;João da Silva"} />
+              <Field label="Números manualmente" hint="Apenas dígitos. Um contato por linha — Formato: Número;Nome">
+                <div className="relative">
+                  <Textarea value={manual} onChange={(e) => setManual(e.target.value)} rows={8}
+                    placeholder={"Cole ou digite os dados aqui, um contato por linha.\nEx: 5511999998888;João da Silva"} />
+                  <span className="pointer-events-none absolute bottom-2 right-3 text-[11px] text-muted-foreground">
+                    {manualRows.length} contatos
+                  </span>
+                </div>
               </Field>
             )}
+
 
             {mode === "lista" && (
               <Select value={listId} onValueChange={setListId}>
@@ -325,7 +353,7 @@ function Page() {
               </Select>
             </Field>
 
-            <p className="text-xs text-muted-foreground">
+            <p className="text-right text-xs text-muted-foreground">
               {audienceCount.toLocaleString("pt-BR")} contatos selecionados
               {dddFilter ? ` · filtrando DDD +${dddFilter}` : ""}
             </p>
@@ -335,7 +363,7 @@ function Page() {
             <Field label="Foto de perfil">
               <input ref={avatarInput} type="file" accept="image/*" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f, "avatar"); }} />
-              <Button type="button" variant="outline" className="w-full justify-start" onClick={() => avatarInput.current?.click()} disabled={uploading === "avatar"}>
+              <Button type="button" variant="outline" className="w-full rounded-xl" onClick={() => avatarInput.current?.click()} disabled={uploading === "avatar"}>
                 {uploading === "avatar" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
                 {avatarUrl ? "Trocar foto" : "Enviar foto"}
               </Button>
@@ -343,7 +371,7 @@ function Page() {
             <Field label="Mídia (imagem, vídeo ou áudio)">
               <input ref={mediaInput} type="file" accept="image/*,video/*,audio/*" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f, "media"); }} />
-              <Button type="button" variant="outline" className="w-full justify-start" onClick={() => mediaInput.current?.click()} disabled={uploading === "media"}>
+              <Button type="button" variant="outline" className="w-full rounded-xl" onClick={() => mediaInput.current?.click()} disabled={uploading === "media"}>
                 {uploading === "media" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
                 {mediaUrl ? "Trocar mídia" : "Anexar mídia"}
               </Button>
@@ -351,26 +379,29 @@ function Page() {
           </div>
 
           <div className="rounded-xl border bg-muted/30 p-4">
-            <label className="flex items-center gap-2 text-sm font-medium">
-              <Checkbox checked={btnEnabled} onCheckedChange={(v) => setBtnEnabled(!!v)} />
-              <ExternalLink className="h-4 w-4" /> Adicionar botão
-            </label>
+            <div className="flex items-center gap-3 text-sm font-medium">
+              <Switch checked={btnEnabled} onCheckedChange={setBtnEnabled} />
+              <span className="flex items-center gap-2"><ExternalLink className="h-4 w-4" /> Adicionar botão</span>
+            </div>
             {btnEnabled && (
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <Field label="Nome do botão">
-                  <Input value={btnText} onChange={(e) => setBtnText(e.target.value)} placeholder="CLIQUE AQUI" />
+                  <IconInput icon={Tag}>
+                    <Input value={btnText} onChange={(e) => setBtnText(e.target.value)} className="pl-9" placeholder="CLIQUE AQUI" />
+                  </IconInput>
                 </Field>
                 <Field label="Destino do botão (link)">
-                  <Input value={btnUrl} onChange={(e) => setBtnUrl(e.target.value)} placeholder="Ex: https://www.seusite.com.br" />
+                  <IconInput icon={Link2}>
+                    <Input value={btnUrl} onChange={(e) => setBtnUrl(e.target.value)} className="pl-9" placeholder="Ex: https://www.seusite.com.br" />
+                  </IconInput>
                 </Field>
               </div>
             )}
           </div>
 
-
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={schedule} onCheckedChange={(v) => setSchedule(!!v)} /> Agendar envio
-          </label>
+          <div className="flex items-center gap-3 text-sm font-medium">
+            <Switch checked={schedule} onCheckedChange={setSchedule} /> Agendar envio
+          </div>
           {schedule && (
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Data de envio"><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
@@ -378,73 +409,102 @@ function Page() {
             </div>
           )}
 
-          <Button type="submit" className="h-11 w-full rounded-xl" disabled={submitting}>
+          <Button type="submit" className="h-12 w-full rounded-xl text-base" disabled={submitting}>
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {schedule ? "Agendar campanha" : "Enviar campanha"}
           </Button>
+
         </form>
 
         {/* ── Preview ao vivo ── */}
         <div className="lg:sticky lg:top-24 lg:self-start">
-          <div className="mb-2 text-sm font-medium text-muted-foreground">Preview ao vivo</div>
-          <div className="overflow-hidden rounded-[2rem] border-4 border-neutral-800 bg-neutral-900 shadow-xl">
-            <div className="flex items-center justify-between px-4 py-1.5 text-[10px] text-white">
-              <span>{now}</span>
-              <span className="flex items-center gap-1"><Signal className="h-3 w-3" /><Wifi className="h-3 w-3" /><BatteryMedium className="h-3.5 w-3.5" /></span>
-            </div>
-            <div className="flex items-center gap-2 bg-[#075E54] px-3 py-2 text-white">
-              <ChevronLeft className="h-4 w-4" />
-              <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-white/20">
-                {avatarUrl ? <img src={avatarUrl} alt="Foto do perfil" className="h-full w-full object-cover" /> : <User className="h-4 w-4" />}
+          <div className="rounded-2xl border bg-card p-4 shadow-sm">
+            <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+              <span className="truncate text-sm font-semibold">Preview ao vivo</span>
+              <span className="flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" /> Atualizado agora
               </span>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium">{profileName || "Atendimento"}</div>
-                <div className="truncate text-[10px] opacity-80">{bio || "online"}</div>
-              </div>
-              <Video className="h-4 w-4" /><Phone className="h-4 w-4" /><MoreVertical className="h-4 w-4" />
             </div>
-
-            <div className="min-h-[380px] space-y-2 bg-[#e5ddd5] p-3 dark:bg-neutral-800">
-              <div className="mx-auto w-fit rounded bg-white/70 px-2 py-0.5 text-[10px] text-neutral-600">Hoje</div>
-              <div className="max-w-[85%] rounded-lg rounded-tl-none bg-white p-2 shadow-sm">
-                {mediaUrl && (
-                  <img src={mediaUrl} alt="Mídia da campanha" className="mb-2 aspect-video w-full rounded object-cover" />
-                )}
-                <div className="whitespace-pre-wrap break-words text-[13px] leading-relaxed text-neutral-900">
-                  {previewBody || <span className="italic text-neutral-400">Sua mensagem aparece aqui...</span>}
-                </div>
-                <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-neutral-500">
-                  {now} <CheckCheck className="h-3 w-3 text-sky-500" />
-                </div>
+            <div className="mx-auto max-w-[300px] overflow-hidden rounded-[2rem] border-[6px] border-neutral-900 bg-neutral-900 shadow-xl">
+              <div className="flex items-center justify-between px-4 py-1.5 text-[10px] text-white">
+                <span>{now}</span>
+                <span className="flex items-center gap-1"><Signal className="h-3 w-3" /><Wifi className="h-3 w-3" /><BatteryMedium className="h-3.5 w-3.5" /></span>
               </div>
-              {btnEnabled && (
-                <div className="max-w-[85%]">
-                  <div className="rounded-lg bg-white py-1.5 text-center text-[12px] font-medium text-sky-600 shadow-sm">
-                    {btnText || "CLIQUE AQUI"}
+              <div className="flex items-center gap-2 bg-[#075E54] px-3 py-2 text-white">
+                <ChevronLeft className="h-4 w-4" />
+                <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-white/20">
+                  {avatarUrl ? <img src={avatarUrl} alt="Foto do perfil" className="h-full w-full object-cover" /> : <User className="h-4 w-4" />}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium">{profileName || "Atendimento"}</div>
+                  <div className="truncate text-[10px] opacity-80">{bio || "online"}</div>
+                </div>
+                <Video className="h-4 w-4" /><Phone className="h-4 w-4" /><MoreVertical className="h-4 w-4" />
+              </div>
+
+              <div className="min-h-[380px] space-y-2 bg-[#e7dfd6] p-3">
+                <div className="mx-auto w-fit rounded bg-white/70 px-2 py-0.5 text-[10px] text-neutral-600">Hoje</div>
+                <div className="max-w-[88%] rounded-lg rounded-tl-none bg-white p-2 shadow-sm">
+                  {mediaUrl && (
+                    <img src={mediaUrl} alt="Mídia da campanha" className="mb-2 aspect-video w-full rounded object-cover" />
+                  )}
+                  <div className="whitespace-pre-wrap break-words text-[13px] leading-relaxed text-neutral-900">
+                    {previewBody || <span className="italic text-neutral-400">Sua mensagem aparece aqui...</span>}
+                  </div>
+                  <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-neutral-500">
+                    {now} <CheckCheck className="h-3 w-3 text-sky-500" />
                   </div>
                 </div>
-              )}
+                {btnEnabled && (
+                  <div className="max-w-[88%]">
+                    <div className="rounded-lg bg-white py-2 text-center text-[12px] font-semibold text-sky-600 shadow-sm">
+                      {btnText || "CLIQUE AQUI"}
+                    </div>
+                  </div>
+                )}
+              </div>
 
+              <div className="flex items-center gap-2 bg-[#f0f0f0] px-3 py-2">
+                <div className="flex-1 rounded-full bg-white px-3 py-1.5 text-[11px] text-neutral-400">Mensagem</div>
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-[#00a884] text-white"><Mic className="h-4 w-4" /></span>
+              </div>
             </div>
-
-            <div className="flex items-center gap-2 bg-[#f0f0f0] px-3 py-2">
-              <div className="flex-1 rounded-full bg-white px-3 py-1.5 text-[11px] text-neutral-400">Mensagem</div>
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-[#075E54] text-white"><Mic className="h-4 w-4" /></span>
-            </div>
+            <p className="mt-3 text-center text-[11px] leading-relaxed text-muted-foreground">
+              A visualização é aproximada e pode variar no WhatsApp real.
+            </p>
+            {previewUrl && <p className="mt-2 break-all text-center text-[11px] text-muted-foreground">Link do botão: {previewUrl}</p>}
           </div>
-          {previewUrl && <p className="mt-2 break-all text-[11px] text-muted-foreground">Link do botão: {previewUrl}</p>}
         </div>
       </div>
     </div>
   );
 }
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({
+  label, hint, counter, children,
+}: { label: string; hint?: string; counter?: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
       <Label className="text-sm">{label}</Label>
       {children}
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      {(hint || counter) && (
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 text-xs text-muted-foreground">
+          <span className="min-w-0">{hint}</span>
+          {counter && <span className="shrink-0">{counter}</span>}
+        </div>
+      )}
     </div>
   );
 }
+
+function IconInput({
+  icon: Icon, align = "center", children,
+}: { icon: typeof User; align?: "center" | "top"; children: React.ReactNode }) {
+  return (
+    <div className="relative">
+      <Icon className={`pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground ${align === "top" ? "top-3" : "top-1/2 -translate-y-1/2"}`} />
+      {children}
+    </div>
+  );
+}
+
