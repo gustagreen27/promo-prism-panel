@@ -324,18 +324,20 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
               </div>
 
               <div className="space-y-3 rounded-lg border border-violet-500/30 bg-violet-500/5 p-3">
-                <div className="text-sm font-medium">Resultado do envio externo</div>
+                <div className="text-sm font-medium">Resultado final e período do envio externo</div>
                 <p className="text-xs text-muted-foreground">
-                  Métricas informadas manualmente pelo admin (marcadas como <code>metrics_source = manual</code>), sem
-                  relação com webhooks da API do WhatsApp.
+                  Informe os números <strong>finais</strong> e o período: o sistema distribui a evolução
+                  automaticamente a cada 10 minutos até a finalização (<code>metrics_source = estimated_external</code>),
+                  sem relação com webhooks da API do WhatsApp.
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {([
                     ["Quantidade total de mensagens", mTotal, setMTotal],
-                    ["Enviadas com sucesso", mSent, setMSent],
-                    ["Entregues", mDelivered, setMDelivered],
-                    ["Falhas", mFailed, setMFailed],
+                    ["Enviadas com sucesso (final)", mSent, setMSent],
+                    ["Entregues (final)", mDelivered, setMDelivered],
+                    ["Falhas (final)", mFailed, setMFailed],
                   ] as const).map(([label, value, setter]) => (
+
                     <div key={label} className="space-y-1.5">
                       <Label className="text-xs">{label}</Label>
                       <Input
