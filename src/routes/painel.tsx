@@ -1,4 +1,5 @@
-import { createFileRoute, Outlet, redirect, Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import {
+  ClipboardList, createFileRoute, Outlet, redirect, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -33,6 +34,7 @@ export const Route = createFileRoute("/painel")({
 const NAV: Array<{ to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean }> = [
   { to: "/painel", label: "Início", icon: LayoutDashboard, exact: true },
   { to: "/painel/campanhas", label: "Disparos", icon: Send },
+  { to: "/painel/demandas", label: "Minhas demandas", icon: ClipboardList },
   { to: "/painel/contatos", label: "Listas de Leads", icon: Users },
   { to: "/painel/agenda", label: "Agenda", icon: CalendarClock },
   { to: "/painel/whatsapp", label: "WhatsApp", icon: MessageCircle },
