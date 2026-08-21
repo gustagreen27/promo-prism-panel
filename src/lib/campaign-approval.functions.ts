@@ -2,6 +2,8 @@ import { createServerFn } from '@tanstack/react-start'
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware'
 import { z } from 'zod'
 import { assertSufficientCredits } from '@/lib/wallet-guard'
+import { demandStage } from '@/lib/demand-stage'
+
 
 async function assertStaff(supabase: any, userId: string) {
   const { data } = await supabase.rpc('is_internal_staff', { _user: userId })
@@ -19,31 +21,52 @@ async function assertMember(supabase: any, userId: string, workspaceId: string) 
 }
 
 const APPROVAL_FIELDS =
-  'id,name,workspace_id,project_id,status,approval_status,approval_mode,rejection_reason,approved_at,approved_by,total_recipients,scheduled_at,created_at,created_by,connection_id,template_id,list_id,custom_fields,variables_mapping,button_url_mapping,template_variables,execution_type,external_status,external_note,metrics_source,external_total_count,external_sent_count,external_delivered_count,external_failed_count,external_started_at,external_finished_at'
+  'id,name,workspace_id,project_id,status,approval_status,approval_mode,rejection_reason,approved_at,approved_by,total_recipients,scheduled_at,created_at,created_by,connection_id,template_id,list_id,custom_fields,variables_mapping,button_url_mapping,template_variables,execution_type,external_status,external_note,metrics_source,external_total_count,external_sent_count,external_delivered_count,external_failed_count,external_started_at,external_finished_at,external_updated_at'
+
 
 // ---- Fila de aprovação (admin) ----
 export const listApprovalQueue = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { status?: string } | undefined) =>
-    z.object({ status: z.enum(['pending', 'approved', 'rejected', 'all']).default('pending') }).parse(d ?? {}),
+    z
+      .object({
+        status: z
+          .enum(['pending', 'scheduled', 'queued', 'completed', 'rejected', 'all'])
+          .default('pending'),
+      })
+      .parse(d ?? {}),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any
     await assertStaff(supabase, userId)
-    let q = supabase
+    const { data: rows, error } = await supabase
       .from('wa_campaigns')
       .select(`${APPROVAL_FIELDS},workspaces(name)`)
       .order('created_at', { ascending: false })
-      .limit(200)
-    if (data.status !== 'all') q = q.eq('approval_status', data.status)
-    const { data: rows, error } = await q
+      .limit(400)
     if (error) throw error
 
-    const campaigns = (rows ?? []) as any[]
+    let campaigns = (rows ?? []) as any[]
 
-    // Execução externa: ao atingir a data/hora de finalização, marca como concluído.
+    // Execução externa: transições automáticas por horário.
     {
       const nowIso = new Date().toISOString()
+      // Agendada → Em fila quando chega o horário definido.
+      const starting = campaigns.filter(
+        (c) =>
+          c.execution_type === 'external' &&
+          c.external_status === 'scheduled_external' &&
+          c.scheduled_at &&
+          c.scheduled_at <= nowIso,
+      )
+      if (starting.length) {
+        await supabase
+          .from('wa_campaigns')
+          .update({ external_status: 'in_progress' })
+          .in('id', starting.map((c) => c.id))
+        for (const c of starting) c.external_status = 'in_progress'
+      }
+      // Em fila → Finalizado ao atingir a finalização programada.
       const due = campaigns.filter(
         (c) =>
           c.execution_type === 'external' &&
@@ -59,8 +82,16 @@ export const listApprovalQueue = createServerFn({ method: 'POST' })
           .in('id', due.map((c) => c.id))
         for (const c of due) c.external_status = 'completed'
       }
+
     }
+
+    const counts = { pending: 0, scheduled: 0, queued: 0, completed: 0, rejected: 0 } as Record<string, number>
+    for (const c of campaigns) counts[demandStage(c)] = (counts[demandStage(c)] ?? 0) + 1
+    if (data.status !== 'all') campaigns = campaigns.filter((c) => demandStage(c) === data.status)
+    campaigns = campaigns.slice(0, 200)
+
     const listIds = [...new Set(campaigns.map((c) => c.list_id).filter(Boolean))]
+
     const tplIds = [...new Set(campaigns.map((c) => c.template_id).filter(Boolean))]
     const [{ data: lists }, { data: tpls }] = await Promise.all([
       listIds.length
@@ -98,10 +129,12 @@ export const listApprovalQueue = createServerFn({ method: 'POST' })
     }
 
     return {
+      counts,
       items: campaigns.map((c) => {
         const conn: any = c.connection_id ? connById.get(c.connection_id) : null
         return {
           ...c,
+          stage: demandStage(c),
           workspace_name: c.workspaces?.name ?? null,
           list_name: c.list_id ? (listName.get(c.list_id) ?? null) : null,
           template_name: c.template_id ? (tplName.get(c.template_id) ?? null) : null,
@@ -112,6 +145,7 @@ export const listApprovalQueue = createServerFn({ method: 'POST' })
         }
       }),
     }
+
   })
 
 // ---- Configurar infraestrutura da demanda (admin) ----
@@ -183,9 +217,12 @@ export const decideCampaignApproval = createServerFn({ method: 'POST' })
         campaign_id: z.string().uuid(),
         decision: z.enum(['approved', 'rejected']),
         reason: z.string().trim().max(1000).optional().nullable(),
+        // Para onde a aprovação move a demanda: agendada ou direto para a fila.
+        target: z.enum(['scheduled', 'queued']).optional(),
       })
       .parse(d),
   )
+
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any
     await assertStaff(supabase, userId)
@@ -218,6 +255,8 @@ export const decideCampaignApproval = createServerFn({ method: 'POST' })
 
     const nowIso = new Date().toISOString()
     const scheduledFuture = camp.scheduled_at ? new Date(camp.scheduled_at).getTime() > Date.now() : false
+    // Aprovar não é um status: escolhe explicitamente Agendada ou Em fila.
+    const goScheduled = data.target ? data.target === 'scheduled' : scheduledFuture
     const patch =
       data.decision === 'approved'
         ? isExternal
@@ -228,16 +267,19 @@ export const decideCampaignApproval = createServerFn({ method: 'POST' })
               approved_by: userId,
               approved_at: nowIso,
               rejection_reason: null,
-              external_status: 'approved_external',
+              external_status: goScheduled ? 'scheduled_external' : 'in_progress',
+              ...(goScheduled ? {} : { external_started_at: nowIso }),
+              metrics_source: 'manual',
             }
           : {
-            status: scheduledFuture ? 'scheduled' : 'queued',
+            status: goScheduled ? 'scheduled' : 'queued',
             approval_status: 'approved',
             approved_by: userId,
             approved_at: nowIso,
             rejection_reason: null,
           }
         : {
+
             status: 'rejected',
             approval_status: 'rejected',
             approved_by: userId,
@@ -302,7 +344,11 @@ export const updateExternalExecution = createServerFn({ method: 'POST' })
     z
       .object({
         campaign_id: z.string().uuid(),
-        external_status: z.enum(['approved_external', 'in_progress', 'completed', 'cancelled']).optional(),
+        external_status: z
+          .enum(['scheduled_external', 'approved_external', 'in_progress', 'completed', 'cancelled'])
+          .optional(),
+        finalize_now: z.boolean().optional(),
+
         external_note: z.string().trim().max(2000).nullish(),
         external_total_count: z.number().int().min(0).max(100_000_000).nullish(),
         external_sent_count: z.number().int().min(0).max(100_000_000).nullish(),
@@ -376,10 +422,20 @@ export const updateExternalExecution = createServerFn({ method: 'POST' })
         throw new Error('A finalização não pode ser anterior ao início.')
 
       patch['metrics_source'] = 'manual'
+      patch['external_updated_at'] = new Date().toISOString()
       // Finalização no passado (ou já atingida) conclui a demanda automaticamente.
       if (finishedAt && new Date(finishedAt).getTime() <= Date.now() && !data.external_status) {
         patch['external_status'] = 'completed'
       }
+    }
+
+    // Finalização manual: grava o horário de término e conclui.
+    if (data.finalize_now) {
+      const now = new Date().toISOString()
+      patch['external_finished_at'] = now
+      patch['external_status'] = 'completed'
+      patch['external_updated_at'] = now
+      patch['metrics_source'] = 'manual'
     }
 
     if (!Object.keys(patch).length) return { ok: true }
@@ -392,14 +448,22 @@ export const updateExternalExecution = createServerFn({ method: 'POST' })
       campaign_id: camp.id,
       workspace_id: camp.workspace_id,
       actor_id: userId,
-      action: 'external.status_updated',
+      action: touchedMetrics || data.finalize_now ? 'external.progress' : 'external.status_updated',
       message: data.external_note ?? null,
-      from_data: { external_status: camp.external_status, external_note: camp.external_note },
+      from_data: {
+        external_status: camp.external_status,
+        external_note: camp.external_note,
+        external_total_count: camp.external_total_count,
+        external_sent_count: camp.external_sent_count,
+        external_delivered_count: camp.external_delivered_count,
+        external_failed_count: camp.external_failed_count,
+      },
       to_data: patch,
     } as any)
 
     return { ok: true }
   })
+
 
 // ---- Detalhe completo da demanda (preview fiel para o admin) ----
 export const getDemandDetail = createServerFn({ method: 'POST' })
@@ -543,8 +607,52 @@ export const listMyDemands = createServerFn({ method: 'POST' })
     return {
       items: campaigns.map(({ external_note: _adminOnly, ...c }: any) => ({
         ...c,
+        stage: demandStage(c),
         list_name: c.list_id ? (listName.get(c.list_id) ?? null) : null,
         decisions: auditByCampaign.get(c.id) ?? [],
       })),
     }
   })
+
+// ---- Histórico de atualizações manuais da execução externa (admin) ----
+export const listExternalProgress = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { campaign_id: string }) => z.object({ campaign_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any
+    await assertStaff(supabase, userId)
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
+    const { data: rows, error } = await supabaseAdmin
+      .from('campaign_audit_log')
+      .select('id,actor_id,created_at,to_data,message')
+      .eq('campaign_id', data.campaign_id)
+      .eq('action', 'external.progress')
+      .order('created_at', { ascending: false })
+      .limit(100)
+    if (error) throw error
+
+    const actorIds = [...new Set((rows ?? []).map((r: any) => r.actor_id).filter(Boolean))] as string[]
+    const nameById = new Map<string, string>()
+    if (actorIds.length) {
+      const { data: profiles } = await supabaseAdmin
+        .from('profiles')
+        .select('id,full_name,email')
+        .in('id', actorIds)
+      for (const p of (profiles ?? []) as any[]) nameById.set(p.id, p.full_name || p.email || p.id)
+    }
+
+    return {
+      entries: (rows ?? []).map((r: any) => ({
+        id: r.id,
+        created_at: r.created_at,
+        actor_name: r.actor_id ? (nameById.get(r.actor_id) ?? '—') : 'Sistema',
+        message: r.message ?? null,
+        total: r.to_data?.external_total_count ?? null,
+        sent: r.to_data?.external_sent_count ?? null,
+        delivered: r.to_data?.external_delivered_count ?? null,
+        failed: r.to_data?.external_failed_count ?? null,
+        status: r.to_data?.external_status ?? null,
+      })),
+    }
+  })
+

@@ -18,13 +18,15 @@ import {
 import { ErrorCard } from "@/components/admin/query-state";
 import {
   listApprovalQueue, decideCampaignApproval, configureCampaignDemand, getCampaignApprovalAudit,
-  updateExternalExecution,
+  updateExternalExecution, listExternalProgress,
 } from "@/lib/campaign-approval.functions";
 import { adminListAllNumbers } from "@/lib/admin-dispatch.functions";
 import { listTemplates } from "@/lib/whatsapp-templates.functions";
 import { adminListTestConnections, adminSetConnectionTestFlag } from "@/lib/wa-tests.functions";
-import { History, Loader2, Settings2, FlaskConical, Eye } from "lucide-react";
+import { History, Loader2, Settings2, FlaskConical, Eye, Gauge, CheckCircle2 } from "lucide-react";
 import { DemandPreviewDialog } from "@/components/admin/DemandPreviewDialog";
+import { demandStage, pendingCount, STAGE_CLASS, STAGE_LABEL, type DemandStage } from "@/lib/demand-stage";
+
 
 export const Route = createFileRoute("/_authenticated/admin/demandas")({
   head: () => ({
@@ -63,7 +65,10 @@ type Item = {
   external_failed_count?: number | null;
   external_started_at?: string | null;
   external_finished_at?: string | null;
+  external_updated_at?: string | null;
+  stage?: DemandStage;
   status: string;
+
 };
 
 const fmt = (v: string | null | undefined) => (v ? new Date(v).toLocaleString("pt-BR") : "—");
@@ -74,12 +79,6 @@ function toLocalInput(iso: string) {
   const off = d.getTimezoneOffset() * 60_000;
   return new Date(d.getTime() - off).toISOString().slice(0, 16);
 }
-
-const DEMAND_STATE: Record<string, { label: string; className: string }> = {
-  pending: { label: "Aguardando revisão", className: "bg-amber-500/15 text-amber-600 border-amber-500/30" },
-  approved: { label: "Aprovado", className: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30" },
-  rejected: { label: "Recusado", className: "bg-destructive/15 text-destructive border-destructive/30" },
-};
 
 const EXEC_STATE: Record<string, string> = {
   draft: "Rascunho",
@@ -93,6 +92,7 @@ const EXEC_STATE: Record<string, string> = {
   rejected: "Recusado",
   error: "Erro",
 };
+
 
 function AuditDialog({ campaignId, onClose }: { campaignId: string | null; onClose: () => void }) {
   const auditFn = useServerFn(getCampaignApprovalAudit);
@@ -414,24 +414,48 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
 }
 
 const EXTERNAL_STATUS: Array<{ v: string; label: string }> = [
-  { v: "approved_external", label: "Aprovado para execução externa" },
-  { v: "in_progress", label: "Em andamento" },
-  { v: "completed", label: "Concluído" },
+  { v: "scheduled_external", label: "Agendada" },
+  { v: "in_progress", label: "Em fila" },
+  { v: "completed", label: "Finalizado" },
   { v: "cancelled", label: "Cancelado" },
 ];
 
+/** Painel de acompanhamento manual de uma execução externa. */
 function ExternalControls({ item }: { item: Item }) {
   const qc = useQueryClient();
   const updateFn = useServerFn(updateExternalExecution);
-  const [note, setNote] = useState(item.external_note ?? "");
+  const historyFn = useServerFn(listExternalProgress);
+  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState(item.external_note ?? "");
+  const [total, setTotal] = useState(item.external_total_count != null ? String(item.external_total_count) : "");
+  const [sent, setSent] = useState(item.external_sent_count != null ? String(item.external_sent_count) : "");
+  const [delivered, setDelivered] = useState(item.external_delivered_count != null ? String(item.external_delivered_count) : "");
+  const [failed, setFailed] = useState(item.external_failed_count != null ? String(item.external_failed_count) : "");
+  const [start, setStart] = useState(item.external_started_at ? toLocalInput(item.external_started_at) : "");
+  const [finish, setFinish] = useState(item.external_finished_at ? toLocalInput(item.external_finished_at) : "");
 
-  async function push(patch: { external_status?: string; external_note?: string | null }) {
+  const { data: hist } = useQuery({
+    queryKey: ["external-progress", item.id],
+    enabled: open,
+    queryFn: () => historyFn({ data: { campaign_id: item.id } }),
+  });
+  const entries = ((hist as any)?.entries ?? []) as Array<any>;
+
+  const n = (v: string) => (v.trim() === "" ? null : Number(v));
+  const previewPending = Math.max(0, (n(total) ?? 0) - (n(sent) ?? 0) - (n(failed) ?? 0));
+  const pending = pendingCount(item);
+  const progressPct = item.external_total_count
+    ? Math.min(100, Math.round((((item.external_sent_count ?? 0) + (item.external_failed_count ?? 0)) / item.external_total_count) * 100))
+    : 0;
+
+  async function push(patch: Record<string, any>, msg = "Execução externa atualizada") {
     setBusy(true);
     try {
       await updateFn({ data: { campaign_id: item.id, ...patch } as any });
-      toast.success("Execução externa atualizada");
+      toast.success(msg);
       qc.invalidateQueries({ queryKey: ["approval-queue"] });
+      qc.invalidateQueries({ queryKey: ["external-progress", item.id] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha ao atualizar");
     } finally {
@@ -439,60 +463,161 @@ function ExternalControls({ item }: { item: Item }) {
     }
   }
 
+  async function saveMetrics() {
+    const t = n(total), s = n(sent), d = n(delivered), f = n(failed);
+    for (const [label, v] of [["Total", t], ["Enviados", s], ["Entregues", d], ["Falhas", f]] as const) {
+      if (v != null && (!Number.isInteger(v) || v < 0)) {
+        toast.error(`${label}: informe um número inteiro maior ou igual a zero.`);
+        return;
+      }
+    }
+    await push({
+      external_total_count: t,
+      external_sent_count: s,
+      external_delivered_count: d,
+      external_failed_count: f,
+      external_started_at: start ? new Date(start).toISOString() : null,
+      external_finished_at: finish ? new Date(finish).toISOString() : null,
+      external_note: note.trim() || null,
+    }, "Resultados atualizados");
+    setOpen(false);
+  }
+
   return (
     <div className="max-w-2xl space-y-2 rounded-lg border border-violet-500/30 bg-violet-500/5 p-3">
-      <div className="text-xs font-medium">Execução externa (somente admin)</div>
-      {(item.external_total_count != null ||
-        item.external_sent_count != null ||
-        item.external_delivered_count != null ||
-        item.external_failed_count != null ||
-        item.external_finished_at) && (
-        <div className="rounded-md border bg-background/60 p-2 text-xs">
-          <div className="mb-1 font-medium">Resultado (informado manualmente)</div>
-          <div className="grid gap-0.5 text-muted-foreground sm:grid-cols-2">
-            <span>{(item.external_total_count ?? 0).toLocaleString("pt-BR")} destinatários</span>
-            <span>{(item.external_sent_count ?? 0).toLocaleString("pt-BR")} enviados com sucesso</span>
-            <span>{(item.external_delivered_count ?? 0).toLocaleString("pt-BR")} entregues</span>
-            <span>{(item.external_failed_count ?? 0).toLocaleString("pt-BR")} falhas</span>
-            {item.external_started_at && <span>Início: {fmt(item.external_started_at)}</span>}
-            {item.external_finished_at && <span>Finalizado em: {fmt(item.external_finished_at)}</span>}
-          </div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-xs font-medium">Execução externa (somente admin)</div>
+        {busy && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+      </div>
+
+      <div className="rounded-md border bg-background/60 p-2 text-xs">
+        <div className="mb-1 flex items-center justify-between">
+          <span className="font-medium">Andamento (atualização manual)</span>
+          <span className="text-muted-foreground">{progressPct}%</span>
         </div>
-      )}
+        <div className="mb-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+          <div className="h-full rounded-full bg-violet-500 transition-all" style={{ width: `${progressPct}%` }} />
+        </div>
+        <div className="grid gap-0.5 text-muted-foreground sm:grid-cols-2">
+          <span>Total: {(item.external_total_count ?? 0).toLocaleString("pt-BR")}</span>
+          <span>Enviados: {(item.external_sent_count ?? 0).toLocaleString("pt-BR")}</span>
+          <span>Entregues: {(item.external_delivered_count ?? 0).toLocaleString("pt-BR")}</span>
+          <span>Falhas: {(item.external_failed_count ?? 0).toLocaleString("pt-BR")}</span>
+          <span>Pendentes: {pending.toLocaleString("pt-BR")}</span>
+          {item.external_started_at && <span>Início: {fmt(item.external_started_at)}</span>}
+          {item.external_updated_at && <span>Última atualização: {fmt(item.external_updated_at)}</span>}
+          {item.external_finished_at && <span>Finalização: {fmt(item.external_finished_at)}</span>}
+        </div>
+      </div>
+
       <div className="flex flex-wrap items-center gap-2">
-        <Select
-          value={item.external_status ?? ""}
-          onValueChange={(v) => void push({ external_status: v })}
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => setOpen(true)}>
+          <Gauge className="mr-1 h-4 w-4" /> Atualizar resultados
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={busy || item.external_status === "completed"}
+          onClick={() => void push({ finalize_now: true }, "Disparo finalizado")}
         >
-          <SelectTrigger className="h-8 w-64 text-xs"><SelectValue placeholder="Definir status manual" /></SelectTrigger>
+          <CheckCircle2 className="mr-1 h-4 w-4" /> Finalizar disparo
+        </Button>
+        <Select value={item.external_status ?? ""} onValueChange={(v) => void push({ external_status: v })}>
+          <SelectTrigger className="h-8 w-48 text-xs"><SelectValue placeholder="Mudar etapa" /></SelectTrigger>
           <SelectContent>
             {EXTERNAL_STATUS.map((s) => (
               <SelectItem key={s.v} value={s.v}>{s.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
-        {busy && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
       </div>
-      <Textarea
-        rows={2}
-        className="text-xs"
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        placeholder="Observação interna (ex.: Disparo realizado por ferramenta externa.)"
-      />
-      <Button size="sm" variant="outline" disabled={busy} onClick={() => void push({ external_note: note.trim() || null })}>
-        Salvar observação
-      </Button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Atualizar resultados — {item.name}</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              {([
+                ["Total de destinatários", total, setTotal],
+                ["Enviados com sucesso", sent, setSent],
+                ["Entregues", delivered, setDelivered],
+                ["Falhas", failed, setFailed],
+              ] as const).map(([label, value, setter]) => (
+                <div key={label} className="space-y-1.5">
+                  <Label className="text-xs">{label}</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={value}
+                    onChange={(e) => (setter as (v: string) => void)(e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+              ))}
+              <div className="space-y-1.5">
+                <Label className="text-xs">Pendentes (calculado)</Label>
+                <Input value={previewPending.toLocaleString("pt-BR")} readOnly className="bg-muted/50" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Início do disparo</Label>
+                <Input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label className="text-xs">Finalizar em (opcional)</Label>
+                <Input type="datetime-local" value={finish} onChange={(e) => setFinish(e.target.value)} />
+                <p className="text-xs text-muted-foreground">
+                  Ao chegar nesse horário a demanda passa automaticamente para Finalizado, mantendo as últimas métricas.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs">Observação interna</Label>
+              <Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-xs font-medium">Histórico de atualizações</div>
+              {entries.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Nenhuma atualização registrada ainda.</p>
+              ) : (
+                <div className="max-h-48 space-y-1.5 overflow-y-auto text-xs">
+                  {entries.map((e) => (
+                    <div key={e.id} className="rounded-md border p-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-muted-foreground">{fmt(e.created_at)}</span>
+                        <span className="text-muted-foreground">{e.actor_name}</span>
+                      </div>
+                      <div>
+                        {(e.sent ?? 0).toLocaleString("pt-BR")} enviados ·{" "}
+                        {(e.delivered ?? 0).toLocaleString("pt-BR")} entregues ·{" "}
+                        {(e.failed ?? 0).toLocaleString("pt-BR")} falhas
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={busy}>Cancelar</Button>
+            <Button onClick={() => void saveMetrics()} disabled={busy}>
+              {busy ? "Salvando…" : "Salvar atualização"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
 
 function Page() {
   const qc = useQueryClient();
   const listFn = useServerFn(listApprovalQueue);
   const decideFn = useServerFn(decideCampaignApproval);
 
-  const [tab, setTab] = useState<"pending" | "approved" | "rejected" | "all">("pending");
+  const [tab, setTab] = useState<DemandStage | "all">("pending");
   const [configItem, setConfigItem] = useState<Item | null>(null);
   const [auditId, setAuditId] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
@@ -507,8 +632,10 @@ function Page() {
     refetchInterval: 30_000,
   });
   const items = useMemo(() => ((data as any)?.items ?? []) as Item[], [data]);
+  const counts = ((data as any)?.counts ?? {}) as Record<string, number>;
 
-  async function submit() {
+
+  async function submit(target: "scheduled" | "queued" = "queued") {
     if (!decision) return;
     if (decision.kind === "rejected" && reason.trim().length < 3) {
       toast.error("Informe o motivo da recusa");
@@ -518,14 +645,18 @@ function Page() {
     try {
       const campaignId = decision.item.id;
       const res: any = await decideFn({
-        data: { campaign_id: campaignId, decision: decision.kind, reason: reason.trim() || null },
+        data: { campaign_id: campaignId, decision: decision.kind, reason: reason.trim() || null, target },
       });
       if (res?.already) {
         toast.info("Esta demanda já havia sido decidida.");
       } else if (decision.kind === "approved" && res?.external) {
-        toast.success("Demanda aprovada para execução externa — nada foi enviado para a fila da plataforma");
+        toast.success(
+          target === "scheduled"
+            ? "Demanda agendada para execução externa"
+            : "Demanda em fila — atualize as métricas manualmente conforme o envio avança",
+        );
       } else if (decision.kind === "approved") {
-        toast.success("Demanda aprovada — disparo pronto para execução", {
+        toast.success(target === "scheduled" ? "Demanda agendada" : "Demanda em fila — pronta para execução", {
           action: {
             label: "Abrir disparo",
             onClick: () => void navigate({ to: "/admin/disparos/$id", params: { id: campaignId } }),
@@ -534,6 +665,7 @@ function Page() {
       } else {
         toast.success("Demanda recusada");
       }
+
       setDecision(null);
       setReason("");
       qc.invalidateQueries({ queryKey: ["approval-queue"] });
@@ -556,12 +688,16 @@ function Page() {
           </div>
           <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
             <TabsList>
-              <TabsTrigger value="pending">Aguardando</TabsTrigger>
-              <TabsTrigger value="approved">Aprovadas</TabsTrigger>
-              <TabsTrigger value="rejected">Recusadas</TabsTrigger>
+              {(["pending", "scheduled", "queued", "completed", "rejected"] as DemandStage[]).map((s) => (
+                <TabsTrigger key={s} value={s}>
+                  {STAGE_LABEL[s]}
+                  {counts[s] ? ` (${counts[s]})` : ""}
+                </TabsTrigger>
+              ))}
               <TabsTrigger value="all">Todas</TabsTrigger>
             </TabsList>
           </Tabs>
+
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -573,7 +709,9 @@ function Page() {
           ) : (
             <div className="divide-y">
               {items.map((r) => {
-                const badge = DEMAND_STATE[r.approval_status ?? ""] ?? { label: r.approval_status ?? "—", className: "" };
+                const stage = r.stage ?? demandStage(r as any);
+                const badge = { label: STAGE_LABEL[stage], className: STAGE_CLASS[stage] };
+
                 const brief = r.custom_fields ?? {};
                 return (
                   <div key={r.id} className="space-y-2 py-4 text-sm">
@@ -629,16 +767,17 @@ function Page() {
                       <Button size="sm" variant="outline" onClick={() => setConfigItem(r)}>
                         <Settings2 className="mr-1 h-4 w-4" /> Configurar
                       </Button>
-                      {r.approval_status !== "rejected" && (
+                      {stage === "pending" && (
                         <Button size="sm" variant="outline" onClick={() => { setReason(""); setDecision({ item: r, kind: "rejected" }); }}>
                           Recusar
                         </Button>
                       )}
-                      {r.approval_status !== "approved" && (
+                      {stage === "pending" && (
                         <Button size="sm" onClick={() => { setReason(""); setDecision({ item: r, kind: "approved" }); }}>
                           Aprovar
                         </Button>
                       )}
+
                     </div>
                   </div>
                 );
@@ -673,10 +812,22 @@ function Page() {
           />
           <DialogFooter>
             <Button variant="outline" onClick={() => setDecision(null)} disabled={busy}>Cancelar</Button>
-            <Button onClick={() => void submit()} disabled={busy}>
-              {busy ? "Salvando…" : decision?.kind === "approved" ? "Aprovar e enviar para a fila" : "Recusar demanda"}
-            </Button>
+            {decision?.kind === "approved" ? (
+              <>
+                <Button variant="secondary" onClick={() => void submit("scheduled")} disabled={busy}>
+                  {busy ? "Salvando…" : "Aprovar e agendar"}
+                </Button>
+                <Button onClick={() => void submit("queued")} disabled={busy}>
+                  {busy ? "Salvando…" : "Aprovar e colocar em fila"}
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => void submit()} disabled={busy}>
+                {busy ? "Salvando…" : "Recusar demanda"}
+              </Button>
+            )}
           </DialogFooter>
+
         </DialogContent>
       </Dialog>
     </div>

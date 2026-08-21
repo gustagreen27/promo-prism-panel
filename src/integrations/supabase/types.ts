@@ -2844,6 +2844,7 @@ export type Database = {
           external_started_at: string | null
           external_status: string | null
           external_total_count: number | null
+          external_updated_at: string | null
           failed_count: number
           fatal_error_code: string | null
           fatal_error_message: string | null
@@ -2956,6 +2957,7 @@ export type Database = {
           external_started_at?: string | null
           external_status?: string | null
           external_total_count?: number | null
+          external_updated_at?: string | null
           failed_count?: number
           fatal_error_code?: string | null
           fatal_error_message?: string | null
@@ -3068,6 +3070,7 @@ export type Database = {
           external_started_at?: string | null
           external_status?: string | null
           external_total_count?: number | null
+          external_updated_at?: string | null
           failed_count?: number
           fatal_error_code?: string | null
           fatal_error_message?: string | null

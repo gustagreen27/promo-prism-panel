@@ -1,0 +1,1 @@
+ALTER TABLE public.wa_campaigns ADD COLUMN IF NOT EXISTS external_updated_at timestamptz;

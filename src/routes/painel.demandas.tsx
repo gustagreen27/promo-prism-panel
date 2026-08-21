@@ -7,7 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getMyContext } from "@/lib/auth.functions";
 import { listMyDemands } from "@/lib/campaign-approval.functions";
+import { demandStage, pendingCount, STAGE_CLASS, STAGE_LABEL, type DemandStage } from "@/lib/demand-stage";
 import { CheckCircle2, Clock, ListChecks, XCircle, Loader2 } from "lucide-react";
+
 
 export const Route = createFileRoute("/painel/demandas")({
   head: () => ({
@@ -34,30 +36,30 @@ type Demand = {
   scheduled_at: string | null;
   created_at: string;
   list_name: string | null;
+  execution_type?: string | null;
+  external_status?: string | null;
   external_total_count?: number | null;
   external_sent_count?: number | null;
   external_delivered_count?: number | null;
   external_failed_count?: number | null;
+  external_started_at?: string | null;
+  external_updated_at?: string | null;
   external_finished_at?: string | null;
   decisions: Array<{ action: string; message: string | null; created_at: string }>;
 };
 
-type Bucket = "pending" | "scheduled" | "queued" | "approved" | "rejected";
+type Bucket = DemandStage;
 
-function bucketOf(d: Demand): Bucket {
-  if (d.approval_status === "rejected") return "rejected";
-  if (d.approval_status === "pending") return d.scheduled_at ? "scheduled" : "pending";
-  if (["queued", "scheduled"].includes(d.status)) return "queued";
-  return "approved";
-}
+const bucketOf = (d: Demand): Bucket => demandStage(d as any);
 
 const BUCKETS: Record<Bucket, { label: string; className: string; icon: typeof Clock }> = {
-  pending: { label: "Aguardando envio", className: "bg-amber-500/15 text-amber-600 border-amber-500/30", icon: Clock },
-  scheduled: { label: "Agendada", className: "bg-amber-500/15 text-amber-600 border-amber-500/30", icon: Clock },
-  queued: { label: "Em fila", className: "bg-sky-500/15 text-sky-600 border-sky-500/30", icon: ListChecks },
-  approved: { label: "Aprovada", className: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30", icon: CheckCircle2 },
-  rejected: { label: "Rejeitada", className: "bg-destructive/15 text-destructive border-destructive/30", icon: XCircle },
+  pending: { label: STAGE_LABEL.pending, className: STAGE_CLASS.pending, icon: Clock },
+  scheduled: { label: STAGE_LABEL.scheduled, className: STAGE_CLASS.scheduled, icon: Clock },
+  queued: { label: STAGE_LABEL.queued, className: STAGE_CLASS.queued, icon: ListChecks },
+  completed: { label: STAGE_LABEL.completed, className: STAGE_CLASS.completed, icon: CheckCircle2 },
+  rejected: { label: STAGE_LABEL.rejected, className: STAGE_CLASS.rejected, icon: XCircle },
 };
+
 
 const fmt = (v: string | null | undefined) => (v ? new Date(v).toLocaleString("pt-BR") : "—");
 
@@ -78,7 +80,7 @@ function Page() {
 
   const items = useMemo(() => ((data as any)?.items ?? []) as Demand[], [data]);
   const counts = useMemo(() => {
-    const c: Record<Bucket, number> = { pending: 0, scheduled: 0, queued: 0, approved: 0, rejected: 0 };
+    const c: Record<Bucket, number> = { pending: 0, scheduled: 0, queued: 0, completed: 0, rejected: 0 };
     for (const d of items) c[bucketOf(d)] += 1;
     return c;
   }, [items]);
@@ -155,24 +157,44 @@ function Page() {
                         Rejeitada em {fmt(d.approved_at)}. Motivo: {d.rejection_reason || decision?.message || "não informado"}
                       </div>
                     )}
-                    {d.external_finished_at && (
+                    {(d.external_total_count || d.external_sent_count) && (
                       <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs">
-                        <div className="mb-1 font-medium">Resultado</div>
+                        <div className="mb-1 flex items-center justify-between">
+                          <span className="font-medium">{d.external_finished_at ? "Resultado" : "Andamento"}</span>
+                          <span className="text-muted-foreground">
+                            {d.external_total_count
+                              ? `${Math.min(100, Math.round((((d.external_sent_count ?? 0) + (d.external_failed_count ?? 0)) / d.external_total_count) * 100))}%`
+                              : ""}
+                          </span>
+                        </div>
+                        {!!d.external_total_count && (
+                          <div className="mb-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                            <div
+                              className="h-full rounded-full bg-primary transition-all"
+                              style={{
+                                width: `${Math.min(100, Math.round((((d.external_sent_count ?? 0) + (d.external_failed_count ?? 0)) / d.external_total_count) * 100))}%`,
+                              }}
+                            />
+                          </div>
+                        )}
                         <div className="grid gap-0.5 text-muted-foreground sm:grid-cols-2">
                           <span>{(d.external_total_count ?? d.total_recipients ?? 0).toLocaleString("pt-BR")} destinatários</span>
                           <span>{(d.external_sent_count ?? 0).toLocaleString("pt-BR")} enviados com sucesso</span>
                           <span>{(d.external_delivered_count ?? 0).toLocaleString("pt-BR")} entregues</span>
                           <span>{(d.external_failed_count ?? 0).toLocaleString("pt-BR")} falhas</span>
+                          <span>{pendingCount(d).toLocaleString("pt-BR")} pendentes</span>
+                          {d.external_updated_at && <span>Atualizado em {fmt(d.external_updated_at)}</span>}
                         </div>
-                        <div className="mt-1">Finalizado em: {fmt(d.external_finished_at)}</div>
+                        {d.external_finished_at && <div className="mt-1">Finalizado em: {fmt(d.external_finished_at)}</div>}
                       </div>
                     )}
-                    {(b === "approved" || b === "queued") && d.approved_at && (
+                    {(b === "queued" || b === "scheduled" || b === "completed") && d.approved_at && (
                       <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700">
                         Aprovada em {fmt(d.approved_at)}
-                        {b === "queued" ? " — aguardando execução na fila de envio." : "."}
+                        {b === "queued" ? " — em execução/fila de envio." : b === "scheduled" ? " — agendada." : "."}
                       </div>
                     )}
+
                   </div>
                 );
               })}
