@@ -615,7 +615,13 @@ export const listMyDemands = createServerFn({ method: 'POST' })
     if (error) throw error
 
     const campaigns = (rows ?? []) as any[]
+    // Progressão automática das execuções externas (janelas de 10 minutos).
+    {
+      const { applyExternalProgression } = await import('./external-progression.server')
+      await applyExternalProgression(supabase, campaigns)
+    }
     const ids = campaigns.map((c) => c.id)
+
     const auditByCampaign = new Map<string, any[]>()
     if (ids.length) {
       const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
