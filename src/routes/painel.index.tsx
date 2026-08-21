@@ -170,7 +170,7 @@ function PanelHome() {
       {/* Consumo por empresa */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base"><Building2 className="h-4 w-4" /> Consumo de créditos por empresa</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base"><Building2 className="h-4 w-4" /> Consumo de mensagens por empresa</CardTitle>
           <p className="text-xs text-muted-foreground">Uso consolidado por filial quando não há empresa selecionada; filtrável acima.</p>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -183,7 +183,7 @@ function PanelHome() {
                 <div key={p.name} className="rounded-lg border p-3">
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-medium">{p.name}</span>
-                    <span className="tabular-nums">{nf(p.credits)} <span className="text-xs text-muted-foreground">créditos</span></span>
+                    <span className="tabular-nums">{nf(p.credits)} <span className="text-xs text-muted-foreground">mensagens</span></span>
                   </div>
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
                     <div className="h-full rounded-full bg-primary/70" style={{ width: `${(p.credits / max) * 100}%` }} />
@@ -220,7 +220,7 @@ function PanelHome() {
           <div className="grid gap-4 sm:grid-cols-3">
             <Metric label="Disparos" value={report.campaigns} />
             <Metric label="Realizados" value={report.done} />
-            <Metric label="Créditos usados" value={report.used} />
+            <Metric label="Mensagens usadas" value={report.used} />
           </div>
           {selected ? (
             <div className="mt-4 grid gap-3 sm:grid-cols-4">
