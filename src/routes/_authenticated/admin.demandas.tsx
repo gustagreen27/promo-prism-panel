@@ -65,7 +65,10 @@ type Item = {
   external_failed_count?: number | null;
   external_started_at?: string | null;
   external_finished_at?: string | null;
+  external_updated_at?: string | null;
+  stage?: DemandStage;
   status: string;
+
 };
 
 const fmt = (v: string | null | undefined) => (v ? new Date(v).toLocaleString("pt-BR") : "—");
