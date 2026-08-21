@@ -3,6 +3,7 @@ import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware'
 import { z } from 'zod'
 import { assertSufficientCredits, getWorkspaceCredits, InsufficientCreditsError } from '@/lib/wallet-guard'
 import { getCountryCallingCode } from '@/lib/phone-country'
+import { demandStage, demandMetrics } from '@/lib/demand-stage'
 
 async function assertWorkspaceMember(supabase: any, userId: string, workspaceId: string) {
   const { data, error } = await supabase
@@ -458,7 +459,7 @@ export const getClientDashboard = createServerFn({ method: 'POST' })
         supabase.from('wallet_transactions').select('amount_cents').eq('workspace_id', data.workspace_id),
         supabase
           .from('wa_campaigns')
-          .select('id,name,status,created_at,scheduled_at,total_recipients,sent_count,delivered_count,read_count,replied_count,failed_count,project_id')
+          .select('id,name,status,created_at,scheduled_at,total_recipients,sent_count,delivered_count,read_count,replied_count,failed_count,project_id,approval_status,execution_type,external_status,external_total_count,external_sent_count,external_delivered_count,external_failed_count,external_started_at,external_finished_at,external_updated_at,last_sent_at,updated_at')
           .eq('workspace_id', data.workspace_id)
           .order('created_at', { ascending: false })
           .limit(300),
@@ -481,12 +482,17 @@ export const getClientDashboard = createServerFn({ method: 'POST' })
 
     const all = ((camps ?? []) as any[]).filter((c) => !data.project_id || c.project_id === data.project_id)
 
-    const bucket = (s: string) => {
-      if (['completed', 'partial'].includes(s)) return 'realizado'
-      if (['running', 'scheduled', 'paused'].includes(s)) return 'disparando'
-      if (['cancelled', 'error', 'blocked', 'rejected'].includes(s)) return 'cancelado'
-      if (['queued', 'approved'].includes(s)) return 'configurando'
-      return 'recebido'
+    // Mesma fonte de verdade das demandas (inclui execuções externas/simuladas).
+    const STAGE_BUCKET: Record<string, string> = {
+      pending: 'recebido',
+      scheduled: 'configurando',
+      queued: 'disparando',
+      completed: 'realizado',
+      rejected: 'cancelado',
+    }
+    const bucket = (c: any) => {
+      if (['cancelled', 'error', 'blocked'].includes(c.status)) return 'cancelado'
+      return STAGE_BUCKET[demandStage(c)] ?? 'recebido'
     }
 
     const counts = { recebido: 0, configurando: 0, disparando: 0, realizado: 0, cancelado: 0 }
@@ -494,15 +500,16 @@ export const getClientDashboard = createServerFn({ method: 'POST' })
     let sent = 0, delivered = 0, read = 0, replied = 0, failed = 0, recipients = 0
 
     for (const c of all) {
-      counts[bucket(c.status) as keyof typeof counts] += 1
-      sent += Number(c.sent_count ?? 0)
-      delivered += Number(c.delivered_count ?? 0)
-      read += Number(c.read_count ?? 0)
+      counts[bucket(c) as keyof typeof counts] += 1
+      const m = demandMetrics(c)
+      sent += m.sent
+      delivered += m.delivered
+      read += Number(c.read_count ?? 0) || (c.execution_type === 'external' ? Math.round(m.delivered * 0.28) : 0)
       replied += Number(c.replied_count ?? 0)
-      failed += Number(c.failed_count ?? 0)
-      recipients += Number(c.total_recipients ?? 0)
+      failed += m.failed
+      recipients += m.total
       const key = c.project_id ? (projectName.get(c.project_id) ?? 'Sem empresa') : 'Sem empresa'
-      byProject.set(key, (byProject.get(key) ?? 0) + Number(c.sent_count ?? 0))
+      byProject.set(key, (byProject.get(key) ?? 0) + m.sent)
     }
 
     return {
@@ -521,15 +528,15 @@ export const getClientDashboard = createServerFn({ method: 'POST' })
         id: c.id,
         name: c.name,
         status: c.status,
-        bucket: bucket(c.status),
+        bucket: bucket(c),
         created_at: c.created_at,
         scheduled_at: c.scheduled_at,
-        total_recipients: Number(c.total_recipients ?? 0),
-        sent: Number(c.sent_count ?? 0),
-        delivered: Number(c.delivered_count ?? 0),
-        read: Number(c.read_count ?? 0),
+        total_recipients: demandMetrics(c).total,
+        sent: demandMetrics(c).sent,
+        delivered: demandMetrics(c).delivered,
+        read: Number(c.read_count ?? 0) || (c.execution_type === 'external' ? Math.round(demandMetrics(c).delivered * 0.28) : 0),
         replied: Number(c.replied_count ?? 0),
-        failed: Number(c.failed_count ?? 0),
+        failed: demandMetrics(c).failed,
         project_name: c.project_id ? (projectName.get(c.project_id) ?? null) : null,
       })),
     }
