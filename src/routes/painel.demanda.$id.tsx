@@ -19,7 +19,6 @@ import {
   Download,
   Gauge,
   Loader2,
-  MousePointerClick,
   Send,
   Users,
   XCircle,
@@ -31,7 +30,7 @@ export const Route = createFileRoute("/painel/demanda/$id")({
       { title: "Detalhes do disparo — Painel" },
       { name: "description", content: "Histórico, métricas e ações disponíveis para o disparo selecionado." },
       { property: "og:title", content: "Detalhes do disparo — Painel" },
-      { property: "og:description", content: "Acompanhe métricas, histórico e cliques do disparo." },
+      { property: "og:description", content: "Acompanhe métricas e histórico do disparo." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -115,7 +114,7 @@ function Page() {
   function exportMetrics() {
     if (!c || !m) return;
     downloadCsv(`disparo-${c.name}-metricas.csv`, [
-      ["Campanha", "Status", "Criada em", "Agendada", "Lista", "Template", "Destinatários", "Enviados", "Entregues", "Falhas", "Pendentes", "Cliques", "Cliques únicos"],
+      ["Campanha", "Status", "Criada em", "Agendada", "Lista", "Template", "Destinatários", "Enviados", "Entregues", "Falhas", "Pendentes"],
       [
         c.name,
         STAGE_LABEL[stage],
@@ -128,27 +127,7 @@ function Page() {
         m.delivered,
         m.failed,
         m.pending,
-        (data as any).clicks_total ?? 0,
-        (data as any).clicks_unique ?? 0,
       ],
-    ]);
-  }
-
-  function exportClicks() {
-    const clicks = ((data as any)?.clicks ?? []) as any[];
-    downloadCsv(`disparo-${c?.name ?? id}-cliques.csv`, [
-      ["Data", "Cidade", "Região", "País", "Dispositivo", "Navegador", "Sistema", "Provedor", "Destino"],
-      ...clicks.map((k) => [
-        fmt(k.clicked_at),
-        k.city,
-        k.region,
-        k.country,
-        k.device_type,
-        k.browser,
-        k.os,
-        k.isp,
-        k.final_url,
-      ]),
     ]);
   }
 
@@ -207,9 +186,6 @@ function Page() {
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline" onClick={exportMetrics}>
             <Download className="mr-1.5 h-4 w-4" /> Métricas CSV
-          </Button>
-          <Button size="sm" variant="outline" onClick={exportClicks}>
-            <MousePointerClick className="mr-1.5 h-4 w-4" /> Cliques CSV
           </Button>
           <Button size="sm" variant="outline" onClick={exportHistory}>
             <Clock className="mr-1.5 h-4 w-4" /> Histórico CSV
@@ -278,63 +254,28 @@ function Page() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <MousePointerClick className="h-4 w-4" /> Cliques no link
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <Metric icon={<MousePointerClick className="h-4 w-4" />} value={num((data as any).clicks_total)} label="Cliques" />
-              <Metric icon={<Users className="h-4 w-4" />} value={num((data as any).clicks_unique)} label="Pessoas únicas" />
-            </div>
-            <div className="space-y-1">
-              {((data as any).clicks_by_day ?? []).slice(-7).map((d: any) => (
-                <div key={d.day} className="flex items-center gap-2 text-xs">
-                  <span className="w-20 text-muted-foreground">{d.day.split("-").reverse().join("/")}</span>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full bg-primary"
-                      style={{
-                        width: `${Math.min(100, (d.total / Math.max(1, (data as any).clicks_total)) * 100)}%`,
-                      }}
-                    />
-                  </div>
-                  <span className="w-10 text-right tabular-nums">{num(d.total)}</span>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Clock className="h-4 w-4" /> Histórico
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {((data as any).timeline ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">Sem eventos registrados.</p>
+          ) : (
+            ((data as any).timeline ?? []).map((e: any) => (
+              <div key={e.id} className="flex gap-3 border-l-2 border-muted pl-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">{ACTION_LABEL[e.action] ?? e.action}</p>
+                  {e.message && <p className="truncate text-xs text-muted-foreground">{e.message}</p>}
+                  <p className="text-[11px] text-muted-foreground">{fmt(e.created_at)}</p>
                 </div>
-              ))}
-              {!((data as any).clicks_by_day ?? []).length && (
-                <p className="text-sm text-muted-foreground">Nenhum clique registrado ainda.</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Clock className="h-4 w-4" /> Histórico
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {((data as any).timeline ?? []).length === 0 ? (
-              <p className="text-sm text-muted-foreground">Sem eventos registrados.</p>
-            ) : (
-              ((data as any).timeline ?? []).map((e: any) => (
-                <div key={e.id} className="flex gap-3 border-l-2 border-muted pl-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">{ACTION_LABEL[e.action] ?? e.action}</p>
-                    {e.message && <p className="truncate text-xs text-muted-foreground">{e.message}</p>}
-                    <p className="text-[11px] text-muted-foreground">{fmt(e.created_at)}</p>
-                  </div>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-      </div>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
