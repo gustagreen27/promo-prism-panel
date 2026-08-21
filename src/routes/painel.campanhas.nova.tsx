@@ -40,6 +40,20 @@ function fillVars(text: string, vars: Record<string, string>) {
   return (text || "").replace(/\{\{\s*(\d+)\s*\}\}/g, (m, n) => vars[String(n)] || m);
 }
 
+const MESSAGE_PRESETS = [
+  {
+    id: "novidade",
+    label: "Modelo 1 · Novidade",
+    body: "Olá {{1}}!\n\nTemos uma novidade: {{2}}.\n\n{{3}}.\n\nPara {{4}}, use o botão abaixo 👇",
+  },
+  {
+    id: "informativo",
+    label: "Modelo 2 · Informativo",
+    body: "Olá {{1}}!\n\nInformamos que {{2}}.\n\n{{3}}.\n\nPara {{4}}, clique no botão logo abaixo 👇",
+  },
+] as const;
+
+
 function Page() {
   const ctxFn = useServerFn(getMyContext);
   const { data: ctx } = useQuery({ queryKey: ["my-context"], queryFn: () => ctxFn(), staleTime: 30_000 });
