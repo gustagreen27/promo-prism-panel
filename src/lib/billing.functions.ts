@@ -686,32 +686,30 @@ export const adminDeleteClientAccount = createServerFn({ method: 'POST' })
     await assertStaff(supabase, userId)
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
 
-    const { count } = await supabaseAdmin
-      .from('wa_campaigns').select('id', { count: 'exact', head: true }).eq('workspace_id', data.workspace_id)
-    if ((count ?? 0) > 0) {
-      throw new Error('Esta conta possui disparos registrados e não pode ser excluída. Bloqueie a conta em vez de excluir.')
-    }
-
     const { data: members } = await supabaseAdmin
       .from('workspace_members').select('user_id, role').eq('workspace_id', data.workspace_id)
     const ownerUserId = members?.find((m: any) => m.role === 'owner')?.user_id ?? null
+    const memberIds = (members ?? []).map((m: any) => m.user_id)
 
-    for (const table of ['wallet_transactions', 'wallet_reservations', 'deposits', 'workspace_wallets', 'onboarding_checklist', 'notifications', 'workspace_members']) {
-      await supabaseAdmin.from(table as any).delete().eq('workspace_id', data.workspace_id)
-    }
-    const { error } = await supabaseAdmin.from('workspaces').delete().eq('id', data.workspace_id)
+    // remove tudo que pertence ao workspace (campanhas, contatos, conexões, carteira…)
+    const { error } = await supabaseAdmin.rpc('admin_purge_workspace' as any, { _ws: data.workspace_id } as any)
     if (error) throw new Error(`Falha ao excluir a conta: ${error.message}`)
 
-    if (data.delete_owner_user && ownerUserId) {
-      const { count: otherWs } = await supabaseAdmin
-        .from('workspace_members').select('workspace_id', { count: 'exact', head: true }).eq('user_id', ownerUserId)
-      if ((otherWs ?? 0) === 0) {
-        await supabaseAdmin.auth.admin.deleteUser(ownerUserId).catch(() => {})
+    if (data.delete_owner_user) {
+      for (const uid of memberIds) {
+        const { count: otherWs } = await supabaseAdmin
+          .from('workspace_members').select('workspace_id', { count: 'exact', head: true }).eq('user_id', uid)
+        if ((otherWs ?? 0) === 0) {
+          await supabaseAdmin.from('user_roles').delete().eq('user_id', uid)
+          await supabaseAdmin.from('profiles').delete().eq('id', uid)
+          await supabaseAdmin.auth.admin.deleteUser(uid).catch(() => {})
+        }
       }
     }
 
-    return { ok: true }
+    return { ok: true, owner_deleted: Boolean(data.delete_owner_user && ownerUserId) }
   })
+
 
 // ---------- Conciliação de créditos (admin) ----------
 

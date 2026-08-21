@@ -5558,6 +5558,7 @@ export type Database = {
       }
     }
     Functions: {
+      admin_purge_workspace: { Args: { _ws: string }; Returns: Json }
       backfill_contact_workspace_ids: { Args: never; Returns: Json }
       campaign_next_destination_cursor: {
         Args: { _campaign_id: string }

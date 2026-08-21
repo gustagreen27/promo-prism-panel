@@ -483,7 +483,7 @@ function Page() {
           <DialogHeader>
             <DialogTitle>Excluir conta — {deleteTarget?.name}</DialogTitle>
             <DialogDescription>
-              A conta, a carteira e o usuário responsável serão removidos. Contas com disparos registrados não podem ser excluídas.
+              Isso remove definitivamente a conta, o usuário responsável e todos os dados vinculados (disparos, contatos, listas, conexões, créditos e histórico). Não é possível desfazer.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
