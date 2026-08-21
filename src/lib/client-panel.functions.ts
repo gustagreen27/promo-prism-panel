@@ -331,3 +331,97 @@ export const startClientCampaign = createServerFn({ method: 'POST' })
     }
     return { status: 'queued' as const }
   })
+
+// ---- Dashboard do cliente (visão "Resumo da conta") ----
+export const getClientDashboard = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { workspace_id: string; project_id?: string | null }) =>
+    z.object({ workspace_id: z.string().uuid(), project_id: z.string().uuid().nullish() }).parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any
+    await assertWorkspaceMember(supabase, userId, data.workspace_id)
+
+    const [{ data: wallet }, { data: settings }, { data: txs }, { data: camps }, { data: projects }] =
+      await Promise.all([
+        supabase.from('workspace_wallets').select('balance_cents, reserved_cents, custom_price_cents').eq('workspace_id', data.workspace_id).maybeSingle(),
+        supabase.from('billing_settings').select('default_price_cents').eq('id', 1).maybeSingle(),
+        supabase.from('wallet_transactions').select('amount_cents').eq('workspace_id', data.workspace_id),
+        supabase
+          .from('wa_campaigns')
+          .select('id,name,status,created_at,scheduled_at,total_recipients,sent_count,delivered_count,read_count,replied_count,failed_count,project_id')
+          .eq('workspace_id', data.workspace_id)
+          .order('created_at', { ascending: false })
+          .limit(300),
+        supabase.from('projects').select('id,name').eq('workspace_id', data.workspace_id),
+      ])
+
+    const unit = wallet?.custom_price_cents ?? settings?.default_price_cents ?? 15
+    const toCredits = (cents: number) => (unit > 0 ? Math.round(cents / unit) : 0)
+    let creditedCents = 0
+    let debitedCents = 0
+    for (const t of (txs ?? []) as any[]) {
+      const v = Number(t.amount_cents ?? 0)
+      if (v >= 0) creditedCents += v
+      else debitedCents += -v
+    }
+    const availableCents = Number(wallet?.balance_cents ?? 0) - Number(wallet?.reserved_cents ?? 0)
+
+    const projectName = new Map<string, string>()
+    for (const p of (projects ?? []) as any[]) projectName.set(p.id, p.name)
+
+    const all = ((camps ?? []) as any[]).filter((c) => !data.project_id || c.project_id === data.project_id)
+
+    const bucket = (s: string) => {
+      if (['completed', 'partial'].includes(s)) return 'realizado'
+      if (['running', 'scheduled', 'paused'].includes(s)) return 'disparando'
+      if (['cancelled', 'error', 'blocked', 'rejected'].includes(s)) return 'cancelado'
+      if (['queued', 'approved'].includes(s)) return 'configurando'
+      return 'recebido'
+    }
+
+    const counts = { recebido: 0, configurando: 0, disparando: 0, realizado: 0, cancelado: 0 }
+    const byProject = new Map<string, number>()
+    let sent = 0, delivered = 0, read = 0, replied = 0, failed = 0, recipients = 0
+
+    for (const c of all) {
+      counts[bucket(c.status) as keyof typeof counts] += 1
+      sent += Number(c.sent_count ?? 0)
+      delivered += Number(c.delivered_count ?? 0)
+      read += Number(c.read_count ?? 0)
+      replied += Number(c.replied_count ?? 0)
+      failed += Number(c.failed_count ?? 0)
+      recipients += Number(c.total_recipients ?? 0)
+      const key = c.project_id ? (projectName.get(c.project_id) ?? 'Sem empresa') : 'Sem empresa'
+      byProject.set(key, (byProject.get(key) ?? 0) + Number(c.sent_count ?? 0))
+    }
+
+    return {
+      credits: {
+        unit_price_cents: unit,
+        purchased: toCredits(creditedCents),
+        used: toCredits(debitedCents),
+        available: toCredits(Math.max(availableCents, 0)),
+        available_cents: availableCents,
+      },
+      counts,
+      totals: { campaigns: all.length, sent, delivered, read, replied, failed, recipients },
+      by_project: [...byProject.entries()].map(([name, credits]) => ({ name, credits })).sort((a, b) => b.credits - a.credits),
+      projects: (projects ?? []) as { id: string; name: string }[],
+      campaigns: all.map((c) => ({
+        id: c.id,
+        name: c.name,
+        status: c.status,
+        bucket: bucket(c.status),
+        created_at: c.created_at,
+        scheduled_at: c.scheduled_at,
+        total_recipients: Number(c.total_recipients ?? 0),
+        sent: Number(c.sent_count ?? 0),
+        delivered: Number(c.delivered_count ?? 0),
+        read: Number(c.read_count ?? 0),
+        replied: Number(c.replied_count ?? 0),
+        failed: Number(c.failed_count ?? 0),
+        project_name: c.project_id ? (projectName.get(c.project_id) ?? null) : null,
+      })),
+    }
+  })
