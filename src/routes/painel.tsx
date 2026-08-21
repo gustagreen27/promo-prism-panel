@@ -95,7 +95,7 @@ function PanelChrome({ ctx }: { ctx: MyContext }) {
             className={
               compact
                 ? `flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium transition ${active ? "bg-primary/15 text-primary" : "text-muted-foreground"}`
-                : `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${active ? "bg-primary/15 text-primary" : "text-sidebar-foreground/70 hover:bg-white/5 hover:text-sidebar-foreground"}`
+                : `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${active ? "bg-primary/15 text-primary" : "text-panel-nav-foreground/60 hover:bg-panel-nav-foreground/10 hover:text-panel-nav-foreground"}`
             }
           >
             <item.icon className={compact ? "h-3.5 w-3.5" : "h-4 w-4 shrink-0"} />
@@ -109,8 +109,8 @@ function PanelChrome({ ctx }: { ctx: MyContext }) {
   return (
     <div className="min-h-screen bg-app-canvas lg:flex">
       {/* Sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-[260px] shrink-0 flex-col border-r border-white/10 bg-[#0b0c0e] text-sidebar-foreground lg:flex">
-        <div className="border-b border-white/10 px-6 py-6">
+      <aside className="sticky top-0 hidden h-screen w-[260px] shrink-0 flex-col border-r border-panel-nav-foreground/10 bg-panel-nav text-panel-nav-foreground lg:flex">
+        <div className="border-b border-panel-nav-foreground/10 px-6 py-6">
           <Link to="/painel" className="block">
             <img src={logoAsset.url} alt="next Disparos" className="h-9 w-auto object-contain" />
           </Link>
@@ -118,13 +118,13 @@ function PanelChrome({ ctx }: { ctx: MyContext }) {
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
           <NavList />
         </nav>
-        <div className="border-t border-white/10 p-3">
+        <div className="border-t border-panel-nav-foreground/10 p-3">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-xl px-2 py-2">
             <div className="flex min-w-0 items-center gap-2">
               <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary/20 text-xs font-bold text-primary">
                 {initials}
               </span>
-              <span className="truncate text-sm text-sidebar-foreground/90">
+              <span className="truncate text-sm text-panel-nav-foreground/90">
                 {ctx.profile?.full_name ?? ctx.profile?.email}
               </span>
             </div>
@@ -132,7 +132,7 @@ function PanelChrome({ ctx }: { ctx: MyContext }) {
               type="button"
               onClick={signOut}
               aria-label="Sair"
-              className="rounded-lg p-2 text-sidebar-foreground/60 transition hover:bg-white/10 hover:text-sidebar-foreground"
+              className="rounded-lg p-2 text-panel-nav-foreground/60 transition hover:bg-panel-nav-foreground/10 hover:text-panel-nav-foreground"
             >
               <LogOut className="h-4 w-4" />
             </button>
@@ -145,7 +145,7 @@ function PanelChrome({ ctx }: { ctx: MyContext }) {
         <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-xl">
           <div className="flex h-16 w-full items-center gap-3 px-4 sm:px-6">
             <Link to="/painel" className="flex shrink-0 items-center lg:hidden">
-              <span className="grid h-9 place-items-center rounded-lg bg-[#0b0c0e] px-2.5">
+              <span className="grid h-9 place-items-center rounded-lg bg-panel-nav px-2.5">
                 <img src={logoAsset.url} alt="next Disparos" className="h-6 w-auto object-contain" />
               </span>
             </Link>
