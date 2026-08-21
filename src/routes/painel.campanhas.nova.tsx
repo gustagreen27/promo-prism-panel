@@ -273,8 +273,11 @@ function Page() {
           </div>
 
           <Field label="Mensagem" hint={"Use as variáveis do modelo como {{1}} e {{2}}."}>
-            <Textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={8} maxLength={2000}
-              placeholder="Digite aqui o texto da sua campanha." required />
+            <div className="relative">
+              <Textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={8} maxLength={2000}
+                placeholder="Digite aqui o texto da sua campanha." required />
+              <Sparkles className="pointer-events-none absolute right-3 top-3 h-4 w-4 text-primary/70" />
+            </div>
           </Field>
 
           {bodyVars.length > 0 && (
@@ -283,7 +286,9 @@ function Page() {
               <div className="grid gap-3 sm:grid-cols-2">
                 {bodyVars.map((v) => (
                   <Field key={v} label={`Variável {{${v}}}`}>
-                    <Input value={vars[v] ?? ""} onChange={(e) => setVars((s) => ({ ...s, [v]: e.target.value }))} placeholder="Ex: {nome}" />
+                    <IconInput icon={Braces}>
+                      <Input value={vars[v] ?? ""} onChange={(e) => setVars((s) => ({ ...s, [v]: e.target.value }))} className="pl-9" placeholder="Ex: {nome}" />
+                    </IconInput>
                   </Field>
                 ))}
               </div>
@@ -294,23 +299,29 @@ function Page() {
             <Label>Selecione a base de contatos</Label>
             <div className="grid gap-2 sm:grid-cols-3">
               {([
-                ["manual", "Digitar números manualmente"],
-                ["lista", "Usar lista de leads"],
-                ["csv", "Anexar Excel / CSV"],
-              ] as Array<[ContactMode, string]>).map(([k, label]) => (
+                ["manual", "Digitar números manualmente", User],
+                ["lista", "Usar lista de leads", ListChecks],
+                ["csv", "Anexar Excel / CSV", FileSpreadsheet],
+              ] as Array<[ContactMode, string, typeof User]>).map(([k, label, Icon]) => (
                 <button key={k} type="button" onClick={() => setMode(k)}
-                  className={`rounded-xl border p-3 text-left text-sm transition ${mode === k ? "border-primary bg-primary/5 font-medium" : "hover:bg-muted/50"}`}>
-                  {label}
+                  className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-3 text-center text-sm transition ${mode === k ? "border-primary bg-primary/5 font-medium text-primary" : "text-muted-foreground hover:bg-muted/50"}`}>
+                  <Icon className="h-4 w-4 shrink-0" /> {label}
                 </button>
               ))}
             </div>
 
             {mode === "manual" && (
-              <Field label="Números manualmente:" hint="Apenas dígitos. Um contato por linha — Formato: Número;Nome">
-                <Textarea value={manual} onChange={(e) => setManual(e.target.value)} rows={8}
-                  placeholder={"Cole ou digite os dados aqui, um contato por linha.\nEx: 5511999998888;João da Silva"} />
+              <Field label="Números manualmente" hint="Apenas dígitos. Um contato por linha — Formato: Número;Nome">
+                <div className="relative">
+                  <Textarea value={manual} onChange={(e) => setManual(e.target.value)} rows={8}
+                    placeholder={"Cole ou digite os dados aqui, um contato por linha.\nEx: 5511999998888;João da Silva"} />
+                  <span className="pointer-events-none absolute bottom-2 right-3 text-[11px] text-muted-foreground">
+                    {manualRows.length} contatos
+                  </span>
+                </div>
               </Field>
             )}
+
 
             {mode === "lista" && (
               <Select value={listId} onValueChange={setListId}>
