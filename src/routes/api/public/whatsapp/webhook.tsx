@@ -229,50 +229,41 @@ export const Route = createFileRoute("/api/public/whatsapp/webhook")({
       POST: async ({ request }) => {
         const rawBody = await request.text();
         const sig = request.headers.get("x-hub-signature-256");
-        const globalSecret = process.env.META_APP_SECRET;
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { loadWebhookSecretCandidates, verifyAgainstCandidates } = await import(
+          "@/lib/wa-webhook-secrets.server"
+        );
 
-        // 1) Tenta validar com o App Secret global (retrocompatível).
-        let valid = verifySignatureWithSecret(rawBody, sig, globalSecret);
-        let matchedBy: string | null = valid ? "global" : null;
+        // Validação multi-App: tenta todos os App Secrets legitimamente
+        // cadastrados (env, settings.meta_app_secrets e conexões).
+        const hints = extractRoutingHints(rawBody);
+        const candidates = await loadWebhookSecretCandidates(supabaseAdmin);
+        const { valid, matched, tried } = verifyAgainstCandidates(rawBody, sig, candidates, hints);
+        const matchedBy = matched?.label ?? null;
 
-        // 2) Se falhou, tenta com o App Secret específico de cada conexão
-        //    apontada pelo payload (por phone_number_id ou waba_id).
-        if (!valid && sig) {
-          const hints = extractRoutingHints(rawBody);
-          if (hints.phone_number_ids.length || hints.waba_ids.length) {
-            const q = supabaseAdmin
-              .from("whatsapp_connections")
-              .select("id, app_secret, phone_number_id, waba_id, use_global_token");
-            const orFilters: string[] = [];
-            for (const p of hints.phone_number_ids) orFilters.push(`phone_number_id.eq.${p}`);
-            for (const w of hints.waba_ids) orFilters.push(`waba_id.eq.${w}`);
-            const { data: candidates } = await q.or(orFilters.join(","));
-            for (const c of (candidates ?? []) as any[]) {
-              // Se conexão usa credencial global, o global já foi tentado acima.
-              if (c.use_global_token) continue;
-              if (!c.app_secret) continue;
-              if (verifySignatureWithSecret(rawBody, sig, c.app_secret)) {
-                valid = true;
-                matchedBy = `connection:${c.id}`;
-                break;
-              }
-            }
-          }
-        }
-
-        const strict = !!globalSecret; // manter comportamento estrito quando há segredo global
+        // Mantemos a exigência estrita da assinatura sempre que houver ao
+        // menos um segredo conhecido — nunca aceitamos payload sem assinatura.
+        const strict = candidates.length > 0;
         if (strict && !valid) {
-          // Log sanitizado — nunca gravar assinatura nem corpo cru.
+          // Log sanitizado — nunca gravar assinatura, segredo ou corpo cru.
           await supabaseAdmin.from("whatsapp_webhook_logs").insert({
             event_type: "invalid_signature",
-            payload: { has_signature: !!sig, bytes: rawBody.length, matched_by: null },
+            payload: {
+              has_signature: !!sig,
+              bytes: rawBody.length,
+              matched_by: null,
+              secrets_tried: tried,
+              known_app_ids: Array.from(
+                new Set(candidates.map((c) => c.appId).filter(Boolean)),
+              ) as string[],
+              phone_number_ids: hints.phone_number_ids,
+              waba_ids: hints.waba_ids,
+            },
             error: "invalid X-Hub-Signature-256",
           });
           return new Response("invalid signature", { status: 401 });
         }
-        // (matchedBy é apenas registrado nos logs abaixo, quando aplicável)
-        void matchedBy;
+
 
         let payload: any = {};
         try {
