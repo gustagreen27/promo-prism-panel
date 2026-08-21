@@ -5738,6 +5738,10 @@ export type Database = {
           hour: number
         }[]
       }
+      wa_import_phones_chunk: {
+        Args: { _list_id: string; _rows: Json; _source?: string; _ws: string }
+        Returns: number
+      }
       wa_lane_acquire: {
         Args: {
           _campaign_id: string

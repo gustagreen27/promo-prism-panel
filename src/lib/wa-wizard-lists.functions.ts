@@ -225,3 +225,61 @@ export const createWorkspaceListWithPhones = createServerFn({ method: "POST" })
 
     return { list_id: list.id, list_name: list.name, added: contacts.length, created: normalized.length, invalid };
   });
+
+/** Cria uma lista vazia no workspace (usada pelo import em lotes). */
+export const createEmptyWorkspaceList = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ workspace_id: z.string().uuid(), name: z.string().min(1) }).parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    await assertWsMember(context as any, data.workspace_id);
+    const { supabase, userId } = context as any;
+    const { data: list, error } = await supabase
+      .from("contact_lists")
+      .insert({ name: data.name, workspace_id: data.workspace_id, created_by: userId })
+      .select("id,name")
+      .single();
+    if (error) throw error;
+    return { list_id: list.id as string, list_name: list.name as string };
+  });
+
+/**
+ * Importa um lote de telefones para a lista via RPC set-based (uma única query no
+ * banco por lote). Suporta bases de 100k+ quando chamado em lotes pelo cliente.
+ */
+export const appendPhonesChunkToList = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      workspace_id: z.string().uuid(),
+      list_id: z.string().uuid(),
+      source: z.string().default("painel"),
+      rows: z.array(z.object({ phone: z.string().min(1), name: z.string().optional().nullable() })).max(5000),
+    }).parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    await assertWsMember(context as any, data.workspace_id);
+    const { supabase } = context as any;
+
+    const seen = new Set<string>();
+    const rows: { phone: string; name: string | null }[] = [];
+    let invalid = 0;
+    for (const r of data.rows) {
+      const phone = normalizeBrPhone(r.phone);
+      if (!phone) { invalid++; continue; }
+      if (seen.has(phone)) continue;
+      seen.add(phone);
+      rows.push({ phone, name: r.name ?? null });
+    }
+    if (!rows.length) return { added: 0, invalid };
+
+    const { data: added, error } = await supabase.rpc("wa_import_phones_chunk" as any, {
+      _list_id: data.list_id,
+      _ws: data.workspace_id,
+      _rows: rows,
+      _source: data.source,
+    });
+    if (error) throw error;
+    return { added: Number(added ?? 0), invalid };
+  });
