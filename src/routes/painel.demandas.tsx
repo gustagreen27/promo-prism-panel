@@ -1,15 +1,40 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { getMyContext } from "@/lib/auth.functions";
 import { listMyDemands } from "@/lib/campaign-approval.functions";
-import { demandStage, pendingCount, STAGE_CLASS, STAGE_LABEL, type DemandStage } from "@/lib/demand-stage";
-import { CheckCircle2, Clock, ListChecks, XCircle, Loader2 } from "lucide-react";
-
+import {
+  demandStage,
+  pendingCount,
+  STAGE_CLASS,
+  STAGE_LABEL,
+  type DemandStage,
+} from "@/lib/demand-stage";
+import {
+  BarChart3,
+  CalendarDays,
+  CheckCircle2,
+  Clock,
+  Info,
+  ListChecks,
+  Loader2,
+  Plus,
+  Search,
+  Send,
+  XCircle,
+} from "lucide-react";
 
 export const Route = createFileRoute("/painel/demandas")({
   head: () => ({
@@ -52,21 +77,63 @@ type Bucket = DemandStage;
 
 const bucketOf = (d: Demand): Bucket => demandStage(d as any);
 
-const BUCKETS: Record<Bucket, { label: string; className: string; icon: typeof Clock }> = {
-  pending: { label: STAGE_LABEL.pending, className: STAGE_CLASS.pending, icon: Clock },
-  scheduled: { label: STAGE_LABEL.scheduled, className: STAGE_CLASS.scheduled, icon: Clock },
-  queued: { label: STAGE_LABEL.queued, className: STAGE_CLASS.queued, icon: ListChecks },
-  completed: { label: STAGE_LABEL.completed, className: STAGE_CLASS.completed, icon: CheckCircle2 },
-  rejected: { label: STAGE_LABEL.rejected, className: STAGE_CLASS.rejected, icon: XCircle },
+const BUCKETS: Record<
+  Bucket,
+  { label: string; className: string; icon: typeof Clock; accent: string; tile: string }
+> = {
+  pending: {
+    label: STAGE_LABEL.pending,
+    className: STAGE_CLASS.pending,
+    icon: Clock,
+    accent: "border-l-amber-500",
+    tile: "bg-amber-500/10 text-amber-600",
+  },
+  scheduled: {
+    label: STAGE_LABEL.scheduled,
+    className: STAGE_CLASS.scheduled,
+    icon: CalendarDays,
+    accent: "border-l-blue-500",
+    tile: "bg-blue-500/10 text-blue-600",
+  },
+  queued: {
+    label: STAGE_LABEL.queued,
+    className: STAGE_CLASS.queued,
+    icon: ListChecks,
+    accent: "border-l-emerald-500",
+    tile: "bg-emerald-500/10 text-emerald-600",
+  },
+  completed: {
+    label: STAGE_LABEL.completed,
+    className: STAGE_CLASS.completed,
+    icon: CheckCircle2,
+    accent: "border-l-green-600",
+    tile: "bg-green-600/10 text-green-700",
+  },
+  rejected: {
+    label: STAGE_LABEL.rejected,
+    className: STAGE_CLASS.rejected,
+    icon: XCircle,
+    accent: "border-l-destructive",
+    tile: "bg-destructive/10 text-destructive",
+  },
 };
 
-
 const fmt = (v: string | null | undefined) => (v ? new Date(v).toLocaleString("pt-BR") : "—");
+const num = (v: number | null | undefined) => (v ?? 0).toLocaleString("pt-BR");
+
+function progressOf(d: Demand) {
+  const total = d.external_total_count ?? d.total_recipients ?? 0;
+  if (!total) return 0;
+  const done = (d.external_sent_count ?? 0) + (d.external_failed_count ?? 0);
+  return Math.min(100, Math.round((done / total) * 100));
+}
 
 function Page() {
   const ctxFn = useServerFn(getMyContext);
   const demandsFn = useServerFn(listMyDemands);
   const [filter, setFilter] = useState<Bucket | "all">("all");
+  const [search, setSearch] = useState("");
+  const [period, setPeriod] = useState<"all" | "7" | "30">("all");
 
   const { data: ctx } = useQuery({ queryKey: ["my-context"], queryFn: () => ctxFn(), staleTime: 30_000 });
   const workspaceId = (ctx as any)?.primary_workspace?.id ?? null;
@@ -85,27 +152,47 @@ function Page() {
     return c;
   }, [items]);
 
-  const visible = filter === "all" ? items : items.filter((d) => bucketOf(d) === filter);
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const cutoff = period === "all" ? 0 : Date.now() - Number(period) * 86_400_000;
+    return items.filter((d) => {
+      if (filter !== "all" && bucketOf(d) !== filter) return false;
+      if (cutoff && new Date(d.created_at).getTime() < cutoff) return false;
+      if (q && !`${d.name} ${d.list_name ?? ""}`.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [items, filter, search, period]);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Meus disparos</h1>
-        <p className="text-sm text-muted-foreground">
-          Todos os disparos solicitados passam por aprovação da nossa equipe antes do envio real.
-        </p>
-      </div>
+      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 sm:flex sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="truncate text-2xl font-semibold tracking-tight sm:text-3xl">Meus disparos</h1>
+          <p className="text-sm text-muted-foreground">
+            Acompanhe o status das suas campanhas e solicitações de envio.
+          </p>
+        </div>
+      </header>
 
-      <div className="grid gap-3 sm:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         {(Object.keys(BUCKETS) as Bucket[]).map((b) => {
           const Icon = BUCKETS[b].icon;
+          const active = filter === b;
           return (
-            <Card key={b} className="cursor-pointer" onClick={() => setFilter(filter === b ? "all" : b)}>
+            <Card
+              key={b}
+              onClick={() => setFilter(active ? "all" : b)}
+              className={`cursor-pointer border-l-4 transition-shadow hover:shadow-md ${BUCKETS[b].accent} ${
+                active ? "ring-2 ring-primary/40" : ""
+              }`}
+            >
               <CardContent className="flex items-center gap-3 p-4">
-                <Icon className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <div className="text-xl font-semibold">{counts[b]}</div>
-                  <div className="text-xs text-muted-foreground">{BUCKETS[b].label}</div>
+                <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${BUCKETS[b].tile}`}>
+                  <Icon className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <div className="text-2xl font-semibold leading-none">{counts[b]}</div>
+                  <div className="truncate text-xs text-muted-foreground">{BUCKETS[b].label}</div>
                 </div>
               </CardContent>
             </Card>
@@ -114,103 +201,199 @@ function Page() {
       </div>
 
       <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle>
-            {filter === "all" ? "Todos os disparos" : BUCKETS[filter].label}
-          </CardTitle>
-          {filter !== "all" && (
-            <Button size="sm" variant="ghost" onClick={() => setFilter("all")}>
-              Limpar filtro
-            </Button>
-          )}
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Carregando…
-            </p>
-          ) : visible.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum disparo por aqui.</p>
-          ) : (
-            <div className="divide-y">
-              {visible.map((d) => {
-                const b = bucketOf(d);
-                const decision = d.decisions?.[0];
-                return (
-                  <div key={d.id} className="space-y-2 py-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="font-medium">{d.name}</div>
-                      <Badge variant="outline" className={BUCKETS[b].className}>{BUCKETS[b].label}</Badge>
+        <CardContent className="grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_auto_auto_auto] md:items-center">
+          <div className="relative min-w-0">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar campanha ou lista..."
+              className="pl-9"
+            />
+          </div>
+          <Select value={filter} onValueChange={(v) => setFilter(v as any)}>
+            <SelectTrigger className="md:w-48">
+              <SelectValue placeholder="Todos os status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os status</SelectItem>
+              {(Object.keys(BUCKETS) as Bucket[]).map((b) => (
+                <SelectItem key={b} value={b}>
+                  {BUCKETS[b].label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={period} onValueChange={(v) => setPeriod(v as any)}>
+            <SelectTrigger className="md:w-44">
+              <SelectValue placeholder="Todas as datas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as datas</SelectItem>
+              <SelectItem value="7">Últimos 7 dias</SelectItem>
+              <SelectItem value="30">Últimos 30 dias</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button asChild>
+            <Link to="/painel/campanhas/nova">
+              Nova campanha <Plus className="ml-1 h-4 w-4" />
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+
+      {isLoading ? (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Carregando…
+        </p>
+      ) : visible.length === 0 ? (
+        <Card>
+          <CardContent className="p-10 text-center text-sm text-muted-foreground">
+            Nenhum disparo por aqui.
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {visible.map((d) => {
+            const b = bucketOf(d);
+            const Icon = BUCKETS[b].icon;
+            const decision = d.decisions?.[0];
+            const pct = progressOf(d);
+            const showProgress =
+              !!d.external_total_count || !!d.external_sent_count || b === "queued" || b === "scheduled";
+            return (
+              <Card key={d.id}>
+                <CardContent className="grid grid-cols-[auto_minmax(0,1fr)] gap-4 p-4 lg:grid-cols-[auto_minmax(0,1fr)_auto]">
+                  <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${BUCKETS[b].tile}`}>
+                    <Icon className="h-6 w-6" />
+                  </span>
+
+                  <div className="min-w-0 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="truncate text-base font-semibold">{d.name}</h2>
+                      <Badge variant="outline" className={BUCKETS[b].className}>
+                        {BUCKETS[b].label}
+                      </Badge>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      Criada em {fmt(d.created_at)} · {(d.total_recipients ?? 0).toLocaleString("pt-BR")} destinatários
+                    <p className="text-xs text-muted-foreground">
+                      Criada em {fmt(d.created_at)} · {num(d.total_recipients)} destinatários
                       {d.list_name ? ` · Lista: ${d.list_name}` : ""}
                       {d.scheduled_at ? ` · Agendada para ${fmt(d.scheduled_at)}` : ""}
-                    </div>
+                    </p>
+
                     {b === "pending" && (
-                      <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
-                        Sua demanda está na fila de aprovação. Você será avisado assim que houver decisão.
+                      <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
+                        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        Sua campanha está em análise pela nossa equipe. Você será avisado assim que houver uma decisão.
                       </div>
                     )}
                     {b === "rejected" && (
-                      <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                        Rejeitada em {fmt(d.approved_at)}. Motivo: {d.rejection_reason || decision?.message || "não informado"}
+                      <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                        <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        Rejeitada em {fmt(d.approved_at)}. Motivo:{" "}
+                        {d.rejection_reason || decision?.message || "não informado"}
                       </div>
                     )}
-                    {(d.external_total_count || d.external_sent_count || b === "queued" || b === "scheduled") && (
-                      <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs">
-                        <div className="mb-1 flex items-center justify-between">
-                          <span className="font-medium">{d.external_finished_at ? "Resultado" : "Andamento"}</span>
-                          <span className="text-muted-foreground">
-                            {(d.external_total_count ?? d.total_recipients)
-                              ? `${Math.min(100, Math.round((((d.external_sent_count ?? 0) + (d.external_failed_count ?? 0)) / (d.external_total_count ?? d.total_recipients ?? 1)) * 100))}%`
-                              : ""}
+                    {b === "scheduled" && d.scheduled_at && (
+                      <div className="flex items-start gap-2 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-xs text-blue-700">
+                        <CalendarDays className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        Envio agendado para {fmt(d.scheduled_at)}.
+                      </div>
+                    )}
+
+                    {showProgress && (
+                      <div className="rounded-xl border bg-muted/40 p-3">
+                        <div className="mb-1 flex items-center justify-between text-xs">
+                          <span className="font-medium">
+                            {d.external_finished_at ? "Resultado da campanha" : "Andamento da campanha"}
                           </span>
+                          <span className="text-muted-foreground">{pct}%</span>
                         </div>
-                        {!!(d.external_total_count ?? d.total_recipients) && (
-                          <div className="mb-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                            <div
-                              className="h-full rounded-full bg-primary transition-all"
-                              style={{
-                                width: `${Math.min(100, Math.round((((d.external_sent_count ?? 0) + (d.external_failed_count ?? 0)) / (d.external_total_count ?? d.total_recipients ?? 1)) * 100))}%`,
-                              }}
-                            />
-                          </div>
-                        )}
-                        <div className="grid gap-0.5 text-muted-foreground sm:grid-cols-2">
-                          <span>{(d.external_total_count ?? d.total_recipients ?? 0).toLocaleString("pt-BR")} destinatários</span>
-                          <span>{(d.external_sent_count ?? 0).toLocaleString("pt-BR")} enviados com sucesso</span>
-                          <span>{(d.external_delivered_count ?? 0).toLocaleString("pt-BR")} entregues</span>
-                          <span>{(d.external_failed_count ?? 0).toLocaleString("pt-BR")} falhas</span>
-                          <span>{pendingCount(d).toLocaleString("pt-BR")} pendentes</span>
-                          {d.external_updated_at && <span>Última atualização: {fmt(d.external_updated_at)}</span>}
-                          {!d.external_finished_at && (d as any).next_update_at && (
-                            <span>Próxima atualização prevista: {fmt((d as any).next_update_at)}</span>
-                          )}
+                        <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-muted">
+                          <div
+                            className="h-full rounded-full bg-primary transition-all"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                          <Metric
+                            icon={<Send className="h-4 w-4 text-emerald-600" />}
+                            value={num(d.external_sent_count)}
+                            label="Enviados com sucesso"
+                          />
+                          <Metric
+                            icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
+                            value={num(d.external_delivered_count)}
+                            label="Entregues"
+                          />
+                          <Metric
+                            icon={<XCircle className="h-4 w-4 text-destructive" />}
+                            value={num(d.external_failed_count)}
+                            label="Falhas"
+                          />
+                          <Metric
+                            icon={<Clock className="h-4 w-4 text-muted-foreground" />}
+                            value={num(pendingCount(d))}
+                            label="Pendentes"
+                          />
+                          <Metric
+                            icon={<CalendarDays className="h-4 w-4 text-muted-foreground" />}
+                            value={fmt(d.external_updated_at ?? d.external_finished_at)}
+                            label={d.external_finished_at ? "Finalizado em" : "Última atualização"}
+                            small
+                          />
                         </div>
                         {!d.external_finished_at && (
-                          <div className="mt-1 text-[11px] text-muted-foreground">
+                          <p className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                            <Info className="h-3 w-3" />
                             Os dados desta página são atualizados a cada 10 minutos.
-                          </div>
+                          </p>
                         )}
-                        {d.external_finished_at && <div className="mt-1">Finalizado em: {fmt(d.external_finished_at)}</div>}
-                      </div>
-
-                    )}
-                    {(b === "queued" || b === "scheduled" || b === "completed") && d.approved_at && (
-                      <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700">
-                        Aprovada em {fmt(d.approved_at)}
-                        {b === "queued" ? " — em execução/fila de envio." : b === "scheduled" ? " — agendada." : "."}
                       </div>
                     )}
-
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+
+                  <div className="col-span-2 flex flex-wrap items-start justify-end gap-2 lg:col-span-1">
+                    <Button asChild size="sm" variant="outline">
+                      <Link to="/painel/campanhas/$id" params={{ id: d.id }}>
+                        {b === "completed" ? (
+                          <>
+                            <BarChart3 className="mr-1 h-4 w-4" /> Ver relatório
+                          </>
+                        ) : (
+                          <>Ver detalhes</>
+                        )}
+                      </Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Metric({
+  icon,
+  value,
+  label,
+  small,
+}: {
+  icon: React.ReactNode;
+  value: string;
+  label: string;
+  small?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="shrink-0">{icon}</span>
+      <div className="min-w-0">
+        <div className={`${small ? "text-xs" : "text-sm"} truncate font-semibold`}>{value}</div>
+        <div className="truncate text-[11px] text-muted-foreground">{label}</div>
+      </div>
     </div>
   );
 }
