@@ -18,6 +18,7 @@ import {
 import { ErrorCard } from "@/components/admin/query-state";
 import {
   listApprovalQueue, decideCampaignApproval, configureCampaignDemand, getCampaignApprovalAudit,
+  updateExternalExecution,
 } from "@/lib/campaign-approval.functions";
 import { adminListAllNumbers } from "@/lib/admin-dispatch.functions";
 import { listTemplates } from "@/lib/whatsapp-templates.functions";
@@ -52,6 +53,9 @@ type Item = {
   rejection_reason: string | null;
   custom_fields?: Record<string, any> | null;
   test_sends_count?: number;
+  execution_type?: string | null;
+  external_status?: string | null;
+  external_note?: string | null;
   status: string;
 };
 
@@ -176,6 +180,8 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
   const [connectionId, setConnectionId] = useState<string>("");
   const [templateId, setTemplateId] = useState<string>("");
   const [scheduledAt, setScheduledAt] = useState<string>("");
+  const [execType, setExecType] = useState<"internal" | "external">("internal");
+  const [note, setNote] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
 
@@ -184,6 +190,8 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
     setConnectionId(item.connection_id ?? "");
     setTemplateId(item.template_id ?? "");
     setScheduledAt(item.scheduled_at ? new Date(item.scheduled_at).toISOString().slice(0, 16) : "");
+    setExecType(item.execution_type === "external" ? "external" : "internal");
+    setNote(item.external_note ?? "");
   }
 
   const numbers = ((numbersData as any)?.numbers ?? []) as Array<any>;
@@ -197,8 +205,10 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
       await configureFn({
         data: {
           campaign_id: item.id,
-          connection_id: connectionId || null,
-          template_id: templateId || null,
+          execution_type: execType,
+          external_note: execType === "external" ? (note.trim() || null) : null,
+          connection_id: execType === "external" ? null : (connectionId || null),
+          template_id: execType === "external" ? null : (templateId || null),
           scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
         },
       });
@@ -217,6 +227,43 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
       <DialogContent className="max-w-lg">
         <DialogHeader><DialogTitle>Configurar demanda — {item?.name}</DialogTitle></DialogHeader>
         <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Forma de execução</Label>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {([
+                { v: "internal", t: "Executar pela plataforma", d: "Usa BM/WABA, número e template internos." },
+                { v: "external", t: "Executar externamente", d: "Atendido por fora do sistema, sem criar disparo na fila." },
+              ] as const).map((o) => (
+                <button
+                  key={o.v}
+                  type="button"
+                  onClick={() => setExecType(o.v)}
+                  className={`rounded-lg border p-3 text-left text-xs transition ${
+                    execType === o.v ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted/50"
+                  }`}
+                >
+                  <div className="text-sm font-medium">{o.t}</div>
+                  <div className="mt-0.5 text-muted-foreground">{o.d}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {execType === "external" ? (
+            <div className="space-y-1.5">
+              <Label>Observação interna (visível apenas para o admin)</Label>
+              <Textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Ex.: Disparo realizado por ferramenta externa."
+                rows={3}
+              />
+              <p className="text-xs text-muted-foreground">
+                Não exige BM, WABA, número, template ou conexão. Ao aprovar, nada é enviado para a fila da plataforma.
+              </p>
+            </div>
+          ) : (
+          <>
           <div className="space-y-1.5">
             <Label>Número de envio (BM / WABA / conexão)</Label>
             <Select value={connectionId} onValueChange={setConnectionId}>
@@ -238,6 +285,7 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
 
           <div className="space-y-1.5">
             <Label>Template do WhatsApp</Label>
+
             <Select value={templateId} onValueChange={setTemplateId}>
               <SelectTrigger><SelectValue placeholder="Selecione o template" /></SelectTrigger>
               <SelectContent className="max-h-72">
@@ -249,6 +297,8 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
               </SelectContent>
             </Select>
           </div>
+          </>
+          )}
 
           <div className="space-y-1.5">
             <Label>Data/hora do disparo (opcional)</Label>
@@ -261,6 +311,63 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+const EXTERNAL_STATUS: Array<{ v: string; label: string }> = [
+  { v: "approved_external", label: "Aprovado para execução externa" },
+  { v: "in_progress", label: "Em andamento" },
+  { v: "completed", label: "Concluído" },
+  { v: "cancelled", label: "Cancelado" },
+];
+
+function ExternalControls({ item }: { item: Item }) {
+  const qc = useQueryClient();
+  const updateFn = useServerFn(updateExternalExecution);
+  const [note, setNote] = useState(item.external_note ?? "");
+  const [busy, setBusy] = useState(false);
+
+  async function push(patch: { external_status?: string; external_note?: string | null }) {
+    setBusy(true);
+    try {
+      await updateFn({ data: { campaign_id: item.id, ...patch } as any });
+      toast.success("Execução externa atualizada");
+      qc.invalidateQueries({ queryKey: ["approval-queue"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao atualizar");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="max-w-2xl space-y-2 rounded-lg border border-violet-500/30 bg-violet-500/5 p-3">
+      <div className="text-xs font-medium">Execução externa (somente admin)</div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Select
+          value={item.external_status ?? ""}
+          onValueChange={(v) => void push({ external_status: v })}
+        >
+          <SelectTrigger className="h-8 w-64 text-xs"><SelectValue placeholder="Definir status manual" /></SelectTrigger>
+          <SelectContent>
+            {EXTERNAL_STATUS.map((s) => (
+              <SelectItem key={s.v} value={s.v}>{s.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {busy && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+      </div>
+      <Textarea
+        rows={2}
+        className="text-xs"
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder="Observação interna (ex.: Disparo realizado por ferramenta externa.)"
+      />
+      <Button size="sm" variant="outline" disabled={busy} onClick={() => void push({ external_note: note.trim() || null })}>
+        Salvar observação
+      </Button>
+    </div>
   );
 }
 
@@ -299,6 +406,8 @@ function Page() {
       });
       if (res?.already) {
         toast.info("Esta demanda já havia sido decidida.");
+      } else if (decision.kind === "approved" && res?.external) {
+        toast.success("Demanda aprovada para execução externa — nada foi enviado para a fila da plataforma");
       } else if (decision.kind === "approved") {
         toast.success("Demanda aprovada — disparo pronto para execução", {
           action: {
@@ -361,6 +470,11 @@ function Page() {
                           {r.test_sends_count} teste(s)
                         </Badge>
                       )}
+                      {r.execution_type === "external" && (
+                        <Badge variant="outline" className="border-violet-500/30 bg-violet-500/10 text-violet-600">
+                          Execução externa
+                        </Badge>
+                      )}
                     </div>
                     <div className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
                       <span>Cliente: {r.workspace_name ?? "—"}</span>
@@ -388,6 +502,7 @@ function Page() {
                     {r.approval_status === "rejected" && r.rejection_reason && (
                       <div className="text-xs text-destructive">Motivo da recusa: {r.rejection_reason}</div>
                     )}
+                    {r.execution_type === "external" && <ExternalControls item={r} />}
                     <div className="flex flex-wrap gap-2 pt-1">
                       <Button size="sm" variant="secondary" onClick={() => setPreviewId(r.id)}>
                         <Eye className="mr-1 h-4 w-4" /> Ver preview
