@@ -52,6 +52,18 @@ function Page() {
     );
   }
 
+  if ((data as any).stage && (data as any).stage !== "completed") {
+    return (
+      <div className="rounded-2xl border border-dashed p-10 text-center">
+        <FileText className="mx-auto h-8 w-8 text-muted-foreground" />
+        <p className="mt-2 text-sm font-medium">Relatório disponível após o envio completo</p>
+        <p className="text-xs text-muted-foreground">
+          O relatório consolidado é liberado quando 100% do envio for concluído.
+        </p>
+      </div>
+    );
+  }
+
   const c = data.campaign;
   const total = c.total_recipients ?? 0;
   const sent = c.sent_count ?? 0;

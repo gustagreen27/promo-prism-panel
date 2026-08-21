@@ -29,6 +29,8 @@ export type CampaignReport = {
   ddd: Array<{ ddd: string | null; v: number }>
   errors: Array<{ code: string; v: number }>
   list_name?: string | null
+  /** Etapa real da demanda: o relatório só é liberado quando 'completed'. */
+  stage?: string
 }
 
 export const getMyCampaignReport = createServerFn({ method: 'POST' })
@@ -48,6 +50,18 @@ export const getMyCampaignReport = createServerFn({ method: 'POST' })
         .eq('id', out.campaign.list_id)
         .maybeSingle()
       out.list_name = list?.name ?? null
+    }
+
+    const { data: stageRow } = await supabase
+      .from('wa_campaigns')
+      .select(
+        'status,approval_status,scheduled_at,execution_type,external_status,external_started_at,external_finished_at',
+      )
+      .eq('id', data.id)
+      .maybeSingle()
+    if (stageRow) {
+      const { demandStage } = await import('./demand-stage')
+      out.stage = demandStage(stageRow as any)
     }
     return out
   })
