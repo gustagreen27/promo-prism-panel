@@ -1,3 +1,4 @@
+import { usePanelWorkspace } from "@/lib/use-panel-workspace";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
@@ -18,7 +19,7 @@ export const Route = createFileRoute("/painel/campanhas/historico")({
 const STATUSES = ["draft", "scheduled", "running", "paused", "completed", "cancelled", "error", "partial"];
 
 function Page() {
-  const { workspaceId } = Route.useRouteContext() as { workspaceId: string };
+  const { workspaceId } = usePanelWorkspace();
   const searchFn = useServerFn(searchCampaignHistory);
   const [filters, setFilters] = useState<{ from?: string; to?: string; status?: string; query?: string }>({});
 
