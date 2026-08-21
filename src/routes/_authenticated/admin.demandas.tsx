@@ -617,7 +617,7 @@ function Page() {
   const listFn = useServerFn(listApprovalQueue);
   const decideFn = useServerFn(decideCampaignApproval);
 
-  const [tab, setTab] = useState<"pending" | "approved" | "rejected" | "all">("pending");
+  const [tab, setTab] = useState<DemandStage | "all">("pending");
   const [configItem, setConfigItem] = useState<Item | null>(null);
   const [auditId, setAuditId] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
