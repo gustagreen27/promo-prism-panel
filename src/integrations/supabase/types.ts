@@ -5626,6 +5626,10 @@ export type Database = {
         }[]
       }
       wa_dispatch_performance: { Args: { _campaign_id: string }; Returns: Json }
+      wa_filter_recipients_by_ddd: {
+        Args: { _campaign_id: string; _ddd: string }
+        Returns: number
+      }
       wa_hourly_sends: {
         Args: { _campaign_id: string }
         Returns: {
