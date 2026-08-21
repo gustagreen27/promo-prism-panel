@@ -36,6 +36,8 @@ type Item = {
   created_at: string;
   scheduled_at: string | null;
   approval_status: string | null;
+  custom_fields?: Record<string, any> | null;
+  connection_id?: string | null;
   approved_at: string | null;
   rejection_reason: string | null;
   status: string;
@@ -165,6 +167,33 @@ function Page() {
                         {" · "}Criada em {fmt(r.created_at)}
                         {r.scheduled_at ? ` · Agendada: ${fmt(r.scheduled_at)}` : ""}
                       </div>
+                      {r.custom_fields && (
+                        <div className="mt-2 max-w-2xl rounded-lg border bg-muted/30 p-3 text-xs">
+                          <div className="mb-1 font-medium">Briefing do cliente</div>
+                          {r.custom_fields.message && (
+                            <p className="whitespace-pre-wrap text-muted-foreground">{r.custom_fields.message}</p>
+                          )}
+                          <div className="mt-2 grid gap-1 text-muted-foreground sm:grid-cols-2">
+                            <span>Origem dos destinatários: {r.custom_fields.recipients_source ?? "—"}</span>
+                            <span>Total informado: {(r.custom_fields.recipients_count ?? 0).toLocaleString("pt-BR")}</span>
+                            <span>DDD: {r.custom_fields.ddd_filter ? `+${r.custom_fields.ddd_filter}` : "Qualquer"}</span>
+                            <span>Perfil: {r.custom_fields.profile_name ?? "—"}</span>
+                            {r.custom_fields.button_enabled && (
+                              <span className="sm:col-span-2 break-all">
+                                Botão: {r.custom_fields.button_text} → {r.custom_fields.button_url}
+                              </span>
+                            )}
+                            {r.custom_fields.media_url && (
+                              <a href={r.custom_fields.media_url} target="_blank" rel="noreferrer" className="sm:col-span-2 underline">
+                                Ver mídia enviada
+                              </a>
+                            )}
+                          </div>
+                          <div className="mt-2 text-muted-foreground">
+                            Número remetente: {r.connection_id ? "definido" : "a definir pelo admin"}
+                          </div>
+                        </div>
+                      )}
                       {r.approval_status === "rejected" && r.rejection_reason && (
                         <div className="mt-1 text-xs text-destructive">Motivo: {r.rejection_reason}</div>
                       )}

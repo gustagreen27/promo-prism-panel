@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { listMyNumbers, listMyTemplates, createClientCampaign } from "@/lib/client-panel.functions";
+import { createClientCampaign } from "@/lib/client-panel.functions";
 import { listWorkspaceLists, createWorkspaceListWithPhones } from "@/lib/wa-wizard-lists.functions";
 import { metaVarsIn } from "@/lib/wa-variables";
 import { DDD_TO_CITY, extractDddBR } from "@/lib/ddd-cities";
@@ -30,11 +30,6 @@ export const Route = createFileRoute("/painel/campanhas/nova")({
   component: Page,
 });
 
-type NumberRow = { id: string; display_name: string; phone_masked: string; status: string };
-type TemplateRow = {
-  id: string; name: string; language: string; category: string; body: string;
-  header_type?: string | null; header_text?: string | null; footer?: string | null; buttons?: any[];
-};
 type ContactMode = "manual" | "lista" | "csv";
 
 function fillVars(text: string, vars: Record<string, string>) {
@@ -61,22 +56,16 @@ function Page() {
   const workspaceId = ctx?.primary_workspace?.id ?? "";
   const navigate = useNavigate();
 
-  const fnNumbers = useServerFn(listMyNumbers);
-  const fnTemplates = useServerFn(listMyTemplates);
   const fnLists = useServerFn(listWorkspaceLists);
   const fnCreateList = useServerFn(createWorkspaceListWithPhones);
   const fnCreate = useServerFn(createClientCampaign);
 
-  const [numbers, setNumbers] = useState<NumberRow[]>([]);
-  const [templates, setTemplates] = useState<TemplateRow[]>([]);
   const [lists, setLists] = useState<Array<{ id: string; name: string; count: number }>>([]);
 
   const [name, setName] = useState("");
   const [profileName, setProfileName] = useState("");
   const [bio, setBio] = useState("");
   const [message, setMessage] = useState("");
-  const [connectionId, setConnectionId] = useState("");
-  const [templateId, setTemplateId] = useState("");
   const [vars, setVars] = useState<Record<string, string>>({});
   const [btnVars, setBtnVars] = useState<Record<string, string>>({});
   const [btnEnabled, setBtnEnabled] = useState(true);
@@ -103,26 +92,10 @@ function Page() {
 
   useEffect(() => {
     if (!workspaceId) return;
-    fnNumbers({ data: { workspace_id: workspaceId } })
-      .then((r: any) => { setNumbers(r.numbers); if (r.numbers.length > 0) setConnectionId(r.numbers[0].id); })
-      .catch(() => {});
     fnLists({ data: { workspace_id: workspaceId, only_mine: true } }).then((r: any) => setLists(r.lists)).catch(() => {});
-  }, [workspaceId, fnNumbers, fnLists]);
+  }, [workspaceId, fnLists]);
 
-  useEffect(() => {
-    if (!connectionId) { setTemplates([]); return; }
-    fnTemplates({ data: { workspace_id: workspaceId, connection_id: connectionId } })
-      .then((r: any) => { setTemplates(r.templates); if (r.templates.length > 0) setTemplateId(r.templates[0].id); })
-      .catch(() => setTemplates([]));
-  }, [connectionId, workspaceId, fnTemplates]);
-
-  const template = useMemo(() => templates.find((t) => t.id === templateId) ?? null, [templates, templateId]);
   const bodyVars = useMemo(() => metaVarsIn(message), [message]);
-  const urlButton = useMemo(
-    () => (template?.buttons ?? []).find((b: any) => String(b?.type).toUpperCase() === "URL"),
-    [template],
-  );
-  const urlVars = useMemo(() => (urlButton?.url ? metaVarsIn(String(urlButton.url)) : []), [urlButton]);
 
   // Modelos de mensagem disponíveis (apenas dois).
   useEffect(() => {
@@ -148,7 +121,7 @@ function Page() {
     : (lists.find((l) => l.id === listId)?.count ?? 0);
 
   const previewBody = fillVars(message, vars);
-  const previewUrl = btnEnabled ? btnUrl : (urlButton?.url ? fillVars(String(urlButton.url), btnVars) : "");
+  const previewUrl = btnEnabled ? btnUrl : "";
 
   async function upload(file: File, kind: "avatar" | "media") {
     setUploading(kind);
@@ -187,8 +160,6 @@ function Page() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (name.trim().length < 2) return toast.error("Informe o nome da campanha");
-    if (!connectionId) return toast.error("Selecione o número de envio");
-    if (!templateId) return toast.error("Selecione o template aprovado");
     if (!audienceCount) return toast.error("Adicione os contatos do disparo");
     if (btnEnabled && !/^https?:\/\/.+/i.test(btnUrl.trim())) return toast.error("Informe o destino (link) do botão");
     if (schedule && (!date || !time)) return toast.error("Informe data e hora do agendamento");
@@ -209,17 +180,31 @@ function Page() {
         data: {
           workspace_id: workspaceId,
           name: name.trim(),
-          connection_id: connectionId,
-          template_id: templateId,
+          connection_id: null,
+          template_id: null,
           list_id: finalListId,
           ddd_filter: mode === "lista" ? dddFilter : null,
           variables_mapping: vars,
           button_url_mapping: btnEnabled ? { ...btnVars, "1": btnUrl.trim() } : btnVars,
           header_media_url: mediaUrl || null,
+          client_brief: {
+            message,
+            profile_name: profileName || null,
+            bio: bio || null,
+            avatar_url: avatarUrl || null,
+            media_url: mediaUrl || null,
+            button_enabled: btnEnabled,
+            button_text: btnEnabled ? btnText : null,
+            button_url: btnEnabled ? btnUrl.trim() : null,
+            variables: vars,
+            recipients_source: mode,
+            recipients_count: audienceCount,
+            ddd_filter: dddFilter,
+          },
           scheduled_at,
         },
       });
-      toast.success(scheduled_at ? "Disparo agendado — aguardando aprovação" : "Disparo enviado para a fila — aguardando aprovação");
+      toast.success(scheduled_at ? "Campanha agendada e enviada ao administrador" : "Campanha enviada ao administrador — aguardando envio");
       navigate({ to: "/painel/campanhas" });
     } catch (err: any) {
       toast.error(err?.message ?? "Não foi possível criar o disparo");
@@ -425,28 +410,18 @@ function Page() {
                 {mediaUrl && (
                   <img src={mediaUrl} alt="Mídia da campanha" className="mb-2 aspect-video w-full rounded object-cover" />
                 )}
-                {template?.header_text && <div className="mb-1 text-sm font-bold text-neutral-900">{template.header_text}</div>}
                 <div className="whitespace-pre-wrap break-words text-[13px] leading-relaxed text-neutral-900">
                   {previewBody || <span className="italic text-neutral-400">Sua mensagem aparece aqui...</span>}
                 </div>
-                {template?.footer && <div className="mt-1 text-[10px] text-neutral-500">{template.footer}</div>}
                 <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-neutral-500">
                   {now} <CheckCheck className="h-3 w-3 text-sky-500" />
                 </div>
               </div>
-              {btnEnabled ? (
+              {btnEnabled && (
                 <div className="max-w-[85%]">
                   <div className="rounded-lg bg-white py-1.5 text-center text-[12px] font-medium text-sky-600 shadow-sm">
                     {btnText || "CLIQUE AQUI"}
                   </div>
-                </div>
-              ) : (template?.buttons ?? []).length > 0 && (
-                <div className="max-w-[85%] space-y-1">
-                  {(template!.buttons as any[]).map((b, i) => (
-                    <div key={i} className="rounded-lg bg-white py-1.5 text-center text-[12px] font-medium text-sky-600 shadow-sm">
-                      {b.text}
-                    </div>
-                  ))}
                 </div>
               )}
 
