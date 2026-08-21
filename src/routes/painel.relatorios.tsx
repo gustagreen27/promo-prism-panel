@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { BarChart3, TrendingUp } from "lucide-react";
+import { BarChart3, Lock, TrendingUp } from "lucide-react";
+import { demandStage, STAGE_CLASS, STAGE_LABEL } from "@/lib/demand-stage";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyContext } from "@/lib/auth.functions";
 
@@ -25,6 +26,11 @@ type CampRow = {
   external_sent_count: number | null;
   external_delivered_count: number | null;
   external_failed_count: number | null;
+  approval_status: string | null;
+  scheduled_at: string | null;
+  external_status: string | null;
+  external_started_at: string | null;
+  external_finished_at: string | null;
 };
 
 /** Usa os números da execução externa quando existirem (mesma fonte das demandas). */
@@ -53,7 +59,7 @@ function Page() {
     enabled: !!wsId,
     queryFn: async () => {
       let q = supabase.from("wa_campaigns")
-        .select("id,name,status,created_at,total_recipients,sent_count,delivered_count,read_count,replied_count,failed_count,charged_cents,execution_type,external_total_count,external_sent_count,external_delivered_count,external_failed_count")
+        .select("id,name,status,created_at,total_recipients,sent_count,delivered_count,read_count,replied_count,failed_count,charged_cents,execution_type,external_total_count,external_sent_count,external_delivered_count,external_failed_count,approval_status,scheduled_at,external_status,external_started_at,external_finished_at")
         .eq("workspace_id", wsId!)
         .order("created_at", { ascending: false }).limit(200);
       if (days !== "all") {
@@ -62,7 +68,14 @@ function Page() {
       }
       const { data, error } = await q;
       if (error) throw error;
-      return (data as CampRow[]) || [];
+      // Somente campanhas que entraram no fluxo de envio: agendadas, em fila,
+      // em execução e finalizadas. Rascunhos, rejeitadas e canceladas ficam fora.
+      return ((data as CampRow[]) || []).filter((r) => {
+        const raw = (r.status ?? "").toLowerCase();
+        if (raw === "draft" || raw === "cancelled" || raw === "canceled" || raw === "rejected") return false;
+        const stage = demandStage(r);
+        return stage === "scheduled" || stage === "queued" || stage === "completed";
+      });
     },
   });
 
@@ -148,21 +161,31 @@ function Page() {
                 <TableBody>
                   {rows.map((r) => {
                     const m = metrics(r);
+                    const stage = demandStage(r);
+                    const ready = stage === "completed";
                     return (
                     <TableRow key={r.id}>
                       <TableCell>
-                        <Link
-                          to="/painel/relatorio/$id"
-                          params={{ id: r.id }}
-                          className="font-medium text-primary hover:underline"
-                        >
-                          {r.name}
-                        </Link>
+                        {ready ? (
+                          <Link
+                            to="/painel/relatorio/$id"
+                            params={{ id: r.id }}
+                            className="font-medium text-primary hover:underline"
+                          >
+                            {r.name}
+                          </Link>
+                        ) : (
+                          <span className="font-medium">{r.name}</span>
+                        )}
                         <div className="text-xs text-muted-foreground">
                           {new Date(r.created_at).toLocaleDateString("pt-BR")}
                         </div>
                       </TableCell>
-                      <TableCell><Badge variant="outline">{r.status}</Badge></TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={STAGE_CLASS[stage]}>
+                          {STAGE_LABEL[stage]}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="text-right tabular-nums">{m.total.toLocaleString("pt-BR")}</TableCell>
                       <TableCell className="text-right tabular-nums">{m.sent.toLocaleString("pt-BR")}</TableCell>
                       <TableCell className="text-right tabular-nums">{m.delivered.toLocaleString("pt-BR")}</TableCell>
@@ -170,13 +193,19 @@ function Page() {
                       <TableCell className="text-right tabular-nums">{m.failed.toLocaleString("pt-BR")}</TableCell>
                       <TableCell className="text-right tabular-nums">{brl(m.charged)}</TableCell>
                       <TableCell className="text-right">
-                        <Link
-                          to="/painel/relatorio/$id"
-                          params={{ id: r.id }}
-                          className="text-xs font-medium text-primary hover:underline"
-                        >
-                          Ver relatório
-                        </Link>
+                        {ready ? (
+                          <Link
+                            to="/painel/relatorio/$id"
+                            params={{ id: r.id }}
+                            className="text-xs font-medium text-primary hover:underline"
+                          >
+                            Ver relatório
+                          </Link>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                            <Lock className="h-3 w-3" /> Relatório disponível após o envio completo
+                          </span>
+                        )}
                       </TableCell>
                     </TableRow>
                     );
