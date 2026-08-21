@@ -49,6 +49,7 @@ function PanelHome() {
   const dashFn = useServerFn(getClientDashboard);
   const [projectId, setProjectId] = useState<string>("all");
   const [campaignId, setCampaignId] = useState<string>("all");
+  const [range, setRange] = useState<RangeKey>("all");
 
   const { data: ctx } = useQuery({ queryKey: ["my-context"], queryFn: () => ctxFn(), staleTime: 30_000 });
   const ws = ctx?.primary_workspace;
