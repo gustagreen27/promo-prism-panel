@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Search, Wallet, Users, CircleDollarSign } from "lucide-react";
+import { Search, Wallet, Users, CircleDollarSign, Plus } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { CLIENTES_TABS } from "@/components/admin/hub-tabs";
 import { ErrorCard } from "@/components/admin/query-state";
@@ -14,8 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { adminListClientAccounts, adminAddCredits } from "@/lib/billing.functions";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { adminListClientAccounts, adminAddCredits, adminCreateClientAccount } from "@/lib/billing.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/contas")({
   head: () => ({
