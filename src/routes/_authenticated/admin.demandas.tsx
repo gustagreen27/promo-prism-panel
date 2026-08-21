@@ -688,12 +688,16 @@ function Page() {
           </div>
           <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
             <TabsList>
-              <TabsTrigger value="pending">Aguardando</TabsTrigger>
-              <TabsTrigger value="approved">Aprovadas</TabsTrigger>
-              <TabsTrigger value="rejected">Recusadas</TabsTrigger>
+              {(["pending", "scheduled", "queued", "completed", "rejected"] as DemandStage[]).map((s) => (
+                <TabsTrigger key={s} value={s}>
+                  {STAGE_LABEL[s]}
+                  {counts[s] ? ` (${counts[s]})` : ""}
+                </TabsTrigger>
+              ))}
               <TabsTrigger value="all">Todas</TabsTrigger>
             </TabsList>
           </Tabs>
+
         </CardHeader>
         <CardContent>
           {isLoading ? (
