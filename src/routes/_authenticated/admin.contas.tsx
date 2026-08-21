@@ -87,6 +87,31 @@ function Page() {
     setTarget(a); setDirection(dir); setMode("messages"); setQty(""); setDescription("");
   };
 
+  // ---- Preço por conta ----
+  const setPrice = useServerFn(adminSetCustomPrice);
+  const [priceTarget, setPriceTarget] = useState<any>(null);
+  const [priceStr, setPriceStr] = useState("");
+
+  const savePrice = useMutation({
+    mutationFn: () => {
+      const raw = priceStr.trim();
+      const cents = raw === ""
+        ? null
+        : Math.round(Number(raw.replace(/\./g, "").replace(",", ".")) * 100);
+      if (cents !== null && (!Number.isFinite(cents) || cents <= 0)) {
+        throw new Error("Informe um preço válido");
+      }
+      return setPrice({ data: { workspace_id: priceTarget.id, custom_price_cents: cents } });
+    },
+    onSuccess: () => {
+      toast.success("Preço atualizado");
+      qc.invalidateQueries({ queryKey: ["admin-client-accounts"] });
+      setPriceTarget(null);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao salvar preço"),
+  });
+
+
   // ---- Criar conta ----
   const createAccount = useServerFn(adminCreateClientAccount);
   const [createOpen, setCreateOpen] = useState(false);
