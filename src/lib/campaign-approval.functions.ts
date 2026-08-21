@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware'
 import { z } from 'zod'
+import { assertSufficientCredits } from '@/lib/wallet-guard'
 
 async function assertStaff(supabase: any, userId: string) {
   const { data } = await supabase.rpc('is_internal_staff', { _user: userId })
@@ -182,6 +183,12 @@ export const decideCampaignApproval = createServerFn({ method: 'POST' })
         .maybeSingle()
       if (!infra?.connection_id) throw new Error('Defina o número/conexão de envio antes de aprovar')
       if (!infra?.template_id) throw new Error('Defina o template do WhatsApp antes de aprovar')
+      // Revalida o saldo do cliente no momento da aprovação (pode ter sido
+      // consumido por outra campanha depois que a demanda foi criada).
+      const required = Number(camp.total_recipients ?? 0)
+      if (required > 0 && camp.workspace_id) {
+        await assertSufficientCredits(supabase, camp.workspace_id, required)
+      }
     }
 
     const nowIso = new Date().toISOString()
