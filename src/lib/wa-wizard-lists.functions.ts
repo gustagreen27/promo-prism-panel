@@ -184,9 +184,27 @@ export const createWorkspaceListWithPhones = createServerFn({ method: "POST" })
         .from("contacts")
         .insert(chunk)
         .select("id,phone");
-      if (insErr) throw insErr;
+      if (insErr) {
+        // Corrida/duplicidade: recupera os contatos já existentes em vez de falhar a importação.
+        if (String((insErr as any).code) !== "23505") throw insErr;
+        const { data: again, error: againErr } = await supabase
+          .from("contacts")
+          .select("id,phone")
+          .eq("workspace_id", data.workspace_id)
+          .in("phone", chunk.map((c) => c.phone));
+        if (againErr) throw againErr;
+        const found = new Map((again ?? []).map((r: any) => [r.phone, r.id]));
+        const missing = chunk.filter((c) => !found.has(c.phone));
+        for (const [phone, id] of found) insertedIds.push({ id: id as string, phone: phone as string });
+        for (const row of missing) {
+          const { data: one } = await supabase.from("contacts").insert(row).select("id,phone").maybeSingle();
+          if (one) insertedIds.push(one);
+        }
+        continue;
+      }
       for (const r of ins ?? []) insertedIds.push(r);
     }
+
 
     // 5. Reabrir opt-in dos existentes (mantém contatos previamente bloqueados fora)
     if (existing.length) {
