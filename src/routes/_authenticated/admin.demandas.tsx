@@ -490,7 +490,7 @@ function ExternalControls({ item }: { item: Item }) {
       external_sent_count: s,
       external_delivered_count: d,
       external_failed_count: f,
-      external_finished_at: finish ? new Date(finish).toISOString() : null,
+      external_finished_at: fromLocalInput(finish),
       external_note: note.trim() || null,
     }, "Resultados atualizados");
     setOpen(false);
