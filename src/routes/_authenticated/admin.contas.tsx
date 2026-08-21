@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Search, Wallet, Users, CircleDollarSign, Plus } from "lucide-react";
+import { Search, Wallet, Users, CircleDollarSign, Plus, Pencil, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { CLIENTES_TABS } from "@/components/admin/hub-tabs";
 import { ErrorCard } from "@/components/admin/query-state";
@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { adminListClientAccounts, adminAddCredits, adminCreateClientAccount, adminSetCustomPrice } from "@/lib/billing.functions";
+import { adminListClientAccounts, adminAddCredits, adminCreateClientAccount, adminSetCustomPrice, adminUpdateClientAccount, adminDeleteClientAccount } from "@/lib/billing.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/contas")({
   head: () => ({
@@ -45,6 +45,39 @@ function Page() {
   const [direction, setDirection] = useState<"add" | "remove">("add");
   const [qty, setQty] = useState("");
   const [description, setDescription] = useState("");
+  const [editTarget, setEditTarget] = useState<any>(null);
+  const [editForm, setEditForm] = useState({ name: "", slug: "", plan: "", status: "active", owner_name: "", owner_password: "" });
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const updateAccountFn = useServerFn(adminUpdateClientAccount);
+  const deleteAccountFn = useServerFn(adminDeleteClientAccount);
+
+  const updateAccount = useMutation({
+    mutationFn: () => updateAccountFn({ data: {
+      workspace_id: editTarget.id,
+      name: editForm.name.trim() || null,
+      slug: editForm.slug.trim() || null,
+      plan: editForm.plan.trim() || null,
+      status: (editForm.status === "blocked" ? "blocked" : "active") as "active" | "blocked",
+      owner_name: editForm.owner_name.trim() || null,
+      owner_password: editForm.owner_password.trim() || null,
+    } }),
+    onSuccess: () => {
+      toast.success("Conta atualizada");
+      qc.invalidateQueries({ queryKey: ["admin-client-accounts"] });
+      setEditTarget(null);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao atualizar conta"),
+  });
+
+  const deleteAccount = useMutation({
+    mutationFn: () => deleteAccountFn({ data: { workspace_id: deleteTarget.id, delete_owner_user: true } }),
+    onSuccess: () => {
+      toast.success("Conta excluída");
+      qc.invalidateQueries({ queryKey: ["admin-client-accounts"] });
+      setDeleteTarget(null);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao excluir conta"),
+  });
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -403,6 +436,61 @@ function Page() {
           <DialogFooter>
             <Button variant="ghost" onClick={() => setPriceTarget(null)}>Cancelar</Button>
             <Button onClick={() => savePrice.mutate()} disabled={savePrice.isPending}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!editTarget} onOpenChange={(v) => !v && setEditTarget(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar conta — {editTarget?.name}</DialogTitle>
+            <DialogDescription>Atualize os dados da conta e do responsável.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <Label>Nome da conta</Label>
+              <Input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Slug</Label>
+              <Input value={editForm.slug} onChange={(e) => setEditForm((f) => ({ ...f, slug: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Plano</Label>
+              <Input value={editForm.plan} onChange={(e) => setEditForm((f) => ({ ...f, plan: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Nome do responsável</Label>
+              <Input value={editForm.owner_name} onChange={(e) => setEditForm((f) => ({ ...f, owner_name: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Nova senha (opcional)</Label>
+              <Input value={editForm.owner_password} onChange={(e) => setEditForm((f) => ({ ...f, owner_password: e.target.value }))} placeholder="mín. 8 caracteres" />
+            </div>
+            <div className="sm:col-span-2 flex gap-2">
+              <Button size="sm" variant={editForm.status === "active" ? "default" : "outline"} onClick={() => setEditForm((f) => ({ ...f, status: "active" }))}>Ativa</Button>
+              <Button size="sm" variant={editForm.status === "blocked" ? "destructive" : "outline"} onClick={() => setEditForm((f) => ({ ...f, status: "blocked" }))}>Bloqueada</Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditTarget(null)}>Cancelar</Button>
+            <Button onClick={() => updateAccount.mutate()} disabled={updateAccount.isPending}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir conta — {deleteTarget?.name}</DialogTitle>
+            <DialogDescription>
+              A conta, a carteira e o usuário responsável serão removidos. Contas com disparos registrados não podem ser excluídas.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>Cancelar</Button>
+            <Button variant="destructive" onClick={() => deleteAccount.mutate()} disabled={deleteAccount.isPending}>
+              {deleteAccount.isPending ? "Excluindo…" : "Excluir"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
