@@ -371,7 +371,7 @@ export const updateExternalExecution = createServerFn({ method: 'POST' })
     const { data: camp } = await supabase
       .from('wa_campaigns')
       .select(
-        'id,workspace_id,execution_type,external_status,external_note,external_total_count,external_sent_count,external_delivered_count,external_failed_count,external_started_at,external_finished_at',
+        'id,workspace_id,execution_type,external_status,external_note,external_total_count,external_sent_count,external_delivered_count,external_failed_count,external_target_sent_count,external_target_delivered_count,external_target_failed_count,external_started_at,external_finished_at',
       )
       .eq('id', data.campaign_id)
       .maybeSingle()
