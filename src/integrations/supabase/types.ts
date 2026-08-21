@@ -2843,6 +2843,9 @@ export type Database = {
           external_sent_count: number | null
           external_started_at: string | null
           external_status: string | null
+          external_target_delivered_count: number | null
+          external_target_failed_count: number | null
+          external_target_sent_count: number | null
           external_total_count: number | null
           external_updated_at: string | null
           failed_count: number
@@ -2956,6 +2959,9 @@ export type Database = {
           external_sent_count?: number | null
           external_started_at?: string | null
           external_status?: string | null
+          external_target_delivered_count?: number | null
+          external_target_failed_count?: number | null
+          external_target_sent_count?: number | null
           external_total_count?: number | null
           external_updated_at?: string | null
           failed_count?: number
@@ -3069,6 +3075,9 @@ export type Database = {
           external_sent_count?: number | null
           external_started_at?: string | null
           external_status?: string | null
+          external_target_delivered_count?: number | null
+          external_target_failed_count?: number | null
+          external_target_sent_count?: number | null
           external_total_count?: number | null
           external_updated_at?: string | null
           failed_count?: number

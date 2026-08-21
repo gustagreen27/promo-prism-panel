@@ -21,7 +21,8 @@ async function assertMember(supabase: any, userId: string, workspaceId: string) 
 }
 
 const APPROVAL_FIELDS =
-  'id,name,workspace_id,project_id,status,approval_status,approval_mode,rejection_reason,approved_at,approved_by,total_recipients,scheduled_at,created_at,created_by,connection_id,template_id,list_id,custom_fields,variables_mapping,button_url_mapping,template_variables,execution_type,external_status,external_note,metrics_source,external_total_count,external_sent_count,external_delivered_count,external_failed_count,external_started_at,external_finished_at,external_updated_at'
+  'id,name,workspace_id,project_id,status,approval_status,approval_mode,rejection_reason,approved_at,approved_by,total_recipients,scheduled_at,created_at,created_by,connection_id,template_id,list_id,custom_fields,variables_mapping,button_url_mapping,template_variables,execution_type,external_status,external_note,metrics_source,external_total_count,external_sent_count,external_delivered_count,external_failed_count,external_target_sent_count,external_target_delivered_count,external_target_failed_count,external_started_at,external_finished_at,external_updated_at'
+
 
 
 // ---- Fila de aprovação (admin) ----
@@ -83,7 +84,11 @@ export const listApprovalQueue = createServerFn({ method: 'POST' })
         for (const c of due) c.external_status = 'completed'
       }
 
+      // Progressão automática das métricas (janelas de 10 minutos).
+      const { applyExternalProgression } = await import('./external-progression.server')
+      await applyExternalProgression(supabase, campaigns)
     }
+
 
     const counts = { pending: 0, scheduled: 0, queued: 0, completed: 0, rejected: 0 } as Record<string, number>
     for (const c of campaigns) counts[demandStage(c)] = (counts[demandStage(c)] ?? 0) + 1
@@ -366,7 +371,7 @@ export const updateExternalExecution = createServerFn({ method: 'POST' })
     const { data: camp } = await supabase
       .from('wa_campaigns')
       .select(
-        'id,workspace_id,execution_type,external_status,external_note,external_total_count,external_sent_count,external_delivered_count,external_failed_count,external_started_at,external_finished_at',
+        'id,workspace_id,execution_type,external_status,external_note,external_total_count,external_sent_count,external_delivered_count,external_failed_count,external_target_sent_count,external_target_delivered_count,external_target_failed_count,external_started_at,external_finished_at',
       )
       .eq('id', data.campaign_id)
       .maybeSingle()
@@ -421,22 +426,51 @@ export const updateExternalExecution = createServerFn({ method: 'POST' })
       if (startedAt && finishedAt && new Date(finishedAt) < new Date(startedAt))
         throw new Error('A finalização não pode ser anterior ao início.')
 
-      patch['metrics_source'] = 'manual'
+      // Os números informados são o RESULTADO FINAL previsto: viram alvos da
+      // progressão automática (janelas de 10 min entre início e finalização).
+      if (data.external_sent_count !== undefined) patch['external_target_sent_count'] = data.external_sent_count ?? null
+      if (data.external_delivered_count !== undefined)
+        patch['external_target_delivered_count'] = data.external_delivered_count ?? null
+      if (data.external_failed_count !== undefined)
+        patch['external_target_failed_count'] = data.external_failed_count ?? null
+
       patch['external_updated_at'] = new Date().toISOString()
+
+      if (startedAt && finishedAt) {
+        patch['metrics_source'] = 'estimated_external'
+        const { externalProgressPatch } = await import('./external-progression')
+        const merged = { ...(camp as any), ...patch, id: camp.id }
+        // Enquanto a execução avança, os valores exibidos vêm da simulação.
+        delete merged['external_sent_count']
+        delete merged['external_delivered_count']
+        delete merged['external_failed_count']
+        const progress = externalProgressPatch(merged, new Date())
+        if (progress) Object.assign(patch, progress)
+      } else {
+        patch['metrics_source'] = 'manual'
+      }
+
       // Finalização no passado (ou já atingida) conclui a demanda automaticamente.
       if (finishedAt && new Date(finishedAt).getTime() <= Date.now() && !data.external_status) {
         patch['external_status'] = 'completed'
       }
     }
 
-    // Finalização manual: grava o horário de término e conclui.
+    // Finalização manual: grava o horário de término, aplica os valores finais e conclui.
     if (data.finalize_now) {
       const now = new Date().toISOString()
       patch['external_finished_at'] = now
       patch['external_status'] = 'completed'
       patch['external_updated_at'] = now
-      patch['metrics_source'] = 'manual'
+      const finalSent = patch['external_target_sent_count'] ?? (camp as any).external_target_sent_count
+      const finalDelivered =
+        patch['external_target_delivered_count'] ?? (camp as any).external_target_delivered_count
+      const finalFailed = patch['external_target_failed_count'] ?? (camp as any).external_target_failed_count
+      if (finalSent != null) patch['external_sent_count'] = finalSent
+      if (finalDelivered != null) patch['external_delivered_count'] = Math.min(finalDelivered, finalSent ?? finalDelivered)
+      if (finalFailed != null) patch['external_failed_count'] = finalFailed
     }
+
 
     if (!Object.keys(patch).length) return { ok: true }
 
@@ -581,7 +615,13 @@ export const listMyDemands = createServerFn({ method: 'POST' })
     if (error) throw error
 
     const campaigns = (rows ?? []) as any[]
+    // Progressão automática das execuções externas (janelas de 10 minutos).
+    {
+      const { applyExternalProgression } = await import('./external-progression.server')
+      await applyExternalProgression(supabase, campaigns)
+    }
     const ids = campaigns.map((c) => c.id)
+
     const auditByCampaign = new Map<string, any[]>()
     if (ids.length) {
       const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
@@ -604,15 +644,18 @@ export const listMyDemands = createServerFn({ method: 'POST' })
       : { data: [] as any[] }
     const listName = new Map((lists ?? []).map((l: any) => [l.id, l.name]))
 
+    const { simulateExternal } = await import('./external-progression')
     return {
       items: campaigns.map(({ external_note: _adminOnly, ...c }: any) => ({
         ...c,
         stage: demandStage(c),
+        next_update_at: c.execution_type === 'external' ? (simulateExternal(c)?.nextAt ?? null) : null,
         list_name: c.list_id ? (listName.get(c.list_id) ?? null) : null,
         decisions: auditByCampaign.get(c.id) ?? [],
       })),
     }
   })
+
 
 // ---- Histórico de atualizações manuais da execução externa (admin) ----
 export const listExternalProgress = createServerFn({ method: 'POST' })

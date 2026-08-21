@@ -183,10 +183,19 @@ function Page() {
                           <span>{(d.external_delivered_count ?? 0).toLocaleString("pt-BR")} entregues</span>
                           <span>{(d.external_failed_count ?? 0).toLocaleString("pt-BR")} falhas</span>
                           <span>{pendingCount(d).toLocaleString("pt-BR")} pendentes</span>
-                          {d.external_updated_at && <span>Atualizado em {fmt(d.external_updated_at)}</span>}
+                          {d.external_updated_at && <span>Última atualização: {fmt(d.external_updated_at)}</span>}
+                          {!d.external_finished_at && (d as any).next_update_at && (
+                            <span>Próxima atualização prevista: {fmt((d as any).next_update_at)}</span>
+                          )}
                         </div>
+                        {!d.external_finished_at && (
+                          <div className="mt-1 text-[11px] text-muted-foreground">
+                            Os dados desta página são atualizados a cada 10 minutos.
+                          </div>
+                        )}
                         {d.external_finished_at && <div className="mt-1">Finalizado em: {fmt(d.external_finished_at)}</div>}
                       </div>
+
                     )}
                     {(b === "queued" || b === "scheduled" || b === "completed") && d.approved_at && (
                       <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700">

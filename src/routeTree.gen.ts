@@ -69,6 +69,7 @@ import { Route as ApiPublicWhatsappHealthRefreshRouteImport } from './routes/api
 import { Route as ApiPublicWhatsappHarnessRouteImport } from './routes/api/public/whatsapp/harness'
 import { Route as ApiPublicHooksWaTemplatesSyncRouteImport } from './routes/api/public/hooks/wa-templates-sync'
 import { Route as ApiPublicHooksNotifyUpcomingCampaignsRouteImport } from './routes/api/public/hooks/notify-upcoming-campaigns'
+import { Route as ApiPublicHooksExternalProgressRouteImport } from './routes/api/public/hooks/external-progress'
 import { Route as ApiPublicGoogleOauthCallbackRouteImport } from './routes/api/public/google/oauth-callback'
 import { Route as ApiPublicDiagEgressIpRouteImport } from './routes/api/public/diag/egress-ip'
 import { Route as ApiPublicCiSplatRouteImport } from './routes/api/public/ci.$'
@@ -435,6 +436,12 @@ const ApiPublicHooksNotifyUpcomingCampaignsRoute =
     path: '/api/public/hooks/notify-upcoming-campaigns',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksExternalProgressRoute =
+  ApiPublicHooksExternalProgressRouteImport.update({
+    id: '/api/public/hooks/external-progress',
+    path: '/api/public/hooks/external-progress',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicGoogleOauthCallbackRoute =
   ApiPublicGoogleOauthCallbackRouteImport.update({
     id: '/api/public/google/oauth-callback',
@@ -708,6 +715,7 @@ export interface FileRoutesByFullPath {
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
   '/api/public/diag/egress-ip': typeof ApiPublicDiagEgressIpRoute
   '/api/public/google/oauth-callback': typeof ApiPublicGoogleOauthCallbackRoute
+  '/api/public/hooks/external-progress': typeof ApiPublicHooksExternalProgressRoute
   '/api/public/hooks/notify-upcoming-campaigns': typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
   '/api/public/hooks/wa-templates-sync': typeof ApiPublicHooksWaTemplatesSyncRoute
   '/api/public/whatsapp/harness': typeof ApiPublicWhatsappHarnessRoute
@@ -800,6 +808,7 @@ export interface FileRoutesByTo {
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
   '/api/public/diag/egress-ip': typeof ApiPublicDiagEgressIpRoute
   '/api/public/google/oauth-callback': typeof ApiPublicGoogleOauthCallbackRoute
+  '/api/public/hooks/external-progress': typeof ApiPublicHooksExternalProgressRoute
   '/api/public/hooks/notify-upcoming-campaigns': typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
   '/api/public/hooks/wa-templates-sync': typeof ApiPublicHooksWaTemplatesSyncRoute
   '/api/public/whatsapp/harness': typeof ApiPublicWhatsappHarnessRoute
@@ -896,6 +905,7 @@ export interface FileRoutesById {
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
   '/api/public/diag/egress-ip': typeof ApiPublicDiagEgressIpRoute
   '/api/public/google/oauth-callback': typeof ApiPublicGoogleOauthCallbackRoute
+  '/api/public/hooks/external-progress': typeof ApiPublicHooksExternalProgressRoute
   '/api/public/hooks/notify-upcoming-campaigns': typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
   '/api/public/hooks/wa-templates-sync': typeof ApiPublicHooksWaTemplatesSyncRoute
   '/api/public/whatsapp/harness': typeof ApiPublicWhatsappHarnessRoute
@@ -992,6 +1002,7 @@ export interface FileRouteTypes {
     | '/api/public/ci/$'
     | '/api/public/diag/egress-ip'
     | '/api/public/google/oauth-callback'
+    | '/api/public/hooks/external-progress'
     | '/api/public/hooks/notify-upcoming-campaigns'
     | '/api/public/hooks/wa-templates-sync'
     | '/api/public/whatsapp/harness'
@@ -1084,6 +1095,7 @@ export interface FileRouteTypes {
     | '/api/public/ci/$'
     | '/api/public/diag/egress-ip'
     | '/api/public/google/oauth-callback'
+    | '/api/public/hooks/external-progress'
     | '/api/public/hooks/notify-upcoming-campaigns'
     | '/api/public/hooks/wa-templates-sync'
     | '/api/public/whatsapp/harness'
@@ -1179,6 +1191,7 @@ export interface FileRouteTypes {
     | '/api/public/ci/$'
     | '/api/public/diag/egress-ip'
     | '/api/public/google/oauth-callback'
+    | '/api/public/hooks/external-progress'
     | '/api/public/hooks/notify-upcoming-campaigns'
     | '/api/public/hooks/wa-templates-sync'
     | '/api/public/whatsapp/harness'
@@ -1217,6 +1230,7 @@ export interface RootRouteChildren {
   ApiPublicCiSplatRoute: typeof ApiPublicCiSplatRoute
   ApiPublicDiagEgressIpRoute: typeof ApiPublicDiagEgressIpRoute
   ApiPublicGoogleOauthCallbackRoute: typeof ApiPublicGoogleOauthCallbackRoute
+  ApiPublicHooksExternalProgressRoute: typeof ApiPublicHooksExternalProgressRoute
   ApiPublicHooksNotifyUpcomingCampaignsRoute: typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
   ApiPublicHooksWaTemplatesSyncRoute: typeof ApiPublicHooksWaTemplatesSyncRoute
   ApiPublicWhatsappHarnessRoute: typeof ApiPublicWhatsappHarnessRoute
@@ -1648,6 +1662,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/hooks/notify-upcoming-campaigns'
       fullPath: '/api/public/hooks/notify-upcoming-campaigns'
       preLoaderRoute: typeof ApiPublicHooksNotifyUpcomingCampaignsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/external-progress': {
+      id: '/api/public/hooks/external-progress'
+      path: '/api/public/hooks/external-progress'
+      fullPath: '/api/public/hooks/external-progress'
+      preLoaderRoute: typeof ApiPublicHooksExternalProgressRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/google/oauth-callback': {
@@ -2112,6 +2133,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCiSplatRoute: ApiPublicCiSplatRoute,
   ApiPublicDiagEgressIpRoute: ApiPublicDiagEgressIpRoute,
   ApiPublicGoogleOauthCallbackRoute: ApiPublicGoogleOauthCallbackRoute,
+  ApiPublicHooksExternalProgressRoute: ApiPublicHooksExternalProgressRoute,
   ApiPublicHooksNotifyUpcomingCampaignsRoute:
     ApiPublicHooksNotifyUpcomingCampaignsRoute,
   ApiPublicHooksWaTemplatesSyncRoute: ApiPublicHooksWaTemplatesSyncRoute,

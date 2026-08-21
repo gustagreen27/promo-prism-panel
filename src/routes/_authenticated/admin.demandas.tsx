@@ -324,18 +324,20 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
               </div>
 
               <div className="space-y-3 rounded-lg border border-violet-500/30 bg-violet-500/5 p-3">
-                <div className="text-sm font-medium">Resultado do envio externo</div>
+                <div className="text-sm font-medium">Resultado final e período do envio externo</div>
                 <p className="text-xs text-muted-foreground">
-                  Métricas informadas manualmente pelo admin (marcadas como <code>metrics_source = manual</code>), sem
-                  relação com webhooks da API do WhatsApp.
+                  Informe os números <strong>finais</strong> e o período: o sistema distribui a evolução
+                  automaticamente a cada 10 minutos até a finalização (<code>metrics_source = estimated_external</code>),
+                  sem relação com webhooks da API do WhatsApp.
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {([
                     ["Quantidade total de mensagens", mTotal, setMTotal],
-                    ["Enviadas com sucesso", mSent, setMSent],
-                    ["Entregues", mDelivered, setMDelivered],
-                    ["Falhas", mFailed, setMFailed],
+                    ["Enviadas com sucesso (final)", mSent, setMSent],
+                    ["Entregues (final)", mDelivered, setMDelivered],
+                    ["Falhas (final)", mFailed, setMFailed],
                   ] as const).map(([label, value, setter]) => (
+
                     <div key={label} className="space-y-1.5">
                       <Label className="text-xs">{label}</Label>
                       <Input
@@ -420,6 +422,13 @@ const EXTERNAL_STATUS: Array<{ v: string; label: string }> = [
   { v: "cancelled", label: "Cancelado" },
 ];
 
+/** Primeiro valor definido entre as chaves informadas, como string de input. */
+function pick(item: any, ...keys: string[]) {
+  for (const k of keys) if (item?.[k] != null) return String(item[k]);
+  return "";
+}
+
+
 /** Painel de acompanhamento manual de uma execução externa. */
 function ExternalControls({ item }: { item: Item }) {
   const qc = useQueryClient();
@@ -429,9 +438,10 @@ function ExternalControls({ item }: { item: Item }) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState(item.external_note ?? "");
   const [total, setTotal] = useState(item.external_total_count != null ? String(item.external_total_count) : "");
-  const [sent, setSent] = useState(item.external_sent_count != null ? String(item.external_sent_count) : "");
-  const [delivered, setDelivered] = useState(item.external_delivered_count != null ? String(item.external_delivered_count) : "");
-  const [failed, setFailed] = useState(item.external_failed_count != null ? String(item.external_failed_count) : "");
+  const [sent, setSent] = useState(pick(item, "external_target_sent_count", "external_sent_count"));
+  const [delivered, setDelivered] = useState(pick(item, "external_target_delivered_count", "external_delivered_count"));
+  const [failed, setFailed] = useState(pick(item, "external_target_failed_count", "external_failed_count"));
+
   const [start, setStart] = useState(item.external_started_at ? toLocalInput(item.external_started_at) : "");
   const [finish, setFinish] = useState(item.external_finished_at ? toLocalInput(item.external_finished_at) : "");
 
