@@ -168,21 +168,20 @@ export const decideCampaignApproval = createServerFn({ method: 'POST' })
 
     const { data: camp } = await supabase
       .from('wa_campaigns')
-      .select('id,name,workspace_id,status,approval_status,total_recipients')
+      .select('id,name,workspace_id,status,approval_status,total_recipients,scheduled_at,custom_fields,connection_id,template_id')
       .eq('id', data.campaign_id)
       .maybeSingle()
     if (!camp) throw new Error('Demanda não encontrada')
     if (data.decision === 'rejected' && (!data.reason || data.reason.length < 3)) {
       throw new Error('Informe a justificativa da rejeição')
     }
+    // Idempotência: cliques repetidos em "Aprovar" não repetem o efeito.
+    if (camp.approval_status === data.decision) {
+      return { ok: true, decision: data.decision, already: true }
+    }
     if (data.decision === 'approved') {
-      const { data: infra } = await supabase
-        .from('wa_campaigns')
-        .select('connection_id,template_id')
-        .eq('id', data.campaign_id)
-        .maybeSingle()
-      if (!infra?.connection_id) throw new Error('Defina o número/conexão de envio antes de aprovar')
-      if (!infra?.template_id) throw new Error('Defina o template do WhatsApp antes de aprovar')
+      if (!camp.connection_id) throw new Error('Defina o número/conexão de envio antes de aprovar')
+      if (!camp.template_id) throw new Error('Defina o template do WhatsApp antes de aprovar')
       // Revalida o saldo do cliente no momento da aprovação (pode ter sido
       // consumido por outra campanha depois que a demanda foi criada).
       const required = Number(camp.total_recipients ?? 0)
@@ -193,10 +192,11 @@ export const decideCampaignApproval = createServerFn({ method: 'POST' })
     }
 
     const nowIso = new Date().toISOString()
+    const scheduledFuture = camp.scheduled_at ? new Date(camp.scheduled_at).getTime() > Date.now() : false
     const patch =
       data.decision === 'approved'
         ? {
-            status: 'queued',
+            status: scheduledFuture ? 'scheduled' : 'queued',
             approval_status: 'approved',
             approved_by: userId,
             approved_at: nowIso,
@@ -210,8 +210,17 @@ export const decideCampaignApproval = createServerFn({ method: 'POST' })
             rejection_reason: data.reason,
           }
 
-    const { error } = await supabase.from('wa_campaigns').update(patch).eq('id', camp.id)
+    // Update condicional: só aplica se o status de aprovação ainda for o mesmo
+    // que lemos — evita corrida entre dois cliques/abas simultâneas.
+    let updQuery = supabase.from('wa_campaigns').update(patch).eq('id', camp.id)
+    updQuery = camp.approval_status === null
+      ? updQuery.is('approval_status', null)
+      : updQuery.eq('approval_status', camp.approval_status)
+    const { data: updated, error } = await updQuery.select('id')
     if (error) throw error
+    if (!updated || updated.length === 0) {
+      return { ok: true, decision: data.decision, already: true }
+    }
 
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
 
