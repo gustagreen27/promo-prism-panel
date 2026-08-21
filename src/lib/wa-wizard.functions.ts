@@ -43,14 +43,8 @@ export const previewAudience = createServerFn({ method: "POST" })
       contacts = contacts.filter((c: any) => ok.has(c.id));
     }
 
-    const phones = contacts.map((c: any) => c.phone);
-    let optOutCount = 0;
-    if (phones.length) {
-      const { data: oo } = await context.supabase.from("opt_outs").select("phone").in("phone", phones);
-      const blocked = new Set((oo ?? []).map((r: any) => r.phone));
-      optOutCount = contacts.filter((c: any) => blocked.has(c.phone)).length;
-      contacts = contacts.filter((c: any) => !blocked.has(c.phone));
-    }
+    // Opt-out não remove contatos da lista de disparo.
+    const optOutCount = 0;
 
     const dedup = new Map<string, any>();
     let dupCount = 0;
