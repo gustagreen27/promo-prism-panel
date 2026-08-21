@@ -13,6 +13,16 @@
 
 export const EXTERNAL_TICK_MS = 10 * 60 * 1000
 
+/**
+ * Tamanho da janela de atualização: 10 min por padrão, mas em períodos curtos
+ * (ex.: 10 mil disparos em 1 hora) as janelas encolhem para que a progressão
+ * seja distribuída ao longo de todo o prazo configurado.
+ */
+export function tickMsFor(startMs: number, finishMs: number): number {
+  const duration = Math.max(1, finishMs - startMs)
+  return Math.max(60_000, Math.min(EXTERNAL_TICK_MS, Math.ceil(duration / 12)))
+}
+
 export type ExternalTargets = {
   id: string
   external_total_count?: number | null
