@@ -277,14 +277,16 @@ function WalletBadge({ workspaceId }: { workspaceId?: string }) {
     refetchInterval: 30000,
   });
   const cents = data?.available_cents ?? 0;
-  const low = data && data.unit_price_cents ? cents < data.unit_price_cents * 10 : false;
+  const unit = data?.unit_price_cents || 20;
+  const messages = Math.floor(cents / unit);
+  const low = messages < 1000;
   return (
     <Link
       to="/painel/financeiro"
       className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition hover:bg-muted ${low ? "border-destructive/60 text-destructive" : ""}`}
     >
       <Wallet className="h-3.5 w-3.5" />
-      {(cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+      {messages.toLocaleString("pt-BR")} msgs
     </Link>
   );
 }
