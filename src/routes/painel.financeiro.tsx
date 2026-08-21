@@ -91,7 +91,7 @@ function Page() {
     enabled: !!wsId,
   });
 
-  const unit = w?.unit_price_cents || 15;
+  const unit = w?.unit_price_cents || 20;
   const availableCredits = Math.floor((w?.available_cents ?? 0) / unit);
 
   const [period, setPeriod] = useState("all");
