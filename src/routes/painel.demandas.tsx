@@ -157,24 +157,44 @@ function Page() {
                         Rejeitada em {fmt(d.approved_at)}. Motivo: {d.rejection_reason || decision?.message || "não informado"}
                       </div>
                     )}
-                    {d.external_finished_at && (
+                    {(d.external_total_count || d.external_sent_count) && (
                       <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs">
-                        <div className="mb-1 font-medium">Resultado</div>
+                        <div className="mb-1 flex items-center justify-between">
+                          <span className="font-medium">{d.external_finished_at ? "Resultado" : "Andamento"}</span>
+                          <span className="text-muted-foreground">
+                            {d.external_total_count
+                              ? `${Math.min(100, Math.round((((d.external_sent_count ?? 0) + (d.external_failed_count ?? 0)) / d.external_total_count) * 100))}%`
+                              : ""}
+                          </span>
+                        </div>
+                        {!!d.external_total_count && (
+                          <div className="mb-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                            <div
+                              className="h-full rounded-full bg-primary transition-all"
+                              style={{
+                                width: `${Math.min(100, Math.round((((d.external_sent_count ?? 0) + (d.external_failed_count ?? 0)) / d.external_total_count) * 100))}%`,
+                              }}
+                            />
+                          </div>
+                        )}
                         <div className="grid gap-0.5 text-muted-foreground sm:grid-cols-2">
                           <span>{(d.external_total_count ?? d.total_recipients ?? 0).toLocaleString("pt-BR")} destinatários</span>
                           <span>{(d.external_sent_count ?? 0).toLocaleString("pt-BR")} enviados com sucesso</span>
                           <span>{(d.external_delivered_count ?? 0).toLocaleString("pt-BR")} entregues</span>
                           <span>{(d.external_failed_count ?? 0).toLocaleString("pt-BR")} falhas</span>
+                          <span>{pendingCount(d).toLocaleString("pt-BR")} pendentes</span>
+                          {d.external_updated_at && <span>Atualizado em {fmt(d.external_updated_at)}</span>}
                         </div>
-                        <div className="mt-1">Finalizado em: {fmt(d.external_finished_at)}</div>
+                        {d.external_finished_at && <div className="mt-1">Finalizado em: {fmt(d.external_finished_at)}</div>}
                       </div>
                     )}
-                    {(b === "approved" || b === "queued") && d.approved_at && (
+                    {(b === "queued" || b === "scheduled" || b === "completed") && d.approved_at && (
                       <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700">
                         Aprovada em {fmt(d.approved_at)}
-                        {b === "queued" ? " — aguardando execução na fila de envio." : "."}
+                        {b === "queued" ? " — em execução/fila de envio." : b === "scheduled" ? " — agendada." : "."}
                       </div>
                     )}
+
                   </div>
                 );
               })}
