@@ -74,7 +74,8 @@ export const createWaCampaign = createServerFn({ method: "POST" })
     await assertAdmin(context);
     const { data: row, error } = await context.supabase
       .from("wa_campaigns")
-      .insert({ ...data, created_by: context.userId })
+      // Campanhas criadas pelo próprio admin em /admin/disparos não passam pela fila.
+      .insert({ approval_status: "not_required", ...data, created_by: context.userId })
       .select()
       .single();
     if (error) throw error;
