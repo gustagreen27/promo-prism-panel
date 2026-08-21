@@ -15,7 +15,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useWallet } from "@/lib/use-panel-workspace";
+import { useWallet, useBalanceConsistency } from "@/lib/use-panel-workspace";
 import { getMyContext, ensureWorkspace, logAuthEvent, type MyContext } from "@/lib/auth.functions";
 import {
   LayoutDashboard, Send, Users, BarChart3, CreditCard, CalendarClock,
@@ -276,6 +276,8 @@ function NoWorkspaceScreen() {
 function WalletBadge({ workspaceId }: { workspaceId?: string }) {
   // Mesma queryKey ["wallet", ws] usada em /painel/financeiro e na criação de disparos.
   const { availableCredits: messages } = useWallet(workspaceId ?? null);
+  // Registra o valor exibido para comparação com /painel/financeiro.
+  useBalanceConsistency("header", messages, !!workspaceId);
   const low = messages < 1000;
   return (
     <Link
