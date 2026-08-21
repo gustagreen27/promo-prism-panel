@@ -34,7 +34,7 @@ export const previewAudience = createServerFn({ method: "POST" })
       if (!page || page.length < PAGE) break;
     }
     const items = rawItems;
-    let contacts = items.map((i: any) => i.contact).filter((c: any) => c && c.phone && c.opt_in && !c.opt_out);
+    let contacts = items.map((i: any) => i.contact).filter((c: any) => c && c.phone);
 
     if (data.tag_filters.length) {
       const { data: tagged } = await context.supabase
