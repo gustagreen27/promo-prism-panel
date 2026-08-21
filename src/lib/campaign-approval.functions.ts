@@ -426,22 +426,51 @@ export const updateExternalExecution = createServerFn({ method: 'POST' })
       if (startedAt && finishedAt && new Date(finishedAt) < new Date(startedAt))
         throw new Error('A finalização não pode ser anterior ao início.')
 
-      patch['metrics_source'] = 'manual'
+      // Os números informados são o RESULTADO FINAL previsto: viram alvos da
+      // progressão automática (janelas de 10 min entre início e finalização).
+      if (data.external_sent_count !== undefined) patch['external_target_sent_count'] = data.external_sent_count ?? null
+      if (data.external_delivered_count !== undefined)
+        patch['external_target_delivered_count'] = data.external_delivered_count ?? null
+      if (data.external_failed_count !== undefined)
+        patch['external_target_failed_count'] = data.external_failed_count ?? null
+
       patch['external_updated_at'] = new Date().toISOString()
+
+      if (startedAt && finishedAt) {
+        patch['metrics_source'] = 'estimated_external'
+        const { externalProgressPatch } = await import('./external-progression')
+        const merged = { ...(camp as any), ...patch, id: camp.id }
+        // Enquanto a execução avança, os valores exibidos vêm da simulação.
+        delete merged['external_sent_count']
+        delete merged['external_delivered_count']
+        delete merged['external_failed_count']
+        const progress = externalProgressPatch(merged, new Date())
+        if (progress) Object.assign(patch, progress)
+      } else {
+        patch['metrics_source'] = 'manual'
+      }
+
       // Finalização no passado (ou já atingida) conclui a demanda automaticamente.
       if (finishedAt && new Date(finishedAt).getTime() <= Date.now() && !data.external_status) {
         patch['external_status'] = 'completed'
       }
     }
 
-    // Finalização manual: grava o horário de término e conclui.
+    // Finalização manual: grava o horário de término, aplica os valores finais e conclui.
     if (data.finalize_now) {
       const now = new Date().toISOString()
       patch['external_finished_at'] = now
       patch['external_status'] = 'completed'
       patch['external_updated_at'] = now
-      patch['metrics_source'] = 'manual'
+      const finalSent = patch['external_target_sent_count'] ?? (camp as any).external_target_sent_count
+      const finalDelivered =
+        patch['external_target_delivered_count'] ?? (camp as any).external_target_delivered_count
+      const finalFailed = patch['external_target_failed_count'] ?? (camp as any).external_target_failed_count
+      if (finalSent != null) patch['external_sent_count'] = finalSent
+      if (finalDelivered != null) patch['external_delivered_count'] = Math.min(finalDelivered, finalSent ?? finalDelivered)
+      if (finalFailed != null) patch['external_failed_count'] = finalFailed
     }
+
 
     if (!Object.keys(patch).length) return { ok: true }
 
