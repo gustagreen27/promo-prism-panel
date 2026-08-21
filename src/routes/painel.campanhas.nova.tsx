@@ -583,7 +583,9 @@ function Page() {
               disabled={submitting || savingDraft || !enoughCredits}
             >
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {schedule ? "Agendar campanha" : "Enviar campanha"}
+              {importProgress
+                ? `Importando contatos… ${importProgress.done.toLocaleString("pt-BR")}/${importProgress.total.toLocaleString("pt-BR")}`
+                : schedule ? "Agendar campanha" : "Enviar campanha"}
             </Button>
           </div>
 
