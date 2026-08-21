@@ -15,6 +15,7 @@ import { createClientCampaign } from "@/lib/client-panel.functions";
 import { useWallet } from "@/lib/use-panel-workspace";
 import { listWorkspaceLists, createWorkspaceListWithPhones } from "@/lib/wa-wizard-lists.functions";
 import { metaVarsIn } from "@/lib/wa-variables";
+import { getMyDemandDetail } from "@/lib/client-demand.functions";
 import { DDD_TO_CITY, extractDddBR } from "@/lib/ddd-cities";
 import {
   ArrowLeft, Loader2, Upload, User, Phone, Video, MoreVertical, Mic, ChevronLeft,
@@ -33,6 +34,11 @@ export const Route = createFileRoute("/painel/campanhas/nova")({
       { title: "Novo Disparo — Painel" },
       { name: "description", content: "Crie um novo disparo de WhatsApp com preview ao vivo da mensagem." },
     ],
+  }),
+  validateSearch: (raw: Record<string, unknown>) => ({
+    from: raw['from'] ? String(raw['from']) : undefined,
+    name: raw['name'] ? String(raw['name']) : undefined,
+    duplicate: raw['duplicate'] ? String(raw['duplicate']) : undefined,
   }),
   component: Page,
 });
@@ -64,6 +70,8 @@ function Page() {
   const { data: ctx } = useQuery({ queryKey: ["my-context"], queryFn: () => ctxFn(), staleTime: 30_000 });
   const workspaceId = ctx?.primary_workspace?.id ?? "";
   const navigate = useNavigate();
+  const sp = Route.useSearch();
+  const fnDemand = useServerFn(getMyDemandDetail);
 
   const fnLists = useServerFn(listWorkspaceLists);
   const fnCreateList = useServerFn(createWorkspaceListWithPhones);
@@ -109,6 +117,26 @@ function Page() {
     if (!workspaceId) return;
     fnLists({ data: { workspace_id: workspaceId, only_mine: true } }).then((r: any) => setLists(r.lists)).catch(() => {});
   }, [workspaceId, fnLists]);
+
+  // Pré-preenchimento vindo de outra página (ex.: /painel/demandas).
+  useEffect(() => {
+    if (sp.name && !name) setName(sp.name);
+  }, [sp.name]);
+
+  useEffect(() => {
+    if (!sp.duplicate) return;
+    fnDemand({ data: { id: sp.duplicate } })
+      .then((r: any) => {
+        const c = r?.campaign;
+        if (!c) return;
+        setName((prev) => prev || `Cópia de ${c.name}`);
+        if (c.list_id) {
+          setMode("lista");
+          setListId(c.list_id);
+        }
+      })
+      .catch(() => {});
+  }, [sp.duplicate, fnDemand]);
 
   const bodyVars = useMemo(() => metaVarsIn(message), [message]);
 
