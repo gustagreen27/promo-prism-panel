@@ -197,11 +197,9 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
   const [execType, setExecType] = useState<"internal" | "external">("internal");
   const [note, setNote] = useState<string>("");
   const externalFn = useServerFn(updateExternalExecution);
-  const [mTotal, setMTotal] = useState<string>("");
   const [mSent, setMSent] = useState<string>("");
   const [mDelivered, setMDelivered] = useState<string>("");
   const [mFailed, setMFailed] = useState<string>("");
-  const [mStart, setMStart] = useState<string>("");
   const [mFinish, setMFinish] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
@@ -213,11 +211,9 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
     setScheduledAt(item.scheduled_at ? new Date(item.scheduled_at).toISOString().slice(0, 16) : "");
     setExecType(item.execution_type === "external" ? "external" : "internal");
     setNote(item.external_note ?? "");
-    setMTotal(item.external_total_count != null ? String(item.external_total_count) : "");
     setMSent(item.external_sent_count != null ? String(item.external_sent_count) : "");
     setMDelivered(item.external_delivered_count != null ? String(item.external_delivered_count) : "");
     setMFailed(item.external_failed_count != null ? String(item.external_failed_count) : "");
-    setMStart(item.external_started_at ? toLocalInput(item.external_started_at) : "");
     setMFinish(item.external_finished_at ? toLocalInput(item.external_finished_at) : "");
   }
 
@@ -434,12 +430,11 @@ function ExternalControls({ item }: { item: Item }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState(item.external_note ?? "");
-  const [total, setTotal] = useState(item.external_total_count != null ? String(item.external_total_count) : "");
+  const total = item.total_recipients != null ? String(item.total_recipients) : "";
   const [sent, setSent] = useState(pick(item, "external_target_sent_count", "external_sent_count"));
   const [delivered, setDelivered] = useState(pick(item, "external_target_delivered_count", "external_delivered_count"));
   const [failed, setFailed] = useState(pick(item, "external_target_failed_count", "external_failed_count"));
 
-  const [start, setStart] = useState(item.external_started_at ? toLocalInput(item.external_started_at) : "");
   const [finish, setFinish] = useState(item.external_finished_at ? toLocalInput(item.external_finished_at) : "");
 
   const { data: hist } = useQuery({
@@ -479,11 +474,9 @@ function ExternalControls({ item }: { item: Item }) {
       }
     }
     await push({
-      external_total_count: t,
       external_sent_count: s,
       external_delivered_count: d,
       external_failed_count: f,
-      external_started_at: start ? new Date(start).toISOString() : null,
       external_finished_at: finish ? new Date(finish).toISOString() : null,
       external_note: note.trim() || null,
     }, "Resultados atualizados");
@@ -545,7 +538,6 @@ function ExternalControls({ item }: { item: Item }) {
           <div className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
               {([
-                ["Total de destinatários", total, setTotal],
                 ["Enviados com sucesso", sent, setSent],
                 ["Entregues", delivered, setDelivered],
                 ["Falhas", failed, setFailed],
