@@ -10,7 +10,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload, Users, Pencil, Search, X, Trash2, Check, FileSpreadsheet, Loader2 } from "lucide-react";
-import { listWorkspaceLists, previewWorkspaceList, createWorkspaceListWithPhones } from "@/lib/wa-wizard-lists.functions";
+import { listWorkspaceLists, previewWorkspaceList, createEmptyWorkspaceList, appendPhonesChunkToList } from "@/lib/wa-wizard-lists.functions";
+import { createListInChunks, type ImportRow } from "@/lib/import-list-chunked";
+
+type CreateListFn = (args: {
+  data: { workspace_id: string; name: string; source: string; rows: ImportRow[] };
+}) => Promise<{ list_id: string; list_name: string; added: number; invalid: number }>;
 import { cn } from "@/lib/utils";
 
 type SavedList = { id: string; name: string; count: number };
@@ -27,7 +32,20 @@ export function ContactPicker({
 }) {
   const fnLists = useServerFn(listWorkspaceLists);
   const fnPreview = useServerFn(previewWorkspaceList);
-  const fnCreate = useServerFn(createWorkspaceListWithPhones);
+  const fnCreateEmpty = useServerFn(createEmptyWorkspaceList);
+  const fnAppend = useServerFn(appendPhonesChunkToList);
+  const fnCreate: CreateListFn = useCallback(
+    ({ data }) =>
+      createListInChunks({
+        createList: fnCreateEmpty as any,
+        appendChunk: fnAppend as any,
+        workspaceId: data.workspace_id,
+        name: data.name,
+        source: data.source,
+        rows: data.rows,
+      }),
+    [fnCreateEmpty, fnAppend],
+  );
 
   const [tab, setTab] = useState<"saved" | "import" | "manual">("saved");
   const [savedLists, setSavedLists] = useState<SavedList[]>([]);
@@ -173,7 +191,7 @@ function ImportPanel({
   onCreated,
 }: {
   workspaceId: string;
-  createFn: ReturnType<typeof useServerFn<typeof createWorkspaceListWithPhones>>;
+  createFn: CreateListFn;
   onCreated: (r: { list_id: string; list_name: string }) => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
@@ -360,7 +378,7 @@ function ManualPanel({
   onCreated,
 }: {
   workspaceId: string;
-  createFn: ReturnType<typeof useServerFn<typeof createWorkspaceListWithPhones>>;
+  createFn: CreateListFn;
   onCreated: (r: { list_id: string; list_name: string }) => void;
 }) {
   const [text, setText] = useState("");
