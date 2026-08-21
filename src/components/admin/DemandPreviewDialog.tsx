@@ -85,8 +85,21 @@ export function DemandPreviewDialog({ campaignId, onClose }: { campaignId: strin
             {/* ------- Preview estilo WhatsApp ------- */}
             <div className="rounded-2xl border bg-[#0b141a] p-3">
               <div className="mb-2 flex items-center gap-2 text-[11px] text-white/60">
-                <Phone className="h-3 w-3" />
-                {d?.connection?.label ?? "Número a definir"} · {d?.connection?.phone ?? "—"}
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Foto de perfil definida pelo cliente"
+                    className="h-8 w-8 shrink-0 rounded-full border border-white/20 object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10">
+                    <Phone className="h-3 w-3" />
+                  </span>
+                )}
+                <span className="min-w-0 truncate">
+                  {d?.connection?.label ?? "Número a definir"} · {d?.connection?.phone ?? "—"}
+                </span>
               </div>
               <div className="rounded-xl bg-[#005c4b] p-2 text-white shadow-lg">
                 {mediaUrl && (
@@ -109,20 +122,25 @@ export function DemandPreviewDialog({ campaignId, onClose }: { campaignId: strin
               {buttons.length > 0 && (
                 <div className="mt-1 space-y-1">
                   {buttons.map((b: any, i: number) => {
-                    const url = buttonMap[String(i)] ?? buttonMap[b?.text] ?? b?.url ?? null;
+                    const url = buttonUrlOf(b, i);
                     return (
-                      <div
-                        key={i}
-                        className="flex items-center justify-center gap-1 rounded-lg bg-[#1f2c33] px-3 py-2 text-xs font-medium text-[#53bdeb]"
-                        title={url ?? undefined}
-                      >
-                        {b?.type === "URL" || url ? <ExternalLink className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                        {b?.text ?? b?.label ?? "Botão"}
+                      <div key={i} className="space-y-0.5">
+                        <div
+                          className="flex items-center justify-center gap-1 rounded-lg bg-[#1f2c33] px-3 py-2 text-xs font-medium text-[#53bdeb]"
+                          title={url ?? undefined}
+                        >
+                          {b?.type === "URL" || url ? <ExternalLink className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                          {b?.text ?? b?.label ?? "Botão"}
+                        </div>
+                        <div className="break-all px-1 text-[10px] text-white/50">
+                          {url ? `Destino: ${url}` : "Destino não informado"}
+                        </div>
                       </div>
                     );
                   })}
                 </div>
               )}
+
             </div>
 
             {/* ------- Detalhes da campanha ------- */}
