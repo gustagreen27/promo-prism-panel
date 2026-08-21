@@ -196,6 +196,7 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
   const [scheduledAt, setScheduledAt] = useState<string>("");
   const [execType, setExecType] = useState<"internal" | "external">("internal");
   const [note, setNote] = useState<string>("");
+  const externalFn = useServerFn(updateExternalExecution);
   const [mTotal, setMTotal] = useState<string>("");
   const [mSent, setMSent] = useState<string>("");
   const [mDelivered, setMDelivered] = useState<string>("");
