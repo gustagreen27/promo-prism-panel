@@ -23,7 +23,7 @@ import {
 } from "@/lib/wa-campaigns.functions";
 import { getCampaignErrorContext } from "@/lib/wa-diagnosis.functions";
 import { supabase } from "@/integrations/supabase/client";
-import { CampaignWizard } from "@/routes/painel.campanhas.avancado";
+import { CampaignWizard } from "@/components/campaign-wizard";
 
 export const Route = createFileRoute("/_authenticated/admin/disparos/")({
   head: () => ({ meta: [{ title: "Disparos — WhatsApp" }] }),
