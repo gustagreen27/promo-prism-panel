@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { adminListClientAccounts, adminAddCredits, adminListAllTransactions } from "@/lib/billing.functions";
+import { adminListClientAccounts, adminAddCredits } from "@/lib/billing.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/contas")({
   head: () => ({
@@ -33,7 +33,6 @@ const num = (n: number | null | undefined) => Number(n ?? 0).toLocaleString("pt-
 
 function Page() {
   const listAccounts = useServerFn(adminListClientAccounts);
-  const listTx = useServerFn(adminListAllTransactions);
   const addCredits = useServerFn(adminAddCredits);
   const qc = useQueryClient();
 
@@ -46,13 +45,6 @@ function Page() {
   const [direction, setDirection] = useState<"add" | "remove">("add");
   const [qty, setQty] = useState("");
   const [description, setDescription] = useState("");
-
-  const txQuery = useQuery({
-    queryKey: ["admin-account-tx", target?.id],
-    queryFn: () => listTx({ data: { limit: 20, workspace_id: target.id } as any }),
-    enabled: false,
-  });
-  void txQuery;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
