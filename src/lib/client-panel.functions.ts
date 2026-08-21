@@ -147,6 +147,7 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
       connection_id: z.string().uuid(),
       template_id: z.string().uuid(),
       list_id: z.string().uuid().nullish(),
+      ddd_filter: z.string().regex(/^\d{2}$/).nullish(),
       variables_mapping: z.record(z.string()).optional(),
       button_url_mapping: z.record(z.string()).optional(),
       header_media_url: z.string().optional().nullable(),
