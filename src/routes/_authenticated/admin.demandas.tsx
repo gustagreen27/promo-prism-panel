@@ -71,13 +71,26 @@ type Item = {
 
 };
 
-const fmt = (v: string | null | undefined) => (v ? new Date(v).toLocaleString("pt-BR") : "—");
+const BR_TZ = "America/Sao_Paulo";
 
-/** ISO → valor de <input type="datetime-local"> no fuso local. */
+const fmt = (v: string | null | undefined) =>
+  v ? new Date(v).toLocaleString("pt-BR", { timeZone: BR_TZ }) : "—";
+
+/** ISO → valor de <input type="datetime-local"> em horário de Brasília. */
 function toLocalInput(iso: string) {
   const d = new Date(iso);
-  const off = d.getTimezoneOffset() * 60_000;
-  return new Date(d.getTime() - off).toISOString().slice(0, 16);
+  if (Number.isNaN(d.getTime())) return "";
+  const p = new Intl.DateTimeFormat("en-CA", {
+    timeZone: BR_TZ,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  }).formatToParts(d).reduce<Record<string, string>>((a, x) => ((a[x.type] = x.value), a), {});
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+}
+
+/** Valor de <input type="datetime-local"> (Brasília) → ISO UTC. */
+function fromLocalInput(v: string) {
+  return v ? new Date(`${v}:00-03:00`).toISOString() : null;
 }
 
 const EXEC_STATE: Record<string, string> = {
@@ -208,7 +221,7 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
     setLoadedFor(item.id);
     setConnectionId(item.connection_id ?? "");
     setTemplateId(item.template_id ?? "");
-    setScheduledAt(item.scheduled_at ? new Date(item.scheduled_at).toISOString().slice(0, 16) : "");
+    setScheduledAt(item.scheduled_at ? toLocalInput(item.scheduled_at) : "");
     setExecType(item.execution_type === "external" ? "external" : "internal");
     setNote(item.external_note ?? "");
     setMSent(item.external_sent_count != null ? String(item.external_sent_count) : "");
@@ -232,7 +245,7 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
           external_note: execType === "external" ? (note.trim() || null) : null,
           connection_id: execType === "external" ? null : (connectionId || null),
           template_id: execType === "external" ? null : (templateId || null),
-          scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
+          scheduled_at: fromLocalInput(scheduledAt),
         },
       });
 
@@ -261,7 +274,7 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
             external_sent_count: sent,
             external_delivered_count: delivered,
             external_failed_count: failed,
-            external_finished_at: mFinish ? new Date(mFinish).toISOString() : null,
+            external_finished_at: fromLocalInput(mFinish),
           } as any,
         });
       }
@@ -477,7 +490,7 @@ function ExternalControls({ item }: { item: Item }) {
       external_sent_count: s,
       external_delivered_count: d,
       external_failed_count: f,
-      external_finished_at: finish ? new Date(finish).toISOString() : null,
+      external_finished_at: fromLocalInput(finish),
       external_note: note.trim() || null,
     }, "Resultados atualizados");
     setOpen(false);

@@ -128,9 +128,15 @@ function Page() {
     if (sp.scheduled_for) {
       const d = new Date(sp.scheduled_for);
       if (!Number.isNaN(d.getTime())) {
+        // Exibe sempre em horário de Brasília.
+        const p = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "America/Sao_Paulo",
+          year: "numeric", month: "2-digit", day: "2-digit",
+          hour: "2-digit", minute: "2-digit", hour12: false,
+        }).formatToParts(d).reduce<Record<string, string>>((a, x) => ((a[x.type] = x.value), a), {});
         setSchedule(true);
-        setDate(d.toISOString().slice(0, 10));
-        setTime(d.toTimeString().slice(0, 5));
+        setDate(`${p.year}-${p.month}-${p.day}`);
+        setTime(`${p.hour}:${p.minute}`);
       }
     }
   }, [sp.name, sp.scheduled_for]);
@@ -244,7 +250,8 @@ function Page() {
         finalListId = created.list_id;
       }
 
-      const scheduled_at = schedule ? new Date(`${date}T${time}`).toISOString() : null;
+      // Data/hora informada é sempre horário de Brasília (UTC-03:00).
+      const scheduled_at = schedule ? new Date(`${date}T${time}:00-03:00`).toISOString() : null;
       const campaign: any = await fnCreate({
         data: {
           workspace_id: workspaceId,
