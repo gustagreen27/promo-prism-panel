@@ -299,7 +299,36 @@ function Page() {
                       >
                         Preço
                       </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="ml-1"
+                        aria-label="Editar conta"
+                        onClick={() => {
+                          setEditTarget(a);
+                          setEditForm({
+                            name: a.name ?? "",
+                            slug: a.slug ?? "",
+                            plan: a.plan ?? "",
+                            status: a.blocked_at ? "blocked" : "active",
+                            owner_name: a.owner_name ?? "",
+                            owner_password: "",
+                          });
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="text-destructive"
+                        aria-label="Excluir conta"
+                        onClick={() => setDeleteTarget(a)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </TableCell>
+
 
                   </TableRow>
                 ))}
