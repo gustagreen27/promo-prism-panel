@@ -203,7 +203,7 @@ export const startWaCampaign = createServerFn({ method: "POST" })
     if (!camp) throw new Error("Campanha não encontrada");
     {
       const { assertCampaignApproved } = await import("@/lib/campaign-approval.server");
-      await assertCampaignApproved(context.supabase, data.id);
+      await assertCampaignApproved(context.supabase, data.id, { userId: context.userId });
     }
     if (!camp.connection_id || !camp.template_id) throw new Error("Configure número e template antes de iniciar.");
     if (!camp.total_recipients) throw new Error("Gere a fila de destinatários antes de iniciar.");

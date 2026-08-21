@@ -301,7 +301,7 @@ export const startCampaignAsync = createServerFn({ method: "POST" })
     // Bloqueio de envio real: só dispara depois da aprovação do admin.
     {
       const { assertCampaignApproved } = await import("@/lib/campaign-approval.server");
-      await assertCampaignApproved(supabase, data.id);
+      await assertCampaignApproved(supabase, data.id, { userId: context.userId });
     }
 
     // Basic guards
