@@ -49,8 +49,21 @@ export function DemandPreviewDialog({ campaignId, onClose }: { campaignId: strin
   const finalMessage = renderTemplateBody(bodyRaw, varMap);
   const headerText = template?.header_text ? renderTemplateBody(template.header_text, varMap) : null;
 
-  const buttons: Array<any> = Array.isArray(template?.buttons) ? template.buttons : [];
+  // Foto de perfil enviada pelo cliente.
+  const avatarUrl: string | null = brief.avatar_url || brief.profile_photo_url || null;
+
+  // Botões: usa os do template quando existirem; senão o botão configurado pelo cliente.
+  const tplButtons: Array<any> = Array.isArray(template?.buttons) ? template.buttons : [];
+  const buttons: Array<any> =
+    tplButtons.length > 0
+      ? tplButtons
+      : brief.button_enabled
+        ? [{ type: "URL", text: brief.button_text || "Abrir link", url: brief.button_url || null }]
+        : [];
+  const buttonUrlOf = (b: any, i: number): string | null =>
+    buttonMap[String(i)] ?? buttonMap[String(i + 1)] ?? buttonMap[b?.text] ?? b?.url ?? brief.button_url ?? null;
   const varEntries = Object.entries(varMap).filter(([k]) => !k.startsWith("_"));
+
 
   return (
     <Dialog open={!!campaignId} onOpenChange={(o) => !o && onClose()}>
