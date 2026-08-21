@@ -35,7 +35,7 @@ export const Route = createFileRoute("/painel")({
 
 const NAV: Array<{ to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean }> = [
   { to: "/painel", label: "Início", icon: LayoutDashboard, exact: true },
-  { to: "/painel/campanhas", label: "Disparos", icon: Send },
+  { to: "/painel/campanhas/nova", label: "Enviar Disparos", icon: Send },
   { to: "/painel/demandas", label: "Meus disparos", icon: ClipboardList },
   { to: "/painel/contatos", label: "Listas de Leads", icon: Users },
   { to: "/painel/relatorios", label: "Relatórios", icon: BarChart3 },
