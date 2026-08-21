@@ -23,7 +23,7 @@ import {
 import { adminListAllNumbers } from "@/lib/admin-dispatch.functions";
 import { listTemplates } from "@/lib/whatsapp-templates.functions";
 import { adminListTestConnections, adminSetConnectionTestFlag } from "@/lib/wa-tests.functions";
-import { History, Loader2, Settings2, FlaskConical, Eye, Gauge, CheckCircle2 } from "lucide-react";
+import { History, Loader2, Settings2, FlaskConical, Eye, Gauge, CheckCircle2, Clock, CalendarDays, PlayCircle, XCircle, Search, Filter } from "lucide-react";
 import { DemandPreviewDialog } from "@/components/admin/DemandPreviewDialog";
 import { demandStage, pendingCount, STAGE_CLASS, STAGE_LABEL, type DemandStage } from "@/lib/demand-stage";
 
@@ -635,6 +635,9 @@ function Page() {
   const [decision, setDecision] = useState<{ item: Item; kind: "approved" | "rejected" } | null>(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
+  const [search, setSearch] = useState("");
+  const [client, setClient] = useState("all");
+  const [day, setDay] = useState("");
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["approval-queue", tab],
