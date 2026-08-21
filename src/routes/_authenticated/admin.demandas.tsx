@@ -238,6 +238,38 @@ function ConfigureDialog({ item, onClose }: { item: Item | null; onClose: () => 
           scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
         },
       });
+
+      if (execType === "external") {
+        const num = (v: string) => (v.trim() === "" ? null : Number(v));
+        const total = num(mTotal), sent = num(mSent), delivered = num(mDelivered), failed = num(mFailed);
+        for (const [label, v] of [["Total", total], ["Enviados", sent], ["Entregues", delivered], ["Falhas", failed]] as const) {
+          if (v != null && (!Number.isFinite(v) || v < 0 || !Number.isInteger(v))) {
+            throw new Error(`${label}: informe um número inteiro maior ou igual a zero.`);
+          }
+        }
+        if (total != null) {
+          if (sent != null && sent > total) throw new Error("Enviados não podem ser maiores que o total.");
+          if (failed != null && failed > total) throw new Error("Falhas não podem ser maiores que o total.");
+          if (delivered != null && delivered > total) throw new Error("Entregues não podem ser maiores que o total.");
+          if (sent != null && failed != null && sent + failed > total)
+            throw new Error("Enviados + falhas não podem ultrapassar o total.");
+        }
+        if (delivered != null && sent != null && delivered > sent)
+          throw new Error("Entregues não podem ser maiores que os enviados com sucesso.");
+
+        await externalFn({
+          data: {
+            campaign_id: item.id,
+            external_total_count: total,
+            external_sent_count: sent,
+            external_delivered_count: delivered,
+            external_failed_count: failed,
+            external_started_at: mStart ? new Date(mStart).toISOString() : null,
+            external_finished_at: mFinish ? new Date(mFinish).toISOString() : null,
+          } as any,
+        });
+      }
+
       toast.success("Configuração salva");
       qc.invalidateQueries({ queryKey: ["approval-queue"] });
       onClose();
