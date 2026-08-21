@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { adminListClientAccounts, adminAddCredits, adminCreateClientAccount } from "@/lib/billing.functions";
+import { adminListClientAccounts, adminAddCredits, adminCreateClientAccount, adminSetCustomPrice } from "@/lib/billing.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/contas")({
   head: () => ({
@@ -86,6 +86,31 @@ function Page() {
   const openDialog = (a: any, dir: "add" | "remove") => {
     setTarget(a); setDirection(dir); setMode("messages"); setQty(""); setDescription("");
   };
+
+  // ---- Preço por conta ----
+  const setPrice = useServerFn(adminSetCustomPrice);
+  const [priceTarget, setPriceTarget] = useState<any>(null);
+  const [priceStr, setPriceStr] = useState("");
+
+  const savePrice = useMutation({
+    mutationFn: () => {
+      const raw = priceStr.trim();
+      const cents = raw === ""
+        ? null
+        : Math.round(Number(raw.replace(/\./g, "").replace(",", ".")) * 100);
+      if (cents !== null && (!Number.isFinite(cents) || cents <= 0)) {
+        throw new Error("Informe um preço válido");
+      }
+      return setPrice({ data: { workspace_id: priceTarget.id, custom_price_cents: cents } });
+    },
+    onSuccess: () => {
+      toast.success("Preço atualizado");
+      qc.invalidateQueries({ queryKey: ["admin-client-accounts"] });
+      setPriceTarget(null);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao salvar preço"),
+  });
+
 
   // ---- Criar conta ----
   const createAccount = useServerFn(adminCreateClientAccount);
@@ -261,9 +286,21 @@ function Page() {
                         : <Badge variant="secondary">{a.status ?? "ativo"}</Badge>}
                     </TableCell>
                     <TableCell className="text-right whitespace-nowrap">
-                      <Button size="sm" onClick={() => openDialog(a, "add")}>Adicionar créditos</Button>
+                      <Button size="sm" onClick={() => openDialog(a, "add")}>Adicionar mensagens</Button>
                       <Button size="sm" variant="outline" className="ml-2" onClick={() => openDialog(a, "remove")}>Remover</Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="ml-2"
+                        onClick={() => {
+                          setPriceTarget(a);
+                          setPriceStr((Number(a.unit_price_cents) / 100).toFixed(2).replace(".", ","));
+                        }}
+                      >
+                        Preço
+                      </Button>
                     </TableCell>
+
                   </TableRow>
                 ))}
               </TableBody>
@@ -316,6 +353,31 @@ function Page() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!priceTarget} onOpenChange={(v) => !v && setPriceTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Preço por mensagem — {priceTarget?.name}</DialogTitle>
+            <DialogDescription>
+              Deixe em branco para usar o preço padrão do sistema.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Preço (R$ por mensagem)</Label>
+            <Input
+              inputMode="decimal"
+              value={priceStr}
+              onChange={(e) => setPriceStr(e.target.value)}
+              placeholder="0,20"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPriceTarget(null)}>Cancelar</Button>
+            <Button onClick={() => savePrice.mutate()} disabled={savePrice.isPending}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
+
   );
 }

@@ -25,7 +25,7 @@ export const getBillingSettings = createServerFn({ method: 'GET' })
     const { supabase } = context as any
     const { data } = await supabase.from('billing_settings').select('id, default_price_cents, minimum_deposit_cents, default_minimum_messages, currency').eq('id', 1).maybeSingle()
     return data ?? {
-      default_price_cents: 15,
+      default_price_cents: 20,
       minimum_deposit_cents: 15000,
       default_minimum_messages: 2500,
       currency: 'BRL',
@@ -45,7 +45,7 @@ export const getMyWallet = createServerFn({ method: 'POST' })
       supabase.from('billing_settings').select('id, default_price_cents, minimum_deposit_cents, default_minimum_messages, currency').eq('id', 1).maybeSingle(),
     ])
     const w = wallet ?? { balance_cents: 0, reserved_cents: 0, custom_price_cents: null, custom_minimum_messages: null }
-    const defaultPrice = settings?.default_price_cents ?? 15
+    const defaultPrice = settings?.default_price_cents ?? 20
     const defaultMin = settings?.default_minimum_messages ?? 2500
     const globalMinDeposit = settings?.minimum_deposit_cents ?? 15000
     const unit_price_cents = w.custom_price_cents ?? defaultPrice
@@ -124,7 +124,7 @@ export const createDepositCheckout = createServerFn({ method: 'POST' })
       supabase.from('workspace_wallets').select('custom_price_cents, custom_minimum_messages').eq('workspace_id', data.workspace_id).maybeSingle(),
     ])
     const globalMinDeposit = settings?.minimum_deposit_cents ?? 15000
-    const unitPrice = wallet?.custom_price_cents ?? settings?.default_price_cents ?? 15
+    const unitPrice = wallet?.custom_price_cents ?? settings?.default_price_cents ?? 20
     const minMessages = wallet?.custom_minimum_messages ?? settings?.default_minimum_messages ?? 2500
     const minimum = Math.max(globalMinDeposit, unitPrice * minMessages)
     if (data.amount_cents < minimum) {
@@ -346,7 +346,7 @@ export const adminListClientAccounts = createServerFn({ method: 'GET' })
     ])
     if (error) throw error
 
-    const defaultPrice = Number(settings?.default_price_cents ?? 15)
+    const defaultPrice = Number(settings?.default_price_cents ?? 20)
     const ids = (workspaces ?? []).map((w: any) => w.id)
 
     const membersByWs = new Map<string, any[]>()
@@ -419,7 +419,7 @@ export const adminAddCredits = createServerFn({ method: 'POST' })
       supabase.from('billing_settings').select('default_price_cents').eq('id', 1).maybeSingle(),
       supabase.from('workspace_wallets').select('custom_price_cents').eq('workspace_id', data.workspace_id).maybeSingle(),
     ])
-    const unit = Number(wallet?.custom_price_cents ?? settings?.default_price_cents ?? 15) || 15
+    const unit = Number(wallet?.custom_price_cents ?? settings?.default_price_cents ?? 20) || 20
 
     const cents = data.mode === 'messages'
       ? Math.round(data.quantity) * unit
@@ -552,7 +552,7 @@ export const adminCreateClientAccount = createServerFn({ method: 'POST' })
         .from('billing_settings').select('default_price_cents').eq('id', 1).maybeSingle()
       const { data: wallet } = await supabaseAdmin
         .from('workspace_wallets').select('custom_price_cents').eq('workspace_id', ws.id).maybeSingle()
-      const unit = Number(wallet?.custom_price_cents ?? settings?.default_price_cents ?? 15) || 15
+      const unit = Number(wallet?.custom_price_cents ?? settings?.default_price_cents ?? 20) || 20
       creditedCents = data.initial_credits * unit
       const { error: credErr } = await supabaseAdmin.rpc('wallet_credit', {
         _ws: ws.id,
