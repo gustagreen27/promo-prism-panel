@@ -253,9 +253,10 @@ export const decideCampaignApproval = createServerFn({ method: 'POST' })
       // consumido por outra campanha depois que a demanda foi criada).
       const required = Number(camp.total_recipients ?? 0)
       const isTestCampaign = (camp as any)?.custom_fields?.send_type === 'test'
-      if (!isTestCampaign && required > 0 && camp.workspace_id) {
+      if (!isTestCampaign && required > 0 && camp.workspace_id && !(camp as any).reservation_id) {
         await assertSufficientCredits(supabase, camp.workspace_id, required)
       }
+
     }
 
     const nowIso = new Date().toISOString()
