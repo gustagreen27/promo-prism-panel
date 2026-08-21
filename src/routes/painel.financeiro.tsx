@@ -129,20 +129,22 @@ function Page() {
   const [open, setOpen] = useState(false);
   const requiredCents = (w as any)?.required_deposit_cents ?? w?.minimum_deposit_cents ?? 15000;
   const minMessages = (w as any)?.minimum_messages ?? 2500;
-  const [amountStr, setAmountStr] = useState("375,00");
+  const minCreditsRequired = Math.max(minMessages, Math.ceil(requiredCents / unit));
+  const [amountStr, setAmountStr] = useState("2500");
 
   useEffect(() => {
-    if (requiredCents) setAmountStr((requiredCents / 100).toFixed(2).replace(".", ","));
-  }, [requiredCents]);
+    if (minCreditsRequired) setAmountStr(String(minCreditsRequired));
+  }, [minCreditsRequired]);
 
   const deposit = useMutation({
     mutationFn: async () => {
-      const cents = Math.round(Number(amountStr.replace(/\./g, "").replace(",", ".")) * 100);
-      if (!Number.isFinite(cents) || cents < requiredCents) {
-        throw new Error(`O valor mínimo para depósito é ${fmt(requiredCents)}`);
+      const credits = Math.round(Number(amountStr || 0));
+      if (!Number.isFinite(credits) || credits < minCreditsRequired) {
+        throw new Error(`A compra mínima é de ${nf(minCreditsRequired)} créditos`);
       }
-      return createDep({ data: { workspace_id: wsId, amount_cents: cents } });
+      return createDep({ data: { workspace_id: wsId, amount_cents: credits * unit } });
     },
+
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["deposits", wsId] });
       if (res.checkout_url) {
