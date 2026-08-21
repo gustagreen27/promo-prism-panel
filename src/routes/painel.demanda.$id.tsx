@@ -114,7 +114,7 @@ function Page() {
   function exportMetrics() {
     if (!c || !m) return;
     downloadCsv(`disparo-${c.name}-metricas.csv`, [
-      ["Campanha", "Status", "Criada em", "Agendada", "Lista", "Template", "Destinatários", "Enviados", "Entregues", "Falhas", "Pendentes", "Cliques", "Cliques únicos"],
+      ["Campanha", "Status", "Criada em", "Agendada", "Lista", "Template", "Destinatários", "Enviados", "Entregues", "Falhas", "Pendentes"],
       [
         c.name,
         STAGE_LABEL[stage],
@@ -127,27 +127,7 @@ function Page() {
         m.delivered,
         m.failed,
         m.pending,
-        (data as any).clicks_total ?? 0,
-        (data as any).clicks_unique ?? 0,
       ],
-    ]);
-  }
-
-  function exportClicks() {
-    const clicks = ((data as any)?.clicks ?? []) as any[];
-    downloadCsv(`disparo-${c?.name ?? id}-cliques.csv`, [
-      ["Data", "Cidade", "Região", "País", "Dispositivo", "Navegador", "Sistema", "Provedor", "Destino"],
-      ...clicks.map((k) => [
-        fmt(k.clicked_at),
-        k.city,
-        k.region,
-        k.country,
-        k.device_type,
-        k.browser,
-        k.os,
-        k.isp,
-        k.final_url,
-      ]),
     ]);
   }
 
@@ -206,9 +186,6 @@ function Page() {
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline" onClick={exportMetrics}>
             <Download className="mr-1.5 h-4 w-4" /> Métricas CSV
-          </Button>
-          <Button size="sm" variant="outline" onClick={exportClicks}>
-            <MousePointerClick className="mr-1.5 h-4 w-4" /> Cliques CSV
           </Button>
           <Button size="sm" variant="outline" onClick={exportHistory}>
             <Clock className="mr-1.5 h-4 w-4" /> Histórico CSV
