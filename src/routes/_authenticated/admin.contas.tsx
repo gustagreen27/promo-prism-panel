@@ -353,6 +353,31 @@ function Page() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!priceTarget} onOpenChange={(v) => !v && setPriceTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Preço por mensagem — {priceTarget?.name}</DialogTitle>
+            <DialogDescription>
+              Deixe em branco para usar o preço padrão do sistema.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Preço (R$ por mensagem)</Label>
+            <Input
+              inputMode="decimal"
+              value={priceStr}
+              onChange={(e) => setPriceStr(e.target.value)}
+              placeholder="0,20"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPriceTarget(null)}>Cancelar</Button>
+            <Button onClick={() => savePrice.mutate()} disabled={savePrice.isPending}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
+
   );
 }
