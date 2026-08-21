@@ -167,6 +167,8 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
       response_flow_config: z.any().optional().nullable(),
       // Rascunho: permitido mesmo sem créditos (não vira demanda de disparo real).
       save_as_draft: z.boolean().optional(),
+      // Tipo de envio: 'test' (até 10 destinatários, sem consumir créditos) ou 'full'.
+      send_type: z.enum(['test', 'full']).optional(),
     }).parse(d)
   )
   .handler(async ({ data, context }) => {
