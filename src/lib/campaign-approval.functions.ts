@@ -344,7 +344,11 @@ export const updateExternalExecution = createServerFn({ method: 'POST' })
     z
       .object({
         campaign_id: z.string().uuid(),
-        external_status: z.enum(['approved_external', 'in_progress', 'completed', 'cancelled']).optional(),
+        external_status: z
+          .enum(['scheduled_external', 'approved_external', 'in_progress', 'completed', 'cancelled'])
+          .optional(),
+        finalize_now: z.boolean().optional(),
+
         external_note: z.string().trim().max(2000).nullish(),
         external_total_count: z.number().int().min(0).max(100_000_000).nullish(),
         external_sent_count: z.number().int().min(0).max(100_000_000).nullish(),
