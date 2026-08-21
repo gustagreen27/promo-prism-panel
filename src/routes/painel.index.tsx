@@ -195,13 +195,17 @@ function PanelHome() {
             <Metric label="Realizados" value={report.done} />
             <Metric label="Créditos usados" value={report.used} />
           </div>
-          {selected && (
+          {selected ? (
             <div className="mt-4 grid gap-3 sm:grid-cols-4">
               <Metric small label="Destinatários" value={selected.total_recipients} />
               <Metric small label="Entregues" value={selected.delivered} />
               <Metric small label="Lidas" value={selected.read} />
               <Metric small label="Falhas" value={selected.failed} />
             </div>
+          ) : (
+            <p className="mt-3 text-xs text-muted-foreground">
+              Escolha “Todos os disparos” para métricas consolidadas.
+            </p>
           )}
         </CardContent>
       </Card>
