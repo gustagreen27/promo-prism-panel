@@ -104,6 +104,21 @@ export function simulateExternal(row: ExternalTargets, now: Date = new Date()): 
   const tDelivered = Math.min(tSent, Math.max(0, row.external_target_delivered_count ?? 0))
 
   const t = now.getTime()
+
+  // Antes do horário agendado a demanda fica em fila: 0% de andamento.
+  if (t < start) {
+    return {
+      sent: 0,
+      delivered: 0,
+      failed: 0,
+      pending: total,
+      updatedAt: new Date(start).toISOString(),
+      nextAt: new Date(start).toISOString(),
+      finished: false,
+      started: false,
+    }
+  }
+
   const finishedNow = t >= finish
 
   // Valores finais exatos assim que atinge o horário previsto.
@@ -116,8 +131,10 @@ export function simulateExternal(row: ExternalTargets, now: Date = new Date()): 
       updatedAt: new Date(finish).toISOString(),
       nextAt: null,
       finished: true,
+      started: true,
     }
   }
+
 
   const tick = tickMsFor(start, finish)
   const buckets = Math.max(1, Math.ceil((finish - start) / tick))
