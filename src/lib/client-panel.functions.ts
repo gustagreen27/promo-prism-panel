@@ -147,6 +147,7 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
       connection_id: z.string().uuid(),
       template_id: z.string().uuid(),
       list_id: z.string().uuid().nullish(),
+      ddd_filter: z.string().regex(/^\d{2}$/).nullish(),
       variables_mapping: z.record(z.string()).optional(),
       button_url_mapping: z.record(z.string()).optional(),
       header_media_url: z.string().optional().nullable(),
@@ -254,6 +255,18 @@ export const createClientCampaign = createServerFn({ method: 'POST' })
       })
       if (buildErr) throw buildErr
       campaign.total_recipients = Number(total ?? 0)
+
+      if (data.ddd_filter) {
+        const { data: remaining, error: dddErr } = await supabase.rpc('wa_filter_recipients_by_ddd' as any, {
+          _campaign_id: campaign.id,
+          _ddd: data.ddd_filter,
+        })
+        if (dddErr) throw dddErr
+        campaign.total_recipients = Number(remaining ?? 0)
+        if (campaign.total_recipients === 0) {
+          throw new Error(`Nenhum contato com DDD ${data.ddd_filter} foi encontrado na base selecionada`)
+        }
+      }
     }
 
     return { campaign }

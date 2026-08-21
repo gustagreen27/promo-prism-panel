@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { listMyNumbers, listMyTemplates, createClientCampaign } from "@/lib/client-panel.functions";
 import { listWorkspaceLists, createWorkspaceListWithPhones } from "@/lib/wa-wizard-lists.functions";
 import { metaVarsIn } from "@/lib/wa-variables";
+import { DDD_TO_CITY, extractDddBR } from "@/lib/ddd-cities";
 import {
   ArrowLeft, Loader2, Upload, User, Phone, Video, MoreVertical, Mic, ChevronLeft,
   Signal, Wifi, BatteryMedium, CheckCheck, Tags, ExternalLink,
@@ -87,6 +88,7 @@ function Page() {
   const [listId, setListId] = useState("");
   const [csvRows, setCsvRows] = useState<Array<{ phone: string; name?: string }>>([]);
   const [csvName, setCsvName] = useState("");
+  const [ddd, setDdd] = useState("any");
 
   const [avatarUrl, setAvatarUrl] = useState("");
   const [mediaUrl, setMediaUrl] = useState("");
@@ -134,8 +136,15 @@ function Page() {
     }).filter((r) => r.phone.length >= 10);
   }, [manual]);
 
-  const audienceCount = mode === "manual" ? manualRows.length
-    : mode === "csv" ? csvRows.length
+  const dddFilter = ddd === "any" ? null : ddd;
+  const byDdd = <T extends { phone: string }>(rows: T[]) =>
+    dddFilter ? rows.filter((r) => extractDddBR(r.phone) === dddFilter) : rows;
+
+  const manualFiltered = useMemo(() => byDdd(manualRows), [manualRows, dddFilter]);
+  const csvFiltered = useMemo(() => byDdd(csvRows), [csvRows, dddFilter]);
+
+  const audienceCount = mode === "manual" ? manualFiltered.length
+    : mode === "csv" ? csvFiltered.length
     : (lists.find((l) => l.id === listId)?.count ?? 0);
 
   const previewBody = fillVars(message, vars);
@@ -188,7 +197,7 @@ function Page() {
     try {
       let finalListId = listId;
       if (mode !== "lista") {
-        const rows = mode === "manual" ? manualRows : csvRows;
+        const rows = mode === "manual" ? manualFiltered : csvFiltered;
         const created: any = await fnCreateList({
           data: { workspace_id: workspaceId, name: `${name.trim()} — contatos`, source: "novo-disparo", rows },
         });
@@ -203,6 +212,7 @@ function Page() {
           connection_id: connectionId,
           template_id: templateId,
           list_id: finalListId,
+          ddd_filter: mode === "lista" ? dddFilter : null,
           variables_mapping: vars,
           button_url_mapping: btnEnabled ? { ...btnVars, "1": btnUrl.trim() } : btnVars,
           header_media_url: mediaUrl || null,
@@ -318,7 +328,22 @@ function Page() {
               </Field>
             )}
 
-            <p className="text-xs text-muted-foreground">{audienceCount.toLocaleString("pt-BR")} contatos selecionados</p>
+            <Field label="DDD de envio" hint="Escolha “Qualquer” para enviar a todos os DDDs.">
+              <Select value={ddd} onValueChange={setDdd}>
+                <SelectTrigger><SelectValue placeholder="Qualquer" /></SelectTrigger>
+                <SelectContent className="max-h-72">
+                  <SelectItem value="any">Qualquer</SelectItem>
+                  {Object.keys(DDD_TO_CITY).sort().map((d) => (
+                    <SelectItem key={d} value={d}>+{d} · {DDD_TO_CITY[d]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+
+            <p className="text-xs text-muted-foreground">
+              {audienceCount.toLocaleString("pt-BR")} contatos selecionados
+              {dddFilter ? ` · filtrando DDD +${dddFilter}` : ""}
+            </p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
