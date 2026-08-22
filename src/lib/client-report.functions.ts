@@ -55,7 +55,7 @@ export const getMyCampaignReport = createServerFn({ method: 'POST' })
     const { data: stageRow } = await supabase
       .from('wa_campaigns')
       .select(
-        'status,approval_status,scheduled_at,execution_type,external_status,external_started_at,external_finished_at',
+        'status,approval_status,scheduled_at,execution_type,external_status,external_started_at,external_finished_at,external_total_count,external_sent_count,external_failed_count',
       )
       .eq('id', data.id)
       .maybeSingle()

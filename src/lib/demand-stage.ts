@@ -12,6 +12,9 @@ export type StageRow = {
   external_status?: string | null
   external_started_at?: string | null
   external_finished_at?: string | null
+  external_total_count?: number | null
+  external_sent_count?: number | null
+  external_failed_count?: number | null
 }
 
 export function demandStage(r: StageRow): DemandStage {
@@ -25,12 +28,17 @@ export function demandStage(r: StageRow): DemandStage {
     const startAt = r.external_started_at ?? r.scheduled_at
     if (startAt && new Date(startAt).getTime() > Date.now()) return 'scheduled'
     if (r.external_finished_at && new Date(r.external_finished_at).getTime() <= Date.now()) return 'completed'
+    // Sem horário de término registrado: considera finalizada quando não há
+    // mais pendentes (enviados + falhas atingiram o total).
+    const total = r.external_total_count ?? 0
+    if (total > 0 && (r.external_sent_count ?? 0) + (r.external_failed_count ?? 0) >= total) return 'completed'
     if (es === 'scheduled_external') {
       if (r.scheduled_at && new Date(r.scheduled_at).getTime() <= Date.now()) return 'queued'
       return 'scheduled'
     }
     return 'queued'
   }
+
 
 
   if (r.status === 'completed' || r.status === 'cancelled') return 'completed'
