@@ -91,9 +91,9 @@ export const completeEmbeddedSignup = createServerFn({ method: "POST" })
     let scopedWorkspaceId: string | null = caller.isAdmin ? null : caller.workspaceId;
 
     const supabase = context.supabase;
-    const appId = process.env.META_APP_ID;
+    const appId = META_APP_ID;
     const appSecret = process.env.META_APP_SECRET;
-    if (!appId || !appSecret) throw new Error("META_APP_ID/META_APP_SECRET não configurados.");
+    if (!appSecret) throw new Error("META_APP_SECRET não configurado.");
 
     const baseLog = {
       client_id: scopedClientId,
