@@ -247,8 +247,9 @@ export const decideCampaignApproval = createServerFn({ method: 'POST' })
     }
     const isExternal = camp.execution_type === 'external'
     if (data.decision === 'approved' && !isExternal) {
-      if (!camp.connection_id) throw new Error('Defina o número/conexão de envio antes de aprovar')
-      if (!camp.template_id) throw new Error('Defina o template do WhatsApp antes de aprovar')
+      // Número/conexão e template são opcionais na aprovação: o admin pode
+      // apenas aprovar (agendar ou colocar em fila) e configurar depois.
+
       // Revalida o saldo do cliente no momento da aprovação (pode ter sido
       // consumido por outra campanha depois que a demanda foi criada).
       const required = Number(camp.total_recipients ?? 0)
