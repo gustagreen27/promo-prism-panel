@@ -17,6 +17,7 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { EmbeddedSignupButton } from "@/components/admin/whatsapp/embedded-signup-button";
+import { ClaimSharedWabaDialog } from "@/components/admin/whatsapp/claim-shared-waba-dialog";
 import { PostSignupDialog } from "@/components/admin/whatsapp/post-signup-dialog";
 import {
   listWorkspaceConnections,
