@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { EmbeddedSignupButton } from "@/components/admin/whatsapp/embedded-signup-button";
 import { ClaimSharedWabaDialog } from "@/components/admin/whatsapp/claim-shared-waba-dialog";
+import { SyncSharedWabasButton } from "@/components/admin/whatsapp/sync-shared-wabas-button";
 import { PostSignupDialog } from "@/components/admin/whatsapp/post-signup-dialog";
 import {
   listWorkspaceConnections,
@@ -115,6 +116,13 @@ function Page() {
             use “Vincular conta compartilhada” para importar a WABA.
           </div>
         </div>
+        <SyncSharedWabasButton
+          onSynced={() => {
+            refresh();
+            qc.invalidateQueries({ queryKey: ["wa-wabas"] });
+            qc.invalidateQueries({ queryKey: ["wa-numeros"] });
+          }}
+        />
         <ClaimSharedWabaDialog />
         <EmbeddedSignupButton
           mode="standard"
