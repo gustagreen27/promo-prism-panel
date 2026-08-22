@@ -111,7 +111,15 @@ function Page() {
           <div className="font-semibold text-sm">Conectar novo WhatsApp Business</div>
           <div className="text-xs text-muted-foreground">Abre o Cadastro incorporado da Meta em um popup.</div>
         </div>
-        <EmbeddedSignupButton mode="standard" label="Conectar WhatsApp" />
+        <EmbeddedSignupButton
+          mode="standard"
+          label="Conectar WhatsApp"
+          onCompleted={() => {
+            refresh();
+            qc.invalidateQueries({ queryKey: ["wa-wabas"] });
+            qc.invalidateQueries({ queryKey: ["wa-numeros"] });
+          }}
+        />
       </div>
       {isLoading ? (
         <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
