@@ -87,6 +87,7 @@ import { Route as AuthenticatedAdminWhatsappLogsRouteImport } from './routes/_au
 import { Route as AuthenticatedAdminWhatsappLiberacoesRouteImport } from './routes/_authenticated/admin.whatsapp.liberacoes'
 import { Route as AuthenticatedAdminWhatsappInboxRouteImport } from './routes/_authenticated/admin.whatsapp.inbox'
 import { Route as AuthenticatedAdminWhatsappEmbeddedSignupRouteImport } from './routes/_authenticated/admin.whatsapp.embedded-signup'
+import { Route as AuthenticatedAdminWhatsappEmbeddedCallbackRouteImport } from './routes/_authenticated/admin.whatsapp.embedded-callback'
 import { Route as AuthenticatedAdminWhatsappDiagnosticoRouteImport } from './routes/_authenticated/admin.whatsapp.diagnostico'
 import { Route as AuthenticatedAdminWhatsappConversasRouteImport } from './routes/_authenticated/admin.whatsapp.conversas'
 import { Route as AuthenticatedAdminWhatsappConfiguracoesRouteImport } from './routes/_authenticated/admin.whatsapp.configuracoes'
@@ -542,6 +543,12 @@ const AuthenticatedAdminWhatsappEmbeddedSignupRoute =
     path: '/embedded-signup',
     getParentRoute: () => AuthenticatedAdminWhatsappRoute,
   } as any)
+const AuthenticatedAdminWhatsappEmbeddedCallbackRoute =
+  AuthenticatedAdminWhatsappEmbeddedCallbackRouteImport.update({
+    id: '/embedded-callback',
+    path: '/embedded-callback',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
 const AuthenticatedAdminWhatsappDiagnosticoRoute =
   AuthenticatedAdminWhatsappDiagnosticoRouteImport.update({
     id: '/diagnostico',
@@ -714,6 +721,7 @@ export interface FileRoutesByFullPath {
   '/admin/whatsapp/configuracoes': typeof AuthenticatedAdminWhatsappConfiguracoesRoute
   '/admin/whatsapp/conversas': typeof AuthenticatedAdminWhatsappConversasRoute
   '/admin/whatsapp/diagnostico': typeof AuthenticatedAdminWhatsappDiagnosticoRoute
+  '/admin/whatsapp/embedded-callback': typeof AuthenticatedAdminWhatsappEmbeddedCallbackRoute
   '/admin/whatsapp/embedded-signup': typeof AuthenticatedAdminWhatsappEmbeddedSignupRoute
   '/admin/whatsapp/inbox': typeof AuthenticatedAdminWhatsappInboxRoute
   '/admin/whatsapp/liberacoes': typeof AuthenticatedAdminWhatsappLiberacoesRoute
@@ -809,6 +817,7 @@ export interface FileRoutesByTo {
   '/admin/whatsapp/configuracoes': typeof AuthenticatedAdminWhatsappConfiguracoesRoute
   '/admin/whatsapp/conversas': typeof AuthenticatedAdminWhatsappConversasRoute
   '/admin/whatsapp/diagnostico': typeof AuthenticatedAdminWhatsappDiagnosticoRoute
+  '/admin/whatsapp/embedded-callback': typeof AuthenticatedAdminWhatsappEmbeddedCallbackRoute
   '/admin/whatsapp/embedded-signup': typeof AuthenticatedAdminWhatsappEmbeddedSignupRoute
   '/admin/whatsapp/inbox': typeof AuthenticatedAdminWhatsappInboxRoute
   '/admin/whatsapp/liberacoes': typeof AuthenticatedAdminWhatsappLiberacoesRoute
@@ -908,6 +917,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/whatsapp/configuracoes': typeof AuthenticatedAdminWhatsappConfiguracoesRoute
   '/_authenticated/admin/whatsapp/conversas': typeof AuthenticatedAdminWhatsappConversasRoute
   '/_authenticated/admin/whatsapp/diagnostico': typeof AuthenticatedAdminWhatsappDiagnosticoRoute
+  '/_authenticated/admin/whatsapp/embedded-callback': typeof AuthenticatedAdminWhatsappEmbeddedCallbackRoute
   '/_authenticated/admin/whatsapp/embedded-signup': typeof AuthenticatedAdminWhatsappEmbeddedSignupRoute
   '/_authenticated/admin/whatsapp/inbox': typeof AuthenticatedAdminWhatsappInboxRoute
   '/_authenticated/admin/whatsapp/liberacoes': typeof AuthenticatedAdminWhatsappLiberacoesRoute
@@ -1007,6 +1017,7 @@ export interface FileRouteTypes {
     | '/admin/whatsapp/configuracoes'
     | '/admin/whatsapp/conversas'
     | '/admin/whatsapp/diagnostico'
+    | '/admin/whatsapp/embedded-callback'
     | '/admin/whatsapp/embedded-signup'
     | '/admin/whatsapp/inbox'
     | '/admin/whatsapp/liberacoes'
@@ -1102,6 +1113,7 @@ export interface FileRouteTypes {
     | '/admin/whatsapp/configuracoes'
     | '/admin/whatsapp/conversas'
     | '/admin/whatsapp/diagnostico'
+    | '/admin/whatsapp/embedded-callback'
     | '/admin/whatsapp/embedded-signup'
     | '/admin/whatsapp/inbox'
     | '/admin/whatsapp/liberacoes'
@@ -1200,6 +1212,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/whatsapp/configuracoes'
     | '/_authenticated/admin/whatsapp/conversas'
     | '/_authenticated/admin/whatsapp/diagnostico'
+    | '/_authenticated/admin/whatsapp/embedded-callback'
     | '/_authenticated/admin/whatsapp/embedded-signup'
     | '/_authenticated/admin/whatsapp/inbox'
     | '/_authenticated/admin/whatsapp/liberacoes'
@@ -1814,6 +1827,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminWhatsappEmbeddedSignupRouteImport
       parentRoute: typeof AuthenticatedAdminWhatsappRoute
     }
+    '/_authenticated/admin/whatsapp/embedded-callback': {
+      id: '/_authenticated/admin/whatsapp/embedded-callback'
+      path: '/embedded-callback'
+      fullPath: '/admin/whatsapp/embedded-callback'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappEmbeddedCallbackRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
     '/_authenticated/admin/whatsapp/diagnostico': {
       id: '/_authenticated/admin/whatsapp/diagnostico'
       path: '/diagnostico'
@@ -1966,6 +1986,7 @@ interface AuthenticatedAdminWhatsappRouteChildren {
   AuthenticatedAdminWhatsappConfiguracoesRoute: typeof AuthenticatedAdminWhatsappConfiguracoesRoute
   AuthenticatedAdminWhatsappConversasRoute: typeof AuthenticatedAdminWhatsappConversasRoute
   AuthenticatedAdminWhatsappDiagnosticoRoute: typeof AuthenticatedAdminWhatsappDiagnosticoRoute
+  AuthenticatedAdminWhatsappEmbeddedCallbackRoute: typeof AuthenticatedAdminWhatsappEmbeddedCallbackRoute
   AuthenticatedAdminWhatsappEmbeddedSignupRoute: typeof AuthenticatedAdminWhatsappEmbeddedSignupRoute
   AuthenticatedAdminWhatsappInboxRoute: typeof AuthenticatedAdminWhatsappInboxRoute
   AuthenticatedAdminWhatsappLiberacoesRoute: typeof AuthenticatedAdminWhatsappLiberacoesRoute
@@ -1992,6 +2013,8 @@ const AuthenticatedAdminWhatsappRouteChildren: AuthenticatedAdminWhatsappRouteCh
       AuthenticatedAdminWhatsappConversasRoute,
     AuthenticatedAdminWhatsappDiagnosticoRoute:
       AuthenticatedAdminWhatsappDiagnosticoRoute,
+    AuthenticatedAdminWhatsappEmbeddedCallbackRoute:
+      AuthenticatedAdminWhatsappEmbeddedCallbackRoute,
     AuthenticatedAdminWhatsappEmbeddedSignupRoute:
       AuthenticatedAdminWhatsappEmbeddedSignupRoute,
     AuthenticatedAdminWhatsappInboxRoute: AuthenticatedAdminWhatsappInboxRoute,
