@@ -115,6 +115,13 @@ function Page() {
             use “Vincular conta compartilhada” para importar a WABA.
           </div>
         </div>
+        <SyncSharedWabasButton
+          onSynced={() => {
+            refresh();
+            qc.invalidateQueries({ queryKey: ["wa-wabas"] });
+            qc.invalidateQueries({ queryKey: ["wa-numeros"] });
+          }}
+        />
         <ClaimSharedWabaDialog />
         <EmbeddedSignupButton
           mode="standard"
