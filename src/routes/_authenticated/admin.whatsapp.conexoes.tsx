@@ -17,6 +17,7 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { EmbeddedSignupButton } from "@/components/admin/whatsapp/embedded-signup-button";
+import { ClaimSharedWabaDialog } from "@/components/admin/whatsapp/claim-shared-waba-dialog";
 import { PostSignupDialog } from "@/components/admin/whatsapp/post-signup-dialog";
 import {
   listWorkspaceConnections,
@@ -109,8 +110,12 @@ function Page() {
       <div className="mb-4 flex flex-wrap gap-2 rounded-xl border bg-card p-4">
         <div className="flex-1 min-w-[220px]">
           <div className="font-semibold text-sm">Conectar novo WhatsApp Business</div>
-          <div className="text-xs text-muted-foreground">Abre o cadastro oficial da Meta em uma nova aba.</div>
+          <div className="text-xs text-muted-foreground">
+            Abre o cadastro oficial da Meta em uma nova aba. Se o cliente já compartilhou a conta com a sua BM,
+            use “Vincular conta compartilhada” para importar a WABA.
+          </div>
         </div>
+        <ClaimSharedWabaDialog />
         <EmbeddedSignupButton
           mode="standard"
           label="Conectar WhatsApp"
