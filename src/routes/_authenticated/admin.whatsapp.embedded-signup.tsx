@@ -58,7 +58,7 @@ function Page() {
               <div className="font-medium">Como usar</div>
               <p className="text-muted-foreground mt-1">
                 Selecione o cliente/projeto ao qual a conexão será vinculada e clique em <strong>Conectar WhatsApp</strong>.
-                Um popup oficial da Meta abrirá. Após aprovação, a WABA e o número são criados/atualizados automaticamente.
+                Uma nova aba com o cadastro oficial da Meta abrirá. Após aprovação, a WABA e o número são criados/atualizados automaticamente.
               </p>
             </div>
           </div>
