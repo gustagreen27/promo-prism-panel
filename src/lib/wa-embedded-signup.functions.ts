@@ -52,14 +52,12 @@ export const getEmbeddedSignupConfig = createServerFn({ method: "GET" })
     // Any authenticated user (admin OR workspace owner) can bootstrap the SDK.
     const caller = await resolveCaller(context);
     if (!caller.isAdmin && !caller.workspaceId) throw new Error("Forbidden");
-    const appId = process.env.META_APP_ID;
-    const configId = process.env.META_ES_CONFIG_ID;
-    if (!appId || !configId) {
-      throw new Error("META_APP_ID ou META_ES_CONFIG_ID não configurados.");
-    }
+    // App ID / Config ID vêm da configuração central (não são segredos).
+    const appId = META_APP_ID;
+    const configId = META_ES_CONFIG_ID;
     // Versão do JS SDK do Facebook (browser) é independente da versão usada
-    // nas chamadas server-side ao Graph. Padrão v26.0 conforme doc do ES.
-    const sdkVersion = (process.env.META_JS_SDK_VERSION || "v26.0").trim();
+    // nas chamadas server-side ao Graph.
+    const sdkVersion = (process.env.META_JS_SDK_VERSION || META_JS_SDK_VERSION).trim();
     return { appId, configId, graphVersion: GRAPH_VERSION, sdkVersion };
   });
 
