@@ -923,9 +923,10 @@ function Page() {
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             {decision?.kind === "approved"
-              ? `"${decision?.item.name}" será liberada para envio a ${(decision?.item.total_recipients ?? 0).toLocaleString("pt-BR")} contatos usando ${decision?.item.connection_name ?? "o número configurado"} e o template ${decision?.item.template_name ?? "configurado"}.`
+              ? `"${decision?.item.name}" será liberada para ${(decision?.item.total_recipients ?? 0).toLocaleString("pt-BR")} contatos. Número: ${decision?.item.connection_name ?? "a definir"} · Template: ${decision?.item.template_name ?? "a definir"}. Você pode aprovar agora e configurar depois em "Configurar".`
               : "O cliente verá o motivo informado no painel dele."}
           </p>
+
           <Textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
