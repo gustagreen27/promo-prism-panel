@@ -506,6 +506,9 @@ export async function processCampaignTick(
         // Re-checagem contínua durante a campanha: no máx. 45s de cache,
         // então cada tick revalida a saúde da conta/template.
         maxAgeSec: 45,
+        // LIMITED (ex.: verificação de negócio pendente) apenas alerta;
+        // somente BLOCKED impede o envio.
+        blockOnLimited: false,
       });
       if (!check.allowed) {
         const msg = `Envio bloqueado pela pré-checagem de saúde (${check.source}): ${check.reason}`;
