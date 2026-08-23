@@ -6,7 +6,7 @@
  * O App Secret vive apenas no servidor, em process.env.META_APP_SECRET.
  */
 export const META_APP_ID = "985774237595087";
-export const META_ES_CONFIG_ID = "1275080992357459";
+export const META_ES_CONFIG_ID = "1505762954636333";
 
 /** Versão do JS SDK do Facebook usada no browser (independente da Graph server-side). */
 export const META_JS_SDK_VERSION = "v26.0";
