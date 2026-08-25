@@ -137,6 +137,8 @@ const GROUPS: NavGroup[] = [
       { title: "Contas e créditos", to: "/admin/contas", icon: Wallet },
       { title: "Conciliação", to: "/admin/conciliacao", icon: Wallet },
       { title: "Projetos", to: "/admin/projetos", icon: FolderKanban },
+      { title: "Gestão de Ativos Meta", to: "/admin/meta-ativos", icon: Boxes },
+
       {
         title: "Configurações",
         to: "/admin/configuracoes",
