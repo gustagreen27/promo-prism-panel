@@ -17,7 +17,7 @@ import { listWorkspaceLists, createEmptyWorkspaceList, appendPhonesChunkToList }
 import { createListInChunks } from "@/lib/import-list-chunked";
 import { metaVarsIn } from "@/lib/wa-variables";
 import { getMyDemandDetail } from "@/lib/client-demand.functions";
-import { DDD_TO_CITY, extractDddBR } from "@/lib/ddd-cities";
+import { DDD_TO_CITY } from "@/lib/ddd-cities";
 import {
   ArrowLeft, Loader2, Upload, User, Phone, Video, MoreVertical, Mic, ChevronLeft,
   Signal, Wifi, BatteryMedium, CheckCheck, Tags, ExternalLink, Rocket, Tag, Braces,
