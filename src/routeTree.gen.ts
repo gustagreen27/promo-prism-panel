@@ -43,6 +43,7 @@ import { Route as AuthenticatedAdminUpsellRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAdminTvRouteImport } from './routes/_authenticated/admin.tv'
 import { Route as AuthenticatedAdminProjetosRouteImport } from './routes/_authenticated/admin.projetos'
 import { Route as AuthenticatedAdminPrecificacaoRouteImport } from './routes/_authenticated/admin.precificacao'
+import { Route as AuthenticatedAdminMetaAtivosRouteImport } from './routes/_authenticated/admin.meta-ativos'
 import { Route as AuthenticatedAdminHistoricoRouteImport } from './routes/_authenticated/admin.historico'
 import { Route as AuthenticatedAdminFinanceiroRouteImport } from './routes/_authenticated/admin.financeiro'
 import { Route as AuthenticatedAdminFechamentoRouteImport } from './routes/_authenticated/admin.fechamento'
@@ -279,6 +280,12 @@ const AuthenticatedAdminPrecificacaoRoute =
   AuthenticatedAdminPrecificacaoRouteImport.update({
     id: '/admin/precificacao',
     path: '/admin/precificacao',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminMetaAtivosRoute =
+  AuthenticatedAdminMetaAtivosRouteImport.update({
+    id: '/admin/meta-ativos',
+    path: '/admin/meta-ativos',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAdminHistoricoRoute =
@@ -697,6 +704,7 @@ export interface FileRoutesByFullPath {
   '/admin/fechamento': typeof AuthenticatedAdminFechamentoRoute
   '/admin/financeiro': typeof AuthenticatedAdminFinanceiroRoute
   '/admin/historico': typeof AuthenticatedAdminHistoricoRoute
+  '/admin/meta-ativos': typeof AuthenticatedAdminMetaAtivosRoute
   '/admin/precificacao': typeof AuthenticatedAdminPrecificacaoRoute
   '/admin/projetos': typeof AuthenticatedAdminProjetosRoute
   '/admin/tv': typeof AuthenticatedAdminTvRoute
@@ -793,6 +801,7 @@ export interface FileRoutesByTo {
   '/admin/fechamento': typeof AuthenticatedAdminFechamentoRoute
   '/admin/financeiro': typeof AuthenticatedAdminFinanceiroRoute
   '/admin/historico': typeof AuthenticatedAdminHistoricoRoute
+  '/admin/meta-ativos': typeof AuthenticatedAdminMetaAtivosRoute
   '/admin/precificacao': typeof AuthenticatedAdminPrecificacaoRoute
   '/admin/projetos': typeof AuthenticatedAdminProjetosRoute
   '/admin/tv': typeof AuthenticatedAdminTvRoute
@@ -893,6 +902,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/fechamento': typeof AuthenticatedAdminFechamentoRoute
   '/_authenticated/admin/financeiro': typeof AuthenticatedAdminFinanceiroRoute
   '/_authenticated/admin/historico': typeof AuthenticatedAdminHistoricoRoute
+  '/_authenticated/admin/meta-ativos': typeof AuthenticatedAdminMetaAtivosRoute
   '/_authenticated/admin/precificacao': typeof AuthenticatedAdminPrecificacaoRoute
   '/_authenticated/admin/projetos': typeof AuthenticatedAdminProjetosRoute
   '/_authenticated/admin/tv': typeof AuthenticatedAdminTvRoute
@@ -993,6 +1003,7 @@ export interface FileRouteTypes {
     | '/admin/fechamento'
     | '/admin/financeiro'
     | '/admin/historico'
+    | '/admin/meta-ativos'
     | '/admin/precificacao'
     | '/admin/projetos'
     | '/admin/tv'
@@ -1089,6 +1100,7 @@ export interface FileRouteTypes {
     | '/admin/fechamento'
     | '/admin/financeiro'
     | '/admin/historico'
+    | '/admin/meta-ativos'
     | '/admin/precificacao'
     | '/admin/projetos'
     | '/admin/tv'
@@ -1188,6 +1200,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/fechamento'
     | '/_authenticated/admin/financeiro'
     | '/_authenticated/admin/historico'
+    | '/_authenticated/admin/meta-ativos'
     | '/_authenticated/admin/precificacao'
     | '/_authenticated/admin/projetos'
     | '/_authenticated/admin/tv'
@@ -1517,6 +1530,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/precificacao'
       fullPath: '/admin/precificacao'
       preLoaderRoute: typeof AuthenticatedAdminPrecificacaoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/meta-ativos': {
+      id: '/_authenticated/admin/meta-ativos'
+      path: '/admin/meta-ativos'
+      fullPath: '/admin/meta-ativos'
+      preLoaderRoute: typeof AuthenticatedAdminMetaAtivosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/admin/historico': {
@@ -2081,6 +2101,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminFechamentoRoute: typeof AuthenticatedAdminFechamentoRoute
   AuthenticatedAdminFinanceiroRoute: typeof AuthenticatedAdminFinanceiroRoute
   AuthenticatedAdminHistoricoRoute: typeof AuthenticatedAdminHistoricoRoute
+  AuthenticatedAdminMetaAtivosRoute: typeof AuthenticatedAdminMetaAtivosRoute
   AuthenticatedAdminPrecificacaoRoute: typeof AuthenticatedAdminPrecificacaoRoute
   AuthenticatedAdminProjetosRoute: typeof AuthenticatedAdminProjetosRoute
   AuthenticatedAdminTvRoute: typeof AuthenticatedAdminTvRoute
@@ -2117,6 +2138,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminFechamentoRoute: AuthenticatedAdminFechamentoRoute,
   AuthenticatedAdminFinanceiroRoute: AuthenticatedAdminFinanceiroRoute,
   AuthenticatedAdminHistoricoRoute: AuthenticatedAdminHistoricoRoute,
+  AuthenticatedAdminMetaAtivosRoute: AuthenticatedAdminMetaAtivosRoute,
   AuthenticatedAdminPrecificacaoRoute: AuthenticatedAdminPrecificacaoRoute,
   AuthenticatedAdminProjetosRoute: AuthenticatedAdminProjetosRoute,
   AuthenticatedAdminTvRoute: AuthenticatedAdminTvRoute,
