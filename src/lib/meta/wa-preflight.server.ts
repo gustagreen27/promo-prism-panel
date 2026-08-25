@@ -8,9 +8,9 @@
  *  - template aprovado e ativo
  *  - token e permissões válidos
  *  - limite de mensagens disponível (messaging_limit_tier x fila)
- *  - nenhuma restrição conhecida (health_status BLOCKED/LIMITED, número bloqueado)
+ *  - restrições conhecidas (health_status BLOCKED/LIMITED) como alerta operacional
  *
- * Veredito: "green" (autorizado) | "yellow" (confirmar) | "red" (bloqueado).
+ * Veredito: "green" (autorizado) | "yellow" (confirmar) | "red" (configuração inválida).
  */
 
 import { resolveGraphVersion } from "@/lib/meta/graph-version";
@@ -114,9 +114,9 @@ export async function runSelectionPreflight(
       verdict,
       headline:
         verdict === "red"
-          ? "⛔ Conta restrita/desconectada — disparo bloqueado"
+          ? "⛔ Configuração incompleta — disparo bloqueado"
           : verdict === "yellow"
-            ? "⚠️ Qualidade média — confirme para continuar"
+            ? "⚠️ Avisos da Meta — envio permitido"
             : "✅ Conta saudável — disparo autorizado",
       checks,
       quality_rating: qualityRating,
@@ -193,7 +193,7 @@ export async function runSelectionPreflight(
   if (numberStatus === "CONNECTED") {
     push({ key: "number_status", label: "Número conectado", status: "ok", detail: `status=CONNECTED (${num.json?.display_phone_number ?? conn.display_phone ?? ""})` });
   } else {
-    push({ key: "number_status", label: "Número conectado", status: "fail", detail: `status=${numberStatus ?? "desconhecido"} — o número precisa estar CONNECTED para disparar.` });
+    push({ key: "number_status", label: "Número conectado", status: "warn", detail: `status=${numberStatus ?? "desconhecido"} — a Meta pode recusar o envio, mas esta verificação não impede a tentativa.` });
   }
 
   if (qualityRating === "GREEN") {
@@ -201,7 +201,7 @@ export async function runSelectionPreflight(
   } else if (qualityRating === "YELLOW" || qualityRating === "UNKNOWN" || qualityRating == null) {
     push({ key: "quality", label: "Qualidade do número", status: "warn", detail: `quality_rating=${qualityRating ?? "UNKNOWN"} — exige confirmação manual.` });
   } else {
-    push({ key: "quality", label: "Qualidade do número", status: "fail", detail: `quality_rating=${qualityRating} — disparo bloqueado.` });
+    push({ key: "quality", label: "Qualidade do número", status: "warn", detail: `quality_rating=${qualityRating} — alerta de qualidade; o disparo continua autorizado.` });
   }
 
   // 2) WABA/portfólio acessível
@@ -222,8 +222,8 @@ export async function runSelectionPreflight(
       push({
         key: "waba",
         label: "WABA/portfólio acessível",
-        status: blocked ? "fail" : restricted ? "warn" : "ok",
-        detail: `${waba.json?.name ?? wabaId}${review ? ` · review=${review}` : ""}${bv ? ` · negócio=${bv}` : ""}${blocked ? " — conta restrita pela Meta, disparo bloqueado." : ""}`,
+        status: blocked || restricted ? "warn" : "ok",
+        detail: `${waba.json?.name ?? wabaId}${review ? ` · review=${review}` : ""}${bv ? ` · negócio=${bv}` : ""}${blocked ? " — conta restrita pela Meta; o envio será tentado mesmo assim." : ""}`,
       });
 
     } else {
@@ -281,8 +281,8 @@ export async function runSelectionPreflight(
       push({
         key: "health",
         label: "Restrições conhecidas (health_status)",
-        status: s === "AVAILABLE" ? "ok" : s === "LIMITED" ? "warn" : "fail",
-        detail: s === "AVAILABLE" ? "Nenhuma restrição reportada pela Meta." : `${s}: ${detail}`,
+        status: s === "AVAILABLE" ? "ok" : "warn",
+        detail: s === "AVAILABLE" ? "Nenhuma restrição reportada pela Meta." : `${s}: ${detail} — aviso; não impede a tentativa de envio.`,
       });
     } else {
       push({ key: "health", label: "Restrições conhecidas (health_status)", status: "warn", detail: snap?.fetch_error ?? "Não foi possível consultar o health_status." });

@@ -111,7 +111,8 @@ export function SelectionPreflight({
           </ul>
           <p className="text-[11px] text-muted-foreground">
             Verificado em {new Date(r.checked_at).toLocaleString("pt-BR")}.
-            {verdict === "red" && " Troque o número ou o template para continuar."}
+            {verdict === "red" && " Corrija a configuração obrigatória para continuar."}
+            {verdict === "yellow" && " Os avisos da Meta não impedem o disparo."}
           </p>
         </>
       )}
