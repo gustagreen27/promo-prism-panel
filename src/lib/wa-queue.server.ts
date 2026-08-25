@@ -497,7 +497,7 @@ export async function processCampaignTick(
 
 
     // Pré-checagem de saúde de envio (health_status) — usa cache de 5 min.
-    // BLOCKED/LIMITED impede a tentativa e pausa a campanha explicando o motivo.
+    // O status informado pela Meta é apenas diagnóstico: não pausa a campanha.
     try {
       const { ensureSendable } = await import("@/lib/meta/wa-health.server");
       const check = await ensureSendable(supabaseAdmin, {
@@ -506,24 +506,19 @@ export async function processCampaignTick(
         // Re-checagem contínua durante a campanha: no máx. 45s de cache,
         // então cada tick revalida a saúde da conta/template.
         maxAgeSec: 45,
-        // LIMITED (ex.: verificação de negócio pendente) apenas alerta;
-        // somente BLOCKED impede o envio.
+        // LIMITED/BLOCKED são avisos; a resposta real da tentativa de envio é
+        // a fonte definitiva para decidir se o destinatário foi aceito ou falhou.
         blockOnLimited: false,
       });
       if (!check.allowed) {
-        const msg = `Envio bloqueado pela pré-checagem de saúde (${check.source}): ${check.reason}`;
-        await supabaseAdmin
-          .from("wa_campaigns")
-          .update({ status: "paused", pause_reason: "health_status", last_error: msg })
-          .eq("id", campaignId);
-        await logEvent(campaignId, "error", msg, {
+        const msg = `Aviso da pré-checagem de saúde (${check.source}): ${check.reason}. O disparo seguirá normalmente.`;
+        await logEvent(campaignId, "health_warning", msg, {
           health_status: check.status,
           source: check.source,
           errors: check.errors,
           additional_info: check.additional_info,
           checked_at: check.checked_at,
         });
-        return { processed: 0, done: true, reason: "health_status" };
       }
     } catch {
       // Falha ao checar não bloqueia o disparo (fail-open).
