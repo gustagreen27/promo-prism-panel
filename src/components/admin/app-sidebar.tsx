@@ -24,6 +24,8 @@ import {
   LogOut,
   ChevronDown,
   MessageCircle,
+  Boxes,
+
 } from "lucide-react";
 import {
   Sidebar,
