@@ -120,7 +120,7 @@ function AuthPanel() {
   const get = useServerFn(getMetaAssetCreds);
   const save = useServerFn(saveMetaAssetCreds);
   const test = useServerFn(testMetaAssetConnection);
-  const { data } = useQuery({ queryKey: ["meta-assets", "creds"], queryFn: () => get({ data: {} }) });
+  const { data } = useQuery({ queryKey: ["meta-assets", "creds"], queryFn: () => get() });
   const [businessId, setBusinessId] = useState("");
   const [token, setToken] = useState("");
 
@@ -135,7 +135,7 @@ function AuthPanel() {
   });
 
   const testMut = useMutation({
-    mutationFn: () => test({ data: {} }),
+    mutationFn: () => test(),
     onSuccess: (r: any) => (r.ok ? toast.success(r.message) : toast.error(r.message)),
     onError: (e: any) => toast.error(e?.message ?? "Falha ao testar"),
   });
@@ -198,7 +198,7 @@ function AuthPanel() {
 
 function useWabas() {
   const list = useServerFn(listMetaWabas);
-  return useQuery({ queryKey: ["meta-assets", "wabas"], queryFn: () => list({ data: {} }) });
+  return useQuery({ queryKey: ["meta-assets", "wabas"], queryFn: () => list() });
 }
 
 function WabaPanel() {
