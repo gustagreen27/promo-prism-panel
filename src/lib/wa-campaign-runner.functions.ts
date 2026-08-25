@@ -21,22 +21,10 @@ async function assertCampaignUnlocked(supabase: any, campaignId: string) {
     .select("fatal_locked, fatal_error_code, fatal_error_message, connection_id")
     .eq("id", campaignId)
     .maybeSingle();
-  if (camp?.fatal_locked) {
+  if (camp?.fatal_locked && !["131031", "131042"].includes(String(camp.fatal_error_code ?? ""))) {
     throw new Error(
       `Bloqueada por erro crítico ${camp.fatal_error_code ?? ""}: ${camp.fatal_error_message ?? "conta bloqueada pela Meta"}. Troque de WABA/número ou libere manualmente antes de reprocessar.`,
     );
-  }
-  if (camp?.connection_id) {
-    const { data: conn } = await supabase
-      .from("whatsapp_connections")
-      .select("blocked_at, blocked_reason")
-      .eq("id", camp.connection_id)
-      .maybeSingle();
-    if (conn?.blocked_at) {
-      throw new Error(
-        `Número bloqueado pela Meta: ${conn.blocked_reason ?? "restrição ativa"}. Troque o número/WABA ou desbloqueie antes de reprocessar.`,
-      );
-    }
   }
 }
 
@@ -403,7 +391,15 @@ export const resumeCampaignAsync = createServerFn({ method: "POST" })
 
     await context.supabase
       .from("wa_campaigns")
-      .update({ status: "running", resumed_at: new Date().toISOString() })
+      .update({
+        status: "running",
+        resumed_at: new Date().toISOString(),
+        fatal_locked: false,
+        fatal_error_code: null,
+        fatal_error_message: null,
+        fatal_locked_at: null,
+        pause_reason: null,
+      })
       .eq("id", data.id);
     await logEvent(context.supabase, data.id, "resumed", "Campanha retomada", context.userId);
     return { ok: true };

@@ -208,7 +208,7 @@ export const startWaCampaign = createServerFn({ method: "POST" })
     }
     if (!camp.connection_id || !camp.template_id) throw new Error("Configure número e template antes de iniciar.");
     if (!camp.total_recipients) throw new Error("Gere a fila de destinatários antes de iniciar.");
-    if ((camp as any).fatal_locked) {
+    if ((camp as any).fatal_locked && !["131031", "131042"].includes(String((camp as any).fatal_error_code ?? ""))) {
       throw new Error(
         `Campanha travada por erro crítico ${(camp as any).fatal_error_code ?? ""}: ${(camp as any).fatal_error_message ?? "conta bloqueada pela Meta"}. Troque de WABA/número ou libere manualmente.`,
       );
@@ -235,7 +235,15 @@ export const startWaCampaign = createServerFn({ method: "POST" })
     // Admin dispatch bypasses stock — não há débito automático de estoque neste fluxo.
     await context.supabase
       .from("wa_campaigns")
-      .update({ status: "running", started_at: new Date().toISOString() })
+      .update({
+        status: "running",
+        started_at: new Date().toISOString(),
+        fatal_locked: false,
+        fatal_error_code: null,
+        fatal_error_message: null,
+        fatal_locked_at: null,
+        pause_reason: null,
+      })
       .eq("id", data.id);
     try {
       const url = new URL("/api/public/whatsapp/queue-tick", process.env.SUPABASE_URL?.replace(".supabase.co", ".lovable.app") ?? "https://project--9c7682d6-edcd-4388-a36c-36249d4d6ab8.lovable.app");
