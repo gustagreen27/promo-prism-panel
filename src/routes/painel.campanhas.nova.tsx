@@ -576,7 +576,7 @@ function Page() {
             )}
 
 
-            <Field label="DDD de envio" hint="Escolha “Qualquer” para enviar a todos os DDDs.">
+            <Field label="DDD de envio" hint="Filtra apenas listas de leads. Números digitados ou de planilha são sempre mantidos.">
               <Select value={ddd} onValueChange={setDdd}>
                 <SelectTrigger><SelectValue placeholder="Qualquer" /></SelectTrigger>
                 <SelectContent className="max-h-72">
@@ -590,8 +590,10 @@ function Page() {
 
             <p className="text-right text-xs text-muted-foreground">
               {audienceCount.toLocaleString("pt-BR")} contatos selecionados
-              {dddFilter ? ` · filtrando DDD +${dddFilter}` : ""}
+              {dddFilter && mode === "lista" ? ` · filtrando DDD +${dddFilter}` : ""}
+              {dddOutOfScope > 0 ? ` · ${dddOutOfScope.toLocaleString("pt-BR")} fora do DDD +${dddFilter} (mantidos)` : ""}
             </p>
+
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
