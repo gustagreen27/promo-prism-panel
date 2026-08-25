@@ -407,8 +407,9 @@ export async function processCampaignTick(
       return { processed: 0, done: true };
     }
     if (camp.status !== "running") return { processed: 0, done: true };
-    // Travada por erro crítico de conta (ex.: 131031) — nada de reprocessamento automático.
-    if ((camp as any).fatal_locked) {
+    // Restrições comerciais previamente registradas são avisos. Erros de
+    // configuração realmente fatais (ex.: número não registrado) ainda param.
+    if ((camp as any).fatal_locked && !["131031", "131042"].includes(String((camp as any).fatal_error_code ?? ""))) {
       await supabaseAdmin
         .from("wa_campaigns")
         .update({ status: "paused", pause_reason: "account_locked" })
@@ -906,15 +907,8 @@ export async function processCampaignTick(
     };
 
     const sendOne = async (r: any): Promise<void> => {
-      // Kill switch de outra lane no mesmo isolate (mesmo número).
-      if (!fatalStop && camp.connection_id && BLOCKED_CONNECTIONS.has(String(camp.connection_id))) {
-        await triggerFatalStop(
-          "131031",
-          BLOCKED_CONNECTIONS.get(String(camp.connection_id)) ?? null,
-        );
-      }
-      // Circuit breaker ativo: não tenta mais nada, devolve o contato à fila.
-
+      // Circuit breaker ativo apenas para configuração fatal; restrições
+      // comerciais da Meta são registradas como falha individual e não param a fila.
       if (fatalStop) {
         await supabaseAdmin
           .from("campaign_recipients")
@@ -1232,7 +1226,9 @@ export async function processCampaignTick(
       const classified = classifyMetaError(result as any);
       const isNetworkErr = classified.network;
 
-      const fatalCode = classified.category === "FATAL_ACCOUNT" ? classified.code : null;
+      const fatalCode = classified.category === "FATAL_ACCOUNT" && !["131031", "131042"].includes(classified.code)
+        ? classified.code
+        : null;
       if (fatalCode) {
 
         lastError = result.error;
@@ -1592,10 +1588,6 @@ export async function processCampaignTick(
       if (now - lastKillCheckAt < 1500) return;
       lastKillCheckAt = now;
       if (fatalStop) return;
-      if (camp.connection_id && BLOCKED_CONNECTIONS.has(String(camp.connection_id))) {
-        await triggerFatalStop("131031", BLOCKED_CONNECTIONS.get(String(camp.connection_id)) ?? null);
-        return;
-      }
       try {
         const [{ data: c }, { data: k }] = await Promise.all([
           supabaseAdmin
@@ -1611,17 +1603,10 @@ export async function processCampaignTick(
                 .maybeSingle()
             : Promise.resolve({ data: null } as any),
         ]);
-        if ((c as any)?.fatal_locked) {
+        if ((c as any)?.fatal_locked && !["131031", "131042"].includes(String((c as any).fatal_error_code ?? ""))) {
           await triggerFatalStop(
             String((c as any).fatal_error_code ?? "131031"),
             (c as any).fatal_error_message ?? null,
-          );
-          return;
-        }
-        if ((k as any)?.blocked_at) {
-          await triggerFatalStop(
-            String((k as any).blocked_error_code ?? "131031"),
-            (k as any).blocked_reason ?? null,
           );
           return;
         }

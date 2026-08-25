@@ -127,13 +127,16 @@ export async function runSelectionPreflight(
   };
 
   if (opts.fatal_locked) {
+    const restrictionOnly = ["131031", "131042"].includes(String(opts.fatal_error_code ?? ""));
     push({
       key: "fatal_lock",
       label: "Restrição crítica registrada",
-      status: "fail",
-      detail: `Campanha travada por erro crítico ${opts.fatal_error_code ?? ""}: ${opts.fatal_error_message ?? "conta bloqueada pela Meta"}. Troque de WABA/número ou libere manualmente.`,
+      status: restrictionOnly ? "warn" : "fail",
+      detail: restrictionOnly
+        ? `Aviso registrado ${opts.fatal_error_code ?? ""}: ${opts.fatal_error_message ?? "restrição da conta na Meta"}. O disparo pode ser tentado normalmente.`
+        : `Campanha travada por erro crítico ${opts.fatal_error_code ?? ""}: ${opts.fatal_error_message ?? "configuração inválida"}. Corrija a configuração antes de continuar.`,
     });
-    return finish();
+    if (!restrictionOnly) return finish();
   }
 
   if (!camp.connection_id || !camp.template_id) {
@@ -159,8 +162,8 @@ export async function runSelectionPreflight(
     push({
       key: "number_blocked",
       label: "Número bloqueado",
-      status: "fail",
-      detail: `Número marcado como bloqueado em ${new Date(conn.blocked_at).toLocaleString("pt-BR")}: ${conn.blocked_reason ?? "restrição da Meta"}.`,
+      status: "warn",
+      detail: `Número marcado com restrição em ${new Date(conn.blocked_at).toLocaleString("pt-BR")}: ${conn.blocked_reason ?? "restrição da Meta"}. Aviso apenas; o envio será tentado.`,
     });
   }
 
