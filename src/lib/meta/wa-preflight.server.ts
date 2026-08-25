@@ -116,7 +116,7 @@ export async function runSelectionPreflight(
         verdict === "red"
           ? "⛔ Configuração incompleta — disparo bloqueado"
           : verdict === "yellow"
-            ? "⚠️ Qualidade média — confirme para continuar"
+            ? "⚠️ Avisos da Meta — envio permitido"
             : "✅ Conta saudável — disparo autorizado",
       checks,
       quality_rating: qualityRating,

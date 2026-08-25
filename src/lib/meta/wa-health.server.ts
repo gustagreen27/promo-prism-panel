@@ -320,7 +320,7 @@ export type SendabilityCheck = {
 };
 
 /**
- * Pré-checagem antes de disparar: bloqueia quando BLOCKED ou LIMITED.
+ * Pré-checagem antes de disparar: informa BLOCKED ou LIMITED ao chamador.
  * Usa cache (TTL padrão 5 min) para não estourar a API.
  * Falhas de consulta NÃO bloqueiam o envio (fail-open) — só status explícito bloqueia.
  */

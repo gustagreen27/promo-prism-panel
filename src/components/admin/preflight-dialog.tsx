@@ -56,7 +56,7 @@ export function PreflightDialog({
     | undefined;
 
   const verdict = result?.verdict;
-  const canStart = verdict === "green" || (verdict === "yellow" && ack);
+  const canStart = verdict === "green" || verdict === "yellow";
 
   return (
     <Dialog open={!!campaign} onOpenChange={onOpenChange}>
@@ -113,16 +113,9 @@ export function PreflightDialog({
               ))}
             </ul>
 
-            {verdict === "yellow" && (
-              <label className="flex items-start gap-2 rounded-md border border-amber-500/40 p-3 text-sm">
-                <input type="checkbox" className="mt-1" checked={ack} onChange={(e) => setAck(e.target.checked)} />
-                <span>Confirmo que li os alertas acima e autorizo o disparo mesmo assim.</span>
-              </label>
-            )}
-
             <p className="text-[11px] text-muted-foreground">
-              Verificado em {new Date(result.checked_at).toLocaleString("pt-BR")}. A checagem continua durante a campanha
-              (a cada ~45s) e o disparo é pausado automaticamente se a conta for restringida.
+              Verificado em {new Date(result.checked_at).toLocaleString("pt-BR")}. Alertas de restrição permanecem visíveis,
+              mas não impedem nem pausam o disparo.
             </p>
           </div>
         )}
