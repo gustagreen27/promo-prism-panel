@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -29,10 +28,6 @@ export function PreflightDialog({
 }) {
   const preflightFn = useServerFn(preflightWaCampaign);
   const startFn = useServerFn(startWaCampaign);
-  const [ack, setAck] = useState(false);
-
-  useEffect(() => { setAck(false); }, [campaign?.id]);
-
   const q = useQuery({
     queryKey: ["wa-preflight", campaign?.id],
     queryFn: () => preflightFn({ data: { id: campaign!.id } }) as Promise<any>,
