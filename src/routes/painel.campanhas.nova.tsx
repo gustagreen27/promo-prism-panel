@@ -267,15 +267,24 @@ function Page() {
 
 
   const dddFilter = ddd === "any" ? null : ddd;
+  // O filtro de DDD serve para segmentar listas de leads. Números digitados
+  // manualmente ou vindos de planilha já são a audiência escolhida e não
+  // devem ser descartados por não pertencerem ao DDD selecionado.
   const byDdd = <T extends { phone: string }>(rows: T[]) =>
     dddFilter ? rows.filter((r) => extractDddBR(r.phone) === dddFilter) : rows;
 
-  const manualFiltered = useMemo(() => byDdd(manualRows), [manualRows, dddFilter]);
-  const csvFiltered = useMemo(() => byDdd(csvRows), [csvRows, dddFilter]);
+  const manualFiltered = manualRows;
+  const csvFiltered = csvRows;
+  const dddOutOfScope = useMemo(() => {
+    if (!dddFilter) return 0;
+    const rows = mode === "manual" ? manualRows : mode === "csv" ? csvRows : [];
+    return rows.length - byDdd(rows).length;
+  }, [dddFilter, mode, manualRows, csvRows]);
 
   const audienceCount = mode === "manual" ? manualFiltered.length
     : mode === "csv" ? csvFiltered.length
     : (lists.find((l) => l.id === listId)?.count ?? 0);
+
 
   const isTest = sendType === "test";
   const TEST_MAX = 10;
@@ -567,7 +576,7 @@ function Page() {
             )}
 
 
-            <Field label="DDD de envio" hint="Escolha “Qualquer” para enviar a todos os DDDs.">
+            <Field label="DDD de envio" hint="Filtra apenas listas de leads. Números digitados ou de planilha são sempre mantidos.">
               <Select value={ddd} onValueChange={setDdd}>
                 <SelectTrigger><SelectValue placeholder="Qualquer" /></SelectTrigger>
                 <SelectContent className="max-h-72">
@@ -581,8 +590,10 @@ function Page() {
 
             <p className="text-right text-xs text-muted-foreground">
               {audienceCount.toLocaleString("pt-BR")} contatos selecionados
-              {dddFilter ? ` · filtrando DDD +${dddFilter}` : ""}
+              {dddFilter && mode === "lista" ? ` · filtrando DDD +${dddFilter}` : ""}
+              {dddOutOfScope > 0 ? ` · ${dddOutOfScope.toLocaleString("pt-BR")} fora do DDD +${dddFilter} (mantidos)` : ""}
             </p>
+
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
