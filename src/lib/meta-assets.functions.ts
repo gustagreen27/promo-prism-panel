@@ -236,23 +236,38 @@ export const metaAssetHealth = createServerFn({ method: "POST" })
     const numbers = (res.data?.data ?? []) as any[];
 
     const since = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+    const { data: conns } = await context.supabase
+      .from("whatsapp_connections")
+      .select("id, phone_number_id")
+      .in("phone_number_id", numbers.map((n) => String(n.id)));
+    const connByPhone = new Map<string, string>();
+    for (const row of (conns ?? []) as Array<{ id: string; phone_number_id: string | null }>) {
+      if (row.phone_number_id) connByPhone.set(String(row.phone_number_id), row.id);
+    }
+
     const counts = new Map<string, { total: number; limited: number }>();
     for (const n of numbers) {
+      const connId = connByPhone.get(String(n.id));
+      if (!connId) {
+        counts.set(String(n.id), { total: 0, limited: 0 });
+        continue;
+      }
       const [{ count: total }, { count: limited }] = await Promise.all([
         context.supabase
           .from("message_logs")
           .select("id", { count: "exact", head: true })
-          .eq("phone_number_id", n.id)
+          .eq("connection_id", connId)
           .gte("created_at", since),
         context.supabase
           .from("message_logs")
           .select("id", { count: "exact", head: true })
-          .eq("phone_number_id", n.id)
+          .eq("connection_id", connId)
           .in("error_code", ["131048", "131049"])
           .gte("created_at", since),
       ]);
       counts.set(String(n.id), { total: total ?? 0, limited: limited ?? 0 });
     }
+
 
     return {
       error: "",
