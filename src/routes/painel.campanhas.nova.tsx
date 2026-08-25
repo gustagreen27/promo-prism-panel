@@ -17,7 +17,7 @@ import { listWorkspaceLists, createEmptyWorkspaceList, appendPhonesChunkToList }
 import { createListInChunks } from "@/lib/import-list-chunked";
 import { metaVarsIn } from "@/lib/wa-variables";
 import { getMyDemandDetail } from "@/lib/client-demand.functions";
-import { DDD_TO_CITY, extractDddBR } from "@/lib/ddd-cities";
+import { DDD_TO_CITY } from "@/lib/ddd-cities";
 import {
   ArrowLeft, Loader2, Upload, User, Phone, Video, MoreVertical, Mic, ChevronLeft,
   Signal, Wifi, BatteryMedium, CheckCheck, Tags, ExternalLink, Rocket, Tag, Braces,
@@ -266,24 +266,21 @@ function Page() {
   }, [manual]);
 
 
-  const dddFilter = ddd === "any" ? null : ddd;
-  // O filtro de DDD serve para segmentar listas de leads. Números digitados
-  // manualmente ou vindos de planilha já são a audiência escolhida e não
-  // devem ser descartados por não pertencerem ao DDD selecionado.
-  const byDdd = <T extends { phone: string }>(rows: T[]) =>
-    dddFilter ? rows.filter((r) => extractDddBR(r.phone) === dddFilter) : rows;
+  // "DDD de envio" define o DDD/origem usada para disparar — NÃO filtra leads.
+  const sendingDdd = ddd === "any" ? null : ddd;
 
   const manualFiltered = manualRows;
   const csvFiltered = csvRows;
-  const dddOutOfScope = useMemo(() => {
-    if (!dddFilter) return 0;
-    const rows = mode === "manual" ? manualRows : mode === "csv" ? csvRows : [];
-    return rows.length - byDdd(rows).length;
-  }, [dddFilter, mode, manualRows, csvRows]);
 
-  const audienceCount = mode === "manual" ? manualFiltered.length
+  const manualTyped = useMemo(
+    () => manual.split(/\r?\n/).filter((l) => /\d/.test(l)).length,
+    [manual],
+  );
+
+  const audienceCount = mode === "manual" ? (manualFiltered.length || manualTyped)
     : mode === "csv" ? csvFiltered.length
     : (lists.find((l) => l.id === listId)?.count ?? 0);
+
 
 
   const isTest = sendType === "test";
@@ -374,7 +371,7 @@ function Page() {
           connection_id: null,
           template_id: null,
           list_id: finalListId,
-          ddd_filter: mode === "lista" ? dddFilter : null,
+          ddd_filter: null,
           variables_mapping: vars,
           button_url_mapping: btnEnabled ? { ...btnVars, "1": btnUrl.trim() } : btnVars,
           header_media_url: mediaUrl || null,
@@ -390,7 +387,7 @@ function Page() {
             send_type: sendType,
             recipients_source: mode,
             recipients_count: audienceCount,
-            ddd_filter: dddFilter,
+            sending_ddd: sendingDdd,
           },
           scheduled_at,
           save_as_draft: asDraft,
@@ -576,7 +573,7 @@ function Page() {
             )}
 
 
-            <Field label="DDD de envio" hint="Filtra apenas listas de leads. Números digitados ou de planilha são sempre mantidos.">
+            <Field label="DDD de envio" hint="Define o DDD/origem usado para disparar. Não filtra nem remove leads da sua base.">
               <Select value={ddd} onValueChange={setDdd}>
                 <SelectTrigger><SelectValue placeholder="Qualquer" /></SelectTrigger>
                 <SelectContent className="max-h-72">
@@ -590,9 +587,9 @@ function Page() {
 
             <p className="text-right text-xs text-muted-foreground">
               {audienceCount.toLocaleString("pt-BR")} contatos selecionados
-              {dddFilter && mode === "lista" ? ` · filtrando DDD +${dddFilter}` : ""}
-              {dddOutOfScope > 0 ? ` · ${dddOutOfScope.toLocaleString("pt-BR")} fora do DDD +${dddFilter} (mantidos)` : ""}
+              {sendingDdd ? ` · disparo pelo DDD +${sendingDdd}` : ""}
             </p>
+
 
           </div>
 
