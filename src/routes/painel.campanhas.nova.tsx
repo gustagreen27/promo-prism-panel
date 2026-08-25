@@ -387,7 +387,7 @@ function Page() {
             send_type: sendType,
             recipients_source: mode,
             recipients_count: audienceCount,
-            ddd_filter: dddFilter,
+            sending_ddd: sendingDdd,
           },
           scheduled_at,
           save_as_draft: asDraft,
@@ -573,7 +573,7 @@ function Page() {
             )}
 
 
-            <Field label="DDD de envio" hint="Filtra apenas listas de leads. Números digitados ou de planilha são sempre mantidos.">
+            <Field label="DDD de envio" hint="Define o DDD/origem usado para disparar. Não filtra nem remove leads da sua base.">
               <Select value={ddd} onValueChange={setDdd}>
                 <SelectTrigger><SelectValue placeholder="Qualquer" /></SelectTrigger>
                 <SelectContent className="max-h-72">
@@ -587,9 +587,9 @@ function Page() {
 
             <p className="text-right text-xs text-muted-foreground">
               {audienceCount.toLocaleString("pt-BR")} contatos selecionados
-              {dddFilter && mode === "lista" ? ` · filtrando DDD +${dddFilter}` : ""}
-              {dddOutOfScope > 0 ? ` · ${dddOutOfScope.toLocaleString("pt-BR")} fora do DDD +${dddFilter} (mantidos)` : ""}
+              {sendingDdd ? ` · disparo pelo DDD +${sendingDdd}` : ""}
             </p>
+
 
           </div>
 
