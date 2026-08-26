@@ -255,14 +255,17 @@ function ListView({ onNew }: { onNew: () => void }) {
         <StatCard active={filter === "draft"} onClick={() => setFilter("draft")} icon={<Clock className="h-5 w-5" />} tone="muted" label="Rascunhos" value={counts.draft} />
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar por nome, cliente ou template…"
-          className="h-11 rounded-xl border-border/70 bg-card pl-10 shadow-xs"
-        />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative max-w-md flex-1">
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nome, cliente ou template…"
+            className="h-11 rounded-xl border-border/70 bg-card pl-10 shadow-xs"
+          />
+        </div>
+        <PeriodFilter value={periodFilter} onChange={setPeriodFilter} />
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
