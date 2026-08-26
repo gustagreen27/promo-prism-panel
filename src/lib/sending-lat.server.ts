@@ -2,7 +2,8 @@
 // Never import at module scope of a client-reachable file.
 
 const BASE = "https://sending.lat/WhatsApp";
-const TIMEOUT_MS = 20000;
+const TIMEOUT_MS = 90000;
+const RETRIES = 2;
 
 export type SendingLatResponse = Record<string, any>;
 
