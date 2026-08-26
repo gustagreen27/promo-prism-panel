@@ -140,6 +140,7 @@ const GROUPS: NavGroup[] = [
       { title: "Conciliação", to: "/admin/conciliacao", icon: Wallet },
       { title: "Projetos", to: "/admin/projetos", icon: FolderKanban },
       { title: "Gestão de Ativos Meta", to: "/admin/meta-ativos", icon: Boxes },
+      { title: "API sending.lat", to: "/admin/sending-lat", icon: Link2 },
 
       {
         title: "Configurações",

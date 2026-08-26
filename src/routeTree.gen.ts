@@ -41,6 +41,7 @@ import { Route as PainelCampanhasHistoricoRouteImport } from './routes/painel.ca
 import { Route as AuthenticatedAdminWhatsappRouteImport } from './routes/_authenticated/admin.whatsapp'
 import { Route as AuthenticatedAdminUpsellRouteImport } from './routes/_authenticated/admin.upsell'
 import { Route as AuthenticatedAdminTvRouteImport } from './routes/_authenticated/admin.tv'
+import { Route as AuthenticatedAdminSendingLatRouteImport } from './routes/_authenticated/admin.sending-lat'
 import { Route as AuthenticatedAdminProjetosRouteImport } from './routes/_authenticated/admin.projetos'
 import { Route as AuthenticatedAdminPrecificacaoRouteImport } from './routes/_authenticated/admin.precificacao'
 import { Route as AuthenticatedAdminMetaAtivosRouteImport } from './routes/_authenticated/admin.meta-ativos'
@@ -270,6 +271,12 @@ const AuthenticatedAdminTvRoute = AuthenticatedAdminTvRouteImport.update({
   path: '/admin/tv',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdminSendingLatRoute =
+  AuthenticatedAdminSendingLatRouteImport.update({
+    id: '/admin/sending-lat',
+    path: '/admin/sending-lat',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAdminProjetosRoute =
   AuthenticatedAdminProjetosRouteImport.update({
     id: '/admin/projetos',
@@ -707,6 +714,7 @@ export interface FileRoutesByFullPath {
   '/admin/meta-ativos': typeof AuthenticatedAdminMetaAtivosRoute
   '/admin/precificacao': typeof AuthenticatedAdminPrecificacaoRoute
   '/admin/projetos': typeof AuthenticatedAdminProjetosRoute
+  '/admin/sending-lat': typeof AuthenticatedAdminSendingLatRoute
   '/admin/tv': typeof AuthenticatedAdminTvRoute
   '/admin/upsell': typeof AuthenticatedAdminUpsellRoute
   '/admin/whatsapp': typeof AuthenticatedAdminWhatsappRouteWithChildren
@@ -804,6 +812,7 @@ export interface FileRoutesByTo {
   '/admin/meta-ativos': typeof AuthenticatedAdminMetaAtivosRoute
   '/admin/precificacao': typeof AuthenticatedAdminPrecificacaoRoute
   '/admin/projetos': typeof AuthenticatedAdminProjetosRoute
+  '/admin/sending-lat': typeof AuthenticatedAdminSendingLatRoute
   '/admin/tv': typeof AuthenticatedAdminTvRoute
   '/admin/upsell': typeof AuthenticatedAdminUpsellRoute
   '/admin/whatsapp': typeof AuthenticatedAdminWhatsappRouteWithChildren
@@ -905,6 +914,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/meta-ativos': typeof AuthenticatedAdminMetaAtivosRoute
   '/_authenticated/admin/precificacao': typeof AuthenticatedAdminPrecificacaoRoute
   '/_authenticated/admin/projetos': typeof AuthenticatedAdminProjetosRoute
+  '/_authenticated/admin/sending-lat': typeof AuthenticatedAdminSendingLatRoute
   '/_authenticated/admin/tv': typeof AuthenticatedAdminTvRoute
   '/_authenticated/admin/upsell': typeof AuthenticatedAdminUpsellRoute
   '/_authenticated/admin/whatsapp': typeof AuthenticatedAdminWhatsappRouteWithChildren
@@ -1006,6 +1016,7 @@ export interface FileRouteTypes {
     | '/admin/meta-ativos'
     | '/admin/precificacao'
     | '/admin/projetos'
+    | '/admin/sending-lat'
     | '/admin/tv'
     | '/admin/upsell'
     | '/admin/whatsapp'
@@ -1103,6 +1114,7 @@ export interface FileRouteTypes {
     | '/admin/meta-ativos'
     | '/admin/precificacao'
     | '/admin/projetos'
+    | '/admin/sending-lat'
     | '/admin/tv'
     | '/admin/upsell'
     | '/admin/whatsapp'
@@ -1203,6 +1215,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/meta-ativos'
     | '/_authenticated/admin/precificacao'
     | '/_authenticated/admin/projetos'
+    | '/_authenticated/admin/sending-lat'
     | '/_authenticated/admin/tv'
     | '/_authenticated/admin/upsell'
     | '/_authenticated/admin/whatsapp'
@@ -1516,6 +1529,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/tv'
       fullPath: '/admin/tv'
       preLoaderRoute: typeof AuthenticatedAdminTvRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/sending-lat': {
+      id: '/_authenticated/admin/sending-lat'
+      path: '/admin/sending-lat'
+      fullPath: '/admin/sending-lat'
+      preLoaderRoute: typeof AuthenticatedAdminSendingLatRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/admin/projetos': {
@@ -2104,6 +2124,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminMetaAtivosRoute: typeof AuthenticatedAdminMetaAtivosRoute
   AuthenticatedAdminPrecificacaoRoute: typeof AuthenticatedAdminPrecificacaoRoute
   AuthenticatedAdminProjetosRoute: typeof AuthenticatedAdminProjetosRoute
+  AuthenticatedAdminSendingLatRoute: typeof AuthenticatedAdminSendingLatRoute
   AuthenticatedAdminTvRoute: typeof AuthenticatedAdminTvRoute
   AuthenticatedAdminUpsellRoute: typeof AuthenticatedAdminUpsellRoute
   AuthenticatedAdminWhatsappRoute: typeof AuthenticatedAdminWhatsappRouteWithChildren
@@ -2141,6 +2162,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminMetaAtivosRoute: AuthenticatedAdminMetaAtivosRoute,
   AuthenticatedAdminPrecificacaoRoute: AuthenticatedAdminPrecificacaoRoute,
   AuthenticatedAdminProjetosRoute: AuthenticatedAdminProjetosRoute,
+  AuthenticatedAdminSendingLatRoute: AuthenticatedAdminSendingLatRoute,
   AuthenticatedAdminTvRoute: AuthenticatedAdminTvRoute,
   AuthenticatedAdminUpsellRoute: AuthenticatedAdminUpsellRoute,
   AuthenticatedAdminWhatsappRoute: AuthenticatedAdminWhatsappRouteWithChildren,
