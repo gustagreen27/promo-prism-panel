@@ -212,8 +212,8 @@ function Page() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard title="Envios por hora" data={data.timeline} color="var(--color-primary)" gid="repSent" />
-        <ChartCard title="Respostas por hora" data={data.reply_timeline} color="var(--color-chart-2)" gid="repReply" />
+        <ChartCard title="Envios ao longo do disparo" data={data.timeline} color="var(--color-primary)" gid="repSent" />
+        <ChartCard title="Respostas ao longo do disparo" data={data.reply_timeline} color="var(--color-chart-2)" gid="repReply" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
