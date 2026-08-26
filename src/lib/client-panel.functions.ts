@@ -504,8 +504,8 @@ export const getClientDashboard = createServerFn({ method: 'POST' })
       const m = demandMetrics(c)
       sent += m.sent
       delivered += m.delivered
-      read += Number(c.read_count ?? 0) || (c.execution_type === 'external' ? Math.round(m.delivered * 0.28) : 0)
-      replied += Number(c.replied_count ?? 0)
+      read += m.read
+      replied += m.replied
       failed += m.failed
       recipients += m.total
       const key = c.project_id ? (projectName.get(c.project_id) ?? 'Sem empresa') : 'Sem empresa'
@@ -534,8 +534,8 @@ export const getClientDashboard = createServerFn({ method: 'POST' })
         total_recipients: demandMetrics(c).total,
         sent: demandMetrics(c).sent,
         delivered: demandMetrics(c).delivered,
-        read: Number(c.read_count ?? 0) || (c.execution_type === 'external' ? Math.round(demandMetrics(c).delivered * 0.28) : 0),
-        replied: Number(c.replied_count ?? 0),
+        read: demandMetrics(c).read,
+        replied: demandMetrics(c).replied,
         failed: demandMetrics(c).failed,
         project_name: c.project_id ? (projectName.get(c.project_id) ?? null) : null,
       })),
