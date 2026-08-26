@@ -29,6 +29,8 @@ function endOfDay(d: Date) {
 export function getPeriodRange(key: PeriodKey, custom?: { start?: Date; end?: Date }): PeriodRange {
   const now = new Date();
   switch (key) {
+    case "all":
+      return { key, label: "Todo período", start: new Date(0), end: endOfDay(now) };
     case "today":
       return { key, label: "Hoje", start: startOfDay(now), end: endOfDay(now) };
     case "yesterday": {
