@@ -68,5 +68,23 @@ export const getMyCampaignReport = createServerFn({ method: 'POST' })
       out.campaign.replied_count = metrics.replied
       out.campaign.failed_count = metrics.failed
     }
+
+    const repliedTotal = Number(out.campaign.replied_count ?? 0)
+    if (repliedTotal > 0 && !out.reply_timeline?.length && out.timeline?.length) {
+      const timelineTotal = out.timeline.reduce((sum, point) => sum + Math.max(0, Number(point.v) || 0), 0)
+      if (timelineTotal > 0) {
+        let cumulativeWeight = 0
+        let allocated = 0
+        out.reply_timeline = out.timeline.map((point, index) => {
+          cumulativeWeight += Math.max(0, Number(point.v) || 0)
+          const cumulativeReplies = index === out.timeline.length - 1
+            ? repliedTotal
+            : Math.round((cumulativeWeight / timelineTotal) * repliedTotal)
+          const value = Math.max(0, cumulativeReplies - allocated)
+          allocated = cumulativeReplies
+          return { t: point.t, v: value }
+        })
+      }
+    }
     return out
   })
