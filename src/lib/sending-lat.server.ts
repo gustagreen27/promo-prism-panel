@@ -7,13 +7,13 @@ const RETRIES = 2;
 
 export type SendingLatResponse = Record<string, any>;
 
-async function post(endpoint: string, payload: Record<string, any>): Promise<SendingLatResponse> {
+async function attempt(endpoint: string, payload: Record<string, any>, timeoutMs: number) {
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
     const res = await fetch(`${BASE}/${endpoint}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(payload),
       signal: ctrl.signal,
     });
@@ -28,12 +28,31 @@ async function post(endpoint: string, payload: Record<string, any>): Promise<Sen
       throw new Error(json?.message ?? `HTTP ${res.status}`);
     }
     return json;
-  } catch (e: any) {
-    if (e?.name === "AbortError") throw new Error(`Timeout de ${TIMEOUT_MS}ms ao chamar sending.lat`);
-    throw e;
   } finally {
     clearTimeout(t);
   }
+}
+
+async function post(endpoint: string, payload: Record<string, any>): Promise<SendingLatResponse> {
+  let lastErr: any;
+  for (let i = 0; i <= RETRIES; i++) {
+    try {
+      return await attempt(endpoint, payload, TIMEOUT_MS);
+    } catch (e: any) {
+      lastErr = e;
+      const isTimeout = e?.name === "AbortError";
+      const isNetwork = e instanceof TypeError || /fetch failed|network/i.test(e?.message ?? "");
+      if (!isTimeout && !isNetwork) throw e;
+      if (i < RETRIES) await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
+    }
+  }
+  if (lastErr?.name === "AbortError") {
+    throw new Error(
+      `A sending.lat não respondeu em ${TIMEOUT_MS / 1000}s (após ${RETRIES + 1} tentativas). ` +
+        `Se o disparo era grande, ele pode ter sido criado mesmo assim — confira em Relatórios antes de reenviar.`,
+    );
+  }
+  throw lastErr;
 }
 
 export function checkCredits(apiKey: string) {
