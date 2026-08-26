@@ -6,7 +6,7 @@ import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware'
 const idSchema = z.object({ id: z.string().uuid() })
 
 const FIELDS =
-  'id,name,workspace_id,status,approval_status,rejection_reason,approved_at,total_recipients,scheduled_at,created_at,list_id,template_id,connection_id,execution_type,external_status,external_total_count,external_sent_count,external_delivered_count,external_failed_count,external_started_at,external_finished_at,external_updated_at,sent_count,delivered_count,failed_count,read_count,last_sent_at,updated_at,rate_per_second'
+  'id,name,workspace_id,status,approval_status,rejection_reason,approved_at,total_recipients,scheduled_at,created_at,list_id,template_id,connection_id,execution_type,external_status,external_total_count,external_sent_count,external_delivered_count,external_failed_count,external_target_sent_count,external_target_delivered_count,external_target_failed_count,external_started_at,external_finished_at,external_updated_at,sent_count,delivered_count,failed_count,read_count,last_sent_at,updated_at,rate_per_second'
 
 export type DemandClick = {
   clicked_at: string

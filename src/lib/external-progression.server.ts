@@ -19,9 +19,12 @@ export async function applyExternalProgression(supabase: any, rows: any[]) {
       // Já finalizada e com métricas finais aplicadas: nada a fazer.
       const patch = externalProgressPatch(r, now)
       if (!patch) return
-      Object.assign(r, patch)
       const { error } = await supabase.from('wa_campaigns').update(patch).eq('id', r.id)
-      if (error) console.error('[external-progression] update failed', r.id, error.message)
+      if (error) {
+        console.error('[external-progression] update failed', r.id, error.message)
+        return
+      }
+      Object.assign(r, patch)
     }),
   )
   return rows
