@@ -68,6 +68,7 @@ export function getPeriodRange(key: PeriodKey, custom?: { start?: Date; end?: Da
 }
 
 export const PERIOD_OPTIONS: { key: PeriodKey; label: string }[] = [
+  { key: "all", label: "Todo período" },
   { key: "today", label: "Hoje" },
   { key: "yesterday", label: "Ontem" },
   { key: "last_7", label: "Últimos 7 dias" },
