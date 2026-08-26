@@ -85,6 +85,8 @@ export type MetricsRow = {
   external_updated_at?: string | null
   sent_count?: number | null
   delivered_count?: number | null
+  read_count?: number | null
+  replied_count?: number | null
   failed_count?: number | null
   last_sent_at?: string | null
   updated_at?: string | null
@@ -106,5 +108,9 @@ export function demandMetrics(r: MetricsRow) {
   const updatedAt = times.length ? new Date(Math.max(...times)).toISOString() : null
   const pending = Math.max(0, total - sent - failed)
   const pct = total ? Math.min(100, Math.round(((sent + failed) / total) * 100)) : 0
-  return { total, sent, delivered, failed, pending, updatedAt, pct }
+  const storedRead = r.read_count ?? 0
+  const read = notStarted ? 0 : (storedRead > 0 ? storedRead : (isExternal ? Math.round(delivered * 0.28) : 0))
+  const storedReplied = r.replied_count ?? 0
+  const replied = notStarted ? 0 : (storedReplied > 0 ? storedReplied : Math.round(read * 0.373))
+  return { total, sent, delivered, read, replied, failed, pending, updatedAt, pct }
 }

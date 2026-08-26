@@ -101,7 +101,7 @@ function Page() {
       cols: 3,
       items: [
         { label: "Lidas", value: nf(read), hint: `${pct(read, delivered)} das entregues` },
-        { label: "Responderam", value: nf(replied), hint: `${pct(replied, sent)} dos enviados` },
+        { label: "Responderam", value: nf(replied), hint: `${pct(replied, read)} dos lidos` },
         { label: "Taxa de conclusão", value: `${completion.toFixed(2).replace(".", ",")}%` },
       ],
     },

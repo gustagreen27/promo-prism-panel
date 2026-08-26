@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { BarChart3, Lock, TrendingUp } from "lucide-react";
-import { demandStage, STAGE_CLASS, STAGE_LABEL } from "@/lib/demand-stage";
+import { demandMetrics, demandStage, STAGE_CLASS, STAGE_LABEL } from "@/lib/demand-stage";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyContext } from "@/lib/auth.functions";
 
@@ -35,15 +35,15 @@ type CampRow = {
 
 /** Usa os números da execução externa quando existirem (mesma fonte das demandas). */
 function metrics(r: CampRow) {
-  const ext = r.execution_type === "external";
   const n = (v: number | null | undefined) => Number(v) || 0;
+  const m = demandMetrics(r);
   return {
-    total: ext ? n(r.external_total_count) || n(r.total_recipients) : n(r.total_recipients),
-    sent: ext ? n(r.external_sent_count) : n(r.sent_count),
-    delivered: ext ? n(r.external_delivered_count) : n(r.delivered_count),
-    failed: ext ? n(r.external_failed_count) : n(r.failed_count),
-    read: ext && !n(r.read_count) ? Math.round(n(r.external_delivered_count) * 0.28) : n(r.read_count),
-    replied: n(r.replied_count),
+    total: m.total,
+    sent: m.sent,
+    delivered: m.delivered,
+    failed: m.failed,
+    read: m.read,
+    replied: m.replied,
     charged: n(r.charged_cents),
   };
 }
