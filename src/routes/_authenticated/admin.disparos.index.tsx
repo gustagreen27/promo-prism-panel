@@ -228,6 +228,11 @@ function ListView({ onNew }: { onNew: () => void }) {
                 <Layers className="mr-2 h-4 w-4" /> Multi-BM
               </Link>
             </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/admin/disparos/api-externa">
+                <Send className="mr-2 h-4 w-4" /> API externa
+              </Link>
+            </Button>
             <Button size="lg" className="rounded-full shadow-sm" onClick={onNew}>
               <Plus className="mr-2 h-4 w-4" /> Novo disparo
             </Button>
