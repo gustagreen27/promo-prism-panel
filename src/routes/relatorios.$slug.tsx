@@ -210,7 +210,7 @@ function PublicReportPage() {
       title: "Engajamento",
       cols: 3,
       items: [
-        { label: "Responderam", value: nf(replied), hint: pct(replied, stats?.read ?? 0) + " dos lidos" },
+        { label: "Responderam", value: nf(replied), hint: pct(replied, sent) + " dos enviados" },
         { label: "Resposta mediana", value: stats ? `${Math.round((stats.medianReplySec || 0) / 60)} min` : "—" },
         { label: "Taxa de conclusão", value: pctFmt(report.completion_rate ?? 0) },
       ],
