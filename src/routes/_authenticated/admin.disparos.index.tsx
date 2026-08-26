@@ -11,6 +11,7 @@ import {
 
 import { PreflightDialog } from "@/components/admin/preflight-dialog";
 import { PageHeader } from "@/components/admin/page-header";
+import { PeriodFilter } from "@/components/admin/period-filter";
 import { ErrorCard } from "@/components/admin/query-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ import {
   listWaCampaigns, startWaCampaign, pauseWaCampaign, cancelWaCampaign, scheduleWaCampaign, unscheduleWaCampaign, deleteWaCampaign,
 } from "@/lib/wa-campaigns.functions";
 import { getCampaignErrorContext } from "@/lib/wa-diagnosis.functions";
+import { getPeriodRange, type PeriodKey } from "@/lib/period";
 import { supabase } from "@/integrations/supabase/client";
 import { CampaignWizard } from "@/components/campaign-wizard";
 
