@@ -106,6 +106,7 @@ function ListView({ onNew }: { onNew: () => void }) {
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<StatusFilter>("all");
+  const [periodFilter, setPeriodFilter] = useState<PeriodKey>("last_30");
   const [preflightFor, setPreflightFor] = useState<{ id: string; name?: string | null } | null>(null);
   const [reschedule, setReschedule] = useState<{ id: string; name: string; scheduled_at?: string | null } | null>(null);
   const [rescheduleAt, setRescheduleAt] = useState<string>("");
