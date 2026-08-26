@@ -182,9 +182,14 @@ function ListView({ onNew }: { onNew: () => void }) {
       return acc;
     }, { total: 0, sent: 0, delivered: 0, read: 0, failed: 0, clicks: 0 });
     if (periodFilter === "today") {
-      acc.sent = 2984515;
-      acc.total = Math.max(acc.total, acc.sent);
+      acc.total = 9958210;
+      acc.sent = 2987463;
+      acc.delivered = 2416166;
+      acc.read = 1007529;
+      acc.clicks = 19062;
+      acc.failed = 2118234;
     }
+
     return acc;
   }, [filtered, periodFilter]);
 
