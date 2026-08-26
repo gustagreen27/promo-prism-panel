@@ -1,4 +1,5 @@
 export type PeriodKey =
+  | "all"
   | "today"
   | "yesterday"
   | "last_7"
@@ -28,6 +29,8 @@ function endOfDay(d: Date) {
 export function getPeriodRange(key: PeriodKey, custom?: { start?: Date; end?: Date }): PeriodRange {
   const now = new Date();
   switch (key) {
+    case "all":
+      return { key, label: "Todo período", start: new Date(0), end: endOfDay(now) };
     case "today":
       return { key, label: "Hoje", start: startOfDay(now), end: endOfDay(now) };
     case "yesterday": {
@@ -65,6 +68,7 @@ export function getPeriodRange(key: PeriodKey, custom?: { start?: Date; end?: Da
 }
 
 export const PERIOD_OPTIONS: { key: PeriodKey; label: string }[] = [
+  { key: "all", label: "Todo período" },
   { key: "today", label: "Hoje" },
   { key: "yesterday", label: "Ontem" },
   { key: "last_7", label: "Últimos 7 dias" },

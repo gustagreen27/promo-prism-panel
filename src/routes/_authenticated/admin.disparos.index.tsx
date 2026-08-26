@@ -11,6 +11,7 @@ import {
 
 import { PreflightDialog } from "@/components/admin/preflight-dialog";
 import { PageHeader } from "@/components/admin/page-header";
+import { PeriodFilter } from "@/components/admin/period-filter";
 import { ErrorCard } from "@/components/admin/query-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ import {
   listWaCampaigns, startWaCampaign, pauseWaCampaign, cancelWaCampaign, scheduleWaCampaign, unscheduleWaCampaign, deleteWaCampaign,
 } from "@/lib/wa-campaigns.functions";
 import { getCampaignErrorContext } from "@/lib/wa-diagnosis.functions";
+import { getPeriodRange, type PeriodKey } from "@/lib/period";
 import { supabase } from "@/integrations/supabase/client";
 import { CampaignWizard } from "@/components/campaign-wizard";
 
@@ -104,6 +106,7 @@ function ListView({ onNew }: { onNew: () => void }) {
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<StatusFilter>("all");
+  const [periodFilter, setPeriodFilter] = useState<PeriodKey>("all");
   const [preflightFor, setPreflightFor] = useState<{ id: string; name?: string | null } | null>(null);
   const [reschedule, setReschedule] = useState<{ id: string; name: string; scheduled_at?: string | null } | null>(null);
   const [rescheduleAt, setRescheduleAt] = useState<string>("");
@@ -151,6 +154,7 @@ function ListView({ onNew }: { onNew: () => void }) {
   const campaignMetrics = useMemo(() => campaigns.map((campaign) => ({ campaign, metrics: getDeliveryMetrics(campaign) })), [campaigns]);
 
   const filtered = useMemo(() => {
+    const range = getPeriodRange(periodFilter);
     return campaignMetrics.filter(({ campaign: c }) => {
       if (filter === "active" && !["running", "queued", "paused"].includes(c.status)) return false;
       if (filter === "scheduled" && c.status !== "scheduled") return false;
@@ -161,9 +165,11 @@ function ListView({ onNew }: { onNew: () => void }) {
         const hay = `${c.name ?? ""} ${c.client?.name ?? ""} ${c.template?.name ?? ""}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
+      const created = c.created_at ? new Date(c.created_at) : null;
+      if (created && (created < range.start || created > range.end)) return false;
       return true;
     });
-  }, [campaignMetrics, filter, search]);
+  }, [campaignMetrics, filter, search, periodFilter]);
 
   const deliveryTotals = useMemo(() => {
     return filtered.reduce((acc, item) => {
@@ -249,14 +255,17 @@ function ListView({ onNew }: { onNew: () => void }) {
         <StatCard active={filter === "draft"} onClick={() => setFilter("draft")} icon={<Clock className="h-5 w-5" />} tone="muted" label="Rascunhos" value={counts.draft} />
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar por nome, cliente ou template…"
-          className="h-11 rounded-xl border-border/70 bg-card pl-10 shadow-xs"
-        />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative max-w-md flex-1">
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nome, cliente ou template…"
+            className="h-11 rounded-xl border-border/70 bg-card pl-10 shadow-xs"
+          />
+        </div>
+        <PeriodFilter value={periodFilter} onChange={setPeriodFilter} />
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
