@@ -1,4 +1,5 @@
 export type PeriodKey =
+  | "all"
   | "today"
   | "yesterday"
   | "last_7"
