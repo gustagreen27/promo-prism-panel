@@ -165,10 +165,8 @@ function ListView({ onNew }: { onNew: () => void }) {
         const hay = `${c.name ?? ""} ${c.client?.name ?? ""} ${c.template?.name ?? ""}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
-      if (periodFilter !== "last_30") {
-        const created = c.created_at ? new Date(c.created_at) : null;
-        if (created && (created < range.start || created > range.end)) return false;
-      }
+      const created = c.created_at ? new Date(c.created_at) : null;
+      if (created && (created < range.start || created > range.end)) return false;
       return true;
     });
   }, [campaignMetrics, filter, search, periodFilter]);
