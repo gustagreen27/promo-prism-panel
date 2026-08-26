@@ -3,11 +3,6 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware'
 
-const idSchema = z.object({ id: z.string().uuid() })
-
-const FIELDS =
-  'id,name,workspace_id,status,approval_status,rejection_reason,approved_at,total_recipients,scheduled_at,created_at,list_id,template_id,connection_id,execution_type,external_status,external_total_count,external_sent_count,external_delivered_count,external_failed_count,external_target_sent_count,external_target_delivered_count,external_target_failed_count,external_started_at,external_finished_at,external_updated_at,sent_count,delivered_count,failed_count,read_count,last_sent_at,updated_at,rate_per_second'
-
 export type DemandClick = {
   clicked_at: string
   city: string | null
@@ -22,13 +17,15 @@ export type DemandClick = {
 
 export const getMyDemandDetail = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { id: string }) => idSchema.parse(d))
+  .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any
+    const fields =
+      'id,name,workspace_id,status,approval_status,rejection_reason,approved_at,total_recipients,scheduled_at,created_at,list_id,template_id,connection_id,execution_type,external_status,external_total_count,external_sent_count,external_delivered_count,external_failed_count,external_target_sent_count,external_target_delivered_count,external_target_failed_count,external_started_at,external_finished_at,external_updated_at,sent_count,delivered_count,failed_count,read_count,last_sent_at,updated_at,rate_per_second'
 
     const { data: campaign, error } = await supabase
       .from('wa_campaigns')
-      .select(FIELDS)
+      .select(fields)
       .eq('id', data.id)
       .maybeSingle()
     if (error) throw error
