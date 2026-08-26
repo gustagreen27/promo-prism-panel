@@ -467,17 +467,28 @@ export const updateExternalExecution = createServerFn({ method: 'POST' })
 
       if (startedAt && finishedAt) {
         patch['metrics_source'] = 'estimated_external'
-        const { externalProgressPatch } = await import('./external-progression')
+        const { externalProgressPatch, simulateExternal } = await import('./external-progression')
         const merged = { ...(camp as any), ...patch, id: camp.id }
         // Enquanto a execução avança, os valores exibidos vêm da simulação.
         delete merged['external_sent_count']
         delete merged['external_delivered_count']
         delete merged['external_failed_count']
-        const progress = externalProgressPatch(merged, new Date())
-        if (progress) Object.assign(patch, progress)
+        const snap = simulateExternal(merged, new Date())
+        if (snap && !snap.started) {
+          // Início ainda no futuro: a demanda fica em fila, 0% de andamento.
+          patch['external_sent_count'] = 0
+          patch['external_delivered_count'] = 0
+          patch['external_failed_count'] = 0
+          patch['external_updated_at'] = snap.updatedAt
+          if (!data.external_status) patch['external_status'] = 'scheduled_external'
+        } else {
+          const progress = externalProgressPatch(merged, new Date())
+          if (progress) Object.assign(patch, progress)
+        }
       } else {
         patch['metrics_source'] = 'manual'
       }
+
 
       // Finalização no passado (ou já atingida) conclui a demanda automaticamente.
       if (finishedAt && new Date(finishedAt).getTime() <= Date.now() && !data.external_status) {
