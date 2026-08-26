@@ -154,6 +154,7 @@ function ListView({ onNew }: { onNew: () => void }) {
   const campaignMetrics = useMemo(() => campaigns.map((campaign) => ({ campaign, metrics: getDeliveryMetrics(campaign) })), [campaigns]);
 
   const filtered = useMemo(() => {
+    const range = getPeriodRange(periodFilter);
     return campaignMetrics.filter(({ campaign: c }) => {
       if (filter === "active" && !["running", "queued", "paused"].includes(c.status)) return false;
       if (filter === "scheduled" && c.status !== "scheduled") return false;
@@ -164,9 +165,13 @@ function ListView({ onNew }: { onNew: () => void }) {
         const hay = `${c.name ?? ""} ${c.client?.name ?? ""} ${c.template?.name ?? ""}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
+      if (periodFilter !== "last_30") {
+        const created = c.created_at ? new Date(c.created_at) : null;
+        if (created && (created < range.start || created > range.end)) return false;
+      }
       return true;
     });
-  }, [campaignMetrics, filter, search]);
+  }, [campaignMetrics, filter, search, periodFilter]);
 
   const deliveryTotals = useMemo(() => {
     return filtered.reduce((acc, item) => {
