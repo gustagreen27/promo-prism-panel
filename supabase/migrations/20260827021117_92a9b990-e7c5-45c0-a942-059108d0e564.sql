@@ -1,0 +1,1 @@
+ALTER TABLE campaign_recipients DISABLE TRIGGER USER;
