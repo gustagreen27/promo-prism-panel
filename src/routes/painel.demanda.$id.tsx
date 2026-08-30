@@ -52,8 +52,19 @@ const ACTION_INFO: Record<string, { title: string; desc: string }> = {
   created: { title: "Campanha criada", desc: "A campanha foi criada e enviada para aprovação." },
   queued: { title: "Adicionado à fila de envio", desc: "O disparo foi adicionado à fila de processamento." },
   rescheduled: { title: "Disparo reagendado", desc: "A data e o horário do disparo foram atualizados." },
-  "demand.configured": { title: "Infraestrutura configurada", desc: "A BM e o número de envio foram configurados para este disparo." },
+  "demand.configured": { title: "BM configurada", desc: "A infraestrutura de envio foi configurada para este disparo." },
 };
+
+type ConnInfo = { label: string | null; phone: string | null; waba_name: string | null } | null;
+
+function eventInfo(action: string, conn: ConnInfo) {
+  const info = ACTION_INFO[action] ?? { title: "Atualização do disparo", desc: "O disparo foi atualizado." };
+  if (action === "demand.configured" && conn) {
+    const bm = conn.waba_name ?? conn.label;
+    if (bm) return { title: info.title, desc: `A BM ${bm} foi configurada para este disparo.` };
+  }
+  return info;
+}
 
 const fmtHist = (v: string | null | undefined) => {
   if (!v) return "—";
