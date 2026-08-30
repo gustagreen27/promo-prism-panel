@@ -1,4 +1,4 @@
-export const IMPORT_CHUNK_SIZE = 2500;
+export const IMPORT_CHUNK_SIZE = 1000;
 
 export type ImportRow = { phone: string; name?: string | null };
 
