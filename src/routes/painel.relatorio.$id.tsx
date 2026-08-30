@@ -1,11 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { ArrowLeft, Download, FileText, Printer } from "lucide-react";
 import { getMyCampaignReport } from "@/lib/client-report.functions";
+import { getMyCampaignLogs } from "@/lib/client-logs.functions";
+import { maskPhone } from "@/lib/dispatch-log-sim";
 
 export const Route = createFileRoute("/painel/relatorio/$id")({
   head: () => ({
