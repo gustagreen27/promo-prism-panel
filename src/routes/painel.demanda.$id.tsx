@@ -41,14 +41,24 @@ export const Route = createFileRoute("/painel/demanda/$id")({
 const fmt = (v: string | null | undefined) => (v ? new Date(v).toLocaleString("pt-BR") : "—");
 const num = (v: number | null | undefined) => (v ?? 0).toLocaleString("pt-BR");
 
-const ACTION_LABEL: Record<string, string> = {
-  "approval.approved": "Disparo aprovado",
-  "approval.rejected": "Disparo rejeitado",
-  "approval.requested": "Enviado para aprovação",
-  "external.progress": "Atualização de progresso",
-  "campaign.created": "Campanha criada",
-  "campaign.started": "Execução iniciada",
-  "campaign.completed": "Execução finalizada",
+const ACTION_INFO: Record<string, { title: string; desc: string }> = {
+  "approval.approved": { title: "Disparo aprovado", desc: "O disparo foi revisado e aprovado pelo administrador." },
+  "approval.rejected": { title: "Disparo rejeitado", desc: "O disparo foi rejeitado pelo administrador." },
+  "approval.requested": { title: "Enviado para aprovação", desc: "A campanha foi enviada para análise do administrador." },
+  "external.progress": { title: "Progresso atualizado", desc: "As informações de progresso do disparo foram atualizadas." },
+  "campaign.created": { title: "Campanha criada", desc: "A campanha foi criada e enviada para aprovação." },
+  "campaign.started": { title: "Disparo iniciado", desc: "O envio das mensagens foi iniciado." },
+  "campaign.completed": { title: "Disparo finalizado", desc: "O envio das mensagens foi concluído." },
+  created: { title: "Campanha criada", desc: "A campanha foi criada e enviada para aprovação." },
+  queued: { title: "Adicionado à fila de envio", desc: "O disparo foi adicionado à fila de processamento." },
+  rescheduled: { title: "Disparo reagendado", desc: "A data e o horário do disparo foram atualizados." },
+  "demand.configured": { title: "Infraestrutura configurada", desc: "A BM e o número de envio foram configurados para este disparo." },
+};
+
+const fmtHist = (v: string | null | undefined) => {
+  if (!v) return "—";
+  const d = new Date(v);
+  return `${d.toLocaleDateString("pt-BR")} às ${d.toLocaleTimeString("pt-BR")}`;
 };
 
 function csvEscape(v: unknown) {
