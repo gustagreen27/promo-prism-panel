@@ -44,7 +44,7 @@ export const getMyDemandDetail = createServerFn({ method: 'POST' })
 
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
 
-    const [listRes, templateRes, auditRes, clicksRes] = await Promise.all([
+    const [listRes, templateRes, auditRes, clicksRes, connRes] = await Promise.all([
       campaign.list_id
         ? supabase.from('contact_lists').select('id,name').eq('id', campaign.list_id).maybeSingle()
         : Promise.resolve({ data: null }),
@@ -63,7 +63,29 @@ export const getMyDemandDetail = createServerFn({ method: 'POST' })
         .eq('wa_campaign_id', data.id)
         .order('clicked_at', { ascending: false })
         .limit(500),
+      campaign.connection_id
+        ? supabaseAdmin
+            .from('whatsapp_connections')
+            .select('id,label,phone,waba_id')
+            .eq('id', campaign.connection_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
     ])
+
+    let connection: { label: string | null; phone: string | null; waba_name: string | null } | null = null
+    const conn = (connRes as any)?.data
+    if (conn) {
+      let wabaName: string | null = null
+      if (conn.waba_id) {
+        const { data: waba } = await supabaseAdmin
+          .from('whatsapp_wabas')
+          .select('nome_interno')
+          .eq('waba_id', conn.waba_id)
+          .maybeSingle()
+        wabaName = waba?.nome_interno ?? null
+      }
+      connection = { label: conn.label ?? null, phone: conn.phone ?? null, waba_name: wabaName }
+    }
 
     const clickRows = (clicksRes?.data ?? []) as any[]
     const uniqueIps = new Set(clickRows.map((c) => c.ip).filter(Boolean)).size
@@ -83,6 +105,7 @@ export const getMyDemandDetail = createServerFn({ method: 'POST' })
     const { external_note: _n, ...safe } = campaign as any
     return {
       campaign: safe,
+      connection,
       list_name: (listRes as any)?.data?.name ?? null,
       template_name: (templateRes as any)?.data?.name ?? null,
       timeline,

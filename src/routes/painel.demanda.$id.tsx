@@ -41,14 +41,35 @@ export const Route = createFileRoute("/painel/demanda/$id")({
 const fmt = (v: string | null | undefined) => (v ? new Date(v).toLocaleString("pt-BR") : "—");
 const num = (v: number | null | undefined) => (v ?? 0).toLocaleString("pt-BR");
 
-const ACTION_LABEL: Record<string, string> = {
-  "approval.approved": "Disparo aprovado",
-  "approval.rejected": "Disparo rejeitado",
-  "approval.requested": "Enviado para aprovação",
-  "external.progress": "Atualização de progresso",
-  "campaign.created": "Campanha criada",
-  "campaign.started": "Execução iniciada",
-  "campaign.completed": "Execução finalizada",
+const ACTION_INFO: Record<string, { title: string; desc: string }> = {
+  "approval.approved": { title: "Disparo aprovado", desc: "O disparo foi revisado e aprovado pelo administrador." },
+  "approval.rejected": { title: "Disparo rejeitado", desc: "O disparo foi rejeitado pelo administrador." },
+  "approval.requested": { title: "Enviado para aprovação", desc: "A campanha foi enviada para análise do administrador." },
+  "external.progress": { title: "Progresso atualizado", desc: "As informações de progresso do disparo foram atualizadas." },
+  "campaign.created": { title: "Campanha criada", desc: "A campanha foi criada e enviada para aprovação." },
+  "campaign.started": { title: "Disparo iniciado", desc: "O envio das mensagens foi iniciado." },
+  "campaign.completed": { title: "Disparo finalizado", desc: "O envio das mensagens foi concluído." },
+  created: { title: "Campanha criada", desc: "A campanha foi criada e enviada para aprovação." },
+  queued: { title: "Adicionado à fila de envio", desc: "O disparo foi adicionado à fila de processamento." },
+  rescheduled: { title: "Disparo reagendado", desc: "A data e o horário do disparo foram atualizados." },
+  "demand.configured": { title: "BM configurada", desc: "A infraestrutura de envio foi configurada para este disparo." },
+};
+
+type ConnInfo = { label: string | null; phone: string | null; waba_name: string | null } | null;
+
+function eventInfo(action: string, conn: ConnInfo) {
+  const info = ACTION_INFO[action] ?? { title: "Atualização do disparo", desc: "O disparo foi atualizado." };
+  if (action === "demand.configured" && conn) {
+    const bm = conn.waba_name ?? conn.label;
+    if (bm) return { title: info.title, desc: `A BM ${bm} foi configurada para este disparo.` };
+  }
+  return info;
+}
+
+const fmtHist = (v: string | null | undefined) => {
+  if (!v) return "—";
+  const d = new Date(v);
+  return `${d.toLocaleDateString("pt-BR")} às ${d.toLocaleTimeString("pt-BR")}`;
 };
 
 function csvEscape(v: unknown) {
@@ -135,7 +156,10 @@ function Page() {
     const t = ((data as any)?.timeline ?? []) as any[];
     downloadCsv(`disparo-${c?.name ?? id}-historico.csv`, [
       ["Data", "Evento", "Detalhe"],
-      ...t.map((e) => [fmt(e.created_at), ACTION_LABEL[e.action] ?? e.action, e.message ?? ""]),
+      ...t.map((e) => {
+        const info = eventInfo(e.action, (data as any)?.connection ?? null);
+        return [fmtHist(e.created_at), info.title, info.desc];
+      }),
     ]);
   }
 
@@ -301,15 +325,18 @@ function Page() {
           {((data as any).timeline ?? []).length === 0 ? (
             <p className="text-sm text-muted-foreground">Sem eventos registrados.</p>
           ) : (
-            ((data as any).timeline ?? []).map((e: any) => (
-              <div key={e.id} className="flex gap-3 border-l-2 border-muted pl-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">{ACTION_LABEL[e.action] ?? e.action}</p>
-                  {e.message && <p className="truncate text-xs text-muted-foreground">{e.message}</p>}
-                  <p className="text-[11px] text-muted-foreground">{fmt(e.created_at)}</p>
+            ((data as any).timeline ?? []).map((e: any) => {
+              const info = eventInfo(e.action, (data as any)?.connection ?? null);
+              return (
+                <div key={e.id} className="flex gap-3 border-l-2 border-muted pl-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">{info.title}</p>
+                    <p className="text-xs text-muted-foreground">{info.desc}</p>
+                    <p className="text-[11px] text-muted-foreground">{fmtHist(e.created_at)}</p>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </CardContent>
       </Card>
