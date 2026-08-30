@@ -105,6 +105,7 @@ export const getMyDemandDetail = createServerFn({ method: 'POST' })
     const { external_note: _n, ...safe } = campaign as any
     return {
       campaign: safe,
+      connection,
       list_name: (listRes as any)?.data?.name ?? null,
       template_name: (templateRes as any)?.data?.name ?? null,
       timeline,
