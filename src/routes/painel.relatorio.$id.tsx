@@ -1,11 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { ArrowLeft, Download, FileText, Printer } from "lucide-react";
 import { getMyCampaignReport } from "@/lib/client-report.functions";
+import { getMyCampaignLogs } from "@/lib/client-logs.functions";
+import { maskPhone } from "@/lib/dispatch-log-sim";
 
 export const Route = createFileRoute("/painel/relatorio/$id")({
   head: () => ({
@@ -254,9 +257,120 @@ function Page() {
           </CardContent>
         </Card>
       </div>
+
+      <MessageLogs id={id} name={c.name} />
     </div>
   );
 }
+
+const LOG_STATUS: Record<string, { label: string; cls: string }> = {
+  replied: { label: "Respondeu", cls: "bg-chart-2/15 text-chart-2 border-chart-2/30" },
+  read: { label: "Lida", cls: "bg-primary/15 text-primary border-primary/30" },
+  delivered: { label: "Entregue", cls: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30" },
+  sent: { label: "Enviada", cls: "bg-sky-500/15 text-sky-600 border-sky-500/30" },
+  accepted: { label: "Aceita", cls: "bg-sky-500/15 text-sky-600 border-sky-500/30" },
+  failed: { label: "Falhou", cls: "bg-destructive/15 text-destructive border-destructive/30" },
+};
+
+function MessageLogs({ id, name }: { id: string; name: string }) {
+  const fn = useServerFn(getMyCampaignLogs);
+  const [expanded, setExpanded] = useState(false);
+  const { data, isLoading } = useQuery({
+    queryKey: ["my-campaign-logs", id, expanded],
+    queryFn: () => fn({ data: { id, limit: expanded ? 2000 : 200 } }),
+  });
+
+  const rows = data?.rows ?? [];
+
+  const exportLogs = async () => {
+    const full = await fn({ data: { id, limit: 10000 } });
+    const head = ["telefone", "status", "wamid", "enviada_em", "entregue_em", "lida_em", "respondida_em", "falha_em", "codigo_erro", "motivo"];
+    const lines = (full.rows ?? []).map((r: any) =>
+      [
+        maskPhone(r.phone),
+        LOG_STATUS[r.status]?.label ?? r.status,
+        r.wamid ?? "",
+        dt(r.sent_at),
+        dt(r.delivered_at),
+        dt(r.read_at),
+        dt(r.replied_at),
+        dt(r.failed_at),
+        r.error_code ?? "",
+        r.error_reason ?? "",
+      ]
+        .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+        .join(";"),
+    );
+    const csv = "\uFEFF" + [head.join(";"), ...lines].join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    a.download = `logs-${name.replace(/\W+/g, "-").toLowerCase()}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  return (
+    <Card className="border-border/60">
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 pb-2">
+        <CardTitle className="text-base">Logs de envio</CardTitle>
+        <div className="flex gap-2 print:hidden">
+          {!expanded && rows.length >= 200 && (
+            <Button size="sm" variant="outline" onClick={() => setExpanded(true)}>
+              Ver mais
+            </Button>
+          )}
+          <Button size="sm" variant="outline" onClick={exportLogs} disabled={!rows.length}>
+            <Download className="mr-2 h-4 w-4" /> Exportar logs
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Carregando logs…</p>
+        ) : !rows.length ? (
+          <p className="text-sm text-muted-foreground">Nenhum log disponível para este disparo.</p>
+        ) : (
+          <div className="max-h-[520px] overflow-auto rounded-xl border border-border/60">
+            <table className="w-full text-left text-xs">
+              <thead className="sticky top-0 bg-secondary/80 backdrop-blur">
+                <tr className="[&>th]:px-3 [&>th]:py-2 [&>th]:font-medium [&>th]:text-muted-foreground">
+                  <th>Número</th>
+                  <th>Status</th>
+                  <th>ID da mensagem (wamid)</th>
+                  <th>Enviada</th>
+                  <th>Entregue</th>
+                  <th>Lida</th>
+                  <th>Resposta</th>
+                  <th>Motivo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r: any, i: number) => {
+                  const s = LOG_STATUS[r.status] ?? { label: r.status, cls: "bg-secondary text-muted-foreground border-border" };
+                  return (
+                    <tr key={`${r.wamid ?? r.phone}-${i}`} className="border-t border-border/50 [&>td]:px-3 [&>td]:py-2">
+                      <td className="whitespace-nowrap font-medium tabular-nums">{maskPhone(r.phone)}</td>
+                      <td>
+                        <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${s.cls}`}>{s.label}</span>
+                      </td>
+                      <td className="max-w-[240px] truncate font-mono text-[11px] text-muted-foreground">{r.wamid ?? "—"}</td>
+                      <td className="whitespace-nowrap text-muted-foreground">{dt(r.sent_at)}</td>
+                      <td className="whitespace-nowrap text-muted-foreground">{dt(r.delivered_at)}</td>
+                      <td className="whitespace-nowrap text-muted-foreground">{dt(r.read_at)}</td>
+                      <td className="whitespace-nowrap text-muted-foreground">{dt(r.replied_at)}</td>
+                      <td className="max-w-[220px] truncate text-muted-foreground">{r.error_reason ?? "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 
 function ChartCard({ title, data, color, gid }: { title: string; data: Array<{ t: string; v: number }>; color: string; gid: string }) {
   return (
