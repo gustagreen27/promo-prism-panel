@@ -79,10 +79,10 @@ export const getMyDemandDetail = createServerFn({ method: 'POST' })
       if (conn.waba_id) {
         const { data: waba } = await supabaseAdmin
           .from('whatsapp_wabas')
-          .select('name')
+          .select('nome_interno')
           .eq('waba_id', conn.waba_id)
           .maybeSingle()
-        wabaName = waba?.name ?? null
+        wabaName = waba?.nome_interno ?? null
       }
       connection = { label: conn.label ?? null, phone: conn.phone ?? null, waba_name: wabaName }
     }
