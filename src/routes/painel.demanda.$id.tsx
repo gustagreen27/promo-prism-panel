@@ -156,7 +156,10 @@ function Page() {
     const t = ((data as any)?.timeline ?? []) as any[];
     downloadCsv(`disparo-${c?.name ?? id}-historico.csv`, [
       ["Data", "Evento", "Detalhe"],
-      ...t.map((e) => [fmt(e.created_at), ACTION_LABEL[e.action] ?? e.action, e.message ?? ""]),
+      ...t.map((e) => {
+        const info = eventInfo(e.action, (data as any)?.connection ?? null);
+        return [fmtHist(e.created_at), info.title, info.desc];
+      }),
     ]);
   }
 
@@ -322,15 +325,18 @@ function Page() {
           {((data as any).timeline ?? []).length === 0 ? (
             <p className="text-sm text-muted-foreground">Sem eventos registrados.</p>
           ) : (
-            ((data as any).timeline ?? []).map((e: any) => (
-              <div key={e.id} className="flex gap-3 border-l-2 border-muted pl-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">{ACTION_LABEL[e.action] ?? e.action}</p>
-                  {e.message && <p className="truncate text-xs text-muted-foreground">{e.message}</p>}
-                  <p className="text-[11px] text-muted-foreground">{fmt(e.created_at)}</p>
+            ((data as any).timeline ?? []).map((e: any) => {
+              const info = eventInfo(e.action, (data as any)?.connection ?? null);
+              return (
+                <div key={e.id} className="flex gap-3 border-l-2 border-muted pl-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">{info.title}</p>
+                    <p className="text-xs text-muted-foreground">{info.desc}</p>
+                    <p className="text-[11px] text-muted-foreground">{fmtHist(e.created_at)}</p>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </CardContent>
       </Card>
