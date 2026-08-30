@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getMyContext, logAuthEvent } from "@/lib/auth.functions";
+import { getMyContext, logAuthEvent, resolveLoginEmail } from "@/lib/auth.functions";
 import { AlertCircle } from "lucide-react";
 import logoAsset from "@/assets/next-disparos-logo.png.asset.json";
 
@@ -36,7 +36,8 @@ function LoginPage() {
   const search = useSearch({ from: "/login" });
   const ctxFn = useServerFn(getMyContext);
   const logFn = useServerFn(logAuthEvent);
-  const [email, setEmail] = useState("");
+  const resolveFn = useServerFn(resolveLoginEmail);
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,17 +57,36 @@ function LoginPage() {
     if (loading || locked) return;
     setError(null);
     setLoading(true);
-    const { data, error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+
+    const raw = identifier.trim();
+    let loginEmail = raw;
+    if (!raw.includes("@")) {
+      try {
+        const res = await resolveFn({ data: { identifier: raw } });
+        if (!res?.email) {
+          setLoading(false);
+          setError("Usuário ou e-mail não encontrado.");
+          return;
+        }
+        loginEmail = res.email;
+      } catch {
+        setLoading(false);
+        setError("Não foi possível validar o usuário. Tente novamente.");
+        return;
+      }
+    }
+
+    const { data, error: err } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
     if (err || !data.user) {
       const nf = failCount + 1;
       setFailCount(nf);
       if (nf >= 5) setLockUntil(Date.now() + 30_000);
       setLoading(false);
       const msg = err?.message?.toLowerCase().includes("invalid") || err?.message?.toLowerCase().includes("credentials")
-        ? "E-mail ou senha incorretos."
+        ? "Usuário ou senha incorretos."
         : err?.message ?? "Não foi possível entrar.";
       setError(msg);
-      logFn({ data: { type: "login_failed", metadata: { email: email.trim() } } }).catch(() => {});
+      logFn({ data: { type: "login_failed", metadata: { identifier: raw } } }).catch(() => {});
       return;
     }
 
@@ -105,16 +125,16 @@ function LoginPage() {
 
         <form onSubmit={handleLogin} className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-zinc-300">E-mail</Label>
+            <Label htmlFor="identifier" className="text-zinc-300">E-mail ou usuário</Label>
             <Input
-              id="email"
-              type="email"
+              id="identifier"
+              type="text"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              autoComplete="username"
               className="h-12 border-zinc-800 bg-zinc-950 text-white placeholder:text-zinc-600 focus-visible:ring-zinc-600"
-              placeholder="voce@empresa.com.br"
+              placeholder="voce@empresa.com.br ou seu-usuario"
             />
           </div>
           <div className="space-y-2">

@@ -87,6 +87,38 @@ export const logAuthEvent = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// Resolve a login identifier (e-mail or workspace slug/username) to the account e-mail.
+export const resolveLoginEmail = createServerFn({ method: "GET" })
+  .inputValidator((d: { identifier: string }) => d)
+  .handler(async ({ data }) => {
+    const id = data.identifier.trim().toLowerCase();
+    if (!id || id.includes("@")) return { email: id };
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: ws } = await supabaseAdmin
+      .from("workspaces")
+      .select("id, owner_id")
+      .eq("slug", id)
+      .maybeSingle();
+    if (!ws) return { email: null };
+    let userId = ws.owner_id;
+    if (!userId) {
+      const { data: member } = await supabaseAdmin
+        .from("workspace_members")
+        .select("user_id")
+        .eq("workspace_id", ws.id)
+        .limit(1)
+        .maybeSingle();
+      userId = member?.user_id ?? null;
+    }
+    if (!userId) return { email: null };
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("email")
+      .eq("id", userId)
+      .maybeSingle();
+    return { email: profile?.email ?? null };
+  });
+
 // Create a workspace for a user who signed up without a company name
 export const ensureWorkspace = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
