@@ -44,7 +44,7 @@ export const getMyDemandDetail = createServerFn({ method: 'POST' })
 
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
 
-    const [listRes, templateRes, auditRes, clicksRes] = await Promise.all([
+    const [listRes, templateRes, auditRes, clicksRes, connRes] = await Promise.all([
       campaign.list_id
         ? supabase.from('contact_lists').select('id,name').eq('id', campaign.list_id).maybeSingle()
         : Promise.resolve({ data: null }),
