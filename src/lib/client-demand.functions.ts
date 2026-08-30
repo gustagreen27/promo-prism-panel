@@ -63,7 +63,29 @@ export const getMyDemandDetail = createServerFn({ method: 'POST' })
         .eq('wa_campaign_id', data.id)
         .order('clicked_at', { ascending: false })
         .limit(500),
+      campaign.connection_id
+        ? supabaseAdmin
+            .from('whatsapp_connections')
+            .select('id,label,phone,waba_id')
+            .eq('id', campaign.connection_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
     ])
+
+    let connection: { label: string | null; phone: string | null; waba_name: string | null } | null = null
+    const conn = (connRes as any)?.data
+    if (conn) {
+      let wabaName: string | null = null
+      if (conn.waba_id) {
+        const { data: waba } = await supabaseAdmin
+          .from('whatsapp_wabas')
+          .select('name')
+          .eq('waba_id', conn.waba_id)
+          .maybeSingle()
+        wabaName = waba?.name ?? null
+      }
+      connection = { label: conn.label ?? null, phone: conn.phone ?? null, waba_name: wabaName }
+    }
 
     const clickRows = (clicksRes?.data ?? []) as any[]
     const uniqueIps = new Set(clickRows.map((c) => c.ip).filter(Boolean)).size
