@@ -97,6 +97,7 @@ export const adminAddWorkspaceUser = createServerFn({ method: 'POST' })
 
     const email = data.email.trim().toLowerCase()
     const role = (data.role ?? 'operator') as (typeof ROLES)[number]
+    const loginSlug = normalizeLoginSlug(data.login_slug)
 
     const { data: ws } = await supabaseAdmin
       .from('workspaces').select('id, name').eq('id', data.workspace_id).maybeSingle()
