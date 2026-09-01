@@ -521,7 +521,7 @@ function WorkspaceUsersDialog({ account, onClose }: { account: any; onClose: () 
   const qc = useQueryClient();
   const wsId = account?.id as string | undefined;
 
-  const [form, setForm] = useState({ email: "", full_name: "", password: "", role: "operator" });
+  const [form, setForm] = useState({ email: "", full_name: "", password: "", role: "operator", login_slug: "" });
 
   const usersQuery = useQuery({
     queryKey: ["admin-ws-users", wsId],
@@ -542,6 +542,7 @@ function WorkspaceUsersDialog({ account, onClose }: { account: any; onClose: () 
       full_name: form.full_name.trim() || null,
       password: form.password.trim() || null,
       role: form.role,
+      login_slug: form.login_slug.trim() || null,
     } }),
     onSuccess: (res: any) => {
       toast.success(
