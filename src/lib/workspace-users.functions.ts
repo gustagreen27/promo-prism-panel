@@ -222,6 +222,15 @@ export const adminUpdateWorkspaceUser = createServerFn({ method: 'POST' })
     if (data.full_name?.trim()) {
       await supabaseAdmin.from('profiles').update({ full_name: data.full_name.trim() }).eq('id', data.user_id)
     }
+    if (data.login_slug !== undefined && data.login_slug !== null) {
+      const slug = normalizeLoginSlug(data.login_slug)
+      if (slug) {
+        await assertSlugAvailable(supabaseAdmin, slug, data.user_id)
+      }
+      const { error: slugErr } = await supabaseAdmin
+        .from('profiles').update({ login_slug: slug }).eq('id', data.user_id)
+      if (slugErr) throw new Error(`Falha ao definir o usuário de login: ${slugErr.message}`)
+    }
     return { ok: true }
   })
 
