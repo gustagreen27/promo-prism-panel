@@ -43,7 +43,7 @@ export default {
     try {
       const redirectTo = domainRedirect(request);
       if (redirectTo) {
-        return new Response(null, { status: 301, headers: { location: redirectTo } });
+        return new Response(null, { status: 302, headers: { location: redirectTo } });
       }
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
