@@ -88,7 +88,74 @@ function Page() {
             </TableBody>
           </Table>}
       </div>
+
+      <AllUsersSection />
     </>
+  );
+}
+
+function AllUsersSection() {
+  const listFn = useServerFn(adminListAllUsers);
+  const q = useQuery({ queryKey: ["admin-all-users"], queryFn: () => listFn({ data: {} }) });
+  const [search, setSearch] = useState("");
+  const users = (q.data ?? []) as any[];
+  const filtered = users.filter((u) => {
+    const t = search.trim().toLowerCase();
+    if (!t) return true;
+    return [u.email, u.full_name, u.login_slug, ...u.memberships.map((m: any) => m.workspace_name)]
+      .filter(Boolean).some((v: string) => v.toLowerCase().includes(t));
+  });
+
+  return (
+    <div className="mt-8 space-y-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Usuários cadastrados</h2>
+          <p className="text-sm text-muted-foreground">Todos os logins da plataforma e a empresa de cada um.</p>
+        </div>
+        <Input
+          className="sm:max-w-xs"
+          placeholder="Buscar por e-mail, nome, usuário ou empresa…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+      <div className="rounded-xl border bg-card">
+        {q.isLoading ? <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
+          : q.error ? <ErrorCard error={q.error} onRetry={() => q.refetch()} />
+          : filtered.length === 0 ? <EmptyState title="Nenhum usuário encontrado" />
+          : <Table>
+            <TableHeader><TableRow>
+              <TableHead>Usuário</TableHead><TableHead>Login</TableHead>
+              <TableHead>Empresa(s)</TableHead><TableHead>Permissão</TableHead><TableHead>Criado</TableHead>
+            </TableRow></TableHeader>
+            <TableBody>
+              {filtered.map((u: any) => (
+                <TableRow key={u.user_id}>
+                  <TableCell>
+                    <div className="text-sm font-medium">{u.full_name ?? "—"}</div>
+                    <div className="text-xs text-muted-foreground">{u.email ?? "—"}</div>
+                  </TableCell>
+                  <TableCell className="font-mono text-xs">{u.login_slug ?? "—"}</TableCell>
+                  <TableCell>
+                    {u.memberships.length === 0 ? <span className="text-sm text-muted-foreground">Sem empresa</span>
+                      : u.memberships.map((m: any) => (
+                        <div key={m.workspace_id ?? m.workspace_name} className="text-sm">{m.workspace_name}</div>
+                      ))}
+                  </TableCell>
+                  <TableCell>
+                    {u.memberships.length === 0 ? "—"
+                      : u.memberships.map((m: any, i: number) => (
+                        <Badge key={i} variant="secondary" className="mr-1">{ROLE_LABELS[m.role] ?? m.role}</Badge>
+                      ))}
+                  </TableCell>
+                  <TableCell>{formatDate(u.created_at)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>}
+      </div>
+    </div>
   );
 }
 
