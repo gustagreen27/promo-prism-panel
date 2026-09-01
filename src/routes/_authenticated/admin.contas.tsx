@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { adminListClientAccounts, adminAddCredits, adminCreateClientAccount, adminSetCustomPrice, adminUpdateClientAccount, adminDeleteClientAccount } from "@/lib/billing.functions";
+import { slugify } from "@/lib/slugify";
 import { adminListWorkspaceUsers, adminAddWorkspaceUser, adminUpdateWorkspaceUser, adminRemoveWorkspaceUser } from "@/lib/workspace-users.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/contas")({
@@ -151,12 +152,16 @@ function Page() {
   const createAccount = useServerFn(adminCreateClientAccount);
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState({ name: "", slug: "", plan: "starter", owner_email: "", owner_name: "", owner_password: "", initial_credits: "" });
-  const setField = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  const [slugTouched, setSlugTouched] = useState(false);
+  const setField = (k: string, v: string) => {
+    if (k === "slug") setSlugTouched(true);
+    setForm((f) => ({ ...f, [k]: v, ...(k === "name" && !slugTouched ? { slug: slugify(v) } : {}) }));
+  };
 
   const create = useMutation({
     mutationFn: () => createAccount({ data: {
       name: form.name.trim(),
-      slug: form.slug.trim() || null,
+      slug: slugify(form.slug || form.name) || null,
       plan: form.plan.trim() || null,
       owner_email: form.owner_email.trim(),
       owner_name: form.owner_name.trim() || null,
