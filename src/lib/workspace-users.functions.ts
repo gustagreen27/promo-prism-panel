@@ -185,19 +185,21 @@ export const adminAddWorkspaceUser = createServerFn({ method: 'POST' })
       user_created: createdUser,
       generated_password: generatedPassword,
       workspace_name: ws.name,
+      login_slug: loginSlug,
     }
   })
 
 /** Altera o papel de um usuário dentro da conta. */
 export const adminUpdateWorkspaceUser = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { workspace_id: string; user_id: string; role?: string | null; password?: string | null; full_name?: string | null }) =>
+  .inputValidator((d: { workspace_id: string; user_id: string; role?: string | null; password?: string | null; full_name?: string | null; login_slug?: string | null }) =>
     z.object({
       workspace_id: z.string().uuid(),
       user_id: z.string().uuid(),
       role: z.enum(ROLES).nullish(),
       password: z.string().min(8).max(72).nullish(),
       full_name: z.string().max(120).nullish(),
+      login_slug: z.string().max(80).nullish(),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
