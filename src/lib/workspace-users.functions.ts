@@ -192,6 +192,7 @@ export const adminAddWorkspaceUser = createServerFn({ method: 'POST' })
 /** Lista TODOS os usuários da plataforma com a empresa (workspace) de cada um. */
 export const adminListAllUsers = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => d)
   .handler(async ({ context }) => {
     const { supabase, userId } = context as any
     await assertStaff(supabase, userId)
