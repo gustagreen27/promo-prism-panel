@@ -28,7 +28,7 @@ export const adminListWorkspaceUsers = createServerFn({ method: 'POST' })
 
     const ids = (members ?? []).map((m: any) => m.user_id)
     const profiles = ids.length
-      ? (await supabaseAdmin.from('profiles').select('id, email, full_name, phone').in('id', ids)).data ?? []
+      ? (await supabaseAdmin.from('profiles').select('id, email, full_name, phone, login_slug').in('id', ids)).data ?? []
       : []
     const byId = new Map(profiles.map((p: any) => [p.id, p]))
 
