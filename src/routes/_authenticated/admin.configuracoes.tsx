@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { listSettings, upsertSetting } from "@/lib/settings.functions";
 import { getBillingSettings, adminUpdateBillingSettings } from "@/lib/billing.functions";
+import { getPlatformCapacity, adminUpdatePlatformCapacity, adminListPlatformCapacityAudit } from "@/lib/platform-capacity.functions";
 import { ErrorCard } from "@/components/admin/query-state";
 
 const searchSchema = z.object({
