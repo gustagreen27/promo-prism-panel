@@ -551,7 +551,7 @@ function WorkspaceUsersDialog({ account, onClose }: { account: any; onClose: () 
           : "Usuário vinculado à conta",
         { duration: res?.generated_password ? 20000 : 4000 },
       );
-      setForm({ email: "", full_name: "", password: "", role: "operator" });
+      setForm({ email: "", full_name: "", password: "", role: "operator", login_slug: "" });
       refresh();
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao adicionar usuário"),
