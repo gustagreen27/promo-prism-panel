@@ -58,7 +58,7 @@ function Page() {
     mutationFn: () => updateAccountFn({ data: {
       workspace_id: editTarget.id,
       name: editForm.name.trim() || null,
-      slug: editForm.slug.trim() || null,
+      slug: slugify(editForm.slug || editForm.name) || null,
       plan: editForm.plan.trim() || null,
       status: (editForm.status === "blocked" ? "blocked" : "active") as "active" | "blocked",
       owner_name: editForm.owner_name.trim() || null,
@@ -178,6 +178,7 @@ function Page() {
       qc.invalidateQueries({ queryKey: ["admin-client-accounts"] });
       setCreateOpen(false);
       setForm({ name: "", slug: "", plan: "starter", owner_email: "", owner_name: "", owner_password: "", initial_credits: "" });
+      setSlugTouched(false);
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao criar conta"),
   });
