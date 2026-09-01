@@ -81,6 +81,11 @@ export function domainRedirect(request: Request): string | null {
   const hostZone = HOST_ZONE[host];
   if (!hostZone) return null; // preview/localhost/domínios não gerenciados: sem restrição
 
+  // Raiz do domínio do painel sempre aponta para /login no mesmo domínio
+  if (hostZone === "panel" && url.pathname === "/") {
+    return `https://${host}/login${url.search}`;
+  }
+
   const pathZone = zoneForPath(url.pathname);
   if (pathZone === "shared" || pathZone === hostZone) return null;
 
