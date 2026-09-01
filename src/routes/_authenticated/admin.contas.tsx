@@ -684,6 +684,10 @@ function WorkspaceUsersDialog({ account, onClose }: { account: any; onClose: () 
               <Input value={form.full_name} onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))} placeholder="Maria Souza" />
             </div>
             <div>
+              <Label>Usuário (slug de login, opcional)</Label>
+              <Input value={form.login_slug} onChange={(e) => setForm((f) => ({ ...f, login_slug: e.target.value }))} placeholder="maria-souza" />
+            </div>
+            <div>
               <Label>Senha (opcional)</Label>
               <Input value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} placeholder="gerada automaticamente" />
             </div>
