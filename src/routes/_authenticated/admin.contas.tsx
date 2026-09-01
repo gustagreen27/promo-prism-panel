@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { adminListClientAccounts, adminAddCredits, adminCreateClientAccount, adminSetCustomPrice, adminUpdateClientAccount, adminDeleteClientAccount } from "@/lib/billing.functions";
+import { slugify } from "@/lib/slugify";
 import { adminListWorkspaceUsers, adminAddWorkspaceUser, adminUpdateWorkspaceUser, adminRemoveWorkspaceUser } from "@/lib/workspace-users.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/contas")({
@@ -57,7 +58,7 @@ function Page() {
     mutationFn: () => updateAccountFn({ data: {
       workspace_id: editTarget.id,
       name: editForm.name.trim() || null,
-      slug: editForm.slug.trim() || null,
+      slug: slugify(editForm.slug || editForm.name) || null,
       plan: editForm.plan.trim() || null,
       status: (editForm.status === "blocked" ? "blocked" : "active") as "active" | "blocked",
       owner_name: editForm.owner_name.trim() || null,
@@ -151,12 +152,16 @@ function Page() {
   const createAccount = useServerFn(adminCreateClientAccount);
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState({ name: "", slug: "", plan: "starter", owner_email: "", owner_name: "", owner_password: "", initial_credits: "" });
-  const setField = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  const [slugTouched, setSlugTouched] = useState(false);
+  const setField = (k: string, v: string) => {
+    if (k === "slug") setSlugTouched(true);
+    setForm((f) => ({ ...f, [k]: v, ...(k === "name" && !slugTouched ? { slug: slugify(v) } : {}) }));
+  };
 
   const create = useMutation({
     mutationFn: () => createAccount({ data: {
       name: form.name.trim(),
-      slug: form.slug.trim() || null,
+      slug: slugify(form.slug || form.name) || null,
       plan: form.plan.trim() || null,
       owner_email: form.owner_email.trim(),
       owner_name: form.owner_name.trim() || null,
@@ -173,6 +178,7 @@ function Page() {
       qc.invalidateQueries({ queryKey: ["admin-client-accounts"] });
       setCreateOpen(false);
       setForm({ name: "", slug: "", plan: "starter", owner_email: "", owner_name: "", owner_password: "", initial_credits: "" });
+      setSlugTouched(false);
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao criar conta"),
   });
@@ -204,8 +210,9 @@ function Page() {
               <Input value={form.name} onChange={(e) => setField("name", e.target.value)} placeholder="Ex.: Magistrar Cursos" />
             </div>
             <div>
-              <Label>Slug (opcional)</Label>
-              <Input value={form.slug} onChange={(e) => setField("slug", e.target.value)} placeholder="magistrar" />
+              <Label>Nome de usuário (slug)</Label>
+              <Input value={form.slug} onChange={(e) => setField("slug", e.target.value)} placeholder="Gerado do nome da empresa" />
+              <p className="mt-1 text-xs text-muted-foreground">Usado para entrar no /login sem e-mail.</p>
             </div>
             <div>
               <Label>Plano</Label>

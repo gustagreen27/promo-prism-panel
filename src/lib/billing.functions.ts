@@ -1,6 +1,17 @@
 import { createServerFn } from '@tanstack/react-start'
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware'
 import { z } from 'zod'
+import { slugify } from '@/lib/slugify'
+
+// Aceita qualquer texto (ex.: "Nome da Empresa") e converte para slug válido.
+const slugSchema = z.preprocess(
+  (v) => {
+    if (v === null || v === undefined) return null
+    const s = slugify(String(v))
+    return s.length >= 2 ? s : null
+  },
+  z.string().min(2).max(80).regex(/^[a-z0-9-]+$/, 'slug inválido').nullable(),
+)
 
 async function assertMember(supabase: any, userId: string, workspaceId: string) {
   const { data } = await supabase
@@ -483,7 +494,7 @@ export const adminCreateClientAccount = createServerFn({ method: 'POST' })
   }) =>
     z.object({
       name: z.string().min(2).max(120),
-      slug: z.string().min(2).max(60).regex(/^[a-z0-9-]+$/, 'slug inválido').nullish(),
+      slug: slugSchema,
       plan: z.string().max(40).nullish(),
       owner_email: z.string().email(),
       owner_name: z.string().max(120).nullish(),
@@ -627,7 +638,7 @@ export const adminUpdateClientAccount = createServerFn({ method: 'POST' })
     z.object({
       workspace_id: z.string().uuid(),
       name: z.string().min(2).max(120).nullish(),
-      slug: z.string().min(2).max(60).regex(/^[a-z0-9-]+$/, 'slug inválido').nullish(),
+      slug: slugSchema,
       plan: z.string().max(40).nullish(),
       status: z.enum(['active', 'blocked']).nullish(),
       owner_name: z.string().max(120).nullish(),
