@@ -2063,8 +2063,16 @@ export type Database = {
       }
       platform_capacity: {
         Row: {
+          auto_enabled: boolean
+          auto_end_time: string
+          auto_interval_minutes: number
+          auto_last_run_at: string | null
+          auto_max_step: number
+          auto_min_step: number
+          auto_start_time: string
+          auto_target_completed: number
           created_at: string
-          daily_available: number
+          daily_available: number | null
           daily_capacity: number
           daily_completed: number
           id: string
@@ -2074,8 +2082,16 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          auto_enabled?: boolean
+          auto_end_time?: string
+          auto_interval_minutes?: number
+          auto_last_run_at?: string | null
+          auto_max_step?: number
+          auto_min_step?: number
+          auto_start_time?: string
+          auto_target_completed?: number
           created_at?: string
-          daily_available?: number
+          daily_available?: number | null
           daily_capacity?: number
           daily_completed?: number
           id?: string
@@ -2085,8 +2101,16 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          auto_enabled?: boolean
+          auto_end_time?: string
+          auto_interval_minutes?: number
+          auto_last_run_at?: string | null
+          auto_max_step?: number
+          auto_min_step?: number
+          auto_start_time?: string
+          auto_target_completed?: number
           created_at?: string
-          daily_available?: number
+          daily_available?: number | null
           daily_capacity?: number
           daily_completed?: number
           id?: string
@@ -5719,6 +5743,7 @@ export type Database = {
         }
         Returns: string
       }
+      platform_capacity_auto_tick: { Args: never; Returns: Json }
       public_report_stats: { Args: { p_slug: string }; Returns: Json }
       seed_onboarding_checklist: { Args: { _ws: string }; Returns: undefined }
       user_workspace_ids: { Args: { _user: string }; Returns: string[] }
