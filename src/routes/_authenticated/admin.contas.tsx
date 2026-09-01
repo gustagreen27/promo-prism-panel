@@ -210,8 +210,9 @@ function Page() {
               <Input value={form.name} onChange={(e) => setField("name", e.target.value)} placeholder="Ex.: Magistrar Cursos" />
             </div>
             <div>
-              <Label>Slug (opcional)</Label>
-              <Input value={form.slug} onChange={(e) => setField("slug", e.target.value)} placeholder="magistrar" />
+              <Label>Nome de usuário (slug)</Label>
+              <Input value={form.slug} onChange={(e) => setField("slug", e.target.value)} placeholder="Gerado do nome da empresa" />
+              <p className="mt-1 text-xs text-muted-foreground">Usado para entrar no /login sem e-mail.</p>
             </div>
             <div>
               <Label>Plano</Label>
