@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { adminListClientAccounts, adminAddCredits, adminCreateClientAccount, adminSetCustomPrice, adminUpdateClientAccount, adminDeleteClientAccount } from "@/lib/billing.functions";
+import { adminListWorkspaceUsers, adminAddWorkspaceUser, adminUpdateWorkspaceUser, adminRemoveWorkspaceUser } from "@/lib/workspace-users.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/contas")({
   head: () => ({
@@ -48,6 +49,7 @@ function Page() {
   const [editTarget, setEditTarget] = useState<any>(null);
   const [editForm, setEditForm] = useState({ name: "", slug: "", plan: "", status: "active", owner_name: "", owner_password: "" });
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [usersTarget, setUsersTarget] = useState<any>(null);
   const updateAccountFn = useServerFn(adminUpdateClientAccount);
   const deleteAccountFn = useServerFn(adminDeleteClientAccount);
 
@@ -332,6 +334,9 @@ function Page() {
                       >
                         Preço
                       </Button>
+                      <Button size="sm" variant="ghost" className="ml-1" onClick={() => setUsersTarget(a)}>
+                        <Users className="mr-1.5 h-4 w-4" /> Usuários
+                      </Button>
                       <Button
                         size="icon"
                         variant="ghost"
@@ -494,7 +499,196 @@ function Page() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <WorkspaceUsersDialog account={usersTarget} onClose={() => setUsersTarget(null)} />
     </>
 
   );
 }
+
+function WorkspaceUsersDialog({ account, onClose }: { account: any; onClose: () => void }) {
+  const listFn = useServerFn(adminListWorkspaceUsers);
+  const addFn = useServerFn(adminAddWorkspaceUser);
+  const updateFn = useServerFn(adminUpdateWorkspaceUser);
+  const removeFn = useServerFn(adminRemoveWorkspaceUser);
+  const qc = useQueryClient();
+  const wsId = account?.id as string | undefined;
+
+  const [form, setForm] = useState({ email: "", full_name: "", password: "", role: "operator" });
+
+  const usersQuery = useQuery({
+    queryKey: ["admin-ws-users", wsId],
+    queryFn: () => listFn({ data: { workspace_id: wsId as string } }),
+    enabled: !!wsId,
+  });
+  const users = (usersQuery.data ?? []) as any[];
+
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["admin-ws-users", wsId] });
+    qc.invalidateQueries({ queryKey: ["admin-client-accounts"] });
+  };
+
+  const add = useMutation({
+    mutationFn: () => addFn({ data: {
+      workspace_id: wsId as string,
+      email: form.email.trim(),
+      full_name: form.full_name.trim() || null,
+      password: form.password.trim() || null,
+      role: form.role,
+    } }),
+    onSuccess: (res: any) => {
+      toast.success(
+        res?.generated_password
+          ? `Usuário criado. Senha temporária: ${res.generated_password}`
+          : "Usuário vinculado à conta",
+        { duration: res?.generated_password ? 20000 : 4000 },
+      );
+      setForm({ email: "", full_name: "", password: "", role: "operator" });
+      refresh();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao adicionar usuário"),
+  });
+
+  const changeRole = useMutation({
+    mutationFn: (v: { user_id: string; role: string }) =>
+      updateFn({ data: { workspace_id: wsId as string, user_id: v.user_id, role: v.role } }),
+    onSuccess: () => { toast.success("Permissão atualizada"); refresh(); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao atualizar"),
+  });
+
+  const resetPassword = useMutation({
+    mutationFn: (v: { user_id: string; password: string }) =>
+      updateFn({ data: { workspace_id: wsId as string, user_id: v.user_id, password: v.password } }),
+    onSuccess: () => toast.success("Senha alterada"),
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao alterar senha"),
+  });
+
+  const remove = useMutation({
+    mutationFn: (v: { user_id: string; delete_user: boolean }) =>
+      removeFn({ data: { workspace_id: wsId as string, user_id: v.user_id, delete_user: v.delete_user } }),
+    onSuccess: () => { toast.success("Usuário removido"); refresh(); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao remover usuário"),
+  });
+
+  return (
+    <Dialog open={!!account} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Usuários da conta — {account?.name}</DialogTitle>
+          <DialogDescription>
+            Crie vários logins (e-mail e senha) com acesso ao mesmo painel desta empresa. Não é necessário CNPJ.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Usuário</TableHead>
+                  <TableHead>Permissão</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {usersQuery.isLoading && (
+                  <TableRow><TableCell colSpan={3} className="text-sm text-muted-foreground">Carregando…</TableCell></TableRow>
+                )}
+                {!usersQuery.isLoading && users.length === 0 && (
+                  <TableRow><TableCell colSpan={3} className="text-sm text-muted-foreground">Nenhum usuário vinculado.</TableCell></TableRow>
+                )}
+                {users.map((u) => (
+                  <TableRow key={u.user_id}>
+                    <TableCell>
+                      <div className="text-sm font-medium">{u.full_name ?? "—"}</div>
+                      <div className="text-xs text-muted-foreground">{u.email ?? "—"}</div>
+                    </TableCell>
+                    <TableCell>
+                      <select
+                        className="h-8 rounded-md border bg-background px-2 text-sm"
+                        value={u.role}
+                        disabled={u.role === "owner"}
+                        onChange={(e) => changeRole.mutate({ user_id: u.user_id, role: e.target.value })}
+                      >
+                        <option value="owner">Responsável</option>
+                        <option value="admin">Administrador</option>
+                        <option value="operator">Operador</option>
+                        <option value="viewer">Somente leitura</option>
+                      </select>
+                    </TableCell>
+                    <TableCell className="text-right whitespace-nowrap">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          const pwd = window.prompt(`Nova senha para ${u.email} (mín. 8 caracteres)`);
+                          if (pwd && pwd.trim().length >= 8) resetPassword.mutate({ user_id: u.user_id, password: pwd.trim() });
+                          else if (pwd) toast.error("A senha precisa ter ao menos 8 caracteres");
+                        }}
+                      >
+                        Trocar senha
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="text-destructive"
+                        aria-label="Remover usuário"
+                        disabled={u.role === "owner"}
+                        onClick={() => {
+                          if (window.confirm(`Remover ${u.email} desta conta?`)) {
+                            remove.mutate({ user_id: u.user_id, delete_user: true });
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-2">
+            <div className="sm:col-span-2 text-sm font-medium">Adicionar usuário</div>
+            <div>
+              <Label>E-mail *</Label>
+              <Input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="usuario@empresa.com" />
+            </div>
+            <div>
+              <Label>Nome</Label>
+              <Input value={form.full_name} onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))} placeholder="Maria Souza" />
+            </div>
+            <div>
+              <Label>Senha (opcional)</Label>
+              <Input value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} placeholder="gerada automaticamente" />
+            </div>
+            <div>
+              <Label>Permissão</Label>
+              <select
+                className="h-10 w-full rounded-md border bg-background px-2 text-sm"
+                value={form.role}
+                onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
+              >
+                <option value="admin">Administrador</option>
+                <option value="operator">Operador</option>
+                <option value="viewer">Somente leitura</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>Fechar</Button>
+          <Button
+            onClick={() => add.mutate()}
+            disabled={add.isPending || !form.email.trim() || (!!form.password.trim() && form.password.trim().length < 8)}
+          >
+            {add.isPending ? "Adicionando…" : "Adicionar usuário"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
