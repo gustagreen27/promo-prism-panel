@@ -106,6 +106,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { rel: "icon", type: "image/png", href: "/favicon.png" },
     ],
+    scripts: [
+      {
+        src: "https://cdn.jsdelivr.net/npm/disable-devtool@latest",
+        "disable-devtool-auto": "",
+      } as any,
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,
