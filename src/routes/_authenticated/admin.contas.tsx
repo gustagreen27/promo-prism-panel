@@ -707,6 +707,68 @@ function WorkspaceUsersDialog({ account, onClose }: { account: any; onClose: () 
             {add.isPending ? "Adicionando…" : "Adicionar usuário"}
           </Button>
         </DialogFooter>
+
+        <Dialog open={!!editUser} onOpenChange={(v) => !v && setEditUser(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Editar usuário</DialogTitle>
+              <DialogDescription>{editUser?.email}</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-3">
+              <div>
+                <Label>Nome</Label>
+                <Input
+                  value={editForm.full_name}
+                  onChange={(e) => setEditForm((f) => ({ ...f, full_name: e.target.value }))}
+                  placeholder="Maria Souza"
+                />
+              </div>
+              <div>
+                <Label>Usuário (slug de login)</Label>
+                <Input
+                  value={editForm.login_slug}
+                  onChange={(e) => setEditForm((f) => ({ ...f, login_slug: e.target.value }))}
+                  placeholder="maria-souza — deixe vazio para remover"
+                />
+              </div>
+              <div>
+                <Label>Permissão</Label>
+                <select
+                  className="h-10 w-full rounded-md border bg-background px-2 text-sm"
+                  value={editForm.role}
+                  disabled={editUser?.role === "owner"}
+                  onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value }))}
+                >
+                  <option value="owner">Responsável</option>
+                  <option value="admin">Administrador</option>
+                  <option value="operator">Operador</option>
+                  <option value="viewer">Somente leitura</option>
+                </select>
+              </div>
+              <div>
+                <Label>Nova senha (opcional)</Label>
+                <Input
+                  type="text"
+                  value={editForm.password}
+                  onChange={(e) => setEditForm((f) => ({ ...f, password: e.target.value }))}
+                  placeholder="deixe vazio para manter a atual"
+                />
+                {!!editForm.password.trim() && editForm.password.trim().length < 8 && (
+                  <p className="mt-1 text-xs text-destructive">A senha precisa ter ao menos 8 caracteres</p>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setEditUser(null)}>Cancelar</Button>
+              <Button
+                onClick={() => saveEdit.mutate()}
+                disabled={saveEdit.isPending || (!!editForm.password.trim() && editForm.password.trim().length < 8)}
+              >
+                {saveEdit.isPending ? "Salvando…" : "Salvar alterações"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
   );
