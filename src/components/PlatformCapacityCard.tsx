@@ -27,7 +27,7 @@ export function PlatformCapacityCard() {
     queryKey: ["platform-capacity"],
     queryFn: () => fn(),
     staleTime: 60_000,
-    refetchInterval: 120_000,
+    refetchInterval: 60_000,
   });
 
   if (!data || data.daily_capacity <= 0) return null;
@@ -46,8 +46,8 @@ export function PlatformCapacityCard() {
 
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <Stat label="Capacidade diária" value={data.daily_capacity} tone="blue" />
-          <Stat label="Realizados hoje" value={data.daily_completed} tone="green" />
-          <Stat label="Disponível hoje" value={data.daily_available} tone="purple" />
+          <Stat label="Total disparado hoje" value={data.daily_completed} tone="green" />
+          <Stat label="Disponível hoje" value={Math.max(data.daily_capacity - data.daily_completed, 0)} tone="purple" />
         </div>
 
         <div className="mt-4 space-y-1.5">
