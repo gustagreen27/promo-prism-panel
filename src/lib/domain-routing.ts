@@ -77,7 +77,11 @@ export function domainRedirect(request: Request): string | null {
     return null;
   }
 
-  const host = (request.headers.get("host") ?? url.host).toLowerCase().split(":")[0];
+  const rawHost =
+    request.headers.get("x-forwarded-host") ??
+    request.headers.get("host") ??
+    url.host;
+  const host = rawHost.toLowerCase().split(":")[0];
   const hostZone = HOST_ZONE[host];
   if (!hostZone) return null; // preview/localhost/domínios não gerenciados: sem restrição
 
