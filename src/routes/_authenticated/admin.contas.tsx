@@ -564,13 +564,6 @@ function WorkspaceUsersDialog({ account, onClose }: { account: any; onClose: () 
     onError: (e: any) => toast.error(e?.message ?? "Erro ao atualizar"),
   });
 
-  const resetPassword = useMutation({
-    mutationFn: (v: { user_id: string; password: string }) =>
-      updateFn({ data: { workspace_id: wsId as string, user_id: v.user_id, password: v.password } }),
-    onSuccess: () => toast.success("Senha alterada"),
-    onError: (e: any) => toast.error(e?.message ?? "Erro ao alterar senha"),
-  });
-
   const remove = useMutation({
     mutationFn: (v: { user_id: string; delete_user: boolean }) =>
       removeFn({ data: { workspace_id: wsId as string, user_id: v.user_id, delete_user: v.delete_user } }),
