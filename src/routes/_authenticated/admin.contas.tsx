@@ -334,6 +334,9 @@ function Page() {
                       >
                         Preço
                       </Button>
+                      <Button size="sm" variant="ghost" className="ml-1" onClick={() => setUsersTarget(a)}>
+                        <Users className="mr-1.5 h-4 w-4" /> Usuários
+                      </Button>
                       <Button
                         size="icon"
                         variant="ghost"
