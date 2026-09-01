@@ -9,6 +9,27 @@ async function assertStaff(supabase: any, userId: string) {
 
 const ROLES = ['owner', 'admin', 'operator', 'viewer'] as const
 
+const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+
+function normalizeLoginSlug(raw: string | null | undefined): string | null {
+  const s = (raw ?? '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60)
+  if (!s) return null
+  if (!SLUG_RE.test(s)) throw new Error('Slug de usuário inválido')
+  return s
+}
+
+async function assertSlugAvailable(supabaseAdmin: any, slug: string, userId: string) {
+  const { data: taken } = await supabaseAdmin
+    .from('profiles').select('id').eq('login_slug', slug).neq('id', userId).maybeSingle()
+  if (taken) throw new Error(`O usuário "${slug}" já está em uso por outro login`)
+}
+
 /** Lista os usuários (logins) vinculados a uma conta/empresa. */
 export const adminListWorkspaceUsers = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
@@ -39,6 +60,7 @@ export const adminListWorkspaceUsers = createServerFn({ method: 'POST' })
         created_at: m.created_at as string | null,
         email: (byId.get(m.user_id) as any)?.email ?? null,
         full_name: (byId.get(m.user_id) as any)?.full_name ?? null,
+        login_slug: (byId.get(m.user_id) as any)?.login_slug ?? null,
       }))
       .sort((a, b) => (a.role === 'owner' ? -1 : b.role === 'owner' ? 1 : (a.email ?? '').localeCompare(b.email ?? '')))
   })
