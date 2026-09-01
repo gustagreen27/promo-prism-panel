@@ -143,6 +143,13 @@ export const adminAddWorkspaceUser = createServerFn({ method: 'POST' })
       await supabaseAdmin.from('profiles').update({ full_name: data.full_name.trim() }).eq('id', targetId)
     }
 
+    if (loginSlug) {
+      await assertSlugAvailable(supabaseAdmin, loginSlug, targetId)
+      const { error: slugErr } = await supabaseAdmin
+        .from('profiles').update({ login_slug: loginSlug }).eq('id', targetId)
+      if (slugErr) throw new Error(`Falha ao definir o usuário de login: ${slugErr.message}`)
+    }
+
     // Vincula ao workspace da empresa
     const { error: linkErr } = await supabaseAdmin
       .from('workspace_members')
