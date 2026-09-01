@@ -189,6 +189,52 @@ export const adminAddWorkspaceUser = createServerFn({ method: 'POST' })
     }
   })
 
+/** Lista TODOS os usuários da plataforma com a empresa (workspace) de cada um. */
+export const adminListAllUsers = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context as any
+    await assertStaff(supabase, userId)
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
+
+    const { data: profiles, error } = await supabaseAdmin
+      .from('profiles')
+      .select('id, email, full_name, phone, cnpj, login_slug, created_at')
+      .order('created_at', { ascending: false })
+      .limit(2000)
+    if (error) throw new Error(error.message)
+
+    const ids = (profiles ?? []).map((p: any) => p.id)
+    const members = ids.length
+      ? (await supabaseAdmin
+          .from('workspace_members')
+          .select('user_id, role, created_at, workspaces(id, name, slug)')
+          .in('user_id', ids)).data ?? []
+      : []
+
+    const byUser = new Map<string, any[]>()
+    for (const m of members as any[]) {
+      const arr = byUser.get(m.user_id) ?? []
+      arr.push(m)
+      byUser.set(m.user_id, arr)
+    }
+
+    return (profiles ?? []).map((p: any) => ({
+      user_id: p.id,
+      email: p.email,
+      full_name: p.full_name,
+      phone: p.phone,
+      login_slug: p.login_slug,
+      created_at: p.created_at,
+      memberships: (byUser.get(p.id) ?? []).map((m: any) => ({
+        workspace_id: m.workspaces?.id ?? null,
+        workspace_name: m.workspaces?.name ?? '—',
+        workspace_slug: m.workspaces?.slug ?? null,
+        role: m.role,
+      })),
+    }))
+  })
+
 /** Altera o papel de um usuário dentro da conta. */
 export const adminUpdateWorkspaceUser = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
