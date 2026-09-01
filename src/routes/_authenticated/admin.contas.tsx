@@ -648,29 +648,8 @@ function WorkspaceUsersDialog({ account, onClose }: { account: any; onClose: () 
                       </select>
                     </TableCell>
                     <TableCell className="text-right whitespace-nowrap">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          const pwd = window.prompt(`Nova senha para ${u.email} (mín. 8 caracteres)`);
-                          if (pwd && pwd.trim().length >= 8) resetPassword.mutate({ user_id: u.user_id, password: pwd.trim() });
-                          else if (pwd) toast.error("A senha precisa ter ao menos 8 caracteres");
-                        }}
-                      >
-                        Trocar senha
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          const slug = window.prompt(`Nome de usuário (slug) para ${u.email} — deixe vazio para remover`, u.login_slug ?? "");
-                          if (slug === null) return;
-                          updateFn({ data: { workspace_id: wsId as string, user_id: u.user_id, login_slug: slug.trim() } })
-                            .then(() => { toast.success("Usuário de login atualizado"); refresh(); })
-                            .catch((e: any) => toast.error(e?.message ?? "Erro ao definir usuário"));
-                        }}
-                      >
-                        Usuário
+                      <Button size="sm" variant="ghost" onClick={() => openEdit(u)}>
+                        Editar
                       </Button>
                       <Button
                         size="icon"
