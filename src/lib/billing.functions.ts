@@ -1,6 +1,17 @@
 import { createServerFn } from '@tanstack/react-start'
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware'
 import { z } from 'zod'
+import { slugify } from '@/lib/slugify'
+
+// Aceita qualquer texto (ex.: "Nome da Empresa") e converte para slug válido.
+const slugSchema = z.preprocess(
+  (v) => {
+    if (v === null || v === undefined) return null
+    const s = slugify(String(v))
+    return s.length >= 2 ? s : null
+  },
+  z.string().min(2).max(80).regex(/^[a-z0-9-]+$/, 'slug inválido').nullable(),
+)
 
 async function assertMember(supabase: any, userId: string, workspaceId: string) {
   const { data } = await supabase
