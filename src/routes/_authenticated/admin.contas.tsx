@@ -49,6 +49,7 @@ function Page() {
   const [editTarget, setEditTarget] = useState<any>(null);
   const [editForm, setEditForm] = useState({ name: "", slug: "", plan: "", status: "active", owner_name: "", owner_password: "" });
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [usersTarget, setUsersTarget] = useState<any>(null);
   const updateAccountFn = useServerFn(adminUpdateClientAccount);
   const deleteAccountFn = useServerFn(adminDeleteClientAccount);
 
