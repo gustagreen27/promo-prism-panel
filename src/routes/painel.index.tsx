@@ -130,6 +130,9 @@ function PanelHome() {
         </div>
       )}
 
+      <PlatformCapacityCard />
+
+
       {/* Resumo da conta */}
       <section className="space-y-3">
         <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Resumo da conta</h2>
