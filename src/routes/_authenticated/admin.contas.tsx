@@ -564,18 +564,31 @@ function WorkspaceUsersDialog({ account, onClose }: { account: any; onClose: () 
     onError: (e: any) => toast.error(e?.message ?? "Erro ao atualizar"),
   });
 
-  const resetPassword = useMutation({
-    mutationFn: (v: { user_id: string; password: string }) =>
-      updateFn({ data: { workspace_id: wsId as string, user_id: v.user_id, password: v.password } }),
-    onSuccess: () => toast.success("Senha alterada"),
-    onError: (e: any) => toast.error(e?.message ?? "Erro ao alterar senha"),
-  });
-
   const remove = useMutation({
     mutationFn: (v: { user_id: string; delete_user: boolean }) =>
       removeFn({ data: { workspace_id: wsId as string, user_id: v.user_id, delete_user: v.delete_user } }),
     onSuccess: () => { toast.success("Usuário removido"); refresh(); },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao remover usuário"),
+  });
+
+  const [editUser, setEditUser] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState({ full_name: "", login_slug: "", role: "operator", password: "" });
+  const openEdit = (u: any) => {
+    setEditUser(u);
+    setEditForm({ full_name: u.full_name ?? "", login_slug: u.login_slug ?? "", role: u.role ?? "operator", password: "" });
+  };
+  const saveEdit = useMutation({
+    mutationFn: () =>
+      updateFn({ data: {
+        workspace_id: wsId as string,
+        user_id: editUser.user_id,
+        full_name: editForm.full_name.trim() || null,
+        login_slug: editForm.login_slug.trim(),
+        role: editUser.role === "owner" ? undefined : editForm.role,
+        password: editForm.password.trim() || undefined,
+      } }),
+    onSuccess: () => { toast.success("Usuário atualizado"); setEditUser(null); refresh(); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao atualizar usuário"),
   });
 
   return (
@@ -628,29 +641,8 @@ function WorkspaceUsersDialog({ account, onClose }: { account: any; onClose: () 
                       </select>
                     </TableCell>
                     <TableCell className="text-right whitespace-nowrap">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          const pwd = window.prompt(`Nova senha para ${u.email} (mín. 8 caracteres)`);
-                          if (pwd && pwd.trim().length >= 8) resetPassword.mutate({ user_id: u.user_id, password: pwd.trim() });
-                          else if (pwd) toast.error("A senha precisa ter ao menos 8 caracteres");
-                        }}
-                      >
-                        Trocar senha
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          const slug = window.prompt(`Nome de usuário (slug) para ${u.email} — deixe vazio para remover`, u.login_slug ?? "");
-                          if (slug === null) return;
-                          updateFn({ data: { workspace_id: wsId as string, user_id: u.user_id, login_slug: slug.trim() } })
-                            .then(() => { toast.success("Usuário de login atualizado"); refresh(); })
-                            .catch((e: any) => toast.error(e?.message ?? "Erro ao definir usuário"));
-                        }}
-                      >
-                        Usuário
+                      <Button size="sm" variant="ghost" onClick={() => openEdit(u)}>
+                        Editar
                       </Button>
                       <Button
                         size="icon"
@@ -715,6 +707,68 @@ function WorkspaceUsersDialog({ account, onClose }: { account: any; onClose: () 
             {add.isPending ? "Adicionando…" : "Adicionar usuário"}
           </Button>
         </DialogFooter>
+
+        <Dialog open={!!editUser} onOpenChange={(v) => !v && setEditUser(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Editar usuário</DialogTitle>
+              <DialogDescription>{editUser?.email}</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-3">
+              <div>
+                <Label>Nome</Label>
+                <Input
+                  value={editForm.full_name}
+                  onChange={(e) => setEditForm((f) => ({ ...f, full_name: e.target.value }))}
+                  placeholder="Maria Souza"
+                />
+              </div>
+              <div>
+                <Label>Usuário (slug de login)</Label>
+                <Input
+                  value={editForm.login_slug}
+                  onChange={(e) => setEditForm((f) => ({ ...f, login_slug: e.target.value }))}
+                  placeholder="maria-souza — deixe vazio para remover"
+                />
+              </div>
+              <div>
+                <Label>Permissão</Label>
+                <select
+                  className="h-10 w-full rounded-md border bg-background px-2 text-sm"
+                  value={editForm.role}
+                  disabled={editUser?.role === "owner"}
+                  onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value }))}
+                >
+                  <option value="owner">Responsável</option>
+                  <option value="admin">Administrador</option>
+                  <option value="operator">Operador</option>
+                  <option value="viewer">Somente leitura</option>
+                </select>
+              </div>
+              <div>
+                <Label>Nova senha (opcional)</Label>
+                <Input
+                  type="text"
+                  value={editForm.password}
+                  onChange={(e) => setEditForm((f) => ({ ...f, password: e.target.value }))}
+                  placeholder="deixe vazio para manter a atual"
+                />
+                {!!editForm.password.trim() && editForm.password.trim().length < 8 && (
+                  <p className="mt-1 text-xs text-destructive">A senha precisa ter ao menos 8 caracteres</p>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setEditUser(null)}>Cancelar</Button>
+              <Button
+                onClick={() => saveEdit.mutate()}
+                disabled={saveEdit.isPending || (!!editForm.password.trim() && editForm.password.trim().length < 8)}
+              >
+                {saveEdit.isPending ? "Salvando…" : "Salvar alterações"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
   );
