@@ -2061,6 +2061,69 @@ export type Database = {
           },
         ]
       }
+      platform_capacity: {
+        Row: {
+          created_at: string
+          daily_available: number
+          daily_capacity: number
+          daily_completed: number
+          id: string
+          internal_note: string | null
+          singleton: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          daily_available?: number
+          daily_capacity?: number
+          daily_completed?: number
+          id?: string
+          internal_note?: string | null
+          singleton?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          daily_available?: number
+          daily_capacity?: number
+          daily_completed?: number
+          id?: string
+          internal_note?: string | null
+          singleton?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      platform_capacity_audit: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          id: string
+          internal_note: string | null
+          next: Json
+          previous: Json | null
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          internal_note?: string | null
+          next: Json
+          previous?: Json | null
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          internal_note?: string | null
+          next?: Json
+          previous?: Json | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
