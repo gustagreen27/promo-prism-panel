@@ -578,6 +578,26 @@ function WorkspaceUsersDialog({ account, onClose }: { account: any; onClose: () 
     onError: (e: any) => toast.error(e?.message ?? "Erro ao remover usuário"),
   });
 
+  const [editUser, setEditUser] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState({ full_name: "", login_slug: "", role: "operator", password: "" });
+  const openEdit = (u: any) => {
+    setEditUser(u);
+    setEditForm({ full_name: u.full_name ?? "", login_slug: u.login_slug ?? "", role: u.role ?? "operator", password: "" });
+  };
+  const saveEdit = useMutation({
+    mutationFn: () =>
+      updateFn({ data: {
+        workspace_id: wsId as string,
+        user_id: editUser.user_id,
+        full_name: editForm.full_name.trim() || null,
+        login_slug: editForm.login_slug.trim(),
+        role: editUser.role === "owner" ? undefined : editForm.role,
+        password: editForm.password.trim() || undefined,
+      } }),
+    onSuccess: () => { toast.success("Usuário atualizado"); setEditUser(null); refresh(); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao atualizar usuário"),
+  });
+
   return (
     <Dialog open={!!account} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-2xl">
