@@ -494,7 +494,7 @@ export const adminCreateClientAccount = createServerFn({ method: 'POST' })
   }) =>
     z.object({
       name: z.string().min(2).max(120),
-      slug: z.string().min(2).max(60).regex(/^[a-z0-9-]+$/, 'slug inválido').nullish(),
+      slug: slugSchema,
       plan: z.string().max(40).nullish(),
       owner_email: z.string().email(),
       owner_name: z.string().max(120).nullish(),
@@ -638,7 +638,7 @@ export const adminUpdateClientAccount = createServerFn({ method: 'POST' })
     z.object({
       workspace_id: z.string().uuid(),
       name: z.string().min(2).max(120).nullish(),
-      slug: z.string().min(2).max(60).regex(/^[a-z0-9-]+$/, 'slug inválido').nullish(),
+      slug: slugSchema,
       plan: z.string().max(40).nullish(),
       status: z.enum(['active', 'blocked']).nullish(),
       owner_name: z.string().max(120).nullish(),
