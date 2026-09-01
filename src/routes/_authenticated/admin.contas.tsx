@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { adminListClientAccounts, adminAddCredits, adminCreateClientAccount, adminSetCustomPrice, adminUpdateClientAccount, adminDeleteClientAccount } from "@/lib/billing.functions";
+import { adminListWorkspaceUsers, adminAddWorkspaceUser, adminUpdateWorkspaceUser, adminRemoveWorkspaceUser } from "@/lib/workspace-users.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/contas")({
   head: () => ({
