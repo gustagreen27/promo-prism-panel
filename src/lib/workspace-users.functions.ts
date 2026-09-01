@@ -79,6 +79,7 @@ export const adminAddWorkspaceUser = createServerFn({ method: 'POST' })
     full_name?: string | null
     password?: string | null
     role?: string | null
+    login_slug?: string | null
   }) =>
     z.object({
       workspace_id: z.string().uuid(),
@@ -86,6 +87,7 @@ export const adminAddWorkspaceUser = createServerFn({ method: 'POST' })
       full_name: z.string().max(120).nullish(),
       password: z.string().min(8).max(72).nullish(),
       role: z.enum(ROLES).nullish(),
+      login_slug: z.string().max(80).nullish(),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
