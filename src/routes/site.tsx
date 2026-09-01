@@ -235,6 +235,7 @@ function LandingPage() {
       <Header menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
       <main>
         <Hero />
+        <PanelScrollReveal />
         <HowItWorks />
         <CampaignInAction />
         <SimulatorSection />
