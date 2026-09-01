@@ -9,6 +9,27 @@ async function assertStaff(supabase: any, userId: string) {
 
 const ROLES = ['owner', 'admin', 'operator', 'viewer'] as const
 
+const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+
+function normalizeLoginSlug(raw: string | null | undefined): string | null {
+  const s = (raw ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60)
+  if (!s) return null
+  if (!SLUG_RE.test(s)) throw new Error('Slug de usuário inválido')
+  return s
+}
+
+async function assertSlugAvailable(supabaseAdmin: any, slug: string, userId: string) {
+  const { data: taken } = await supabaseAdmin
+    .from('profiles').select('id').eq('login_slug', slug).neq('id', userId).maybeSingle()
+  if (taken) throw new Error(`O usuário "${slug}" já está em uso por outro login`)
+}
+
 /** Lista os usuários (logins) vinculados a uma conta/empresa. */
 export const adminListWorkspaceUsers = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
@@ -28,7 +49,7 @@ export const adminListWorkspaceUsers = createServerFn({ method: 'POST' })
 
     const ids = (members ?? []).map((m: any) => m.user_id)
     const profiles = ids.length
-      ? (await supabaseAdmin.from('profiles').select('id, email, full_name, phone').in('id', ids)).data ?? []
+      ? (await supabaseAdmin.from('profiles').select('id, email, full_name, phone, login_slug').in('id', ids)).data ?? []
       : []
     const byId = new Map(profiles.map((p: any) => [p.id, p]))
 
@@ -39,6 +60,7 @@ export const adminListWorkspaceUsers = createServerFn({ method: 'POST' })
         created_at: m.created_at as string | null,
         email: (byId.get(m.user_id) as any)?.email ?? null,
         full_name: (byId.get(m.user_id) as any)?.full_name ?? null,
+        login_slug: (byId.get(m.user_id) as any)?.login_slug ?? null,
       }))
       .sort((a, b) => (a.role === 'owner' ? -1 : b.role === 'owner' ? 1 : (a.email ?? '').localeCompare(b.email ?? '')))
   })
@@ -57,6 +79,7 @@ export const adminAddWorkspaceUser = createServerFn({ method: 'POST' })
     full_name?: string | null
     password?: string | null
     role?: string | null
+    login_slug?: string | null
   }) =>
     z.object({
       workspace_id: z.string().uuid(),
@@ -64,6 +87,7 @@ export const adminAddWorkspaceUser = createServerFn({ method: 'POST' })
       full_name: z.string().max(120).nullish(),
       password: z.string().min(8).max(72).nullish(),
       role: z.enum(ROLES).nullish(),
+      login_slug: z.string().max(80).nullish(),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
@@ -73,6 +97,7 @@ export const adminAddWorkspaceUser = createServerFn({ method: 'POST' })
 
     const email = data.email.trim().toLowerCase()
     const role = (data.role ?? 'operator') as (typeof ROLES)[number]
+    const loginSlug = normalizeLoginSlug(data.login_slug)
 
     const { data: ws } = await supabaseAdmin
       .from('workspaces').select('id, name').eq('id', data.workspace_id).maybeSingle()
@@ -118,6 +143,13 @@ export const adminAddWorkspaceUser = createServerFn({ method: 'POST' })
       await supabaseAdmin.from('profiles').update({ full_name: data.full_name.trim() }).eq('id', targetId)
     }
 
+    if (loginSlug) {
+      await assertSlugAvailable(supabaseAdmin, loginSlug, targetId)
+      const { error: slugErr } = await supabaseAdmin
+        .from('profiles').update({ login_slug: loginSlug }).eq('id', targetId)
+      if (slugErr) throw new Error(`Falha ao definir o usuário de login: ${slugErr.message}`)
+    }
+
     // Vincula ao workspace da empresa
     const { error: linkErr } = await supabaseAdmin
       .from('workspace_members')
@@ -153,19 +185,21 @@ export const adminAddWorkspaceUser = createServerFn({ method: 'POST' })
       user_created: createdUser,
       generated_password: generatedPassword,
       workspace_name: ws.name,
+      login_slug: loginSlug,
     }
   })
 
 /** Altera o papel de um usuário dentro da conta. */
 export const adminUpdateWorkspaceUser = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { workspace_id: string; user_id: string; role?: string | null; password?: string | null; full_name?: string | null }) =>
+  .inputValidator((d: { workspace_id: string; user_id: string; role?: string | null; password?: string | null; full_name?: string | null; login_slug?: string | null }) =>
     z.object({
       workspace_id: z.string().uuid(),
       user_id: z.string().uuid(),
       role: z.enum(ROLES).nullish(),
       password: z.string().min(8).max(72).nullish(),
       full_name: z.string().max(120).nullish(),
+      login_slug: z.string().max(80).nullish(),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
@@ -187,6 +221,15 @@ export const adminUpdateWorkspaceUser = createServerFn({ method: 'POST' })
     }
     if (data.full_name?.trim()) {
       await supabaseAdmin.from('profiles').update({ full_name: data.full_name.trim() }).eq('id', data.user_id)
+    }
+    if (data.login_slug !== undefined && data.login_slug !== null) {
+      const slug = normalizeLoginSlug(data.login_slug)
+      if (slug) {
+        await assertSlugAvailable(supabaseAdmin, slug, data.user_id)
+      }
+      const { error: slugErr } = await supabaseAdmin
+        .from('profiles').update({ login_slug: slug }).eq('id', data.user_id)
+      if (slugErr) throw new Error(`Falha ao definir o usuário de login: ${slugErr.message}`)
     }
     return { ok: true }
   })

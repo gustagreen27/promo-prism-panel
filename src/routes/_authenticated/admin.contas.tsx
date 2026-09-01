@@ -521,7 +521,7 @@ function WorkspaceUsersDialog({ account, onClose }: { account: any; onClose: () 
   const qc = useQueryClient();
   const wsId = account?.id as string | undefined;
 
-  const [form, setForm] = useState({ email: "", full_name: "", password: "", role: "operator" });
+  const [form, setForm] = useState({ email: "", full_name: "", password: "", role: "operator", login_slug: "" });
 
   const usersQuery = useQuery({
     queryKey: ["admin-ws-users", wsId],
@@ -542,6 +542,7 @@ function WorkspaceUsersDialog({ account, onClose }: { account: any; onClose: () 
       full_name: form.full_name.trim() || null,
       password: form.password.trim() || null,
       role: form.role,
+      login_slug: form.login_slug.trim() || null,
     } }),
     onSuccess: (res: any) => {
       toast.success(
@@ -550,7 +551,7 @@ function WorkspaceUsersDialog({ account, onClose }: { account: any; onClose: () 
           : "Usuário vinculado à conta",
         { duration: res?.generated_password ? 20000 : 4000 },
       );
-      setForm({ email: "", full_name: "", password: "", role: "operator" });
+      setForm({ email: "", full_name: "", password: "", role: "operator", login_slug: "" });
       refresh();
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao adicionar usuário"),
@@ -609,6 +610,9 @@ function WorkspaceUsersDialog({ account, onClose }: { account: any; onClose: () 
                     <TableCell>
                       <div className="text-sm font-medium">{u.full_name ?? "—"}</div>
                       <div className="text-xs text-muted-foreground">{u.email ?? "—"}</div>
+                      {u.login_slug && (
+                        <div className="text-xs text-muted-foreground">usuário: <span className="font-mono">{u.login_slug}</span></div>
+                      )}
                     </TableCell>
                     <TableCell>
                       <select
@@ -634,6 +638,19 @@ function WorkspaceUsersDialog({ account, onClose }: { account: any; onClose: () 
                         }}
                       >
                         Trocar senha
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          const slug = window.prompt(`Nome de usuário (slug) para ${u.email} — deixe vazio para remover`, u.login_slug ?? "");
+                          if (slug === null) return;
+                          updateFn({ data: { workspace_id: wsId as string, user_id: u.user_id, login_slug: slug.trim() } })
+                            .then(() => { toast.success("Usuário de login atualizado"); refresh(); })
+                            .catch((e: any) => toast.error(e?.message ?? "Erro ao definir usuário"));
+                        }}
+                      >
+                        Usuário
                       </Button>
                       <Button
                         size="icon"
@@ -665,6 +682,10 @@ function WorkspaceUsersDialog({ account, onClose }: { account: any; onClose: () 
             <div>
               <Label>Nome</Label>
               <Input value={form.full_name} onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))} placeholder="Maria Souza" />
+            </div>
+            <div>
+              <Label>Usuário (slug de login, opcional)</Label>
+              <Input value={form.login_slug} onChange={(e) => setForm((f) => ({ ...f, login_slug: e.target.value }))} placeholder="maria-souza" />
             </div>
             <div>
               <Label>Senha (opcional)</Label>

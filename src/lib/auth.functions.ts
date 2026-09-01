@@ -94,6 +94,14 @@ export const resolveLoginEmail = createServerFn({ method: "GET" })
     const id = data.identifier.trim().toLowerCase();
     if (!id || id.includes("@")) return { email: id };
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // 1) slug de login individual do usuário (profiles.login_slug)
+    const { data: profBySlug } = await supabaseAdmin
+      .from("profiles")
+      .select("email")
+      .eq("login_slug", id)
+      .maybeSingle();
+    if (profBySlug?.email) return { email: profBySlug.email };
+    // 2) slug da empresa (workspace)
     const { data: ws } = await supabaseAdmin
       .from("workspaces")
       .select("id, owner_id")
