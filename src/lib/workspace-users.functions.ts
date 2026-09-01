@@ -15,7 +15,6 @@ function normalizeLoginSlug(raw: string | null | undefined): string | null {
   const s = (raw ?? '')
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
-    // eslint-disable-next-line no-misleading-character-class
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
