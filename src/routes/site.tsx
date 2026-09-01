@@ -26,6 +26,8 @@ import {
   Headphones,
 } from "lucide-react";
 
+import { ScrollOverHero } from "@/components/ui/scroll-over-hero";
+
 import logoAsset from "@/assets/next-disparos-logo.png.asset.json";
 
 // ============ CONFIG ============
