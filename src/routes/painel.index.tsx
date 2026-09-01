@@ -11,6 +11,7 @@ import {
 import { Send, Play, CheckCircle2, Wallet, Building2, ArrowRight } from "lucide-react";
 import { getMyContext, type MyContext } from "@/lib/auth.functions";
 import { getClientDashboard } from "@/lib/client-panel.functions";
+import { PlatformCapacityCard } from "@/components/PlatformCapacityCard";
 
 export const Route = createFileRoute("/painel/")({
   head: () => ({
@@ -129,6 +130,9 @@ function PanelHome() {
           Recarregue para não interromper seus disparos.
         </div>
       )}
+
+      <PlatformCapacityCard />
+
 
       {/* Resumo da conta */}
       <section className="space-y-3">
