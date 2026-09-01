@@ -83,6 +83,8 @@ function Page() {
             </div>
           </section>
 
+          <CapacitySection />
+
           <BillingSection />
         </div>
       )}
