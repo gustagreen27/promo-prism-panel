@@ -18,6 +18,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/format";
 import { listClients, createClient, updateClient, deleteClient } from "@/lib/clients.functions";
+import { adminListAllUsers } from "@/lib/workspace-users.functions";
+
+const ROLE_LABELS: Record<string, string> = {
+  owner: "Responsável",
+  admin: "Administrador",
+  operator: "Operador",
+  viewer: "Somente leitura",
+};
 
 export const Route = createFileRoute("/_authenticated/admin/clientes")({
   head: () => ({ meta: [{ title: "Clientes — Painel" }] }),
