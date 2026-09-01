@@ -610,6 +610,9 @@ function WorkspaceUsersDialog({ account, onClose }: { account: any; onClose: () 
                     <TableCell>
                       <div className="text-sm font-medium">{u.full_name ?? "—"}</div>
                       <div className="text-xs text-muted-foreground">{u.email ?? "—"}</div>
+                      {u.login_slug && (
+                        <div className="text-xs text-muted-foreground">usuário: <span className="font-mono">{u.login_slug}</span></div>
+                      )}
                     </TableCell>
                     <TableCell>
                       <select
@@ -635,6 +638,19 @@ function WorkspaceUsersDialog({ account, onClose }: { account: any; onClose: () 
                         }}
                       >
                         Trocar senha
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          const slug = window.prompt(`Nome de usuário (slug) para ${u.email} — deixe vazio para remover`, u.login_slug ?? "");
+                          if (slug === null) return;
+                          updateFn({ data: { workspace_id: wsId as string, user_id: u.user_id, login_slug: slug.trim() } })
+                            .then(() => { toast.success("Usuário de login atualizado"); refresh(); })
+                            .catch((e: any) => toast.error(e?.message ?? "Erro ao definir usuário"));
+                        }}
+                      >
+                        Usuário
                       </Button>
                       <Button
                         size="icon"
