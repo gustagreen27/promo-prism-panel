@@ -304,33 +304,6 @@ function MessageLogs({ id, name }: { id: string; name: string }) {
     }
   };
 
-  const _legacyExport = async () => {
-    const full = await fn({ data: { id, limit: 10000 } });
-    const head = ["telefone", "status", "wamid", "enviada_em", "entregue_em", "lida_em", "respondida_em", "falha_em", "codigo_erro", "motivo"];
-    const lines = (full.rows ?? []).map((r: any) =>
-      [
-        maskPhone(r.phone),
-        LOG_STATUS[r.status]?.label ?? r.status,
-        r.wamid ?? "",
-        dt(r.sent_at),
-        dt(r.delivered_at),
-        dt(r.read_at),
-        dt(r.replied_at),
-        dt(r.failed_at),
-        r.error_code ?? "",
-        r.error_reason ?? "",
-      ]
-        .map((v) => `"${String(v).replace(/"/g, '""')}"`)
-        .join(";"),
-    );
-    const csv = "\uFEFF" + [head.join(";"), ...lines].join("\n");
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    a.download = `logs-${name.replace(/\W+/g, "-").toLowerCase()}.csv`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  };
-
   return (
     <Card className="border-border/60">
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 pb-2">
@@ -341,8 +314,8 @@ function MessageLogs({ id, name }: { id: string; name: string }) {
               Ver mais
             </Button>
           )}
-          <Button size="sm" variant="outline" onClick={exportLogs} disabled={!rows.length}>
-            <Download className="mr-2 h-4 w-4" /> Exportar logs
+          <Button size="sm" variant="outline" onClick={exportLogs} disabled={!rows.length || exporting}>
+            <Download className="mr-2 h-4 w-4" /> {exporting ? "Gerando CSV completo…" : "Exportar logs"}
           </Button>
         </div>
       </CardHeader>
