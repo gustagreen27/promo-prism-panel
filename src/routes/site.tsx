@@ -26,6 +26,8 @@ import {
   Headphones,
 } from "lucide-react";
 
+import { ScrollOverHero } from "@/components/ui/scroll-over-hero";
+
 import logoAsset from "@/assets/next-disparos-logo.png.asset.json";
 
 // ============ CONFIG ============
@@ -233,6 +235,7 @@ function LandingPage() {
       <Header menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
       <main>
         <Hero />
+        <PanelScrollReveal />
         <HowItWorks />
         <CampaignInAction />
         <SimulatorSection />
@@ -524,6 +527,51 @@ function PainelRealCard({ variant = "live" }: { variant?: PainelVariant }) {
         <ArrowRight className="h-3.5 w-3.5" />
       </button>
     </div>
+  );
+}
+
+function PanelScrollReveal() {
+  return (
+    <ScrollOverHero
+      className="bg-transparent"
+      eyebrow={
+        <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/[0.08] px-3 py-1 text-xs font-medium text-emerald-200">
+          <span className="size-1.5 rounded-full bg-emerald-400" />
+          Painel em tempo real
+        </span>
+      }
+      title={
+        <span className="text-white">
+          Acompanhe cada disparo,{" "}
+          <span className="text-emerald-400">em tempo real</span>.
+        </span>
+      }
+      description={
+        <span className="text-neutral-300">
+          Enviadas, entregues, lidas e respondidas — tudo em um painel que você
+          acessa de qualquer lugar, sem planilhas e sem espera.
+        </span>
+      }
+      actions={
+        <button
+          type="button"
+          onClick={() =>
+            openWhatsApp("Olá! Quero conhecer o painel de disparos da Disparos FR.")
+          }
+          className="rounded-full bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0c0e]"
+        >
+          Falar com especialista
+        </button>
+      }
+      media={
+        <img
+          src={SCREENSHOTS.campaignRunning}
+          alt="Painel da Disparos FR com campanha de WhatsApp em execução ao vivo"
+          loading="lazy"
+          className="aspect-[16/10] w-full object-cover"
+        />
+      }
+    />
   );
 }
 
