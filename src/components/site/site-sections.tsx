@@ -558,4 +558,3 @@ export function FinalCta() {
   );
 }
 
-export const _unusedIcons = { Send, Repeat, ListChecks };
