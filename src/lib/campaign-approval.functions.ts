@@ -84,7 +84,7 @@ export const listApprovalQueue = createServerFn({ method: 'POST' })
         for (const c of due) c.external_status = 'completed'
       }
 
-      // Progressão automática das métricas (janelas de 10 minutos).
+      // Progressão automática das métricas (janelas de 1 minuto).
       const { applyExternalProgression } = await import('./external-progression.server')
       await applyExternalProgression(supabase, campaigns)
     }
@@ -456,7 +456,7 @@ export const updateExternalExecution = createServerFn({ method: 'POST' })
         throw new Error('A finalização não pode ser anterior ao início.')
 
       // Os números informados são o RESULTADO FINAL previsto: viram alvos da
-      // progressão automática (janelas de 10 min entre início e finalização).
+      // progressão automática (janelas de 1 min entre início e finalização).
       if (data.external_sent_count !== undefined) patch['external_target_sent_count'] = data.external_sent_count ?? null
       if (data.external_delivered_count !== undefined)
         patch['external_target_delivered_count'] = data.external_delivered_count ?? null
@@ -655,7 +655,7 @@ export const listMyDemands = createServerFn({ method: 'POST' })
     if (error) throw error
 
     const campaigns = (rows ?? []) as any[]
-    // Progressão automática das execuções externas (janelas de 10 minutos).
+    // Progressão automática das execuções externas (janelas de 1 minuto).
     {
       const { applyExternalProgression } = await import('./external-progression.server')
       await applyExternalProgression(supabase, campaigns)

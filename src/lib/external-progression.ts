@@ -3,24 +3,24 @@
  *
  * O admin configura uma única vez: total, valores finais (enviados, entregues,
  * falhas), início e horário previsto de finalização. A partir daí o sistema
- * calcula de forma determinística — em janelas de 10 minutos — como as métricas
+ * calcula de forma determinística — em janelas de 1 minuto — como as métricas
  * evoluem entre o início e o fim, com variação natural (nada de números redondos
  * nem interpolação linear).
  *
- * Determinístico: a mesma demanda no mesmo minuto sempre produz o mesmo número,
+ * Determinístico: a mesma demanda no mesmo segundo sempre produz o mesmo número,
  * então o valor calculado na leitura e o valor persistido pelo cron coincidem.
  */
 
-export const EXTERNAL_TICK_MS = 10 * 60 * 1000
+export const EXTERNAL_TICK_MS = 60 * 1000
 
 /**
- * Tamanho da janela de atualização: 10 min por padrão, mas em períodos curtos
+ * Tamanho da janela de atualização: 1 min por padrão, mas em períodos curtos
  * (ex.: 10 mil disparos em 1 hora) as janelas encolhem para que a progressão
  * seja distribuída ao longo de todo o prazo configurado.
  */
 export function tickMsFor(startMs: number, finishMs: number): number {
   const duration = Math.max(1, finishMs - startMs)
-  return Math.max(60_000, Math.min(EXTERNAL_TICK_MS, Math.ceil(duration / 12)))
+  return Math.max(30_000, Math.min(EXTERNAL_TICK_MS, Math.ceil(duration / 12)))
 }
 
 export type ExternalTargets = {
@@ -38,7 +38,7 @@ export type ExternalSnapshot = {
   delivered: number
   failed: number
   pending: number
-  /** Início da janela de 10 min a que este snapshot corresponde. */
+  /** Início da janela de 1 min a que este snapshot corresponde. */
   updatedAt: string
   /** Próxima atualização prevista (null quando já finalizou). */
   nextAt: string | null
@@ -147,11 +147,19 @@ export function simulateExternal(row: ExternalTargets, now: Date = new Date()): 
   const windowStart = start + k * tick
   const nextTick = Math.min(finish, windowStart + tick)
 
-  const pSent = curve[k + 1] ?? 1
+  // Interpolação suave dentro da janela: os números "vão marcando" em vez de
+  // pularem só no próximo tick. A curva preserva a variação natural entre
+  // janelas; dentro de cada uma usamos progressão linear.
+  const alpha = nextTick === windowStart ? 1 : Math.max(0, Math.min(1, (t - windowStart) / (nextTick - windowStart)))
+  const prev = curve[k] ?? 0
+  const next = curve[k + 1] ?? 1
+  const current = prev + alpha * (next - prev)
+
+  const pSent = current
   // Entregas ficam ~uma janela atrás do processamento.
-  const pDelivered = k === 0 ? (curve[1] ?? 1) * 0.62 : (curve[k] ?? 0) + ((curve[k + 1] ?? 1) - (curve[k] ?? 0)) * 0.35
+  const pDelivered = k === 0 ? current * 0.62 : prev + (current - prev) * 0.35
   // Falhas evoluem com ritmo próprio, próximo ao dos envios.
-  const pFailed = Math.min(1, (curve[k + 1] ?? 1) * (0.85 + rand(`${row.id}:f:${k}`) * 0.25))
+  const pFailed = Math.min(1, current * (0.85 + rand(`${row.id}:f:${k}`) * 0.25))
 
   const sent = clampInt(tSent * pSent, 0, tSent)
   const failed = clampInt(tFailed * pFailed, 0, tFailed)
@@ -164,7 +172,7 @@ export function simulateExternal(row: ExternalTargets, now: Date = new Date()): 
     delivered,
     failed,
     pending,
-    updatedAt: new Date(windowStart).toISOString(),
+    updatedAt: new Date(t).toISOString(),
     nextAt: new Date(nextTick).toISOString(),
     finished: false,
     started: true,
