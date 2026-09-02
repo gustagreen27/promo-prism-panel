@@ -437,7 +437,7 @@ function Page() {
                         {!d.external_finished_at && (
                           <p className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
                             <Info className="h-3 w-3" />
-                            Os dados desta página são atualizados a cada 10 minutos.
+                            Os dados desta página são atualizados a cada 3 minutos.
                           </p>
                         )}
                       </div>

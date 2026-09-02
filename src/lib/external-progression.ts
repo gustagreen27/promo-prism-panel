@@ -3,7 +3,7 @@
  *
  * O admin configura uma única vez: total, valores finais (enviados, entregues,
  * falhas), início e horário previsto de finalização. A partir daí o sistema
- * calcula de forma determinística — em janelas de 10 minutos — como as métricas
+ * calcula de forma determinística — em janelas de 3 minutos — como as métricas
  * evoluem entre o início e o fim, com variação natural (nada de números redondos
  * nem interpolação linear).
  *
@@ -11,10 +11,10 @@
  * então o valor calculado na leitura e o valor persistido pelo cron coincidem.
  */
 
-export const EXTERNAL_TICK_MS = 10 * 60 * 1000
+export const EXTERNAL_TICK_MS = 3 * 60 * 1000
 
 /**
- * Tamanho da janela de atualização: 10 min por padrão, mas em períodos curtos
+ * Tamanho da janela de atualização: 3 min por padrão, mas em períodos curtos
  * (ex.: 10 mil disparos em 1 hora) as janelas encolhem para que a progressão
  * seja distribuída ao longo de todo o prazo configurado.
  */
@@ -38,7 +38,7 @@ export type ExternalSnapshot = {
   delivered: number
   failed: number
   pending: number
-  /** Início da janela de 10 min a que este snapshot corresponde. */
+  /** Início da janela de 3 min a que este snapshot corresponde. */
   updatedAt: string
   /** Próxima atualização prevista (null quando já finalizou). */
   nextAt: string | null
