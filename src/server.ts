@@ -2,7 +2,8 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
-import { domainRedirect } from "./lib/domain-routing";
+import { decideRequest } from "./lib/domain-routing";
+import { renderDomain404 } from "./lib/domain-404";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
