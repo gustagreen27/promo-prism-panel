@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { resolveCampaign, trackEvent } from "@/lib/track.functions";
 import { isMetaInAppBrowser, openInExternalBrowser } from "@/lib/external-open";
 import { NotFound as GhostNotFound } from "@/components/ui/ghost-404-page";
+import { DomainNotFound, useHostZone } from "@/components/domain-guard";
 
 function emitEvent(slug: string, event_type: string, metadata?: Record<string, unknown>) {
   if (!slug) return;
@@ -149,6 +150,7 @@ export const Route = createFileRoute("/$slug")({
 
 function CampaignPublicPage() {
   const data = Route.useLoaderData();
+  const hostZone = useHostZone();
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [splash, setSplash] = useState(true);
 
@@ -212,7 +214,9 @@ function CampaignPublicPage() {
     };
   }, [data]);
 
-  if (data.status === "notfound") {
+  if (data.status === "notfound" || (hostZone === "slug" && data.status === "unavailable")) {
+    // No domínio de páginas públicas o 404 é neutro (sem marca, sem dados privados).
+    if (hostZone === "slug") return <DomainNotFound zone="slug" />;
     return (
       <GhostNotFound
         title="Campanha não encontrada"
