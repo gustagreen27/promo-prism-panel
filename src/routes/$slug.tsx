@@ -212,7 +212,9 @@ function CampaignPublicPage() {
     };
   }, [data]);
 
-  if (data.status === "notfound") {
+  if (data.status === "notfound" || (hostZone === "slug" && data.status === "unavailable")) {
+    // No domínio de páginas públicas o 404 é neutro (sem marca, sem dados privados).
+    if (hostZone === "slug") return <DomainNotFound zone="slug" />;
     return (
       <GhostNotFound
         title="Campanha não encontrada"
