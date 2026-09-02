@@ -12,6 +12,7 @@ import appCss from "../styles.css?url";
 import { Toaster } from "@/components/ui/sonner";
 import { NotFound as GhostNotFound } from "@/components/ui/ghost-404-page";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { DomainGuard } from "@/components/domain-guard";
 
 function NotFoundComponent() {
   return <GhostNotFound />;
