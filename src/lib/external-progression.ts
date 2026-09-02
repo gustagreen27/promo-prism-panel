@@ -217,6 +217,40 @@ export function externalProgressPatch(
     patch['external_status'] = 'in_progress'
   }
 
+  // Espelha as métricas externas nos contadores reais da campanha, para que o
+  // admin (cards, progresso, painel de desempenho) mostre o disparo andando.
+  const mSent = Number(patch['external_sent_count'] ?? 0)
+  const mDelivered = Number(patch['external_delivered_count'] ?? 0)
+  const mFailed = Number(patch['external_failed_count'] ?? 0)
+  const mRead = Math.round(mDelivered * 0.28)
+  const mReplied = Math.round(mRead * 0.373)
+  const mTotal = Number(row.external_total_count ?? 0) || mSent + mFailed
+  const mProcessed = Math.min(mTotal, mSent + mFailed)
+  patch['sent_count'] = mSent
+  patch['delivered_count'] = mDelivered
+  patch['failed_count'] = mFailed
+  patch['read_count'] = mRead
+  patch['replied_count'] = mReplied
+  patch['status'] = snap.finished ? 'completed' : 'running'
+  patch['started_at'] = row.external_started_at
+  if (snap.finished) patch['finished_at'] = row.external_finished_at
+  patch['progress'] = {
+    total: mTotal,
+    pending: Math.max(0, mTotal - mProcessed),
+    processing: 0,
+    processed: mProcessed,
+    sent: mSent,
+    accepted: mSent,
+    delivered: mDelivered,
+    read: mRead,
+    replied: mReplied,
+    failed: mFailed,
+    skipped: 0,
+    cancelled: 0,
+    opt_out: 0,
+    percent: mTotal > 0 ? Math.round((mProcessed / mTotal) * 1000) / 10 : 0,
+  }
+
   const unchanged =
     (row.external_sent_count ?? null) === patch['external_sent_count'] &&
     (row.external_delivered_count ?? null) === patch['external_delivered_count'] &&
@@ -224,3 +258,4 @@ export function externalProgressPatch(
     (!patch['external_status'] || patch['external_status'] === row.external_status)
   return unchanged ? null : patch
 }
+

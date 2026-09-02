@@ -50,6 +50,14 @@ export const getDispatchPerformance = createServerFn({ method: "GET" })
       _campaign_id: data.id,
     });
     if (error) throw error;
-    const { synthesizeWorkerActivity } = await import("./wa-performance-sim.server");
-    return synthesizeWorkerActivity(perf as any) as DispatchPerformance | null;
+    const { data: row } = await context.supabase
+      .from("wa_campaigns")
+      .select(
+        "execution_type,external_total_count,external_sent_count,external_failed_count,external_target_sent_count,external_started_at,external_finished_at",
+      )
+      .eq("id", data.id)
+      .maybeSingle();
+    const { synthesizeWorkerActivity, applyExternalPerf } = await import("./wa-performance-sim.server");
+    return synthesizeWorkerActivity(applyExternalPerf(perf as any, row) as any) as DispatchPerformance | null;
   });
+
