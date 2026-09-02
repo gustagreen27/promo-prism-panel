@@ -1,23 +1,20 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { LandingPage } from "@/components/site/landing-page";
+
+const TITLE = "Next Disparos — Comunicação em escala e gestão de campanhas";
+const DESCRIPTION =
+  "Plataforma para planejar campanhas, acompanhar envios em tempo real e centralizar créditos, usuários e relatórios da sua operação.";
 
 export const Route = createFileRoute("/")({
-  beforeLoad: () => {
-    throw redirect({ to: "/login" });
-  },
   head: () => ({
     meta: [
-      { title: "next DISPAROS" },
-      { name: "description", content: "next DISPAROS." },
-      { name: "robots", content: "noindex, nofollow" },
-      { property: "og:title", content: "next DISPAROS" },
-      { property: "og:description", content: "next DISPAROS." },
+      { title: TITLE },
+      { name: "description", content: DESCRIPTION },
+      { property: "og:title", content: TITLE },
+      { property: "og:description", content: DESCRIPTION },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: BlankHome,
+  component: LandingPage,
 });
-
-function BlankHome() {
-  return <main className="min-h-screen bg-background" aria-hidden="true" />;
-}
