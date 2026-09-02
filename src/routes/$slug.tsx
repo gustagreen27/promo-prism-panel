@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { resolveCampaign, trackEvent } from "@/lib/track.functions";
 import { isMetaInAppBrowser, openInExternalBrowser } from "@/lib/external-open";
+import { NotFound as GhostNotFound } from "@/components/ui/ghost-404-page";
 
 function emitEvent(slug: string, event_type: string, metadata?: Record<string, unknown>) {
   if (!slug) return;
@@ -213,14 +214,10 @@ function CampaignPublicPage() {
 
   if (data.status === "notfound") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <div className="text-center">
-          <h1 className="text-3xl font-semibold">Campanha não encontrada</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Verifique o link ou contate o responsável pela campanha.
-          </p>
-        </div>
-      </div>
+      <GhostNotFound
+        title="Campanha não encontrada"
+        description="Verifique o link ou contate o responsável pela campanha."
+      />
     );
   }
 
