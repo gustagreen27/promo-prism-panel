@@ -163,6 +163,95 @@ export function buildSimulatedLogs(params: {
   })
 }
 
+/**
+ * Percorre os logs simulados em ordem cronológica chamando `cb` linha a linha,
+ * sem reter os objetos em memória — usado na exportação de bases grandes
+ * (centenas de milhares de contatos). Produz exatamente os mesmos status,
+ * wamid e timestamps de buildSimulatedLogs.
+ */
+export function eachSimulatedLog(
+  params: { campaignId: string; phones: string[]; totals: SimTotals; startMs: number; finishMs: number },
+  cb: (row: SimLogRow) => void,
+): void {
+  const { campaignId, phones, startMs } = params
+  const finishMs = Math.max(params.finishMs, startMs + 60_000)
+  const n = phones.length
+  if (n === 0) return
+
+  const t = params.totals
+  const processed = Math.max(1, t.sent + t.failed)
+  const scale = (v: number) => Math.round((Math.max(0, v) / processed) * n)
+
+  const failed = Math.min(n, scale(t.failed))
+  const sentTotal = n - failed
+  const delivered = Math.min(sentTotal, scale(t.delivered))
+  const read = Math.min(delivered, Math.round((Math.max(0, t.read) / Math.max(1, t.delivered || 1)) * delivered))
+  const replied = Math.min(read, Math.round((Math.max(0, t.replied) / Math.max(1, t.read || 1)) * read))
+
+  const rankKey = new Uint32Array(n)
+  const timeKey = new Uint32Array(n)
+  const byIndex: number[] = new Array(n)
+  for (let i = 0; i < n; i++) {
+    const phone = phones[i]!
+    rankKey[i] = hash(`${campaignId}:rank:${phone}:${i}`)
+    timeKey[i] = hash(`${campaignId}:t:${phone}:${i}`)
+    byIndex[i] = i
+  }
+
+  const byRank = byIndex.slice().sort((a, b) => rankKey[a]! - rankKey[b]! || a - b)
+  const rankOf = new Uint32Array(n)
+  for (let r = 0; r < n; r++) rankOf[byRank[r]!] = r
+
+  const byTime = byIndex.sort((a, b) => timeKey[a]! - timeKey[b]! || a - b)
+
+  const span = finishMs - startMs
+  for (const i of byTime) {
+    const phone = phones[i]!
+    const rank = rankOf[i]!
+    const sentAt = startMs + Math.floor(((timeKey[i]! % 1000000) / 1000000) * span)
+    if (rank < failed) {
+      const f = pickFailure(`${campaignId}:err:${phone}`)
+      cb({
+        phone,
+        status: 'failed',
+        wamid: null,
+        sent_at: null,
+        delivered_at: null,
+        read_at: null,
+        replied_at: null,
+        failed_at: iso(sentAt),
+        error_code: f.code,
+        error_reason: f.reason,
+      })
+      continue
+    }
+
+    const offset = rank - failed
+    const isDelivered = offset < delivered
+    const isRead = offset < read
+    const isReplied = offset < replied
+
+    const deliveredAt = isDelivered ? sentAt + 2_000 + Math.floor(frac(`${campaignId}:d:${phone}`) * 45_000) : null
+    const readAt =
+      isRead && deliveredAt ? deliveredAt + 30_000 + Math.floor(frac(`${campaignId}:r:${phone}`) * 3_600_000) : null
+    const repliedAt =
+      isReplied && readAt ? readAt + 20_000 + Math.floor(frac(`${campaignId}:p:${phone}`) * 1_800_000) : null
+
+    cb({
+      phone,
+      status: isReplied ? 'replied' : isRead ? 'read' : isDelivered ? 'delivered' : 'sent',
+      wamid: simulateWamid(campaignId, phone, i),
+      sent_at: iso(sentAt),
+      delivered_at: deliveredAt ? iso(deliveredAt) : null,
+      read_at: readAt ? iso(readAt) : null,
+      replied_at: repliedAt ? iso(repliedAt) : null,
+      failed_at: null,
+      error_code: null,
+      error_reason: null,
+    })
+  }
+}
+
 /** Mascara o telefone para exibição ao cliente: +55 62 9****-**38 */
 export function maskPhone(phone: string): string {
   const d = String(phone).replace(/\D/g, '')
