@@ -1,6 +1,6 @@
 export const IMPORT_CHUNK_SIZE = 1000;
 /** Lotes enviados em paralelo. Mantém o banco estável e acelera bases enormes. */
-export const IMPORT_CONCURRENCY = 6;
+export const IMPORT_CONCURRENCY = 3;
 
 export type ImportRow = { phone: string; name?: string | null };
 
