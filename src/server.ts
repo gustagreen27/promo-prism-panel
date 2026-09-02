@@ -42,9 +42,21 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
-      const redirectTo = domainRedirect(request);
-      if (redirectTo) {
-        return new Response(null, { status: 302, headers: { location: redirectTo } });
+      const decision = decideRequest(request);
+      if (decision.kind === "redirect") {
+        return new Response(null, {
+          status: decision.status,
+          headers: { location: decision.location },
+        });
+      }
+      if (decision.kind === "notfound") {
+        return new Response(renderDomain404(decision.zone), {
+          status: 404,
+          headers: {
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "no-store",
+          },
+        });
       }
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
