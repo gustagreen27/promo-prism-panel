@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect, notFound, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/admin/app-sidebar";
@@ -18,8 +18,8 @@ export const Route = createFileRoute("/_authenticated")({
     const internalRoles = new Set(["admin", "super_admin", "support", "finance", "operations"]);
     const isInternal = (roles ?? []).some((r) => internalRoles.has(r.role as string));
     if (!isInternal) {
-      // Non-staff logged in: send to client panel instead of forcing sign-out
-      throw redirect({ to: "/painel" });
+      // Non-staff trying to reach /admin: respond as if the route doesn't exist
+      throw notFound();
     }
 
     // Usuários restritos ao Atendimento (com números liberados específicos)
