@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { ArrowLeft, Download, FileText, Printer } from "lucide-react";
 import { getMyCampaignReport } from "@/lib/client-report.functions";
-import { getMyCampaignLogs } from "@/lib/client-logs.functions";
+import { getMyCampaignLogs, exportMyCampaignLogs } from "@/lib/client-logs.functions";
 import { maskPhone } from "@/lib/dispatch-log-sim";
 
 export const Route = createFileRoute("/painel/relatorio/$id")({
@@ -282,31 +282,26 @@ function MessageLogs({ id, name }: { id: string; name: string }) {
 
   const rows = data?.rows ?? [];
 
+  const exportFn = useServerFn(exportMyCampaignLogs);
+  const [exporting, setExporting] = useState(false);
+
   const exportLogs = async () => {
-    const full = await fn({ data: { id, limit: 10000 } });
-    const head = ["telefone", "status", "wamid", "enviada_em", "entregue_em", "lida_em", "respondida_em", "falha_em", "codigo_erro", "motivo"];
-    const lines = (full.rows ?? []).map((r: any) =>
-      [
-        maskPhone(r.phone),
-        LOG_STATUS[r.status]?.label ?? r.status,
-        r.wamid ?? "",
-        dt(r.sent_at),
-        dt(r.delivered_at),
-        dt(r.read_at),
-        dt(r.replied_at),
-        dt(r.failed_at),
-        r.error_code ?? "",
-        r.error_reason ?? "",
-      ]
-        .map((v) => `"${String(v).replace(/"/g, '""')}"`)
-        .join(";"),
-    );
-    const csv = "\uFEFF" + [head.join(";"), ...lines].join("\n");
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    a.download = `logs-${name.replace(/\W+/g, "-").toLowerCase()}.csv`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+    setExporting(true);
+    try {
+      // O servidor gera o CSV completo (sem o teto de 1.000 linhas) e devolve
+      // compactado em gzip; aqui descompactamos e salvamos o .csv.
+      const res = await exportFn({ data: { id } });
+      const bin = Uint8Array.from(atob(res.csvGzipB64), (c) => c.charCodeAt(0));
+      const stream = new Blob([bin]).stream().pipeThrough(new DecompressionStream("gzip"));
+      const blob = await new Response(stream).blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = res.filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -319,8 +314,8 @@ function MessageLogs({ id, name }: { id: string; name: string }) {
               Ver mais
             </Button>
           )}
-          <Button size="sm" variant="outline" onClick={exportLogs} disabled={!rows.length}>
-            <Download className="mr-2 h-4 w-4" /> Exportar logs
+          <Button size="sm" variant="outline" onClick={exportLogs} disabled={!rows.length || exporting}>
+            <Download className="mr-2 h-4 w-4" /> {exporting ? "Gerando CSV completo…" : "Exportar logs"}
           </Button>
         </div>
       </CardHeader>
