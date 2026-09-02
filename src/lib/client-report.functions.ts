@@ -67,6 +67,33 @@ export const getMyCampaignReport = createServerFn({ method: 'POST' })
       out.campaign.read_count = metrics.read
       out.campaign.replied_count = metrics.replied
       out.campaign.failed_count = metrics.failed
+
+      // Execução externa: o RPC não tem linhas reais, então a linha do tempo
+      // é reconstruída distribuindo os envios entre início e fim do disparo.
+      if (
+        stageRow.execution_type === 'external' &&
+        (!out.timeline || out.timeline.length === 0) &&
+        metrics.sent > 0
+      ) {
+        const startIso = stageRow.external_started_at ?? stageRow.scheduled_at
+        const endIso = stageRow.external_finished_at ?? stageRow.external_updated_at
+        const startMs = startIso ? new Date(startIso).getTime() : Date.now() - 3_600_000
+        let endMs = endIso ? new Date(endIso).getTime() : startMs + 3_600_000
+        if (endMs <= startMs) endMs = startMs + 3_600_000
+        const buckets = Math.min(24, Math.max(6, Math.round((endMs - startMs) / 600_000)))
+        const per = Math.floor(metrics.sent / buckets)
+        out.timeline = Array.from({ length: buckets }, (_, i) => {
+          const t = new Date(startMs + ((endMs - startMs) * i) / buckets)
+          const label = t.toLocaleString('pt-BR', {
+            timeZone: 'America/Sao_Paulo',
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+          return { t: label, v: i === buckets - 1 ? metrics.sent - per * (buckets - 1) : per }
+        })
+      }
     }
 
     const repliedTotal = Number(out.campaign.replied_count ?? 0)
