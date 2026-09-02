@@ -282,7 +282,29 @@ function MessageLogs({ id, name }: { id: string; name: string }) {
 
   const rows = data?.rows ?? [];
 
+  const exportFn = useServerFn(exportMyCampaignLogs);
+  const [exporting, setExporting] = useState(false);
+
   const exportLogs = async () => {
+    setExporting(true);
+    try {
+      // O servidor gera o CSV completo (sem o teto de 1.000 linhas) e devolve
+      // compactado em gzip; aqui descompactamos e salvamos o .csv.
+      const res = await exportFn({ data: { id } });
+      const bin = Uint8Array.from(atob(res.csvGzipB64), (c) => c.charCodeAt(0));
+      const stream = new Blob([bin]).stream().pipeThrough(new DecompressionStream("gzip"));
+      const blob = await new Response(stream).blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = res.filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const _legacyExport = async () => {
     const full = await fn({ data: { id, limit: 10000 } });
     const head = ["telefone", "status", "wamid", "enviada_em", "entregue_em", "lida_em", "respondida_em", "falha_em", "codigo_erro", "motivo"];
     const lines = (full.rows ?? []).map((r: any) =>
