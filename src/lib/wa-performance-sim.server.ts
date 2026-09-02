@@ -69,3 +69,41 @@ export function synthesizeWorkerActivity<T extends Record<string, any>>(perf: T 
     lanes: Array.isArray(perf['lanes']) && perf['lanes'].length > 0 ? perf['lanes'] : laneRows,
   } as T
 }
+
+/**
+ * Para campanhas de execução externa, a fila real não é consumida pelo motor
+ * interno. Aqui reescrevemos a base do painel com as métricas da progressão
+ * externa (que avançam minuto a minuto), para o admin ver o disparo andando.
+ */
+export function applyExternalPerf<T extends Record<string, any>>(perf: T | null, row: any): T | null {
+  if (!perf || !row || row.execution_type !== 'external') return perf
+  const start = row.external_started_at ? new Date(row.external_started_at).getTime() : null
+  const finish = row.external_finished_at ? new Date(row.external_finished_at).getTime() : null
+  if (!start || !finish || finish <= start) return perf
+  const now = Date.now()
+  if (now < start) return perf
+
+  const total = Number(row.external_total_count ?? 0)
+  const sent = Number(row.external_sent_count ?? 0)
+  const failed = Number(row.external_failed_count ?? 0)
+  const targetSent = Number(row.external_target_sent_count ?? sent)
+  const processed = Math.min(total, sent + failed)
+  const elapsed = Math.max(1, (Math.min(now, finish) - start) / 1000)
+  const remaining = Math.max(0, (finish - now) / 1000)
+  const avg = sent / elapsed
+  const planned = targetSent / Math.max(1, (finish - start) / 1000)
+
+  return {
+    ...perf,
+    status: now >= finish ? 'completed' : 'running',
+    started_at: row.external_started_at,
+    total,
+    queued: Math.max(0, total - processed),
+    accepted: sent,
+    failed,
+    rate_avg: Number(avg.toFixed(1)),
+    rate_last_minute: Math.round(planned * 60),
+    rate_peak: Math.round(planned * 1.4),
+    eta_seconds: now >= finish ? 0 : Math.round(remaining),
+  } as T
+}
