@@ -444,6 +444,16 @@ export const retryFailedRecipients = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => idSchema.parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    {
+      const { data: campRow } = await context.supabase
+        .from("wa_campaigns")
+        .select("pause_reason")
+        .eq("id", data.id)
+        .single();
+      if ((campRow as any)?.pause_reason === "manual_stop") {
+        throw new Error("Campanha finalizada manualmente e bloqueada — não pode ser retomada.");
+      }
+    }
     await assertCampaignUnlocked(context.supabase, data.id);
     await assertCampaignUploadMedia(context.supabase, data.id);
 
