@@ -285,6 +285,9 @@ export const startCampaignAsync = createServerFn({ method: "POST" })
     const supabase = context.supabase;
     const { data: camp } = await supabase.from("wa_campaigns").select("*").eq("id", data.id).single();
     if (!camp) throw new Error("Campanha não encontrada");
+    if ((camp as any).pause_reason === "manual_stop") {
+      throw new Error("Campanha finalizada manualmente e bloqueada — não pode ser retomada.");
+    }
     if (camp.status === "running") return { ok: true, alreadyRunning: true };
     // Bloqueio de envio real: só dispara depois da aprovação do admin.
     {
@@ -386,6 +389,14 @@ export const resumeCampaignAsync = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => idSchema.parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    const { data: campRow } = await context.supabase
+      .from("wa_campaigns")
+      .select("pause_reason")
+      .eq("id", data.id)
+      .single();
+    if ((campRow as any)?.pause_reason === "manual_stop") {
+      throw new Error("Campanha finalizada manualmente e bloqueada — não pode ser retomada.");
+    }
     await assertCampaignUnlocked(context.supabase, data.id);
     await assertCampaignUploadMedia(context.supabase, data.id);
 
@@ -433,6 +444,16 @@ export const retryFailedRecipients = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => idSchema.parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    {
+      const { data: campRow } = await context.supabase
+        .from("wa_campaigns")
+        .select("pause_reason")
+        .eq("id", data.id)
+        .single();
+      if ((campRow as any)?.pause_reason === "manual_stop") {
+        throw new Error("Campanha finalizada manualmente e bloqueada — não pode ser retomada.");
+      }
+    }
     await assertCampaignUnlocked(context.supabase, data.id);
     await assertCampaignUploadMedia(context.supabase, data.id);
 
