@@ -1,4 +1,5 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
+import { NotFound as GhostNotFound } from "@/components/ui/ghost-404-page";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
@@ -56,14 +57,10 @@ export const Route = createFileRoute("/campaigns/$id")({
   }),
   component: PublicCampaignReport,
   notFoundComponent: () => (
-    <div className="mx-auto flex min-h-screen max-w-md items-center justify-center p-6 text-center">
-      <div>
-        <h1 className="text-2xl font-semibold">Campanha não encontrada</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          O link do relatório pode estar incorreto ou expirado.
-        </p>
-      </div>
-    </div>
+    <GhostNotFound
+      title="Campanha não encontrada"
+      description="O link do relatório pode estar incorreto ou expirado."
+    />
   ),
   errorComponent: ({ error }) => (
     <div className="mx-auto flex min-h-screen max-w-md items-center justify-center p-6 text-center">
