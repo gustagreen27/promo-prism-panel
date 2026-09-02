@@ -387,6 +387,11 @@ export async function processCampaignTick(
     // pause/cancel guard
     if (camp.status === "paused") return { processed: 0, done: false };
 
+    // Execução externa: as métricas são simuladas/atualizadas manualmente pelo
+    // admin — o motor interno nunca deve disparar de verdade para estas
+    // campanhas, mesmo com status "running".
+    if ((camp as any).execution_type === "external") return { processed: 0, done: false, reason: "external_execution" };
+
     // Scheduled pause (configurada no wizard, Passo 02): aguarda até scheduled_pause_until
     {
       const spUntil = (camp as any).scheduled_pause_until as string | null;
