@@ -43,10 +43,10 @@ export function LandingPage() {
               </span>
             }
             title={
-              <h1 className="mx-auto max-w-4xl text-balance text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
+              <span className="mx-auto block max-w-4xl text-balance text-white">
                 Comunicação em escala.{" "}
                 <span className="text-brand">Resultados em tempo real.</span>
-              </h1>
+              </span>
             }
             description={
               <span className="mx-auto block max-w-2xl text-base leading-relaxed text-white/65 sm:text-lg">
