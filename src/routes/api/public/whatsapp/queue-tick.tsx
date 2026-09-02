@@ -154,6 +154,7 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
             .from("wa_campaigns")
             .select("id,workspace_id,connection_id,template_id,total_recipients,list_id,name")
             .eq("status", "scheduled")
+            .or("execution_type.is.null,execution_type.neq.external")
             .lte("scheduled_at", nowIso);
 
           for (const camp of due ?? []) {
@@ -230,6 +231,7 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
             .from("wa_campaigns")
             .update({ status: "running", pause_reason: null, paused_at: null, scheduled_at: null })
             .eq("status", "paused")
+            .or("execution_type.is.null,execution_type.neq.external")
             .eq("pause_reason", "network_errors")
             .lte("paused_at", new Date(Date.now() - 60 * 1000).toISOString());
 
@@ -316,6 +318,7 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
             .from("wa_campaigns")
             .select("id, rate_per_second, worker_lanes, priority")
             .eq("status", "running")
+            .or("execution_type.is.null,execution_type.neq.external")
             .order("priority", { ascending: false });
 
           const TICK_WINDOW_S = 45;
