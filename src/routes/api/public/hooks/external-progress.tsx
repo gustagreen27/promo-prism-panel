@@ -27,7 +27,9 @@ export const Route = createFileRoute('/api/public/hooks/external-progress')({
           .eq('execution_type', 'external')
           .not('external_started_at', 'is', null)
           .not('external_finished_at', 'is', null)
-          .in('external_status', ['scheduled_external', 'in_progress'])
+          // Inclui execuções sem status gravado (null) — elas também devem
+          // progredir automaticamente até o horário de finalização.
+          .or('external_status.is.null,external_status.in.(scheduled_external,in_progress)')
           .limit(500)
         if (error) {
           return new Response(JSON.stringify({ error: error.message }), {
