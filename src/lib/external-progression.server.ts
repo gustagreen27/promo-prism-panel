@@ -1,7 +1,7 @@
 import { externalProgressPatch } from './external-progression'
 
 /**
- * Aplica a progressão automática (janelas de 3 min) das execuções externas
+ * Aplica a progressão automática (janelas de 1 min) das execuções externas
  * nas linhas carregadas, persistindo o resultado. Mutação in-place para que a
  * resposta já saia com os números atualizados.
  */

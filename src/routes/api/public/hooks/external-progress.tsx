@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 /**
- * Cron (a cada 3 min): avança as métricas das execuções externas em andamento
+ * Cron (a cada 1 min): avança as métricas das execuções externas em andamento
  * mesmo sem ninguém abrir o admin/painel.
  */
 export const Route = createFileRoute('/api/public/hooks/external-progress')({
