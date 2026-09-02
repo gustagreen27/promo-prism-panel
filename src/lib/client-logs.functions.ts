@@ -36,12 +36,18 @@ export const getMyCampaignLogs = createServerFn({ method: 'POST' })
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
 
     // 1) Envio real pela plataforma: logs verdadeiros dos destinatários.
-    const { data: real } = await supabaseAdmin
-      .from('campaign_recipients')
-      .select('phone,status,meta_message_id,sent_at,delivered_at,read_at,replied_at,failed_at,error_code,failed_reason')
-      .eq('campaign_id', data.id)
-      .order('sent_at', { ascending: true, nullsFirst: false })
-      .limit(limit)
+    //    Execução externa nunca tem logs reais — os destinatários ficam todos
+    //    'pending' no banco, então pulamos direto para a reconstrução simulada.
+    const isExternal = campaign.execution_type === 'external'
+    const { data: real } = isExternal
+      ? { data: null as any[] | null }
+      : await supabaseAdmin
+          .from('campaign_recipients')
+          .select('phone,status,meta_message_id,sent_at,delivered_at,read_at,replied_at,failed_at,error_code,failed_reason')
+          .eq('campaign_id', data.id)
+          .not('sent_at', 'is', null)
+          .order('sent_at', { ascending: true, nullsFirst: false })
+          .limit(limit)
 
     if (real && real.length > 0) {
       const rows: CampaignLogRow[] = (real as any[]).map((r) => ({
