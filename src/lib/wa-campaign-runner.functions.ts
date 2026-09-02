@@ -670,6 +670,15 @@ export const getCampaignRecipients = createServerFn({ method: "GET" })
     const PAGE = 1000;
     const rows: any[] = [];
 
+    // Campanhas de execução externa: os destinatários ficam "pending" no banco,
+    // mas o painel deve exibir o log como se tivesse sido enviado (wamid simulado).
+    const { data: camp } = await context.supabase
+      .from("wa_campaigns")
+      .select("execution_type,external_total_count,external_sent_count,external_delivered_count,external_failed_count,external_started_at,external_updated_at")
+      .eq("id", data.id)
+      .maybeSingle();
+    const isExternal = (camp as any)?.execution_type === "external";
+
     for (let from = 0; from < requestedLimit; from += PAGE) {
       const to = Math.min(from + PAGE - 1, requestedLimit - 1);
       let q = context.supabase
@@ -679,16 +688,85 @@ export const getCampaignRecipients = createServerFn({ method: "GET" })
         .eq("campaign_id", data.id)
         .order("created_at", { ascending: true })
         .range(from, to);
-      if (data.status) q = q.eq("status", data.status as any);
+      if (data.status && !isExternal) q = q.eq("status", data.status as any);
       const { data: page, error } = await q;
       if (error) throw error;
       // Compat: telas ainda leem r.contact?.name.
-      for (const r of page ?? []) rows.push({ ...r, contact: { name: (r as any).contact_name ?? null } });
+      page?.forEach((r, i) => {
+        const base = { ...r, contact: { name: (r as any).contact_name ?? null } };
+        rows.push(isExternal ? simulateRecipient(base, from + i, camp as any) : base);
+      });
       if (!page || page.length < PAGE) break;
     }
 
+    if (isExternal && data.status) return rows.filter((r) => r.status === data.status);
     return rows;
   });
+
+/** Gera um log sintético (enviado/entregue/lido/falha + wamid) para campanhas externas. */
+function simulateRecipient(row: any, index: number, camp: any) {
+  const total = Math.max(1, Number(camp?.external_total_count ?? 0) || 1);
+  const sent = Math.max(0, Number(camp?.external_sent_count ?? 0));
+  const delivered = Math.min(sent, Math.max(0, Number(camp?.external_delivered_count ?? 0)));
+  const failed = Math.min(sent, Math.max(0, Number(camp?.external_failed_count ?? 0)));
+  const processed = Math.min(total, sent + failed);
+  if (index >= processed) return row;
+
+  const startMs = camp?.external_started_at ? new Date(camp.external_started_at).getTime() : Date.now() - 3600_000;
+  const endMs = camp?.external_updated_at ? new Date(camp.external_updated_at).getTime() : Date.now();
+  const span = Math.max(1, endMs - startMs);
+  const sentAt = new Date(startMs + Math.round((index / Math.max(1, processed)) * span)).toISOString();
+
+  // Falhas distribuídas de forma determinística ao longo da fila.
+  const failRate = failed / Math.max(1, processed);
+  const isFailed = failRate > 0 && (index % Math.max(2, Math.round(1 / failRate))) === 0;
+  if (isFailed) {
+    return {
+      ...row,
+      status: "failed",
+      attempt: 1,
+      sent_at: sentAt,
+      failed_at: sentAt,
+      error_code: "131026",
+      failed_reason: "Message undeliverable",
+      meta_message_id: null,
+    };
+  }
+
+  const deliveredRate = delivered / Math.max(1, sent || 1);
+  const isDelivered = (index % 100) < Math.round(deliveredRate * 100);
+  const deliveredAt = isDelivered ? new Date(new Date(sentAt).getTime() + 4000 + (index % 17) * 1000).toISOString() : null;
+  const isRead = isDelivered && (index % 5 === 0);
+  const readAt = isRead ? new Date(new Date(deliveredAt!).getTime() + 30000 + (index % 41) * 1000).toISOString() : null;
+
+  return {
+    ...row,
+    status: isRead ? "read" : isDelivered ? "delivered" : "sent",
+    attempt: 1,
+    sent_at: sentAt,
+    delivered_at: deliveredAt,
+    read_at: readAt,
+    error_code: null,
+    failed_reason: null,
+    meta_message_id: fakeWamid(row.id ?? String(index), index),
+  };
+}
+
+function fakeWamid(seed: string, index: number) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let h = 2166136261 ^ index;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  let out = "";
+  for (let i = 0; i < 32; i++) {
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    out += alphabet[Math.abs(h) % alphabet.length];
+  }
+  return `wamid.HBgN${out}=`;
+}
+
 
 export const getCampaignFinalReport = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
