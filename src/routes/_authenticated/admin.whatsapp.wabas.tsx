@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, Eye, RefreshCw, ShieldCheck, Cloud, Download, Zap, CheckCircle2, XCircle, Loader2, AlertTriangle, Circle, Webhook } from "lucide-react";
+import { Plus, Trash2, Pencil, Eye, RefreshCw, ShieldCheck, Cloud, Download, Zap, CheckCircle2, XCircle, Loader2, AlertTriangle, Circle, Webhook, Megaphone } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import { debugToken, createWabaViaApi, importWabasFromBusiness } from "@/lib/wa-
 import { quickConnectWa, parseQuickConnect } from "@/lib/wa-quick-connect.functions";
 import { subscribeWabaToApp, listSubscribedApps } from "@/lib/wa-subscribe.functions";
 import { checkWabaRestrictionsFn } from "@/lib/wa-restrictions.functions";
+import { checkMmLiteStatusFn, setMmLiteEnabled } from "@/lib/wa-mm-lite.functions";
 
 import { listWorkspaceConnections } from "@/lib/wa-connections.functions";
 import { listClients } from "@/lib/clients.functions";
