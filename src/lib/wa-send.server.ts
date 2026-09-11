@@ -26,6 +26,13 @@ export type WaSendInput = {
    * pela Meta, as requisições ainda em voo são abortadas em vez de concluídas.
    */
   signal?: AbortSignal;
+  /**
+   * API de Mensagens de Marketing (MM Lite): envia por
+   * /{PHONE_NUMBER_ID}/marketing_messages em vez de /messages.
+   */
+  useMmLite?: boolean;
+  /** Compartilhamento de atividade de evento por mensagem (MM Lite). */
+  messageActivitySharing?: boolean;
 };
 
 
