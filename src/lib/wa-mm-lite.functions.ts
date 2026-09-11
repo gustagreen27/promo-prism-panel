@@ -80,8 +80,12 @@ export const setMmLiteEnabled = createServerFn({ method: "POST" })
           "Esta WABA ainda não está integrada à API de Mensagens de Marketing. Aceite os Termos no Gerenciador do WhatsApp e verifique o status novamente.",
       };
     }
-    const patch: Record<string, any> = { mm_lite_enabled: data.enabled };
-    if (typeof data.activity_sharing === "boolean") patch.mm_lite_activity_sharing = data.activity_sharing;
+    const patch = {
+      mm_lite_enabled: data.enabled,
+      ...(typeof data.activity_sharing === "boolean"
+        ? { mm_lite_activity_sharing: data.activity_sharing }
+        : {}),
+    };
     const { error: upErr } = await context.supabase
       .from("whatsapp_wabas")
       .update(patch)
