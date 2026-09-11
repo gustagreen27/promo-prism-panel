@@ -450,6 +450,19 @@ export async function processCampaignTick(
       (conn as any).access_token = await resolveConnectionToken(supabaseAdmin, conn as any);
     }
 
+    // MM Lite: templates de MARKETING saem pelo endpoint otimizado quando a
+    // WABA está integrada e habilitada no painel.
+    let mmLite: { useMmLite: boolean; activitySharing: boolean | undefined } = {
+      useMmLite: false,
+      activitySharing: undefined,
+    };
+    if (conn && tpl) {
+      try {
+        const { resolveMmLiteSend } = await import("@/lib/meta/mm-lite.server");
+        mmLite = await resolveMmLiteSend(supabaseAdmin, conn as any, tpl as any);
+      } catch {}
+    }
+
     if (!conn?.phone_number_id || !conn?.access_token || !tpl) {
       const missing: string[] = [];
       if (!conn) missing.push("conexão não encontrada");
