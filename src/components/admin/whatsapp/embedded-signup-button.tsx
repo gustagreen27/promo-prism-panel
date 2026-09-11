@@ -288,15 +288,25 @@ export function EmbeddedSignupButton({
     // rapidamente em vez de deixá-lo girando por vários minutos.
     // NÃO cancela nem interfere no callback real: apenas destrava o `loading`.
     let done = false;
-    const watchdog = window.setTimeout(() => {
-      if (!done) {
-        setLoading(false);
-        setLaunchError("A Meta não abriu o cadastro. O navegador pode ter bloqueado o popup.");
-        toast.error("A Meta não abriu o cadastro. Libere popups para este site e tente novamente.", {
-          duration: 10000,
-        });
+    metaSignalRef.current = false;
+    // Só acusa bloqueio de popup se a Meta não deu NENHUM sinal em 25s. Depois
+    // do primeiro sinal o cadastro fica livre para durar o tempo que precisar.
+    const watchdog = window.setInterval(() => {
+      if (done) {
+        window.clearInterval(watchdog);
+        return;
       }
-    }, 20 * 1000);
+      if (metaSignalRef.current) {
+        window.clearInterval(watchdog);
+        return;
+      }
+      window.clearInterval(watchdog);
+      setLoading(false);
+      setLaunchError("A Meta não abriu o cadastro. O navegador pode ter bloqueado o popup.");
+      toast.error("A Meta não abriu o cadastro. Libere popups para este site e tente novamente.", {
+        duration: 10000,
+      });
+    }, 25 * 1000);
 
     const processLoginResponse = async (resp: any) => {
         try {
