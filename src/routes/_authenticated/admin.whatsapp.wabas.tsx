@@ -228,6 +228,7 @@ function Page() {
             <TableHead>Cliente</TableHead><TableHead>Projeto</TableHead>
             <TableHead>Números</TableHead><TableHead>Templates</TableHead><TableHead>Campanhas</TableHead>
             <TableHead>Restrição (Meta)</TableHead>
+            <TableHead>API de Marketing</TableHead>
             <TableHead>Status</TableHead><TableHead />
           </TableRow></TableHeader>
           <TableBody>
@@ -242,6 +243,13 @@ function Page() {
                 <TableCell>{r.templates_count}</TableCell>
                 <TableCell>{r.campaigns_count}</TableCell>
                 <TableCell><RestrictionBadge waba={r} /></TableCell>
+                <TableCell>
+                  <MmLiteCell
+                    waba={r}
+                    busy={mmLiteToggleMut.isPending && mmLiteToggleMut.variables?.id === r.id}
+                    onToggle={(enabled) => mmLiteToggleMut.mutate({ id: r.id, enabled })}
+                  />
+                </TableCell>
                 <TableCell><Badge variant={r.status === "ativo" ? "default" : "secondary"}>{r.status}</Badge></TableCell>
                 <TableCell className="text-right">
                   <Button
