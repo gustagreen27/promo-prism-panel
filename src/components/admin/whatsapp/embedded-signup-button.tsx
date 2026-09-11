@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, MessageCircle, Smartphone, Info, ExternalLink, Copy, RefreshCw, TriangleAlert } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { getEmbeddedSignupConfig, completeEmbeddedSignup } from "@/lib/wa-embedded-signup.functions";
+import { claimSharedWabaFn } from "@/lib/wa-claim-shared.functions";
 import { PostSignupDialog } from "@/components/admin/whatsapp/post-signup-dialog";
 
 declare global {
@@ -64,6 +65,7 @@ export function EmbeddedSignupButton({
 }: Props) {
   const cfgFn = useServerFn(getEmbeddedSignupConfig);
   const completeFn = useServerFn(completeEmbeddedSignup);
+  const claimFn = useServerFn(claimSharedWabaFn);
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [cfg, setCfg] = useState<{ appId: string; configId: string; graphVersion: string; sdkVersion?: string } | null>(null);
