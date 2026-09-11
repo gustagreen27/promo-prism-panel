@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, MessageCircle, Smartphone, Info, ExternalLink, Copy, RefreshCw, TriangleAlert } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { getEmbeddedSignupConfig, completeEmbeddedSignup } from "@/lib/wa-embedded-signup.functions";
+import { claimSharedWabaFn } from "@/lib/wa-claim-shared.functions";
 import { PostSignupDialog } from "@/components/admin/whatsapp/post-signup-dialog";
 
 declare global {
@@ -64,10 +65,13 @@ export function EmbeddedSignupButton({
 }: Props) {
   const cfgFn = useServerFn(getEmbeddedSignupConfig);
   const completeFn = useServerFn(completeEmbeddedSignup);
+  const claimFn = useServerFn(claimSharedWabaFn);
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [cfg, setCfg] = useState<{ appId: string; configId: string; graphVersion: string; sdkVersion?: string } | null>(null);
   const sessionRef = useRef<{ phone_number_id?: string; waba_id?: string; business_id?: string } | null>(null);
+  /** True assim que a Meta envia qualquer evento do cadastro (popup abriu). */
+  const metaSignalRef = useRef(false);
   const [finishedConnectionId, setFinishedConnectionId] = useState<string | null>(null);
   const [inIframe, setInIframe] = useState(false);
   const [sdkError, setSdkError] = useState(false);
@@ -216,6 +220,10 @@ export function EmbeddedSignupButton({
       try {
         const data = typeof ev.data === "string" ? JSON.parse(ev.data) : ev.data;
         if (!data || data.type !== "WA_EMBEDDED_SIGNUP") return;
+        // Qualquer sinal da Meta prova que o popup abriu: desarma o alerta de
+        // "popup bloqueado" e evita mensagens falsas enquanto o cliente
+        // preenche o cadastro (que pode levar vários minutos).
+        metaSignalRef.current = true;
         if (data.event === "FINISH" || data.event === "FINISH_ONLY_WABA") {
           sessionRef.current = {
             phone_number_id: data.data?.phone_number_id,
@@ -282,21 +290,54 @@ export function EmbeddedSignupButton({
     // rapidamente em vez de deixá-lo girando por vários minutos.
     // NÃO cancela nem interfere no callback real: apenas destrava o `loading`.
     let done = false;
-    const watchdog = window.setTimeout(() => {
-      if (!done) {
-        setLoading(false);
-        setLaunchError("A Meta não abriu o cadastro. O navegador pode ter bloqueado o popup.");
-        toast.error("A Meta não abriu o cadastro. Libere popups para este site e tente novamente.", {
-          duration: 10000,
-        });
+    metaSignalRef.current = false;
+    // Só acusa bloqueio de popup se a Meta não deu NENHUM sinal em 25s. Depois
+    // do primeiro sinal o cadastro fica livre para durar o tempo que precisar.
+    const watchdog = window.setInterval(() => {
+      if (done) {
+        window.clearInterval(watchdog);
+        return;
       }
-    }, 20 * 1000);
+      if (metaSignalRef.current) {
+        window.clearInterval(watchdog);
+        return;
+      }
+      window.clearInterval(watchdog);
+      setLoading(false);
+      setLaunchError("A Meta não abriu o cadastro. O navegador pode ter bloqueado o popup.");
+      toast.error("A Meta não abriu o cadastro. Libere popups para este site e tente novamente.", {
+        duration: 10000,
+      });
+    }, 25 * 1000);
 
     const processLoginResponse = async (resp: any) => {
         try {
           const code = resp?.authResponse?.code;
           const sess = sessionRef.current;
           if (!code) {
+            // A Meta às vezes conclui o cadastro sem devolver o código de
+            // autorização. Nesse caso a conta já foi compartilhada com a nossa
+            // BM, então importamos direto pelo WABA ID informado no fluxo.
+            if (sess?.waba_id) {
+              const claimed = await claimFn({
+                data: {
+                  waba_id: sess.waba_id,
+                  nome_interno: nomeInterno ?? null,
+                  client_id: clientId ?? null,
+                  project_id: projectId ?? null,
+                },
+              });
+              toast.success("Conta conectada e importada para o sistema.");
+              onCompleted?.({
+                waba_ref_id: (claimed as any)?.waba_ref_id ?? "",
+                connection_id: (claimed as any)?.connection_id ?? "",
+                display_phone_number: (claimed as any)?.display_phone_number ?? null,
+                verified_name: (claimed as any)?.verified_name ?? null,
+                status: "ativo",
+                onboarding_mode: mode,
+              });
+              return;
+            }
             if (resp?.status === "not_authorized" || resp?.status === "unknown") {
               toast.error("Login cancelado ou não autorizado.");
             } else {
@@ -335,6 +376,33 @@ export function EmbeddedSignupButton({
           onCompleted?.(result);
         } catch (e: any) {
           const msg: string = e?.message ?? "Falha ao concluir onboarding";
+          // Última tentativa: se a conta já foi compartilhada com a nossa BM
+          // durante o cadastro, importa por WABA ID em vez de perder o trabalho.
+          const wabaId = sessionRef.current?.waba_id;
+          if (wabaId) {
+            try {
+              const claimed = await claimFn({
+                data: {
+                  waba_id: wabaId,
+                  nome_interno: nomeInterno ?? null,
+                  client_id: clientId ?? null,
+                  project_id: projectId ?? null,
+                },
+              });
+              toast.success("Conta conectada e importada para o sistema.");
+              onCompleted?.({
+                waba_ref_id: (claimed as any)?.waba_ref_id ?? "",
+                connection_id: (claimed as any)?.connection_id ?? "",
+                display_phone_number: (claimed as any)?.display_phone_number ?? null,
+                verified_name: (claimed as any)?.verified_name ?? null,
+                status: "ativo",
+                onboarding_mode: mode,
+              });
+              return;
+            } catch {
+              /* mantém a mensagem de erro original abaixo */
+            }
+          }
           if (/já está registrado|already registered|Phone number in use/i.test(msg) && mode === "standard") {
             toast.error(
               "Este número já está sendo utilizado no WhatsApp. Use a opção “Conectar WhatsApp Business existente” (Coexistência).",
@@ -345,7 +413,7 @@ export function EmbeddedSignupButton({
           }
         } finally {
           done = true;
-          window.clearTimeout(watchdog);
+          window.clearInterval(watchdog);
           setLoading(false);
         }
       };
@@ -365,7 +433,7 @@ export function EmbeddedSignupButton({
       });
     } catch (error: any) {
       done = true;
-      window.clearTimeout(watchdog);
+      window.clearInterval(watchdog);
       setLoading(false);
       const message = error?.message ?? "O popup da Meta não pôde ser aberto.";
       setLaunchError(message);
