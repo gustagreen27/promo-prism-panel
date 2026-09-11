@@ -68,6 +68,8 @@ export function EmbeddedSignupButton({
   const [loading, setLoading] = useState(false);
   const [cfg, setCfg] = useState<{ appId: string; configId: string; graphVersion: string; sdkVersion?: string } | null>(null);
   const sessionRef = useRef<{ phone_number_id?: string; waba_id?: string; business_id?: string } | null>(null);
+  /** True assim que a Meta envia qualquer evento do cadastro (popup abriu). */
+  const metaSignalRef = useRef(false);
   const [finishedConnectionId, setFinishedConnectionId] = useState<string | null>(null);
   const [inIframe, setInIframe] = useState(false);
   const [sdkError, setSdkError] = useState(false);
@@ -216,6 +218,10 @@ export function EmbeddedSignupButton({
       try {
         const data = typeof ev.data === "string" ? JSON.parse(ev.data) : ev.data;
         if (!data || data.type !== "WA_EMBEDDED_SIGNUP") return;
+        // Qualquer sinal da Meta prova que o popup abriu: desarma o alerta de
+        // "popup bloqueado" e evita mensagens falsas enquanto o cliente
+        // preenche o cadastro (que pode levar vários minutos).
+        metaSignalRef.current = true;
         if (data.event === "FINISH" || data.event === "FINISH_ONLY_WABA") {
           sessionRef.current = {
             phone_number_id: data.data?.phone_number_id,
