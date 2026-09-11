@@ -51,6 +51,8 @@ function Page() {
   const subscribeFn = useServerFn(subscribeWabaToApp);
   const listSubsFn = useServerFn(listSubscribedApps);
   const restrictionsFn = useServerFn(checkWabaRestrictionsFn);
+  const mmLiteFn = useServerFn(checkMmLiteStatusFn);
+  const mmLiteToggleFn = useServerFn(setMmLiteEnabled);
 
   const qc = useQueryClient();
 
