@@ -313,6 +313,29 @@ export function EmbeddedSignupButton({
           const code = resp?.authResponse?.code;
           const sess = sessionRef.current;
           if (!code) {
+            // A Meta às vezes conclui o cadastro sem devolver o código de
+            // autorização. Nesse caso a conta já foi compartilhada com a nossa
+            // BM, então importamos direto pelo WABA ID informado no fluxo.
+            if (sess?.waba_id) {
+              const claimed = await claimFn({
+                data: {
+                  waba_id: sess.waba_id,
+                  nome_interno: nomeInterno ?? null,
+                  client_id: clientId ?? null,
+                  project_id: projectId ?? null,
+                },
+              });
+              toast.success("Conta conectada e importada para o sistema.");
+              onCompleted?.({
+                waba_ref_id: (claimed as any)?.waba_ref_id ?? "",
+                connection_id: (claimed as any)?.connection_id ?? "",
+                display_phone_number: (claimed as any)?.display_phone_number ?? null,
+                verified_name: (claimed as any)?.verified_name ?? null,
+                status: "ativo",
+                onboarding_mode: mode,
+              });
+              return;
+            }
             if (resp?.status === "not_authorized" || resp?.status === "unknown") {
               toast.error("Login cancelado ou não autorizado.");
             } else {
