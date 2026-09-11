@@ -198,6 +198,10 @@ function Page() {
               <AlertTriangle className={`mr-2 h-4 w-4 ${restrictionMut.isPending ? "animate-pulse" : ""}`} />
               Verificar restrições
             </Button>
+            <Button variant="outline" size="sm" disabled={mmLiteMut.isPending} onClick={() => mmLiteMut.mutate(undefined)}>
+              <Megaphone className={`mr-2 h-4 w-4 ${mmLiteMut.isPending ? "animate-pulse" : ""}`} />
+              Verificar API de Marketing
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setApiOpen(true)}>
               <Cloud className="mr-2 h-4 w-4" />Criar via API
             </Button>
