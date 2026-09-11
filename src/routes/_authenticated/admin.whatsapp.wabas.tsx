@@ -129,6 +129,27 @@ function Page() {
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao verificar restrições"),
   });
+  const mmLiteMut = useMutation({
+    mutationFn: (id?: string) => mmLiteFn({ data: { waba_ref_id: id ?? null } }),
+    onSuccess: (r: any) => {
+      toast.success(
+        `${r.checked} conta(s) verificada(s) — ${r.onboarded} integrada(s), ${r.eligible} elegível(is) à API de Marketing.`,
+      );
+      refresh();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao verificar a API de Marketing"),
+  });
+  const mmLiteToggleMut = useMutation({
+    mutationFn: (p: { id: string; enabled: boolean }) =>
+      mmLiteToggleFn({ data: { waba_ref_id: p.id, enabled: p.enabled } }),
+    onSuccess: (r: any) => {
+      if (r?.ok) toast.success(r.message);
+      else toast.warning(r?.message ?? "Não foi possível ativar.");
+      refresh();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao alterar a API de Marketing"),
+  });
+
 
   const syncAllMut = useMutation({
     mutationFn: () => syncAll(),
