@@ -376,6 +376,33 @@ export function EmbeddedSignupButton({
           onCompleted?.(result);
         } catch (e: any) {
           const msg: string = e?.message ?? "Falha ao concluir onboarding";
+          // Última tentativa: se a conta já foi compartilhada com a nossa BM
+          // durante o cadastro, importa por WABA ID em vez de perder o trabalho.
+          const wabaId = sessionRef.current?.waba_id;
+          if (wabaId) {
+            try {
+              const claimed = await claimFn({
+                data: {
+                  waba_id: wabaId,
+                  nome_interno: nomeInterno ?? null,
+                  client_id: clientId ?? null,
+                  project_id: projectId ?? null,
+                },
+              });
+              toast.success("Conta conectada e importada para o sistema.");
+              onCompleted?.({
+                waba_ref_id: (claimed as any)?.waba_ref_id ?? "",
+                connection_id: (claimed as any)?.connection_id ?? "",
+                display_phone_number: (claimed as any)?.display_phone_number ?? null,
+                verified_name: (claimed as any)?.verified_name ?? null,
+                status: "ativo",
+                onboarding_mode: mode,
+              });
+              return;
+            } catch {
+              /* mantém a mensagem de erro original abaixo */
+            }
+          }
           if (/já está registrado|already registered|Phone number in use/i.test(msg) && mode === "standard") {
             toast.error(
               "Este número já está sendo utilizado no WhatsApp. Use a opção “Conectar WhatsApp Business existente” (Coexistência).",
