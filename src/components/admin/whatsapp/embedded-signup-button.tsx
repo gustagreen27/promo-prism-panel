@@ -361,7 +361,7 @@ export function EmbeddedSignupButton({
           }
         } finally {
           done = true;
-          window.clearTimeout(watchdog);
+          window.clearInterval(watchdog);
           setLoading(false);
         }
       };
@@ -381,7 +381,7 @@ export function EmbeddedSignupButton({
       });
     } catch (error: any) {
       done = true;
-      window.clearTimeout(watchdog);
+      window.clearInterval(watchdog);
       setLoading(false);
       const message = error?.message ?? "O popup da Meta não pôde ser aberto.";
       setLaunchError(message);
