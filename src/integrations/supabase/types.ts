@@ -5279,6 +5279,13 @@ export type Database = {
           last_sync_error: string | null
           last_synced_at: string | null
           meta_status: string | null
+          mm_lite_activity_sharing: boolean
+          mm_lite_ad_account_id: string | null
+          mm_lite_checked_at: string | null
+          mm_lite_enabled: boolean
+          mm_lite_reason: string | null
+          mm_lite_status: string | null
+          mm_lite_tos_status: string | null
           nome_interno: string
           observacoes: string | null
           onboarded_at: string | null
@@ -5306,6 +5313,13 @@ export type Database = {
           last_sync_error?: string | null
           last_synced_at?: string | null
           meta_status?: string | null
+          mm_lite_activity_sharing?: boolean
+          mm_lite_ad_account_id?: string | null
+          mm_lite_checked_at?: string | null
+          mm_lite_enabled?: boolean
+          mm_lite_reason?: string | null
+          mm_lite_status?: string | null
+          mm_lite_tos_status?: string | null
           nome_interno: string
           observacoes?: string | null
           onboarded_at?: string | null
@@ -5333,6 +5347,13 @@ export type Database = {
           last_sync_error?: string | null
           last_synced_at?: string | null
           meta_status?: string | null
+          mm_lite_activity_sharing?: boolean
+          mm_lite_ad_account_id?: string | null
+          mm_lite_checked_at?: string | null
+          mm_lite_enabled?: boolean
+          mm_lite_reason?: string | null
+          mm_lite_status?: string | null
+          mm_lite_tos_status?: string | null
           nome_interno?: string
           observacoes?: string | null
           onboarded_at?: string | null
