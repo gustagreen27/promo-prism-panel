@@ -26,6 +26,13 @@ export type WaSendInput = {
    * pela Meta, as requisições ainda em voo são abortadas em vez de concluídas.
    */
   signal?: AbortSignal;
+  /**
+   * API de Mensagens de Marketing (MM Lite): envia por
+   * /{PHONE_NUMBER_ID}/marketing_messages em vez de /messages.
+   */
+  useMmLite?: boolean;
+  /** Compartilhamento de atividade de evento por mensagem (MM Lite). */
+  messageActivitySharing?: boolean;
 };
 
 
@@ -119,9 +126,14 @@ function buildButtonComponents(
 
 export async function sendTemplateMessage(input: WaSendInput): Promise<WaSendResult> {
   const ver = input.graphVersion || "v21.0";
-  const url = `https://graph.facebook.com/${ver}/${input.phoneNumberId}/messages`;
+  const endpoint = input.useMmLite ? "marketing_messages" : "messages";
+  const url = `https://graph.facebook.com/${ver}/${input.phoneNumberId}/${endpoint}`;
   const body: Record<string, any> = {
     messaging_product: "whatsapp",
+    ...(input.useMmLite ? { recipient_type: "individual" } : {}),
+    ...(input.useMmLite && typeof input.messageActivitySharing === "boolean"
+      ? { message_activity_sharing: input.messageActivitySharing }
+      : {}),
     to: input.to,
     type: "template",
     template: {

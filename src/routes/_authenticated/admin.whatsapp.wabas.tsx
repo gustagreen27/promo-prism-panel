@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, Eye, RefreshCw, ShieldCheck, Cloud, Download, Zap, CheckCircle2, XCircle, Loader2, AlertTriangle, Circle, Webhook } from "lucide-react";
+import { Plus, Trash2, Pencil, Eye, RefreshCw, ShieldCheck, Cloud, Download, Zap, CheckCircle2, XCircle, Loader2, AlertTriangle, Circle, Webhook, Megaphone } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import { debugToken, createWabaViaApi, importWabasFromBusiness } from "@/lib/wa-
 import { quickConnectWa, parseQuickConnect } from "@/lib/wa-quick-connect.functions";
 import { subscribeWabaToApp, listSubscribedApps } from "@/lib/wa-subscribe.functions";
 import { checkWabaRestrictionsFn } from "@/lib/wa-restrictions.functions";
+import { checkMmLiteStatusFn, setMmLiteEnabled } from "@/lib/wa-mm-lite.functions";
 
 import { listWorkspaceConnections } from "@/lib/wa-connections.functions";
 import { listClients } from "@/lib/clients.functions";
@@ -50,6 +51,8 @@ function Page() {
   const subscribeFn = useServerFn(subscribeWabaToApp);
   const listSubsFn = useServerFn(listSubscribedApps);
   const restrictionsFn = useServerFn(checkWabaRestrictionsFn);
+  const mmLiteFn = useServerFn(checkMmLiteStatusFn);
+  const mmLiteToggleFn = useServerFn(setMmLiteEnabled);
 
   const qc = useQueryClient();
 
@@ -126,6 +129,27 @@ function Page() {
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao verificar restrições"),
   });
+  const mmLiteMut = useMutation({
+    mutationFn: (id?: string) => mmLiteFn({ data: { waba_ref_id: id ?? null } }),
+    onSuccess: (r: any) => {
+      toast.success(
+        `${r.checked} conta(s) verificada(s) — ${r.onboarded} integrada(s), ${r.eligible} elegível(is) à API de Marketing.`,
+      );
+      refresh();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao verificar a API de Marketing"),
+  });
+  const mmLiteToggleMut = useMutation({
+    mutationFn: (p: { id: string; enabled: boolean }) =>
+      mmLiteToggleFn({ data: { waba_ref_id: p.id, enabled: p.enabled } }),
+    onSuccess: (r: any) => {
+      if (r?.ok) toast.success(r.message);
+      else toast.warning(r?.message ?? "Não foi possível ativar.");
+      refresh();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao alterar a API de Marketing"),
+  });
+
 
   const syncAllMut = useMutation({
     mutationFn: () => syncAll(),
@@ -174,6 +198,10 @@ function Page() {
               <AlertTriangle className={`mr-2 h-4 w-4 ${restrictionMut.isPending ? "animate-pulse" : ""}`} />
               Verificar restrições
             </Button>
+            <Button variant="outline" size="sm" disabled={mmLiteMut.isPending} onClick={() => mmLiteMut.mutate(undefined)}>
+              <Megaphone className={`mr-2 h-4 w-4 ${mmLiteMut.isPending ? "animate-pulse" : ""}`} />
+              Verificar API de Marketing
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setApiOpen(true)}>
               <Cloud className="mr-2 h-4 w-4" />Criar via API
             </Button>
@@ -200,6 +228,7 @@ function Page() {
             <TableHead>Cliente</TableHead><TableHead>Projeto</TableHead>
             <TableHead>Números</TableHead><TableHead>Templates</TableHead><TableHead>Campanhas</TableHead>
             <TableHead>Restrição (Meta)</TableHead>
+            <TableHead>API de Marketing</TableHead>
             <TableHead>Status</TableHead><TableHead />
           </TableRow></TableHeader>
           <TableBody>
@@ -214,6 +243,13 @@ function Page() {
                 <TableCell>{r.templates_count}</TableCell>
                 <TableCell>{r.campaigns_count}</TableCell>
                 <TableCell><RestrictionBadge waba={r} /></TableCell>
+                <TableCell>
+                  <MmLiteCell
+                    waba={r}
+                    busy={mmLiteToggleMut.isPending && mmLiteToggleMut.variables?.id === r.id}
+                    onToggle={(enabled) => mmLiteToggleMut.mutate({ id: r.id, enabled })}
+                  />
+                </TableCell>
                 <TableCell><Badge variant={r.status === "ativo" ? "default" : "secondary"}>{r.status}</Badge></TableCell>
                 <TableCell className="text-right">
                   <Button
@@ -345,6 +381,69 @@ function RestrictionBadge({ waba }: { waba: any }) {
       </Badge>
       {reason && level !== "none" && (
         <span className="max-w-[260px] truncate text-[11px] text-muted-foreground" title={reason}>{reason}</span>
+      )}
+    </div>
+  );
+}
+
+/** Status de elegibilidade/integração da API de Mensagens de Marketing (MM Lite). */
+function MmLiteCell({
+  waba,
+  busy,
+  onToggle,
+}: {
+  waba: any;
+  busy: boolean;
+  onToggle: (enabled: boolean) => void;
+}) {
+  const status = String(waba.mm_lite_status ?? "");
+  const checked = waba.mm_lite_checked_at
+    ? new Date(waba.mm_lite_checked_at).toLocaleString("pt-BR")
+    : null;
+  const map: Record<string, { variant: any; label: string; icon: any }> = {
+    ONBOARDED: { variant: "default", label: "Integrada", icon: CheckCircle2 },
+    ELIGIBLE: { variant: "secondary", label: "Elegível", icon: Megaphone },
+    NOT_ELIGIBLE: { variant: "destructive", label: "Não elegível", icon: XCircle },
+    NOT_STARTED: { variant: "outline", label: "Não iniciada", icon: Circle },
+    UNKNOWN: { variant: "outline", label: "Indeterminada", icon: Circle },
+  };
+
+  if (!status || !checked) {
+    return (
+      <Badge variant="outline" title="Use “Verificar API de Marketing” para consultar a Meta">
+        <Circle className="mr-1 h-3 w-3" />Não verificado
+      </Badge>
+    );
+  }
+
+  const cfg = map[status] ?? map.UNKNOWN;
+  const Icon = cfg.icon;
+  const enabled = !!waba.mm_lite_enabled;
+
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <Badge
+        variant={cfg.variant}
+        title={`${waba.mm_lite_reason ?? "Status informado pela Meta"}\nVerificado em ${checked}`}
+      >
+        <Icon className="mr-1 h-3 w-3" />{cfg.label}
+      </Badge>
+      {status === "ONBOARDED" && (
+        <Button
+          size="sm"
+          variant={enabled ? "secondary" : "outline"}
+          className="h-6 px-2 text-[11px]"
+          disabled={busy}
+          onClick={() => onToggle(!enabled)}
+        >
+          {busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
+          {enabled ? "Usando na campanha" : "Ativar nos disparos"}
+        </Button>
+      )}
+      {status === "ELIGIBLE" && (
+        <span className="max-w-[220px] text-[11px] text-muted-foreground">
+          Aceite os Termos no Gerenciador do WhatsApp para liberar.
+        </span>
       )}
     </div>
   );
