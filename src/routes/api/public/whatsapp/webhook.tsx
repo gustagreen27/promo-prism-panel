@@ -400,6 +400,19 @@ async function handleChange(supabaseAdmin: any, change: any, entryId: string | n
     return;
   }
 
+  // MM Lite: Termos aceitos / conta de anúncios vinculada ──────────
+  if (field === "account_update") {
+    const event = String(value?.event ?? "").toUpperCase();
+    const info = value?.waba_info ?? {};
+    if (event === "MM_LITE_TERMS_SIGNED" || event === "AD_ACCOUNT_LINKED") {
+      const wabaId = info?.waba_id ?? null;
+      if (wabaId) {
+        const { markMmLiteOnboarded } = await import("@/lib/meta/mm-lite.server");
+        await markMmLiteOnboarded(supabaseAdmin, String(wabaId), info?.ad_account_id ?? null);
+      }
+    }
+  }
+
   // Qualidade / limites / alertas por número ───────────────────────
   if (
     field === "phone_number_quality_update" ||
