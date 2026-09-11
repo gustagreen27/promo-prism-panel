@@ -386,6 +386,69 @@ function RestrictionBadge({ waba }: { waba: any }) {
   );
 }
 
+/** Status de elegibilidade/integração da API de Mensagens de Marketing (MM Lite). */
+function MmLiteCell({
+  waba,
+  busy,
+  onToggle,
+}: {
+  waba: any;
+  busy: boolean;
+  onToggle: (enabled: boolean) => void;
+}) {
+  const status = String(waba.mm_lite_status ?? "");
+  const checked = waba.mm_lite_checked_at
+    ? new Date(waba.mm_lite_checked_at).toLocaleString("pt-BR")
+    : null;
+  const map: Record<string, { variant: any; label: string; icon: any }> = {
+    ONBOARDED: { variant: "default", label: "Integrada", icon: CheckCircle2 },
+    ELIGIBLE: { variant: "secondary", label: "Elegível", icon: Megaphone },
+    NOT_ELIGIBLE: { variant: "destructive", label: "Não elegível", icon: XCircle },
+    NOT_STARTED: { variant: "outline", label: "Não iniciada", icon: Circle },
+    UNKNOWN: { variant: "outline", label: "Indeterminada", icon: Circle },
+  };
+
+  if (!status || !checked) {
+    return (
+      <Badge variant="outline" title="Use “Verificar API de Marketing” para consultar a Meta">
+        <Circle className="mr-1 h-3 w-3" />Não verificado
+      </Badge>
+    );
+  }
+
+  const cfg = map[status] ?? map.UNKNOWN;
+  const Icon = cfg.icon;
+  const enabled = !!waba.mm_lite_enabled;
+
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <Badge
+        variant={cfg.variant}
+        title={`${waba.mm_lite_reason ?? "Status informado pela Meta"}\nVerificado em ${checked}`}
+      >
+        <Icon className="mr-1 h-3 w-3" />{cfg.label}
+      </Badge>
+      {status === "ONBOARDED" && (
+        <Button
+          size="sm"
+          variant={enabled ? "secondary" : "outline"}
+          className="h-6 px-2 text-[11px]"
+          disabled={busy}
+          onClick={() => onToggle(!enabled)}
+        >
+          {busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
+          {enabled ? "Usando na campanha" : "Ativar nos disparos"}
+        </Button>
+      )}
+      {status === "ELIGIBLE" && (
+        <span className="max-w-[220px] text-[11px] text-muted-foreground">
+          Aceite os Termos no Gerenciador do WhatsApp para liberar.
+        </span>
+      )}
+    </div>
+  );
+}
+
 function CreateApiDialog({ clients, projects, saving, onSubmit }: any) {
 
   const [form, setForm] = useState<any>({ business_id: "", name: "", timezone_id: "25", currency: "BRL", client_id: "", project_id: "" });
