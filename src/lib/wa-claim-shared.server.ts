@@ -117,7 +117,7 @@ export async function claimSharedWaba(
   if (existing.data?.id) {
     wabaRefId = existing.data.id;
     const patch = { ...wabaPayload };
-    if (!input.workspace_id) delete patch.workspace_id;
+    if (!workspaceId && existing.data.workspace_id) delete patch.workspace_id;
     if (!input.client_id) delete patch.client_id;
     if (!input.project_id) delete patch.project_id;
     await supabase.from("whatsapp_wabas").update(patch).eq("id", wabaRefId);
@@ -144,7 +144,7 @@ export async function claimSharedWaba(
       provider: "meta_cloud",
       graph_api_version: GRAPH_VERSION,
       status: String(p.code_verification_status || "").toUpperCase() === "VERIFIED" ? "ativo" : "aguardando_verificacao",
-      workspace_id: input.workspace_id ?? null,
+      workspace_id: workspaceId,
       client_id: input.client_id ?? null,
       project_id: input.project_id ?? null,
       last_seen_at: new Date().toISOString(),
@@ -155,12 +155,12 @@ export async function claimSharedWaba(
     }
     const conn = await supabase
       .from("whatsapp_connections")
-      .select("id")
+      .select("id, workspace_id")
       .eq("phone_number_id", String(p.id))
       .maybeSingle();
     if (conn.data?.id) {
       const patch = { ...payload };
-      if (!input.workspace_id) delete patch.workspace_id;
+      if (!workspaceId && conn.data.workspace_id) delete patch.workspace_id;
       if (!input.client_id) delete patch.client_id;
       if (!input.project_id) delete patch.project_id;
       await supabase.from("whatsapp_connections").update(patch).eq("id", conn.data.id);
