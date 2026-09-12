@@ -142,23 +142,34 @@ function Page() {
         <EmptyState title="Nenhum workspace" />
       ) : (
         <div className="space-y-8">
-          {rows.map((w: any) => (
-            <WorkspaceCard
-              key={w.id}
-              w={w}
-              onSaveBiz={(p: { meta_business_id: string | null; meta_business_name: string | null }) => bizMut.mutate({ workspace_id: w.id, ...p })}
-              onSaveDefault={(cid: string | null) => defMut.mutate({ workspace_id: w.id, connection_id: cid })}
-              onSubscribe={(cid: string) => subMut.mutate(cid)}
-              subscribingId={subMut.isPending ? (subMut.variables as string | undefined) : undefined}
-              onRecalc={() => recalcMut.mutate(w.id)}
-              recalcing={recalcMut.isPending && (recalcMut.variables === w.id || recalcMut.variables === null)}
-              saving={bizMut.isPending || defMut.isPending}
-              onDisconnect={() => disconnectMut.mutate(w.id)}
-              disconnecting={disconnectMut.isPending && disconnectMut.variables === w.id}
-            />
-          ))}
+          {rows.map((w: any) =>
+            w.unassigned ? (
+              <UnassignedCard
+                key="__unassigned__"
+                w={w}
+                onSubscribe={(cid: string) => subMut.mutate(cid)}
+                subscribingId={subMut.isPending ? (subMut.variables as string | undefined) : undefined}
+                onRefresh={refresh}
+              />
+            ) : (
+              <WorkspaceCard
+                key={w.id}
+                w={w}
+                onSaveBiz={(p: { meta_business_id: string | null; meta_business_name: string | null }) => bizMut.mutate({ workspace_id: w.id, ...p })}
+                onSaveDefault={(cid: string | null) => defMut.mutate({ workspace_id: w.id, connection_id: cid })}
+                onSubscribe={(cid: string) => subMut.mutate(cid)}
+                subscribingId={subMut.isPending ? (subMut.variables as string | undefined) : undefined}
+                onRecalc={() => recalcMut.mutate(w.id)}
+                recalcing={recalcMut.isPending && (recalcMut.variables === w.id || recalcMut.variables === null)}
+                saving={bizMut.isPending || defMut.isPending}
+                onDisconnect={() => disconnectMut.mutate(w.id)}
+                disconnecting={disconnectMut.isPending && disconnectMut.variables === w.id}
+              />
+            ),
+          )}
         </div>
       )}
+
     </>
   );
 }
