@@ -505,6 +505,10 @@ function AtendimentoPage() {
                   </ul>
                 )}
               </ScrollArea>
+              <div className="flex items-center gap-2 border-t px-4 py-3 text-[11px] text-muted-foreground">
+                <Lock className="h-3.5 w-3.5" />
+                Suas conexões em um só lugar
+              </div>
             </div>
 
             {/* Coluna 2 — chat */}
