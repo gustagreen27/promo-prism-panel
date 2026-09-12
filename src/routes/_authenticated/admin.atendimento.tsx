@@ -327,7 +327,7 @@ function AtendimentoPage() {
                       <Button variant="outline" size="icon" className="relative h-11 w-11 shrink-0 rounded-2xl">
                         <SlidersHorizontal className="h-4 w-4" />
                         {activeFilters > 0 && (
-                          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] text-white">
+                          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
                             {activeFilters}
                           </span>
                         )}
@@ -404,7 +404,7 @@ function AtendimentoPage() {
                         onClick={() => setQuickTab(id as any)}
                         className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
                           active
-                            ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                            ? "bg-primary/12 text-primary"
                             : "bg-muted/60 text-muted-foreground hover:bg-muted"
                         }`}
                       >
@@ -412,7 +412,7 @@ function AtendimentoPage() {
                         {t.count > 0 && (
                           <span
                             className={`grid h-4 min-w-4 place-items-center rounded-full px-1 text-[10px] ${
-                              active ? "bg-emerald-600 text-white" : "bg-background text-muted-foreground"
+                              active ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"
                             }`}
                           >
                             {t.count}
@@ -453,7 +453,7 @@ function AtendimentoPage() {
                             }}
                             className={`flex w-full items-start gap-3 rounded-2xl border p-3 text-left transition-all duration-200 ${
                               active
-                                ? "border-emerald-500/40 bg-emerald-500/10 shadow-sm"
+                                ? "border-primary/35 bg-primary/10 shadow-sm"
                                 : "border-border/70 bg-card hover:-translate-y-px hover:border-border hover:shadow-sm"
                             }`}
                           >
@@ -472,7 +472,7 @@ function AtendimentoPage() {
                                   {c.last_message_preview || "—"}
                                 </span>
                                 {c.unread_count > 0 && (
-                                  <Badge className="mt-0.5 h-5 shrink-0 rounded-full bg-emerald-600 px-1.5 text-[10px] hover:bg-emerald-600">
+                                  <Badge className="mt-0.5 h-5 shrink-0 rounded-full bg-primary px-1.5 text-[10px] hover:bg-primary">
                                     {c.unread_count}
                                   </Badge>
                                 )}
@@ -509,7 +509,7 @@ function AtendimentoPage() {
                 />
               ) : (
                 <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-wa-chat p-6 text-sm text-muted-foreground">
-                  <span className="flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-500/10 text-emerald-600 shadow-sm">
+                  <span className="flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/10 text-primary shadow-sm">
                     <MessageCircle className="h-8 w-8" />
                   </span>
                   Selecione uma conversa para começar
@@ -884,7 +884,7 @@ function ChatPanel(props: {
         </div>
         <div className="flex items-center gap-1.5">
           {windowOpen ? (
-            <span className="hidden items-center gap-1 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 lg:inline-flex dark:text-emerald-300">
+            <span className="hidden items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary lg:inline-flex dark:text-emerald-300">
               <Clock className="h-3 w-3" /> 24h aberta {remaining ? `• ${remaining}` : ""}
             </span>
           ) : (
@@ -985,9 +985,9 @@ function ChatPanel(props: {
 
         {replyTo && (
           <div className="flex items-start gap-2 rounded-md border-l-4 border-emerald-500 bg-muted/60 px-2 py-1 text-xs">
-            <CornerUpLeft className="mt-0.5 h-3 w-3 text-emerald-600" />
+            <CornerUpLeft className="mt-0.5 h-3 w-3 text-primary" />
             <div className="flex-1 min-w-0">
-              <div className="text-[10px] font-medium text-emerald-700 dark:text-emerald-300">Respondendo</div>
+              <div className="text-[10px] font-medium text-primary">Respondendo</div>
               <div className="truncate">{replyTo.preview}</div>
             </div>
             <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setReplyTo(null)}>
@@ -1333,7 +1333,7 @@ function ChatPanel(props: {
             </Button>
             <Button
               size="icon"
-              className="h-11 w-11 shrink-0 rounded-full bg-emerald-600 text-white shadow-md shadow-emerald-600/30 transition-all duration-200 hover:scale-105 hover:bg-emerald-700 active:scale-95 disabled:shadow-none"
+              className="h-11 w-11 shrink-0 rounded-full bg-primary text-primary-foreground shadow-md shadow-emerald-600/30 transition-all duration-200 hover:scale-105 hover:bg-emerald-700 active:scale-95 disabled:shadow-none"
               disabled={!windowOpen || !text.trim() || sendText.isPending}
               onClick={() => sendText.mutate()}
             >
@@ -1410,7 +1410,7 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
           href={msg.media_url}
           target="_blank"
           rel="noreferrer"
-          className={`mb-1 flex items-center gap-2 rounded border px-2 py-1 text-xs ${out ? "border-emerald-600/30 bg-emerald-600/10" : "border-border bg-muted/50"}`}
+          className={`mb-1 flex items-center gap-2 rounded border px-2 py-1 text-xs ${out ? "border-emerald-600/30 bg-primary/10" : "border-border bg-muted/50"}`}
         >
           <FileIcon className="h-4 w-4" />
           <span className="truncate">{msg.media_filename ?? "Documento"}</span>
@@ -1427,7 +1427,7 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
           {buttons.map((b) => (
             <div
               key={b.id}
-              className={`rounded px-2 py-1 text-center text-xs ${out ? "bg-emerald-600/10" : "bg-muted"}`}
+              className={`rounded px-2 py-1 text-center text-xs ${out ? "bg-primary/10" : "bg-muted"}`}
             >
               {b.title}
             </div>
@@ -1437,7 +1437,7 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
       {listSections.length > 0 && (
         <div className={`mt-2 space-y-1 border-t pt-2 ${out ? "border-emerald-600/30" : "border-border/60"}`}>
           {listSections.flatMap((s) => s.rows).map((r) => (
-            <div key={r.id} className={`rounded px-2 py-1 text-xs ${out ? "bg-emerald-600/10" : "bg-muted"}`}>
+            <div key={r.id} className={`rounded px-2 py-1 text-xs ${out ? "bg-primary/10" : "bg-muted"}`}>
               <div className="font-medium">{r.title}</div>
               {r.description && <div className="opacity-80">{r.description}</div>}
             </div>
@@ -1518,13 +1518,13 @@ function ContextPanel(props: {
       <TabsList className="relative h-auto w-full justify-start gap-0 rounded-none border-b bg-transparent p-0 pr-10">
         <TabsTrigger
           value="contact"
-          className="flex-1 rounded-none border-b-2 border-transparent bg-transparent py-3 text-sm shadow-none data-[state=active]:border-emerald-600 data-[state=active]:bg-transparent data-[state=active]:font-medium data-[state=active]:text-emerald-700 data-[state=active]:shadow-none dark:data-[state=active]:text-emerald-300"
+          className="flex-1 rounded-none border-b-2 border-transparent bg-transparent py-3 text-sm shadow-none data-[state=active]:border-emerald-600 data-[state=active]:bg-transparent data-[state=active]:font-medium data-[state=active]:text-primary data-[state=active]:shadow-none dark:data-[state=active]:text-emerald-300"
         >
           Contato
         </TabsTrigger>
         <TabsTrigger
           value="notes"
-          className="flex-1 rounded-none border-b-2 border-transparent bg-transparent py-3 text-sm shadow-none data-[state=active]:border-emerald-600 data-[state=active]:bg-transparent data-[state=active]:font-medium data-[state=active]:text-emerald-700 data-[state=active]:shadow-none dark:data-[state=active]:text-emerald-300"
+          className="flex-1 rounded-none border-b-2 border-transparent bg-transparent py-3 text-sm shadow-none data-[state=active]:border-emerald-600 data-[state=active]:bg-transparent data-[state=active]:font-medium data-[state=active]:text-primary data-[state=active]:shadow-none dark:data-[state=active]:text-emerald-300"
         >
           Notas
         </TabsTrigger>
