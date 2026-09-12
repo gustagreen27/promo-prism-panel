@@ -55,7 +55,7 @@ export const listWorkspaceConnections = createServerFn({ method: "GET" })
       (wabas ?? []).some((x: any) => x.workspace_id === w.id),
     );
 
-    return relevant.map((w: any) => ({
+    const rows = relevant.map((w: any) => ({
       ...w,
       wabas: (wabas ?? [])
         .filter((x: any) => x.workspace_id === w.id)
@@ -64,7 +64,33 @@ export const listWorkspaceConnections = createServerFn({ method: "GET" })
       default_connection: (conns ?? []).find((c: any) => c.id === w.default_connection_id) ?? null,
       messages_last_24h: usage.get(w.id) ?? 0,
     }));
+
+    // Contas importadas (link compartilhado/embedded signup) ainda sem workspace:
+    // apareciam somente em WABAs. Agrupamos num bloco "Sem workspace".
+    const orphanConns = (conns ?? []).filter((c: any) => !c.workspace_id);
+    const orphanWabas = (wabas ?? []).filter((x: any) => !x.workspace_id);
+    if (orphanConns.length || orphanWabas.length) {
+      rows.push({
+        id: "__unassigned__",
+        unassigned: true,
+        name: "Sem workspace",
+        slug: "não vinculado",
+        plan: "—",
+        status: "active",
+        meta_business_id: null,
+        meta_business_name: null,
+        default_connection_id: null,
+        wabas: orphanWabas.map((x: any) => ({ ...x, templates_count: tplByWaba.get(x.id) ?? 0 })),
+        connections: orphanConns,
+        default_connection: null,
+        messages_last_24h: 0,
+        all_workspaces: (workspaces ?? []).map((w: any) => ({ id: w.id, name: w.name })),
+      } as any);
+    }
+
+    return rows;
   });
+
 
 export const setWorkspaceBusinessId = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -105,11 +131,19 @@ export const bindConnectionToWorkspace = createServerFn({ method: "POST" })
   }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    const { data: conn } = await context.supabase
+      .from("whatsapp_connections").select("waba_ref_id").eq("id", data.connection_id).maybeSingle();
     const { error } = await context.supabase.from("whatsapp_connections")
       .update({ workspace_id: data.workspace_id }).eq("id", data.connection_id);
     if (error) throw error;
+    // Mantém o portfólio (WABA) no mesmo workspace do número.
+    if (conn?.waba_ref_id) {
+      await context.supabase.from("whatsapp_wabas")
+        .update({ workspace_id: data.workspace_id }).eq("id", conn.waba_ref_id);
+    }
     return { ok: true };
   });
+
 
 /**
  * Desconecta uma BM específica: remove apenas os portfólios (WABAs) vinculados
