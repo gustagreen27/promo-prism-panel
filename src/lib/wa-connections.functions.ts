@@ -131,11 +131,19 @@ export const bindConnectionToWorkspace = createServerFn({ method: "POST" })
   }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    const { data: conn } = await context.supabase
+      .from("whatsapp_connections").select("waba_ref_id").eq("id", data.connection_id).maybeSingle();
     const { error } = await context.supabase.from("whatsapp_connections")
       .update({ workspace_id: data.workspace_id }).eq("id", data.connection_id);
     if (error) throw error;
+    // Mantém o portfólio (WABA) no mesmo workspace do número.
+    if (conn?.waba_ref_id) {
+      await context.supabase.from("whatsapp_wabas")
+        .update({ workspace_id: data.workspace_id }).eq("id", conn.waba_ref_id);
+    }
     return { ok: true };
   });
+
 
 /**
  * Desconecta uma BM específica: remove apenas os portfólios (WABAs) vinculados
