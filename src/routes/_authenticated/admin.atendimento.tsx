@@ -884,7 +884,7 @@ function ChatPanel(props: {
         </div>
         <div className="flex items-center gap-1.5">
           {windowOpen ? (
-            <span className="hidden items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary lg:inline-flex dark:text-emerald-300">
+            <span className="hidden items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary lg:inline-flex">
               <Clock className="h-3 w-3" /> 24h aberta {remaining ? `• ${remaining}` : ""}
             </span>
           ) : (
@@ -984,7 +984,7 @@ function ChatPanel(props: {
         )}
 
         {replyTo && (
-          <div className="flex items-start gap-2 rounded-md border-l-4 border-emerald-500 bg-muted/60 px-2 py-1 text-xs">
+          <div className="flex items-start gap-2 rounded-md border-l-4 border-primary bg-muted/60 px-2 py-1 text-xs">
             <CornerUpLeft className="mt-0.5 h-3 w-3 text-primary" />
             <div className="flex-1 min-w-0">
               <div className="text-[10px] font-medium text-primary">Respondendo</div>
@@ -1333,7 +1333,7 @@ function ChatPanel(props: {
             </Button>
             <Button
               size="icon"
-              className="h-11 w-11 shrink-0 rounded-full bg-primary text-primary-foreground shadow-md shadow-emerald-600/30 transition-all duration-200 hover:scale-105 hover:bg-emerald-700 active:scale-95 disabled:shadow-none"
+              className="h-11 w-11 shrink-0 rounded-full bg-primary text-primary-foreground shadow-md shadow-primary/25 transition-all duration-200 hover:scale-105 hover:bg-primary/90 active:scale-95 disabled:shadow-none"
               disabled={!windowOpen || !text.trim() || sendText.isPending}
               onClick={() => sendText.mutate()}
             >
@@ -1355,7 +1355,7 @@ function ChatPanel(props: {
 function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void }) {
   const out = msg.direction === "outbound";
   const bubble = out
-    ? "ml-auto bg-[oklch(0.93_0.06_150)] text-foreground dark:bg-emerald-800 dark:text-white rounded-br-md"
+    ? "ml-auto bg-[oklch(0.93_0.06_150)] text-foreground dark:bg-primary dark:text-primary-foreground rounded-br-md"
     : "mr-auto bg-card text-foreground rounded-bl-md";
   const payload = msg.payload ?? {};
   const isMedia =
@@ -1382,7 +1382,7 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
     >
 
       {msg.template_name && (
-        <div className={`mb-1 text-[10px] font-medium ${out ? "text-foreground/60 dark:text-emerald-100" : "text-muted-foreground"}`}>
+        <div className={`mb-1 text-[10px] font-medium ${out ? "text-foreground/60" : "text-muted-foreground"}`}>
           Template · {msg.template_name}
         </div>
       )}
@@ -1410,7 +1410,7 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
           href={msg.media_url}
           target="_blank"
           rel="noreferrer"
-          className={`mb-1 flex items-center gap-2 rounded border px-2 py-1 text-xs ${out ? "border-emerald-600/30 bg-primary/10" : "border-border bg-muted/50"}`}
+          className={`mb-1 flex items-center gap-2 rounded border px-2 py-1 text-xs ${out ? "border-primary/30 bg-primary/10" : "border-border bg-muted/50"}`}
         >
           <FileIcon className="h-4 w-4" />
           <span className="truncate">{msg.media_filename ?? "Documento"}</span>
@@ -1423,7 +1423,7 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
       {msg.body && <div className="whitespace-pre-wrap break-words text-sm">{msg.body}</div>}
 
       {buttons.length > 0 && (
-        <div className={`mt-2 space-y-1 border-t pt-2 ${out ? "border-emerald-600/30" : "border-border/60"}`}>
+        <div className={`mt-2 space-y-1 border-t pt-2 ${out ? "border-primary/30" : "border-border/60"}`}>
           {buttons.map((b) => (
             <div
               key={b.id}
@@ -1435,7 +1435,7 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
         </div>
       )}
       {listSections.length > 0 && (
-        <div className={`mt-2 space-y-1 border-t pt-2 ${out ? "border-emerald-600/30" : "border-border/60"}`}>
+        <div className={`mt-2 space-y-1 border-t pt-2 ${out ? "border-primary/30" : "border-border/60"}`}>
           {listSections.flatMap((s) => s.rows).map((r) => (
             <div key={r.id} className={`rounded px-2 py-1 text-xs ${out ? "bg-primary/10" : "bg-muted"}`}>
               <div className="font-medium">{r.title}</div>
@@ -1460,14 +1460,14 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
         </div>
       )}
 
-      <div className={`mt-1 flex items-center gap-1 text-[10px] ${out ? "text-foreground/60 dark:text-emerald-100/90" : "text-muted-foreground"}`}>
+      <div className={`mt-1 flex items-center gap-1 text-[10px] ${out ? "text-foreground/60 " : "text-muted-foreground"}`}>
         <span>{formatTime(msg.created_at)}</span>
         {out && <StatusTick status={msg.status} />}
         {!failed && msg.error_message && <span className="text-destructive">· {msg.error_message}</span>}
 
         {onReply && (
           <button
-            className={`ml-auto opacity-0 transition group-hover:opacity-100 ${out ? "text-foreground/60 dark:text-emerald-100" : "text-muted-foreground"}`}
+            className={`ml-auto opacity-0 transition group-hover:opacity-100 ${out ? "text-foreground/60" : "text-muted-foreground"}`}
             onClick={() => onReply(msg)}
             title="Responder"
           >
@@ -1518,13 +1518,13 @@ function ContextPanel(props: {
       <TabsList className="relative h-auto w-full justify-start gap-0 rounded-none border-b bg-transparent p-0 pr-10">
         <TabsTrigger
           value="contact"
-          className="flex-1 rounded-none border-b-2 border-transparent bg-transparent py-3 text-sm shadow-none data-[state=active]:border-emerald-600 data-[state=active]:bg-transparent data-[state=active]:font-medium data-[state=active]:text-primary data-[state=active]:shadow-none dark:data-[state=active]:text-emerald-300"
+          className="flex-1 rounded-none border-b-2 border-transparent bg-transparent py-3 text-sm shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:font-medium data-[state=active]:text-primary data-[state=active]:shadow-none "
         >
           Contato
         </TabsTrigger>
         <TabsTrigger
           value="notes"
-          className="flex-1 rounded-none border-b-2 border-transparent bg-transparent py-3 text-sm shadow-none data-[state=active]:border-emerald-600 data-[state=active]:bg-transparent data-[state=active]:font-medium data-[state=active]:text-primary data-[state=active]:shadow-none dark:data-[state=active]:text-emerald-300"
+          className="flex-1 rounded-none border-b-2 border-transparent bg-transparent py-3 text-sm shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:font-medium data-[state=active]:text-primary data-[state=active]:shadow-none "
         >
           Notas
         </TabsTrigger>
