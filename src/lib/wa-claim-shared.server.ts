@@ -84,9 +84,22 @@ export async function claimSharedWaba(
 
   const sub = await graph(`/${input.waba_id}/subscribed_apps`, picked.token, { method: "POST" });
 
+  // Workspace: se não informado, usa o workspace padrão (primeiro) para que a
+  // WABA e os números SEMPRE apareçam em Conexões — nunca ficam órfãos.
+  let workspaceId = input.workspace_id ?? null;
+  if (!workspaceId) {
+    const ws = await supabase
+      .from("workspaces")
+      .select("id")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    workspaceId = ws.data?.id ?? null;
+  }
+
   // Upsert WABA
   const nome = input.nome_interno?.trim() || waba?.name || `WABA ${input.waba_id.slice(-6)}`;
-  const existing = await supabase.from("whatsapp_wabas").select("id").eq("waba_id", input.waba_id).maybeSingle();
+  const existing = await supabase.from("whatsapp_wabas").select("id, workspace_id").eq("waba_id", input.waba_id).maybeSingle();
   const wabaPayload: Record<string, any> = {
     nome_interno: nome,
     waba_id: input.waba_id,
@@ -94,7 +107,7 @@ export async function claimSharedWaba(
     status: "ativo",
     onboarded_via: "shared_link",
     onboarded_at: new Date().toISOString(),
-    workspace_id: input.workspace_id ?? null,
+    workspace_id: workspaceId,
     client_id: input.client_id ?? null,
     project_id: input.project_id ?? null,
   };
