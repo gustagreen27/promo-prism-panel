@@ -83,6 +83,12 @@ export async function claimSharedWaba(
   const numbers: any[] = Array.isArray(pn.json?.data) ? pn.json.data : [];
 
   const sub = await graph(`/${input.waba_id}/subscribed_apps`, picked.token, { method: "POST" });
+  if (!sub.ok) {
+    const detail = sub.json?.error?.message ?? "A Meta recusou a assinatura do aplicativo.";
+    throw new Error(
+      `${detail} A conta não foi vinculada porque, sem essa assinatura, as mensagens recebidas não aparecem no Atendimento.`,
+    );
+  }
 
   // Workspace: se não informado, CRIA um novo workspace para esta WABA —
   // cada conta vinculada aparece separada em Conexões, nunca órfã.
