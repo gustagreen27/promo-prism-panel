@@ -101,7 +101,7 @@ export const listAttendanceNumbers = createServerFn({ method: "GET" })
     const allowed = await allowedPhoneNumberIds(context.supabase, context.userId);
     let rq = context.supabase
       .from("wa_conversations")
-      .select("phone_number_id, connection_id, unread_count, service_window_status, last_message_at")
+      .select("phone_number_id, connection_id, unread_count, service_window_status, last_message_at, metadata")
       .in("workspace_id", wsIds)
       .limit(5000);
     if (allowed) rq = rq.in("phone_number_id", allowed);
