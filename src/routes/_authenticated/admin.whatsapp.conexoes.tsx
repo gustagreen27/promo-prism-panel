@@ -27,6 +27,7 @@ import {
   subscribeConnectionToApp,
   recalcWorkspaceCapacity,
   disconnectWorkspaceBM,
+  bindConnectionToWorkspace,
 } from "@/lib/wa-connections.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp/conexoes")({
@@ -508,7 +509,91 @@ function WorkspaceCard({ w, onSaveBiz, onSaveDefault, onSubscribe, subscribingId
   );
 }
 
+function UnassignedCard({ w, onSubscribe, subscribingId, onRefresh }: any) {
+  const bindFn = useServerFn(bindConnectionToWorkspace);
+  const [finishId, setFinishId] = useState<string | null>(null);
+  const [pick, setPick] = useState<Record<string, string>>({});
+  const bindMut = useMutation({
+    mutationFn: (p: { connection_id: string; workspace_id: string }) => bindFn({ data: p }),
+    onSuccess: () => { toast.success("Número vinculado ao workspace"); onRefresh?.(); },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao vincular"),
+  });
+  const workspaces: any[] = w.all_workspaces ?? [];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 px-5 py-4 md:px-6">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
+          <Info className="h-7 w-7" />
+        </div>
+        <div className="min-w-[240px] flex-1">
+          <h3 className="text-2xl font-bold tracking-tight">Contas importadas sem workspace</h3>
+          <p className="text-sm text-muted-foreground">
+            {w.wabas.length} WABA · {w.connections.length} números. Escolha o workspace de cada número e finalize a
+            ativação (registro do número com PIN de 6 dígitos).
+          </p>
+        </div>
+      </div>
+
+      {w.connections.length === 0 ? (
+        <div className="rounded-2xl border bg-card p-5 text-sm text-muted-foreground">
+          Nenhum número importado ainda nestas WABAs. Use “Vincular conta compartilhada” novamente ou adicione o
+          número na Meta e sincronize.
+        </div>
+      ) : (
+        <div className="divide-y overflow-hidden rounded-2xl border bg-card">
+          {w.connections.map((c: any) => {
+            const qm = qualityMeta(c.quality_rating);
+            return (
+              <div key={c.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                <span className="min-w-[180px] font-medium">{c.name}</span>
+                <span className="min-w-[150px] text-muted-foreground">{c.display_phone ?? "—"}</span>
+                <Badge variant="outline" className={`rounded-md font-normal ${qm.cls}`}>{qm.label}</Badge>
+                <div className="ml-auto flex flex-wrap items-center gap-2">
+                  <Select value={pick[c.id] ?? ""} onValueChange={(v) => setPick((s) => ({ ...s, [c.id]: v }))}>
+                    <SelectTrigger className="h-9 w-[210px] rounded-lg"><SelectValue placeholder="Escolher workspace" /></SelectTrigger>
+                    <SelectContent>
+                      {workspaces.map((ws) => (
+                        <SelectItem key={ws.id} value={ws.id}>{ws.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="rounded-lg"
+                    disabled={!pick[c.id] || bindMut.isPending}
+                    onClick={() => bindMut.mutate({ connection_id: c.id, workspace_id: pick[c.id]! })}
+                  >
+                    <Link2 className="mr-2 h-3.5 w-3.5" />Vincular
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="rounded-lg"
+                    disabled={!c.waba_id || subscribingId === c.id}
+                    onClick={() => onSubscribe(c.id)}
+                  >
+                    <Webhook className="mr-2 h-3.5 w-3.5" />
+                    {subscribingId === c.id ? "Assinando…" : "Assinar app"}
+                  </Button>
+                  <Button size="sm" className="rounded-lg" onClick={() => setFinishId(c.id)}>
+                    <ListChecks className="mr-2 h-3.5 w-3.5" />Ativar número
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <PostSignupDialog connectionId={finishId} open={!!finishId} onOpenChange={(v) => !v && setFinishId(null)} />
+    </div>
+  );
+}
+
 function groupByWaba(w: any) {
+
   const wabaName = new Map<string, string>();
   for (const x of w.wabas ?? []) if (x.waba_id) wabaName.set(String(x.waba_id), x.nome_interno);
   const groups = new Map<string, any>();
