@@ -341,7 +341,7 @@ function AtendimentoPage() {
                         )}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent align="end" className="w-64 space-y-3 rounded-2xl">
+                    <PopoverContent align="end" className="w-[calc(100vw-2rem)] max-w-64 space-y-3 rounded-2xl">
                       <div className="space-y-1">
                         <Label className="text-xs">Status</Label>
                         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
@@ -921,7 +921,7 @@ function ChatPanel(props: {
               }
             }}
           >
-            <SelectTrigger className="h-9 w-32 rounded-full text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-9 w-28 shrink-0 rounded-full text-xs sm:w-32"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="open">Aberta</SelectItem>
               <SelectItem value="waiting">Aguardando</SelectItem>
