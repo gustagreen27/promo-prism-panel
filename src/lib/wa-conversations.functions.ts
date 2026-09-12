@@ -30,11 +30,11 @@ async function accessibleWorkspaceIds(supabase: any, userId: string): Promise<st
 }
 
 /**
- * Allowlist global do Atendimento: apenas estes números aparecem no módulo.
+ * Allowlist global do Atendimento: quando preenchida, apenas estes números
+ * aparecem no módulo. Vazio = todos os números conectados aparecem.
  * (Não afeta disparos/campanhas — só o Atendimento.)
- * Vazio = sem restrição global.
  */
-const ATTENDANCE_GLOBAL_ALLOWLIST: string[] = ["1294636743726288"]; // +55 11 95502-8300
+const ATTENDANCE_GLOBAL_ALLOWLIST: string[] = [];
 
 /**
  * Números liberados para o usuário. `null` = sem restrição (vê todos).
