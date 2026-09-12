@@ -144,9 +144,10 @@ export const listAttendanceNumbers = createServerFn({ method: "GET" })
     const { data: conns } = await context.supabase
       .from("whatsapp_connections")
       .select(
-        "id, workspace_id, phone_number_id, display_phone, phone, verified_name, nome_interno, quality_rating, status, waba_ref_id",
+        "id, workspace_id, phone_number_id, display_phone, phone, verified_name, nome_interno, quality_rating, status, waba_ref_id, created_at",
       )
       .not("phone_number_id", "is", null)
+      .order("created_at", { ascending: false })
       .limit(1000);
     const list = ((conns ?? []) as any[]).filter(
       (c) =>
