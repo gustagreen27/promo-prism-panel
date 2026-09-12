@@ -288,3 +288,31 @@
     max-height: none !important;
   }
 }
+
+/* ===== Atendimento — identidade "Next" (referência enviada) ===== */
+.atd-theme {
+  --background: oklch(0.977 0.004 160);
+  --foreground: oklch(0.29 0.026 165);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.29 0.026 165);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.29 0.026 165);
+  --primary: oklch(0.57 0.111 168);
+  --primary-foreground: oklch(0.99 0.005 160);
+  --secondary: oklch(0.958 0.019 163);
+  --secondary-foreground: oklch(0.35 0.052 166);
+  --muted: oklch(0.966 0.007 162);
+  --muted-foreground: oklch(0.63 0.014 165);
+  --accent: oklch(0.953 0.026 163);
+  --accent-foreground: oklch(0.4 0.07 166);
+  --border: oklch(0.932 0.008 162);
+  --input: oklch(0.932 0.008 162);
+  --ring: oklch(0.57 0.111 168);
+  --radius: 0.9rem;
+  color: var(--foreground);
+}
+.atd-theme .atd-rail { background: oklch(0.26 0.033 167); }
+.atd-theme .atd-rail-btn { color: oklch(0.75 0.024 165); }
+.atd-theme .atd-rail-btn:hover { background: oklch(1 0 0 / 6%); color: oklch(1 0 0); }
+.atd-theme .atd-rail-btn[data-active="true"] { background: oklch(0.36 0.05 167); color: oklch(0.83 0.13 165); }
+.atd-theme .atd-eyebrow { letter-spacing: 0.14em; }

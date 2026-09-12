@@ -204,13 +204,14 @@ function AtendimentoPage() {
     : convs;
 
   return (
-    <div className="h-[calc(100vh-72px)] p-2 md:p-3">
+    <div className="atd-theme h-[calc(100vh-72px)] bg-background p-2 md:p-3">
       <div className="flex h-full overflow-hidden rounded-3xl border bg-card shadow-elegant-lg">
         {/* Rail de ícones */}
-        <nav className="hidden w-[68px] shrink-0 flex-col items-center gap-1 border-r bg-muted/30 py-4 lg:flex">
-          <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-md shadow-emerald-600/30">
-            <MessageCircle className="h-5 w-5" />
+        <nav className="atd-rail hidden w-[76px] shrink-0 flex-col items-center gap-1 py-5 lg:flex">
+          <span className="mb-5 select-none text-[38px] font-extrabold leading-none tracking-[-0.09em] text-white">
+            n<span className="align-top text-[24px] text-primary">↗</span>
           </span>
+          <span className="mb-5 h-px w-8 bg-white/10" />
           {[
             { icon: MessageSquare, label: "Conversas", active: true },
             { icon: Users, label: "Contatos" },
@@ -220,45 +221,51 @@ function AtendimentoPage() {
             <button
               key={it.label}
               title={it.label}
-              className={`flex h-11 w-11 items-center justify-center rounded-2xl transition-all duration-200 ${
-                it.active
-                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              }`}
+              data-active={it.active ? "true" : "false"}
+              className="atd-rail-btn relative flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-200"
             >
-              <it.icon className="h-[18px] w-[18px]" />
+              {it.active && (
+                <span className="absolute -left-[15px] h-5 w-[3px] rounded-r-full bg-primary" />
+              )}
+              <it.icon className="h-[20px] w-[20px]" />
             </button>
           ))}
           <div className="flex-1" />
-          <button className="flex h-11 w-11 items-center justify-center rounded-2xl text-muted-foreground transition hover:bg-accent hover:text-foreground" title="Notificações">
+          <button className="atd-rail-btn flex h-11 w-11 items-center justify-center rounded-xl transition" title="Notificações">
             <Bell className="h-[18px] w-[18px]" />
           </button>
-          <button className="flex h-11 w-11 items-center justify-center rounded-2xl text-muted-foreground transition hover:bg-accent hover:text-foreground" title="Ajuda">
+          <button className="atd-rail-btn flex h-11 w-11 items-center justify-center rounded-xl transition" title="Ajuda">
             <HelpCircle className="h-[18px] w-[18px]" />
           </button>
         </nav>
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          {/* Barra superior */}
-          <header className="flex items-center gap-3 border-b px-4 py-3 md:px-5">
-            <h1 className="text-lg font-semibold tracking-tight md:text-xl">Atendimento WhatsApp</h1>
-            <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
-              {countAll} {countAll === 1 ? "conversa" : "conversas"}
-            </span>
-            <span
-              className={`hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors sm:inline-flex ${
-                live
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300"
-                  : "border-border bg-muted text-muted-foreground"
-              }`}
-              title={live ? "Atualizações em tempo real ativas" : "Reconectando… usando atualização periódica"}
-            >
-              <span className="relative flex h-2 w-2">
-                {live && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />}
-                <span className={`relative inline-flex h-2 w-2 rounded-full ${live ? "bg-emerald-500" : "bg-muted-foreground/50"}`} />
-              </span>
-              {live ? "Ao vivo" : "Reconectando"}
-            </span>
+        <div className="flex min-w-0 flex-1 flex-col bg-background">
+          {/* Cabeçalho de página */}
+          <header className="flex flex-wrap items-end gap-3 border-b bg-card px-5 py-4 md:px-7">
+            <div className="min-w-0">
+              <div className="atd-eyebrow text-[10px] font-semibold uppercase text-muted-foreground">
+                Central de relacionamento
+              </div>
+              <div className="mt-1 flex flex-wrap items-center gap-3">
+                <h1 className="text-2xl font-bold tracking-tight">Atendimento</h1>
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                    live ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                  }`}
+                  title={live ? "Atualizações em tempo real ativas" : "Reconectando… usando atualização periódica"}
+                >
+                  <span className="relative flex h-2 w-2">
+                    {live && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />}
+                    <span className={`relative inline-flex h-2 w-2 rounded-full ${live ? "bg-primary" : "bg-muted-foreground/50"}`} />
+                  </span>
+                  {live ? "Operação online" : "Reconectando"}
+                </span>
+                <span className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground">
+                  {countAll} {countAll === 1 ? "conversa" : "conversas"}
+                </span>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">Boas conversas. Conexões que vão além.</p>
+            </div>
             <div className="ml-auto flex items-center gap-1.5">
               <AttendanceSettingsDialog />
               <Button variant="ghost" size="icon" className="rounded-xl text-muted-foreground" title="Notificações">
@@ -270,6 +277,7 @@ function AtendimentoPage() {
             </div>
           </header>
 
+
           <div
             className={`grid min-h-0 flex-1 ${
               contextOpen && selectedId
@@ -278,8 +286,16 @@ function AtendimentoPage() {
             }`}
           >
             {/* Coluna 1 — conversas */}
-            <div className={`flex min-h-0 flex-col border-r bg-background/40 ${selectedId ? "hidden md:flex" : "flex"}`}>
+            <div className={`flex min-h-0 flex-col border-r bg-card ${selectedId ? "hidden md:flex" : "flex"}`}>
               <div className="space-y-3 p-3">
+                <div className="flex items-center justify-between px-1">
+                  <h2 className="text-sm font-semibold">
+                    Caixa de entrada{" "}
+                    <span className="ml-1 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground">
+                      {countAll}
+                    </span>
+                  </h2>
+                </div>
                 {/* Seletor de conexão */}
                 <Select
                   value={selectedNumber ?? "__all"}
@@ -319,7 +335,7 @@ function AtendimentoPage() {
                       <Button variant="outline" size="icon" className="relative h-11 w-11 shrink-0 rounded-2xl">
                         <SlidersHorizontal className="h-4 w-4" />
                         {activeFilters > 0 && (
-                          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] text-white">
+                          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
                             {activeFilters}
                           </span>
                         )}
@@ -396,7 +412,7 @@ function AtendimentoPage() {
                         onClick={() => setQuickTab(id as any)}
                         className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
                           active
-                            ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                            ? "bg-primary/12 text-primary"
                             : "bg-muted/60 text-muted-foreground hover:bg-muted"
                         }`}
                       >
@@ -404,7 +420,7 @@ function AtendimentoPage() {
                         {t.count > 0 && (
                           <span
                             className={`grid h-4 min-w-4 place-items-center rounded-full px-1 text-[10px] ${
-                              active ? "bg-emerald-600 text-white" : "bg-background text-muted-foreground"
+                              active ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"
                             }`}
                           >
                             {t.count}
@@ -414,6 +430,11 @@ function AtendimentoPage() {
                     );
                   })}
                 </div>
+              </div>
+
+              <div className="flex items-center justify-between px-4 pb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                <span>Conversas recentes</span>
+                <span>{visibleConvs.length}</span>
               </div>
 
               <ScrollArea className="flex-1">
@@ -445,7 +466,7 @@ function AtendimentoPage() {
                             }}
                             className={`flex w-full items-start gap-3 rounded-2xl border p-3 text-left transition-all duration-200 ${
                               active
-                                ? "border-emerald-500/40 bg-emerald-500/10 shadow-sm"
+                                ? "border-primary/35 bg-primary/10 shadow-sm"
                                 : "border-border/70 bg-card hover:-translate-y-px hover:border-border hover:shadow-sm"
                             }`}
                           >
@@ -464,7 +485,7 @@ function AtendimentoPage() {
                                   {c.last_message_preview || "—"}
                                 </span>
                                 {c.unread_count > 0 && (
-                                  <Badge className="mt-0.5 h-5 shrink-0 rounded-full bg-emerald-600 px-1.5 text-[10px] hover:bg-emerald-600">
+                                  <Badge className="mt-0.5 h-5 shrink-0 rounded-full bg-primary px-1.5 text-[10px] hover:bg-primary">
                                     {c.unread_count}
                                   </Badge>
                                 )}
@@ -484,6 +505,10 @@ function AtendimentoPage() {
                   </ul>
                 )}
               </ScrollArea>
+              <div className="flex items-center gap-2 border-t px-4 py-3 text-[11px] text-muted-foreground">
+                <Lock className="h-3.5 w-3.5" />
+                Suas conexões em um só lugar
+              </div>
             </div>
 
             {/* Coluna 2 — chat */}
@@ -501,7 +526,7 @@ function AtendimentoPage() {
                 />
               ) : (
                 <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-wa-chat p-6 text-sm text-muted-foreground">
-                  <span className="flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-500/10 text-emerald-600 shadow-sm">
+                  <span className="flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/10 text-primary shadow-sm">
                     <MessageCircle className="h-8 w-8" />
                   </span>
                   Selecione uma conversa para começar
@@ -876,7 +901,7 @@ function ChatPanel(props: {
         </div>
         <div className="flex items-center gap-1.5">
           {windowOpen ? (
-            <span className="hidden items-center gap-1 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 lg:inline-flex dark:text-emerald-300">
+            <span className="hidden items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary lg:inline-flex">
               <Clock className="h-3 w-3" /> 24h aberta {remaining ? `• ${remaining}` : ""}
             </span>
           ) : (
@@ -976,10 +1001,10 @@ function ChatPanel(props: {
         )}
 
         {replyTo && (
-          <div className="flex items-start gap-2 rounded-md border-l-4 border-emerald-500 bg-muted/60 px-2 py-1 text-xs">
-            <CornerUpLeft className="mt-0.5 h-3 w-3 text-emerald-600" />
+          <div className="flex items-start gap-2 rounded-md border-l-4 border-primary bg-muted/60 px-2 py-1 text-xs">
+            <CornerUpLeft className="mt-0.5 h-3 w-3 text-primary" />
             <div className="flex-1 min-w-0">
-              <div className="text-[10px] font-medium text-emerald-700 dark:text-emerald-300">Respondendo</div>
+              <div className="text-[10px] font-medium text-primary">Respondendo</div>
               <div className="truncate">{replyTo.preview}</div>
             </div>
             <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setReplyTo(null)}>
@@ -1325,7 +1350,7 @@ function ChatPanel(props: {
             </Button>
             <Button
               size="icon"
-              className="h-11 w-11 shrink-0 rounded-full bg-emerald-600 text-white shadow-md shadow-emerald-600/30 transition-all duration-200 hover:scale-105 hover:bg-emerald-700 active:scale-95 disabled:shadow-none"
+              className="h-11 w-11 shrink-0 rounded-full bg-primary text-primary-foreground shadow-md shadow-primary/25 transition-all duration-200 hover:scale-105 hover:bg-primary/90 active:scale-95 disabled:shadow-none"
               disabled={!windowOpen || !text.trim() || sendText.isPending}
               onClick={() => sendText.mutate()}
             >
@@ -1347,7 +1372,7 @@ function ChatPanel(props: {
 function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void }) {
   const out = msg.direction === "outbound";
   const bubble = out
-    ? "ml-auto bg-[oklch(0.93_0.06_150)] text-foreground dark:bg-emerald-800 dark:text-white rounded-br-md"
+    ? "ml-auto bg-[oklch(0.93_0.06_150)] text-foreground dark:bg-primary dark:text-primary-foreground rounded-br-md"
     : "mr-auto bg-card text-foreground rounded-bl-md";
   const payload = msg.payload ?? {};
   const isMedia =
@@ -1374,7 +1399,7 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
     >
 
       {msg.template_name && (
-        <div className={`mb-1 text-[10px] font-medium ${out ? "text-foreground/60 dark:text-emerald-100" : "text-muted-foreground"}`}>
+        <div className={`mb-1 text-[10px] font-medium ${out ? "text-foreground/60" : "text-muted-foreground"}`}>
           Template · {msg.template_name}
         </div>
       )}
@@ -1402,7 +1427,7 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
           href={msg.media_url}
           target="_blank"
           rel="noreferrer"
-          className={`mb-1 flex items-center gap-2 rounded border px-2 py-1 text-xs ${out ? "border-emerald-600/30 bg-emerald-600/10" : "border-border bg-muted/50"}`}
+          className={`mb-1 flex items-center gap-2 rounded border px-2 py-1 text-xs ${out ? "border-primary/30 bg-primary/10" : "border-border bg-muted/50"}`}
         >
           <FileIcon className="h-4 w-4" />
           <span className="truncate">{msg.media_filename ?? "Documento"}</span>
@@ -1415,11 +1440,11 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
       {msg.body && <div className="whitespace-pre-wrap break-words text-sm">{msg.body}</div>}
 
       {buttons.length > 0 && (
-        <div className={`mt-2 space-y-1 border-t pt-2 ${out ? "border-emerald-600/30" : "border-border/60"}`}>
+        <div className={`mt-2 space-y-1 border-t pt-2 ${out ? "border-primary/30" : "border-border/60"}`}>
           {buttons.map((b) => (
             <div
               key={b.id}
-              className={`rounded px-2 py-1 text-center text-xs ${out ? "bg-emerald-600/10" : "bg-muted"}`}
+              className={`rounded px-2 py-1 text-center text-xs ${out ? "bg-primary/10" : "bg-muted"}`}
             >
               {b.title}
             </div>
@@ -1427,9 +1452,9 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
         </div>
       )}
       {listSections.length > 0 && (
-        <div className={`mt-2 space-y-1 border-t pt-2 ${out ? "border-emerald-600/30" : "border-border/60"}`}>
+        <div className={`mt-2 space-y-1 border-t pt-2 ${out ? "border-primary/30" : "border-border/60"}`}>
           {listSections.flatMap((s) => s.rows).map((r) => (
-            <div key={r.id} className={`rounded px-2 py-1 text-xs ${out ? "bg-emerald-600/10" : "bg-muted"}`}>
+            <div key={r.id} className={`rounded px-2 py-1 text-xs ${out ? "bg-primary/10" : "bg-muted"}`}>
               <div className="font-medium">{r.title}</div>
               {r.description && <div className="opacity-80">{r.description}</div>}
             </div>
@@ -1452,14 +1477,14 @@ function MessageBubble({ msg, onReply }: { msg: any; onReply?: (m: any) => void 
         </div>
       )}
 
-      <div className={`mt-1 flex items-center gap-1 text-[10px] ${out ? "text-foreground/60 dark:text-emerald-100/90" : "text-muted-foreground"}`}>
+      <div className={`mt-1 flex items-center gap-1 text-[10px] ${out ? "text-foreground/60 " : "text-muted-foreground"}`}>
         <span>{formatTime(msg.created_at)}</span>
         {out && <StatusTick status={msg.status} />}
         {!failed && msg.error_message && <span className="text-destructive">· {msg.error_message}</span>}
 
         {onReply && (
           <button
-            className={`ml-auto opacity-0 transition group-hover:opacity-100 ${out ? "text-foreground/60 dark:text-emerald-100" : "text-muted-foreground"}`}
+            className={`ml-auto opacity-0 transition group-hover:opacity-100 ${out ? "text-foreground/60" : "text-muted-foreground"}`}
             onClick={() => onReply(msg)}
             title="Responder"
           >
@@ -1510,13 +1535,13 @@ function ContextPanel(props: {
       <TabsList className="relative h-auto w-full justify-start gap-0 rounded-none border-b bg-transparent p-0 pr-10">
         <TabsTrigger
           value="contact"
-          className="flex-1 rounded-none border-b-2 border-transparent bg-transparent py-3 text-sm shadow-none data-[state=active]:border-emerald-600 data-[state=active]:bg-transparent data-[state=active]:font-medium data-[state=active]:text-emerald-700 data-[state=active]:shadow-none dark:data-[state=active]:text-emerald-300"
+          className="flex-1 rounded-none border-b-2 border-transparent bg-transparent py-3 text-sm shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:font-medium data-[state=active]:text-primary data-[state=active]:shadow-none "
         >
           Contato
         </TabsTrigger>
         <TabsTrigger
           value="notes"
-          className="flex-1 rounded-none border-b-2 border-transparent bg-transparent py-3 text-sm shadow-none data-[state=active]:border-emerald-600 data-[state=active]:bg-transparent data-[state=active]:font-medium data-[state=active]:text-emerald-700 data-[state=active]:shadow-none dark:data-[state=active]:text-emerald-300"
+          className="flex-1 rounded-none border-b-2 border-transparent bg-transparent py-3 text-sm shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:font-medium data-[state=active]:text-primary data-[state=active]:shadow-none "
         >
           Notas
         </TabsTrigger>
