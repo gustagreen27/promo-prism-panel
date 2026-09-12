@@ -297,8 +297,8 @@ function AtendimentoPage() {
                     </SelectItem>
                     {numbers.map((n) => (
                       <SelectItem key={n.phone_number_id} value={n.phone_number_id}>
-                        {(n.nome_interno || formatPhone(n.display_phone_number ?? n.phone_number_id)) +
-                          (n.unread > 0 ? ` · ${n.unread}` : "")}
+                        {formatPhone(n.display_phone_number) || n.display_phone_number || n.phone_number_id}
+                        {n.unread > 0 ? ` · ${n.unread}` : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -453,7 +453,7 @@ function AtendimentoPage() {
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center justify-between gap-2">
                                 <span className="truncate text-sm font-semibold">
-                                  {c.contact_name || formatPhone(c.contact_phone)}
+                                  {formatPhone(c.contact_phone) || c.contact_phone}
                                 </span>
                                 <span className="shrink-0 text-[11px] text-muted-foreground">
                                   {formatTime(c.last_message_at)}
@@ -859,11 +859,11 @@ function ChatPanel(props: {
           <ContactAvatar name={conv?.contact_name} phone={conv?.contact_phone} />
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold">
-              {conv?.contact_name || formatPhone(conv?.contact_phone)}
+              {formatPhone(conv?.contact_phone) || conv?.contact_phone}
             </div>
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
               <span className="truncate">
-                {conv?.contact_name ? formatPhone(conv?.contact_phone) : "Clique para adicionar nome"}
+                {conv?.contact_name || ""}
               </span>
               {connection?.phone_number && (
                 <>
@@ -1535,10 +1535,10 @@ function ContextPanel(props: {
         <div className="flex flex-col items-center gap-2 pb-5 text-center">
           <ContactAvatar name={conv?.contact_name} phone={conv?.contact_phone} size="lg" />
           <div className="text-base font-semibold">
-            {conv?.contact_name || formatPhone(conv?.contact_phone)}
+            {formatPhone(conv?.contact_phone) || conv?.contact_phone}
           </div>
           <div className="text-xs text-muted-foreground">
-            {conv?.contact_name ? formatPhone(conv?.contact_phone) : "Clique para adicionar nome"}
+            {conv?.contact_name || ""}
           </div>
         </div>
         <dl className="divide-y border-t">
