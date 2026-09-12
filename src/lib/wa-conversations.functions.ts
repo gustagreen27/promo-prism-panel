@@ -144,9 +144,10 @@ export const listAttendanceNumbers = createServerFn({ method: "GET" })
     const { data: conns } = await context.supabase
       .from("whatsapp_connections")
       .select(
-        "id, workspace_id, phone_number_id, display_phone, phone, verified_name, nome_interno, quality_rating, status, waba_ref_id",
+        "id, workspace_id, phone_number_id, display_phone, phone, verified_name, nome_interno, quality_rating, status, waba_ref_id, created_at",
       )
       .not("phone_number_id", "is", null)
+      .order("created_at", { ascending: false })
       .limit(1000);
     const list = ((conns ?? []) as any[]).filter(
       (c) =>
@@ -187,6 +188,7 @@ export const listAttendanceNumbers = createServerFn({ method: "GET" })
       items.push(empty);
     }
 
+    const connectedAt = new Map<string, string>();
     for (const i of items) {
       const c = byPni.get(i.phone_number_id);
       if (!c) continue;
@@ -196,13 +198,20 @@ export const listAttendanceNumbers = createServerFn({ method: "GET" })
       i.quality_rating = c.quality_rating ?? null;
       i.status = c.status ?? null;
       i.waba_name = c.waba_ref_id ? wabaNames.get(c.waba_ref_id) ?? null : null;
+      if (c.created_at) connectedAt.set(i.phone_number_id, c.created_at);
     }
 
 
     const finalItems = allowed
       ? items.filter((i) => allowed.includes(i.phone_number_id))
       : items;
-    finalItems.sort((a, b) => (b.last_message_at ?? "").localeCompare(a.last_message_at ?? ""));
+    // Números conectados por último aparecem primeiro; os sem conexão (histórico) vão ao final.
+    finalItems.sort((a, b) => {
+      const ca = connectedAt.get(a.phone_number_id) ?? "";
+      const cb = connectedAt.get(b.phone_number_id) ?? "";
+      if (ca !== cb) return cb.localeCompare(ca);
+      return (b.last_message_at ?? "").localeCompare(a.last_message_at ?? "");
+    });
     return finalItems;
   });
 
