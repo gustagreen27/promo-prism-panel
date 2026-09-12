@@ -286,8 +286,16 @@ function AtendimentoPage() {
             }`}
           >
             {/* Coluna 1 — conversas */}
-            <div className={`flex min-h-0 flex-col border-r bg-background/40 ${selectedId ? "hidden md:flex" : "flex"}`}>
+            <div className={`flex min-h-0 flex-col border-r bg-card ${selectedId ? "hidden md:flex" : "flex"}`}>
               <div className="space-y-3 p-3">
+                <div className="flex items-center justify-between px-1">
+                  <h2 className="text-sm font-semibold">
+                    Caixa de entrada{" "}
+                    <span className="ml-1 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground">
+                      {countAll}
+                    </span>
+                  </h2>
+                </div>
                 {/* Seletor de conexão */}
                 <Select
                   value={selectedNumber ?? "__all"}
