@@ -120,7 +120,6 @@ export async function claimSharedWaba(
   }
 
   // Upsert WABA
-  const nome = input.nome_interno?.trim() || waba?.name || `WABA ${input.waba_id.slice(-6)}`;
   const existing = await supabase.from("whatsapp_wabas").select("id, workspace_id").eq("waba_id", input.waba_id).maybeSingle();
   const wabaPayload: Record<string, any> = {
     nome_interno: nome,
