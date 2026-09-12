@@ -84,21 +84,42 @@ export async function claimSharedWaba(
 
   const sub = await graph(`/${input.waba_id}/subscribed_apps`, picked.token, { method: "POST" });
 
-  // Workspace: se não informado, usa o workspace padrão (primeiro) para que a
-  // WABA e os números SEMPRE apareçam em Conexões — nunca ficam órfãos.
+  // Workspace: se não informado, CRIA um novo workspace para esta WABA —
+  // cada conta vinculada aparece separada em Conexões, nunca órfã.
+  const nome = input.nome_interno?.trim() || waba?.name || `WABA ${input.waba_id.slice(-6)}`;
   let workspaceId = input.workspace_id ?? null;
   if (!workspaceId) {
-    const ws = await supabase
+    const slugBase = `waba-${input.waba_id}`.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+    const ins = await supabase
       .from("workspaces")
+      .insert({
+        name: nome,
+        slug: slugBase,
+        meta_business_id: businessId,
+        meta_business_name: waba?.on_behalf_of_business_info?.name ?? waba?.owner_business_info?.name ?? null,
+      })
       .select("id")
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    workspaceId = ws.data?.id ?? null;
+      .single();
+    if (ins.error) {
+      // slug duplicado (re-vínculo da mesma WABA): reutiliza o workspace existente
+      const reuse = await supabase.from("workspaces").select("id").eq("slug", slugBase).maybeSingle();
+      if (reuse.data?.id) {
+        workspaceId = reuse.data.id;
+      } else {
+        const fallback = await supabase
+          .from("workspaces")
+          .select("id")
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        workspaceId = fallback.data?.id ?? null;
+      }
+    } else {
+      workspaceId = ins.data.id;
+    }
   }
 
   // Upsert WABA
-  const nome = input.nome_interno?.trim() || waba?.name || `WABA ${input.waba_id.slice(-6)}`;
   const existing = await supabase.from("whatsapp_wabas").select("id, workspace_id").eq("waba_id", input.waba_id).maybeSingle();
   const wabaPayload: Record<string, any> = {
     nome_interno: nome,
