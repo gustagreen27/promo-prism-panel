@@ -116,7 +116,7 @@ export const listAttendanceNumbers = createServerFn({ method: "GET" })
         ({
           phone_number_id: key,
           connection_id: r.connection_id ?? null,
-          display_phone_number: null,
+          display_phone_number: (r as any).metadata?.display_phone_number ?? null,
           nome_interno: null,
           waba_name: null,
           quality_rating: null,
