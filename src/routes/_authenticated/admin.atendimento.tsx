@@ -432,6 +432,11 @@ function AtendimentoPage() {
                 </div>
               </div>
 
+              <div className="flex items-center justify-between px-4 pb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                <span>Conversas recentes</span>
+                <span>{visibleConvs.length}</span>
+              </div>
+
               <ScrollArea className="flex-1">
                 {convsQuery.isLoading ? (
                   <div className="space-y-2 px-3">
