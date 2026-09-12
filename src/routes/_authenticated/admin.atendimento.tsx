@@ -204,13 +204,14 @@ function AtendimentoPage() {
     : convs;
 
   return (
-    <div className="h-[calc(100vh-72px)] p-2 md:p-3">
+    <div className="atd-theme h-[calc(100vh-72px)] bg-background p-2 md:p-3">
       <div className="flex h-full overflow-hidden rounded-3xl border bg-card shadow-elegant-lg">
         {/* Rail de ícones */}
-        <nav className="hidden w-[68px] shrink-0 flex-col items-center gap-1 border-r bg-muted/30 py-4 lg:flex">
-          <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-md shadow-emerald-600/30">
-            <MessageCircle className="h-5 w-5" />
+        <nav className="atd-rail hidden w-[76px] shrink-0 flex-col items-center gap-1 py-5 lg:flex">
+          <span className="mb-5 select-none text-[38px] font-extrabold leading-none tracking-[-0.09em] text-white">
+            n<span className="align-top text-[24px] text-primary">↗</span>
           </span>
+          <span className="mb-5 h-px w-8 bg-white/10" />
           {[
             { icon: MessageSquare, label: "Conversas", active: true },
             { icon: Users, label: "Contatos" },
@@ -220,45 +221,51 @@ function AtendimentoPage() {
             <button
               key={it.label}
               title={it.label}
-              className={`flex h-11 w-11 items-center justify-center rounded-2xl transition-all duration-200 ${
-                it.active
-                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              }`}
+              data-active={it.active ? "true" : "false"}
+              className="atd-rail-btn relative flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-200"
             >
-              <it.icon className="h-[18px] w-[18px]" />
+              {it.active && (
+                <span className="absolute -left-[15px] h-5 w-[3px] rounded-r-full bg-primary" />
+              )}
+              <it.icon className="h-[20px] w-[20px]" />
             </button>
           ))}
           <div className="flex-1" />
-          <button className="flex h-11 w-11 items-center justify-center rounded-2xl text-muted-foreground transition hover:bg-accent hover:text-foreground" title="Notificações">
+          <button className="atd-rail-btn flex h-11 w-11 items-center justify-center rounded-xl transition" title="Notificações">
             <Bell className="h-[18px] w-[18px]" />
           </button>
-          <button className="flex h-11 w-11 items-center justify-center rounded-2xl text-muted-foreground transition hover:bg-accent hover:text-foreground" title="Ajuda">
+          <button className="atd-rail-btn flex h-11 w-11 items-center justify-center rounded-xl transition" title="Ajuda">
             <HelpCircle className="h-[18px] w-[18px]" />
           </button>
         </nav>
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          {/* Barra superior */}
-          <header className="flex items-center gap-3 border-b px-4 py-3 md:px-5">
-            <h1 className="text-lg font-semibold tracking-tight md:text-xl">Atendimento WhatsApp</h1>
-            <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
-              {countAll} {countAll === 1 ? "conversa" : "conversas"}
-            </span>
-            <span
-              className={`hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors sm:inline-flex ${
-                live
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300"
-                  : "border-border bg-muted text-muted-foreground"
-              }`}
-              title={live ? "Atualizações em tempo real ativas" : "Reconectando… usando atualização periódica"}
-            >
-              <span className="relative flex h-2 w-2">
-                {live && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />}
-                <span className={`relative inline-flex h-2 w-2 rounded-full ${live ? "bg-emerald-500" : "bg-muted-foreground/50"}`} />
-              </span>
-              {live ? "Ao vivo" : "Reconectando"}
-            </span>
+        <div className="flex min-w-0 flex-1 flex-col bg-background">
+          {/* Cabeçalho de página */}
+          <header className="flex flex-wrap items-end gap-3 border-b bg-card px-5 py-4 md:px-7">
+            <div className="min-w-0">
+              <div className="atd-eyebrow text-[10px] font-semibold uppercase text-muted-foreground">
+                Central de relacionamento
+              </div>
+              <div className="mt-1 flex flex-wrap items-center gap-3">
+                <h1 className="text-2xl font-bold tracking-tight">Atendimento</h1>
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                    live ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                  }`}
+                  title={live ? "Atualizações em tempo real ativas" : "Reconectando… usando atualização periódica"}
+                >
+                  <span className="relative flex h-2 w-2">
+                    {live && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />}
+                    <span className={`relative inline-flex h-2 w-2 rounded-full ${live ? "bg-primary" : "bg-muted-foreground/50"}`} />
+                  </span>
+                  {live ? "Operação online" : "Reconectando"}
+                </span>
+                <span className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground">
+                  {countAll} {countAll === 1 ? "conversa" : "conversas"}
+                </span>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">Boas conversas. Conexões que vão além.</p>
+            </div>
             <div className="ml-auto flex items-center gap-1.5">
               <AttendanceSettingsDialog />
               <Button variant="ghost" size="icon" className="rounded-xl text-muted-foreground" title="Notificações">
@@ -269,6 +276,7 @@ function AtendimentoPage() {
               </Button>
             </div>
           </header>
+
 
           <div
             className={`grid min-h-0 flex-1 ${
