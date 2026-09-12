@@ -204,8 +204,8 @@ function AtendimentoPage() {
     : convs;
 
   return (
-    <div className="atd-theme h-[calc(100vh-72px)] bg-background p-2 md:p-3">
-      <div className="flex h-full overflow-hidden rounded-3xl border bg-card shadow-elegant-lg">
+<div className="atd-theme h-[calc(100dvh-56px)] overflow-hidden bg-background p-2 md:p-3">
+      <div className="flex h-full min-h-0 overflow-hidden rounded-3xl border bg-card shadow-elegant-lg">
         {/* Rail de ícones */}
         <nav className="atd-rail hidden w-[76px] shrink-0 flex-col items-center gap-1 py-5 lg:flex">
           <span className="mb-5 select-none text-[38px] font-extrabold leading-none tracking-[-0.09em] text-white">
@@ -281,8 +281,8 @@ function AtendimentoPage() {
           <div
             className={`grid min-h-0 flex-1 ${
               contextOpen && selectedId
-                ? "grid-cols-1 md:grid-cols-[320px_1fr] xl:grid-cols-[340px_1fr_320px]"
-                : "grid-cols-1 md:grid-cols-[320px_1fr]"
+                ? "grid-cols-1 md:grid-cols-[minmax(260px,300px)_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)_320px]"
+                : "grid-cols-1 md:grid-cols-[minmax(260px,300px)_minmax(0,1fr)]"
             }`}
           >
             {/* Coluna 1 — conversas */}
@@ -341,7 +341,7 @@ function AtendimentoPage() {
                         )}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent align="end" className="w-64 space-y-3 rounded-2xl">
+                    <PopoverContent align="end" className="w-[calc(100vw-2rem)] max-w-64 space-y-3 rounded-2xl">
                       <div className="space-y-1">
                         <Label className="text-xs">Status</Label>
                         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
@@ -921,7 +921,7 @@ function ChatPanel(props: {
               }
             }}
           >
-            <SelectTrigger className="h-9 w-32 rounded-full text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-9 w-28 shrink-0 rounded-full text-xs sm:w-32"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="open">Aberta</SelectItem>
               <SelectItem value="waiting">Aguardando</SelectItem>
@@ -1060,7 +1060,7 @@ function ChatPanel(props: {
                   <Paperclip className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent align="start" side="top" className="w-[380px] p-3">
+              <PopoverContent align="start" side="top" className="w-[calc(100vw-2rem)] max-w-[380px] p-3">
                 <Tabs value={attachTab} onValueChange={(v) => setAttachTab(v as any)}>
                   <TabsList className="grid grid-cols-4">
                     <TabsTrigger value="media" className="text-xs">
