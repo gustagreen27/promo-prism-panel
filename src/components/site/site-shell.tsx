@@ -12,7 +12,7 @@ export const SITE_CONTACT = {
     return `https://wa.me/${this.whatsapp}`;
   },
   get whatsappLabel() {
-    return "+55 62 93300-3970";
+    return "+55 11 98847-7426";
   },
   panelUrl: "https://painel.nextdisparos.com/login",
 };
