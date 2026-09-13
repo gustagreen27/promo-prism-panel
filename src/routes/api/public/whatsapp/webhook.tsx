@@ -1082,7 +1082,7 @@ async function applyResponseFlow(
     campaignId: string;
     inboundWamid?: string | null;
   },
-) {
+): Promise<boolean> {
   const {
     workspaceId,
     conversationId,
@@ -1098,7 +1098,7 @@ async function applyResponseFlow(
     .select("id, response_flow_enabled, response_flow_config")
     .eq("id", campaignId)
     .maybeSingle();
-  if (!camp?.response_flow_enabled) return;
+  if (!camp?.response_flow_enabled) return false;
   const cfg = (camp.response_flow_config ?? {}) as {
     auto_reply_text?: string | null;
     assign_status?: string | null;
