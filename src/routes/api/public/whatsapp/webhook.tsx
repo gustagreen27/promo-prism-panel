@@ -1210,4 +1210,129 @@ async function applyResponseFlow(
       metadata: { ...meta, last_auto_reply_at: nowIso },
     })
     .eq("id", conversationId);
+  return true;
+}
+
+// ────────────────────────────────────────────────────────────────────
+// applyAttendanceAutoReply — resposta automática GLOBAL do atendimento
+// (wa_attendance_settings), usada quando a mensagem inbound NÃO é
+// respondida pelo fluxo de resposta de uma campanha (fora de disparo).
+// Respeita cooldown em metadata.last_attendance_reply_at.
+// ────────────────────────────────────────────────────────────────────
+async function applyAttendanceAutoReply(
+  supabaseAdmin: any,
+  args: {
+    workspaceId: string;
+    conversationId: string;
+    connectionId: string | null;
+    phoneNumberId: string | null;
+    from: string;
+    inboundWamid?: string | null;
+  },
+): Promise<boolean> {
+  const { workspaceId, conversationId, connectionId, phoneNumberId, from, inboundWamid } = args;
+  if (!connectionId || !phoneNumberId) return false;
+
+  const { data: settings } = await supabaseAdmin
+    .from("wa_attendance_settings")
+    .select(
+      "auto_reply_enabled, auto_reply_text, auto_reply_cooldown_minutes, auto_reply_cta_enabled, auto_reply_cta_button_text, auto_reply_cta_url",
+    )
+    .eq("workspace_id", workspaceId)
+    .maybeSingle();
+  if (!settings?.auto_reply_enabled) return false;
+
+  const text = String(settings.auto_reply_text ?? "").trim();
+  const ctaEnabled = !!(
+    settings.auto_reply_cta_enabled &&
+    String(settings.auto_reply_cta_button_text ?? "").trim() &&
+    String(settings.auto_reply_cta_url ?? "").trim()
+  );
+  if (!text && !ctaEnabled) return false;
+
+  const { data: conv } = await supabaseAdmin
+    .from("wa_conversations")
+    .select("id, metadata, contact_name")
+    .eq("id", conversationId)
+    .maybeSingle();
+  if (!conv) return false;
+
+  const meta = (conv.metadata ?? {}) as Record<string, any>;
+  const lastAutoAt = meta.last_attendance_reply_at
+    ? Date.parse(meta.last_attendance_reply_at)
+    : 0;
+  const cooldownMs =
+    Math.max(0, Number(settings.auto_reply_cooldown_minutes ?? 60)) * 60 * 1000;
+  const now = Date.now();
+  if (lastAutoAt && now - lastAutoAt < cooldownMs) return false;
+
+  const contactName = String(conv.contact_name ?? "").trim();
+  const render = (s: string) =>
+    s.replaceAll("{nome}", contactName || from).replaceAll("{{nome}}", contactName || from);
+  const renderedText = render(text);
+
+  const idem = inboundWamid
+    ? `attflow:${conversationId}:${inboundWamid}`
+    : `attflow:${conversationId}:${Math.floor(now / (cooldownMs || 1))}`;
+
+  let messageType: string;
+  let body: string;
+  let payload: Record<string, any>;
+  if (ctaEnabled) {
+    messageType = "interactive";
+    body = renderedText || render(String(settings.auto_reply_cta_button_text ?? "").trim());
+    payload = {
+      kind: "interactive_cta_url",
+      body: renderedText || body,
+      display_text: render(String(settings.auto_reply_cta_button_text ?? "").trim()),
+      url: String(settings.auto_reply_cta_url ?? "").trim(),
+      source: "attendance_auto_reply",
+    };
+  } else {
+    messageType = "text";
+    body = renderedText;
+    payload = { kind: "text", body: renderedText, source: "attendance_auto_reply" };
+  }
+
+  const { data: msg } = await supabaseAdmin
+    .from("wa_conversation_messages")
+    .insert({
+      workspace_id: workspaceId,
+      conversation_id: conversationId,
+      direction: "outbound",
+      origin: "auto_flow",
+      message_type: messageType,
+      body,
+      status: "queued",
+      payload,
+    })
+    .select("id")
+    .single();
+
+  const nowIso = new Date(now).toISOString();
+  await supabaseAdmin.from("wa_service_queue").insert({
+    workspace_id: workspaceId,
+    conversation_id: conversationId,
+    connection_id: connectionId,
+    phone_number_id: phoneNumberId,
+    contact_phone: from,
+    message_id: msg?.id ?? null,
+    payload,
+    idempotency_key: idem,
+    priority: 2,
+    origin: "auto_flow",
+    scheduled_at: nowIso,
+    next_attempt_at: nowIso,
+  });
+
+  await supabaseAdmin
+    .from("wa_conversations")
+    .update({
+      last_outbound_at: nowIso,
+      last_message_at: nowIso,
+      last_message_preview: body.slice(0, 500),
+      metadata: { ...meta, last_attendance_reply_at: nowIso },
+    })
+    .eq("id", conversationId);
+  return true;
 }
