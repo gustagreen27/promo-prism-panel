@@ -1041,6 +1041,29 @@ async function upsertConversationFromInbound(
       });
     }
   }
+
+  // Resposta automática global do atendimento (fora de disparo): dispara
+  // apenas quando o fluxo da campanha NÃO respondeu.
+  if (!campaignFlowSent && isNewest) {
+    try {
+      await applyAttendanceAutoReply(supabaseAdmin, {
+        workspaceId,
+        conversationId,
+        connectionId,
+        phoneNumberId,
+        from,
+        inboundWamid: wamid,
+      });
+    } catch (e: any) {
+      await supabaseAdmin.from("whatsapp_webhook_logs").insert({
+        connection_id: connectionId,
+        event_type: "attendance_auto_reply_error",
+        processed: false,
+        error: e?.message ?? "attendance auto reply failed",
+        payload: { conversation_id: conversationId },
+      });
+    }
+  }
 }
 
 // ────────────────────────────────────────────────────────────────────
