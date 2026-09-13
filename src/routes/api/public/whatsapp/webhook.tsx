@@ -1019,9 +1019,10 @@ async function upsertConversationFromInbound(
 
   // Fluxo de resposta automática: só dispara para a mensagem mais nova
   // (mensagens fora de ordem não devem re-executar automação).
+  let campaignFlowSent = false;
   if (campaignId && isNewest) {
     try {
-      await applyResponseFlow(supabaseAdmin, {
+      campaignFlowSent = await applyResponseFlow(supabaseAdmin, {
         workspaceId,
         conversationId,
         connectionId,
