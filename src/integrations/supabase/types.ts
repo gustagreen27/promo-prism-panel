@@ -2675,6 +2675,12 @@ export type Database = {
       wa_attendance_settings: {
         Row: {
           agent_roles: Database["public"]["Enums"]["workspace_role"][]
+          auto_reply_cooldown_minutes: number
+          auto_reply_cta_button_text: string | null
+          auto_reply_cta_enabled: boolean
+          auto_reply_cta_url: string | null
+          auto_reply_enabled: boolean
+          auto_reply_text: string | null
           created_at: string
           keyword_rules: Json
           notify_on_new_conversation: boolean
@@ -2686,6 +2692,12 @@ export type Database = {
         }
         Insert: {
           agent_roles?: Database["public"]["Enums"]["workspace_role"][]
+          auto_reply_cooldown_minutes?: number
+          auto_reply_cta_button_text?: string | null
+          auto_reply_cta_enabled?: boolean
+          auto_reply_cta_url?: string | null
+          auto_reply_enabled?: boolean
+          auto_reply_text?: string | null
           created_at?: string
           keyword_rules?: Json
           notify_on_new_conversation?: boolean
@@ -2697,6 +2709,12 @@ export type Database = {
         }
         Update: {
           agent_roles?: Database["public"]["Enums"]["workspace_role"][]
+          auto_reply_cooldown_minutes?: number
+          auto_reply_cta_button_text?: string | null
+          auto_reply_cta_enabled?: boolean
+          auto_reply_cta_url?: string | null
+          auto_reply_enabled?: boolean
+          auto_reply_text?: string | null
           created_at?: string
           keyword_rules?: Json
           notify_on_new_conversation?: boolean

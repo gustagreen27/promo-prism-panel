@@ -1217,7 +1217,9 @@ async function applyResponseFlow(
 // applyAttendanceAutoReply — resposta automática GLOBAL do atendimento
 // (wa_attendance_settings), usada quando a mensagem inbound NÃO é
 // respondida pelo fluxo de resposta de uma campanha (fora de disparo).
-// Respeita cooldown em metadata.last_attendance_reply_at.
+// Envia APENAS na primeira mensagem recebida daquele número:
+// - se a conversa já recebeu resposta automática antes → não envia
+// - se já existe qualquer mensagem inbound anterior na conversa → não envia
 // ────────────────────────────────────────────────────────────────────
 async function applyAttendanceAutoReply(
   supabaseAdmin: any,
@@ -1258,13 +1260,23 @@ async function applyAttendanceAutoReply(
   if (!conv) return false;
 
   const meta = (conv.metadata ?? {}) as Record<string, any>;
-  const lastAutoAt = meta.last_attendance_reply_at
-    ? Date.parse(meta.last_attendance_reply_at)
-    : 0;
+  // Só na PRIMEIRA mensagem do número: se já respondemos antes, nunca mais.
+  if (meta.last_attendance_reply_at) return false;
+
+  // Se já existe qualquer outra mensagem inbound anterior na conversa,
+  // não é a primeira → não envia.
+  let inboundQuery = supabaseAdmin
+    .from("wa_conversation_messages")
+    .select("id", { count: "exact", head: true })
+    .eq("conversation_id", conversationId)
+    .eq("direction", "inbound");
+  if (inboundWamid) inboundQuery = inboundQuery.neq("wamid", inboundWamid);
+  const { count: priorInbound } = await inboundQuery;
+  if ((priorInbound ?? 0) > 0) return false;
+
   const cooldownMs =
-    Math.max(0, Number(settings.auto_reply_cooldown_minutes ?? 60)) * 60 * 1000;
+    Math.max(1, Number(settings.auto_reply_cooldown_minutes ?? 60)) * 60 * 1000;
   const now = Date.now();
-  if (lastAutoAt && now - lastAutoAt < cooldownMs) return false;
 
   const contactName = String(conv.contact_name ?? "").trim();
   const render = (s: string) =>
