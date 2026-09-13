@@ -1217,7 +1217,9 @@ async function applyResponseFlow(
 // applyAttendanceAutoReply — resposta automática GLOBAL do atendimento
 // (wa_attendance_settings), usada quando a mensagem inbound NÃO é
 // respondida pelo fluxo de resposta de uma campanha (fora de disparo).
-// Respeita cooldown em metadata.last_attendance_reply_at.
+// Envia APENAS na primeira mensagem recebida daquele número:
+// - se a conversa já recebeu resposta automática antes → não envia
+// - se já existe qualquer mensagem inbound anterior na conversa → não envia
 // ────────────────────────────────────────────────────────────────────
 async function applyAttendanceAutoReply(
   supabaseAdmin: any,
