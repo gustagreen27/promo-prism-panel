@@ -1116,7 +1116,7 @@ async function applyResponseFlow(
     .select("id, tags, metadata, conversation_status")
     .eq("id", conversationId)
     .maybeSingle();
-  if (!conv) return;
+  if (!conv) return false;
 
   const meta = (conv.metadata ?? {}) as Record<string, any>;
   const lastAutoAt = meta.last_auto_reply_at ? Date.parse(meta.last_auto_reply_at) : 0;
@@ -1143,7 +1143,7 @@ async function applyResponseFlow(
     (cfg.cta_url ?? "").trim()
   );
   const hasContent = ctaEnabled || !!text;
-  if (!hasContent || !cooldownOk || !connectionId || !phoneNumberId) return;
+  if (!hasContent || !cooldownOk || !connectionId || !phoneNumberId) return false;
 
   const idem = inboundWamid
     ? `flow:${conversationId}:${inboundWamid}`
