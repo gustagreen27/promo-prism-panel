@@ -76,6 +76,12 @@ export const getAttendanceSettings = createServerFn({ method: "POST" })
           keyword_rules: [],
           notify_on_new_conversation: true,
           notify_on_sla_breach: true,
+          auto_reply_enabled: false,
+          auto_reply_text: "",
+          auto_reply_cooldown_minutes: 60,
+          auto_reply_cta_enabled: false,
+          auto_reply_cta_button_text: "",
+          auto_reply_cta_url: "",
         },
       agents,
     };
@@ -93,6 +99,12 @@ export const updateAttendanceSettings = createServerFn({ method: "POST" })
         keyword_rules: z.array(KeywordRuleSchema).max(50),
         notify_on_new_conversation: z.boolean(),
         notify_on_sla_breach: z.boolean(),
+        auto_reply_enabled: z.boolean().default(false),
+        auto_reply_text: z.string().max(2000).default(""),
+        auto_reply_cooldown_minutes: z.number().int().min(1).max(10080).default(60),
+        auto_reply_cta_enabled: z.boolean().default(false),
+        auto_reply_cta_button_text: z.string().max(20).default(""),
+        auto_reply_cta_url: z.string().max(500).default(""),
       })
       .parse(d),
   )
@@ -126,6 +138,12 @@ export const updateAttendanceSettings = createServerFn({ method: "POST" })
           keyword_rules: data.keyword_rules,
           notify_on_new_conversation: data.notify_on_new_conversation,
           notify_on_sla_breach: data.notify_on_sla_breach,
+          auto_reply_enabled: data.auto_reply_enabled,
+          auto_reply_text: data.auto_reply_text,
+          auto_reply_cooldown_minutes: data.auto_reply_cooldown_minutes,
+          auto_reply_cta_enabled: data.auto_reply_cta_enabled,
+          auto_reply_cta_button_text: data.auto_reply_cta_button_text,
+          auto_reply_cta_url: data.auto_reply_cta_url,
         },
         { onConflict: "workspace_id" },
       )

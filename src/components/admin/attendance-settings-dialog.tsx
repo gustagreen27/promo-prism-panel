@@ -61,6 +61,12 @@ export function AttendanceSettingsDialog() {
   const [notifySla, setNotifySla] = useState(true);
   const [roles, setRoles] = useState<string[]>(["owner", "admin", "operator"]);
   const [rules, setRules] = useState<Rule[]>([]);
+  const [autoReply, setAutoReply] = useState(false);
+  const [autoReplyText, setAutoReplyText] = useState("");
+  const [autoReplyCooldown, setAutoReplyCooldown] = useState(60);
+  const [autoReplyCta, setAutoReplyCta] = useState(false);
+  const [autoReplyCtaText, setAutoReplyCtaText] = useState("");
+  const [autoReplyCtaUrl, setAutoReplyCtaUrl] = useState("");
 
   useEffect(() => {
     if (!settings) return;
@@ -70,6 +76,12 @@ export function AttendanceSettingsDialog() {
     setNotifySla(!!settings.notify_on_sla_breach);
     setRoles(Array.isArray(settings.agent_roles) ? settings.agent_roles : []);
     setRules(Array.isArray(settings.keyword_rules) ? settings.keyword_rules : []);
+    setAutoReply(!!settings.auto_reply_enabled);
+    setAutoReplyText(String(settings.auto_reply_text ?? ""));
+    setAutoReplyCooldown(Number(settings.auto_reply_cooldown_minutes ?? 60));
+    setAutoReplyCta(!!settings.auto_reply_cta_enabled);
+    setAutoReplyCtaText(String(settings.auto_reply_cta_button_text ?? ""));
+    setAutoReplyCtaUrl(String(settings.auto_reply_cta_url ?? ""));
   }, [settings]);
 
   const saveMut = useMutation({
@@ -191,6 +203,86 @@ export function AttendanceSettingsDialog() {
                   disabled={disabled}
                 />
               </div>
+            </section>
+
+            {/* Resposta automática fora de disparo */}
+            <section className="space-y-3 rounded-lg border p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium">Resposta automática (fora de disparo)</div>
+                  <div className="text-xs text-muted-foreground">
+                    Responde automaticamente quem chama no número sem ser retorno de
+                    campanha. Use {"{nome}"} para o nome do contato.
+                  </div>
+                </div>
+                <Switch checked={autoReply} onCheckedChange={setAutoReply} disabled={disabled} />
+              </div>
+              {autoReply && (
+                <>
+                  <div>
+                    <Label className="text-xs">Mensagem</Label>
+                    <Textarea
+                      rows={5}
+                      value={autoReplyText}
+                      disabled={disabled}
+                      onChange={(e) => setAutoReplyText(e.target.value)}
+                      placeholder={"✅ Recebemos sua mensagem, {nome}! Em breve um atendente responde."}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex-1">
+                      <div className="text-sm">Intervalo entre respostas (min)</div>
+                      <div className="text-xs text-muted-foreground">
+                        Evita responder de novo o mesmo contato dentro do período.
+                      </div>
+                    </div>
+                    <div className="w-24">
+                      <Input
+                        type="number"
+                        min={1}
+                        max={10080}
+                        value={autoReplyCooldown}
+                        disabled={disabled}
+                        onChange={(e) =>
+                          setAutoReplyCooldown(Math.max(1, Number(e.target.value) || 1))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <Separator />
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Incluir botão de link (CTA)</Label>
+                    <Switch
+                      checked={autoReplyCta}
+                      onCheckedChange={setAutoReplyCta}
+                      disabled={disabled}
+                    />
+                  </div>
+                  {autoReplyCta && (
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                      <div>
+                        <Label className="text-xs">Texto do botão</Label>
+                        <Input
+                          value={autoReplyCtaText}
+                          disabled={disabled}
+                          maxLength={20}
+                          onChange={(e) => setAutoReplyCtaText(e.target.value)}
+                          placeholder="Acessar"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">URL do botão</Label>
+                        <Input
+                          value={autoReplyCtaUrl}
+                          disabled={disabled}
+                          onChange={(e) => setAutoReplyCtaUrl(e.target.value)}
+                          placeholder="https://..."
+                        />
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </section>
 
             {/* Keyword rules */}
@@ -331,6 +423,12 @@ export function AttendanceSettingsDialog() {
                   })),
                 notify_on_new_conversation: notifyNew,
                 notify_on_sla_breach: notifySla,
+                auto_reply_enabled: autoReply,
+                auto_reply_text: autoReplyText,
+                auto_reply_cooldown_minutes: autoReplyCooldown,
+                auto_reply_cta_enabled: autoReplyCta,
+                auto_reply_cta_button_text: autoReplyCtaText,
+                auto_reply_cta_url: autoReplyCtaUrl,
               })
             }
           >
