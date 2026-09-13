@@ -212,7 +212,9 @@ export function AttendanceSettingsDialog() {
                   <div className="font-medium">Resposta automática (fora de disparo)</div>
                   <div className="text-xs text-muted-foreground">
                     Responde automaticamente quem chama no número sem ser retorno de
-                    campanha. Use {"{nome}"} para o nome do contato.
+                    campanha. Enviada <strong>somente na primeira mensagem</strong> de cada
+                    número — se o lead responder de novo, a automação não repete.
+                    Use {"{nome}"} para o nome do contato.
                   </div>
                 </div>
                 <Switch checked={autoReply} onCheckedChange={setAutoReply} disabled={disabled} />
@@ -228,26 +230,6 @@ export function AttendanceSettingsDialog() {
                       onChange={(e) => setAutoReplyText(e.target.value)}
                       placeholder={"✅ Recebemos sua mensagem, {nome}! Em breve um atendente responde."}
                     />
-                  </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex-1">
-                      <div className="text-sm">Intervalo entre respostas (min)</div>
-                      <div className="text-xs text-muted-foreground">
-                        Evita responder de novo o mesmo contato dentro do período.
-                      </div>
-                    </div>
-                    <div className="w-24">
-                      <Input
-                        type="number"
-                        min={1}
-                        max={10080}
-                        value={autoReplyCooldown}
-                        disabled={disabled}
-                        onChange={(e) =>
-                          setAutoReplyCooldown(Math.max(1, Number(e.target.value) || 1))
-                        }
-                      />
-                    </div>
                   </div>
                   <Separator />
                   <div className="flex items-center justify-between">
