@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import logoAsset from "@/assets/next-disparos-logo.png.asset.json";
 
 export const SITE_CONTACT = {
-  whatsapp: "5562933003970",
+  whatsapp: "5511988477426",
   get whatsappUrl() {
     return `https://wa.me/${this.whatsapp}`;
   },
