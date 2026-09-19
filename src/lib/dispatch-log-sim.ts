@@ -252,13 +252,3 @@ export function eachSimulatedLog(
   }
 }
 
-/** Mascara o telefone para exibição ao cliente: +55 62 9****-**38 */
-export function maskPhone(phone: string): string {
-  const d = String(phone).replace(/\D/g, '')
-  if (d.length < 8) return phone
-  const cc = d.slice(0, 2)
-  const ddd = d.slice(2, 4)
-  const rest = d.slice(4)
-  const tail = rest.slice(-2)
-  return `+${cc} ${ddd} ${rest.slice(0, 1)}${'*'.repeat(Math.max(0, rest.length - 3))}${tail}`
-}
