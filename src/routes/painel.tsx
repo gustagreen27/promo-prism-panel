@@ -17,7 +17,7 @@ import {
 import { useWallet, useBalanceConsistency } from "@/lib/use-panel-workspace";
 import { getMyContext, ensureWorkspace, logAuthEvent, type MyContext } from "@/lib/auth.functions";
 import {
-  LayoutDashboard, Send, Users, BarChart3, CreditCard,
+  LayoutDashboard, Send, Users, BarChart3, CreditCard, MessageSquare,
   LogOut, Wallet, Building2, AlertTriangle, ChevronDown, UserCircle,
 } from "lucide-react";
 import { NotificationsBell } from "@/components/NotificationsBell";
@@ -37,6 +37,7 @@ const NAV: Array<{ to: string; label: string; icon: typeof LayoutDashboard; exac
   { to: "/painel", label: "Início", icon: LayoutDashboard, exact: true },
   { to: "/painel/campanhas/nova", label: "Enviar Disparos", icon: Send },
   { to: "/painel/demandas", label: "Meus disparos", icon: ClipboardList },
+  { to: "/painel/atendimento", label: "Atendimento", icon: MessageSquare },
   { to: "/painel/contatos", label: "Listas de Leads", icon: Users },
   { to: "/painel/relatorios", label: "Relatórios", icon: BarChart3 },
   { to: "/painel/financeiro", label: "Mensagens", icon: CreditCard },

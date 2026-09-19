@@ -66,7 +66,7 @@ export const getMyDemandDetail = createServerFn({ method: 'POST' })
       campaign.connection_id
         ? supabaseAdmin
             .from('whatsapp_connections')
-            .select('id,label,phone,waba_id')
+            .select('id,name,phone,waba_id')
             .eq('id', campaign.connection_id)
             .maybeSingle()
         : Promise.resolve({ data: null }),
@@ -84,7 +84,7 @@ export const getMyDemandDetail = createServerFn({ method: 'POST' })
           .maybeSingle()
         wabaName = waba?.nome_interno ?? null
       }
-      connection = { label: conn.label ?? null, phone: conn.phone ?? null, waba_name: wabaName }
+      connection = { label: conn.name ?? null, phone: conn.phone ?? null, waba_name: wabaName }
     }
 
     const clickRows = (clicksRes?.data ?? []) as any[]

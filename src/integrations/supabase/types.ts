@@ -2672,6 +2672,36 @@ export type Database = {
         }
         Relationships: []
       }
+      wa_attendance_grants: {
+        Row: {
+          campaign_id: string | null
+          connection_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          phone_number_id: string
+          workspace_id: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          connection_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          phone_number_id: string
+          workspace_id: string
+        }
+        Update: {
+          campaign_id?: string | null
+          connection_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          phone_number_id?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       wa_attendance_settings: {
         Row: {
           agent_roles: Database["public"]["Enums"]["workspace_role"][]

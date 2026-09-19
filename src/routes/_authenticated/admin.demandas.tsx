@@ -25,6 +25,8 @@ import { listTemplates } from "@/lib/whatsapp-templates.functions";
 import { adminListTestConnections, adminSetConnectionTestFlag } from "@/lib/wa-tests.functions";
 import { History, Loader2, Settings2, FlaskConical, Eye, Gauge, CheckCircle2, Clock, CalendarDays, PlayCircle, XCircle, Search, Filter } from "lucide-react";
 import { DemandPreviewDialog } from "@/components/admin/DemandPreviewDialog";
+import { AttendanceLinkDialog } from "@/components/admin/attendance-link-dialog";
+import { MessageSquare } from "lucide-react";
 import { demandStage, pendingCount, STAGE_CLASS, STAGE_LABEL, type DemandStage } from "@/lib/demand-stage";
 
 
@@ -629,6 +631,7 @@ function Page() {
   const [configItem, setConfigItem] = useState<Item | null>(null);
   const [auditId, setAuditId] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const [attendanceItem, setAttendanceItem] = useState<Item | null>(null);
   const navigate = useNavigate();
   const [decision, setDecision] = useState<{ item: Item; kind: "approved" | "rejected" } | null>(null);
   const [reason, setReason] = useState("");
@@ -882,6 +885,9 @@ function Page() {
                         <Button size="sm" variant="outline" className="border-primary/40 text-primary hover:bg-primary/10" onClick={() => setConfigItem(r)}>
                           <Settings2 className="mr-1 h-4 w-4" /> Configurar
                         </Button>
+                        <Button size="sm" variant="outline" onClick={() => setAttendanceItem(r)}>
+                          <MessageSquare className="mr-1 h-4 w-4" /> Atendimento
+                        </Button>
                         {stage === "pending" && (
                           <>
                             <Button size="sm" onClick={() => { setReason(""); setDecision({ item: r, kind: "approved" }); }}>
@@ -913,6 +919,11 @@ function Page() {
       <ConfigureDialog item={configItem} onClose={() => setConfigItem(null)} />
       <AuditDialog campaignId={auditId} onClose={() => setAuditId(null)} />
       <DemandPreviewDialog campaignId={previewId} onClose={() => setPreviewId(null)} />
+      <AttendanceLinkDialog
+        campaignId={attendanceItem?.id ?? null}
+        campaignName={attendanceItem?.name ?? null}
+        onClose={() => setAttendanceItem(null)}
+      />
 
       <Dialog open={!!decision} onOpenChange={(o) => !o && setDecision(null)}>
         <DialogContent>

@@ -31,6 +31,7 @@ import { Route as PainelFinanceiroRouteImport } from './routes/painel.financeiro
 import { Route as PainelDemandasRouteImport } from './routes/painel.demandas'
 import { Route as PainelContatosRouteImport } from './routes/painel.contatos'
 import { Route as PainelConfiguracoesRouteImport } from './routes/painel.configuracoes'
+import { Route as PainelAtendimentoRouteImport } from './routes/painel.atendimento'
 import { Route as CampaignsIdRouteImport } from './routes/campaigns.$id'
 import { Route as PainelCampanhasIndexRouteImport } from './routes/painel.campanhas.index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
@@ -217,6 +218,11 @@ const PainelContatosRoute = PainelContatosRouteImport.update({
 const PainelConfiguracoesRoute = PainelConfiguracoesRouteImport.update({
   id: '/configuracoes',
   path: '/configuracoes',
+  getParentRoute: () => PainelRoute,
+} as any)
+const PainelAtendimentoRoute = PainelAtendimentoRouteImport.update({
+  id: '/atendimento',
+  path: '/atendimento',
   getParentRoute: () => PainelRoute,
 } as any)
 const CampaignsIdRoute = CampaignsIdRouteImport.update({
@@ -693,6 +699,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/site': typeof SiteRoute
   '/campaigns/$id': typeof CampaignsIdRoute
+  '/painel/atendimento': typeof PainelAtendimentoRoute
   '/painel/configuracoes': typeof PainelConfiguracoesRoute
   '/painel/contatos': typeof PainelContatosRoute
   '/painel/demandas': typeof PainelDemandasRoute
@@ -793,6 +800,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/site': typeof SiteRoute
   '/campaigns/$id': typeof CampaignsIdRoute
+  '/painel/atendimento': typeof PainelAtendimentoRoute
   '/painel/configuracoes': typeof PainelConfiguracoesRoute
   '/painel/contatos': typeof PainelContatosRoute
   '/painel/demandas': typeof PainelDemandasRoute
@@ -895,6 +903,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/site': typeof SiteRoute
   '/campaigns/$id': typeof CampaignsIdRoute
+  '/painel/atendimento': typeof PainelAtendimentoRoute
   '/painel/configuracoes': typeof PainelConfiguracoesRoute
   '/painel/contatos': typeof PainelContatosRoute
   '/painel/demandas': typeof PainelDemandasRoute
@@ -998,6 +1007,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/site'
     | '/campaigns/$id'
+    | '/painel/atendimento'
     | '/painel/configuracoes'
     | '/painel/contatos'
     | '/painel/demandas'
@@ -1098,6 +1108,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/site'
     | '/campaigns/$id'
+    | '/painel/atendimento'
     | '/painel/configuracoes'
     | '/painel/contatos'
     | '/painel/demandas'
@@ -1199,6 +1210,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/site'
     | '/campaigns/$id'
+    | '/painel/atendimento'
     | '/painel/configuracoes'
     | '/painel/contatos'
     | '/painel/demandas'
@@ -1472,6 +1484,13 @@ declare module '@tanstack/react-router' {
       path: '/configuracoes'
       fullPath: '/painel/configuracoes'
       preLoaderRoute: typeof PainelConfiguracoesRouteImport
+      parentRoute: typeof PainelRoute
+    }
+    '/painel/atendimento': {
+      id: '/painel/atendimento'
+      path: '/atendimento'
+      fullPath: '/painel/atendimento'
+      preLoaderRoute: typeof PainelAtendimentoRouteImport
       parentRoute: typeof PainelRoute
     }
     '/campaigns/$id': {
@@ -2212,6 +2231,7 @@ const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
 interface PainelRouteChildren {
+  PainelAtendimentoRoute: typeof PainelAtendimentoRoute
   PainelConfiguracoesRoute: typeof PainelConfiguracoesRoute
   PainelContatosRoute: typeof PainelContatosRoute
   PainelDemandasRoute: typeof PainelDemandasRoute
@@ -2228,6 +2248,7 @@ interface PainelRouteChildren {
 }
 
 const PainelRouteChildren: PainelRouteChildren = {
+  PainelAtendimentoRoute: PainelAtendimentoRoute,
   PainelConfiguracoesRoute: PainelConfiguracoesRoute,
   PainelContatosRoute: PainelContatosRoute,
   PainelDemandasRoute: PainelDemandasRoute,
