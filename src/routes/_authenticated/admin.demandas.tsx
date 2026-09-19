@@ -25,6 +25,8 @@ import { listTemplates } from "@/lib/whatsapp-templates.functions";
 import { adminListTestConnections, adminSetConnectionTestFlag } from "@/lib/wa-tests.functions";
 import { History, Loader2, Settings2, FlaskConical, Eye, Gauge, CheckCircle2, Clock, CalendarDays, PlayCircle, XCircle, Search, Filter } from "lucide-react";
 import { DemandPreviewDialog } from "@/components/admin/DemandPreviewDialog";
+import { AttendanceLinkDialog } from "@/components/admin/attendance-link-dialog";
+import { MessageSquare } from "lucide-react";
 import { demandStage, pendingCount, STAGE_CLASS, STAGE_LABEL, type DemandStage } from "@/lib/demand-stage";
 
 
