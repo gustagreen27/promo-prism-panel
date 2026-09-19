@@ -64,7 +64,7 @@ export const getDemandAttendanceLinks = createServerFn({ method: 'POST' })
         .order('created_at', { ascending: false }),
       supabaseAdmin
         .from('whatsapp_connections')
-        .select('id, phone_number_id, phone, display_phone, label, nome_interno, verified_name, created_at')
+        .select('id, phone_number_id, phone, display_phone, name, nome_interno, verified_name, created_at')
         .not('phone_number_id', 'is', null)
         .order('created_at', { ascending: false })
         .limit(500),
@@ -74,7 +74,7 @@ export const getDemandAttendanceLinks = createServerFn({ method: 'POST' })
       connection_id: c.id,
       phone_number_id: c.phone_number_id,
       phone: c.display_phone ?? c.phone ?? null,
-      label: c.nome_interno ?? c.label ?? c.verified_name ?? null,
+      label: c.nome_interno ?? c.name ?? c.verified_name ?? null,
     }))
     const byPni = new Map(available.map((n) => [n.phone_number_id, n]))
 
@@ -164,7 +164,7 @@ export const listMyAttendanceNumbers = createServerFn({ method: 'POST' })
     const [{ data: conns }, { data: convs }] = await Promise.all([
       supabaseAdmin
         .from('whatsapp_connections')
-        .select('phone_number_id, phone, display_phone, label, nome_interno, verified_name')
+        .select('phone_number_id, phone, display_phone, name, nome_interno, verified_name')
         .in('phone_number_id', pnis),
       supabaseAdmin
         .from('wa_conversations')
@@ -177,7 +177,7 @@ export const listMyAttendanceNumbers = createServerFn({ method: 'POST' })
     for (const c of (conns ?? []) as any[]) {
       info.set(c.phone_number_id, {
         phone: c.display_phone ?? c.phone ?? null,
-        label: c.nome_interno ?? c.label ?? c.verified_name ?? null,
+        label: c.nome_interno ?? c.name ?? c.verified_name ?? null,
       })
     }
 
