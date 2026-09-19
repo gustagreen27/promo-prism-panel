@@ -8,7 +8,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { ArrowLeft, Download, FileText, Printer } from "lucide-react";
 import { getMyCampaignReport } from "@/lib/client-report.functions";
 import { getMyCampaignLogs, exportMyCampaignLogs } from "@/lib/client-logs.functions";
-import { maskPhone } from "@/lib/dispatch-log-sim";
+import { formatPhoneDisplay } from "@/lib/phone-country";
 
 export const Route = createFileRoute("/painel/relatorio/$id")({
   head: () => ({
@@ -344,7 +344,7 @@ function MessageLogs({ id, name }: { id: string; name: string }) {
                   const s = LOG_STATUS[r.status] ?? { label: r.status, cls: "bg-secondary text-muted-foreground border-border" };
                   return (
                     <tr key={`${r.wamid ?? r.phone}-${i}`} className="border-t border-border/50 [&>td]:px-3 [&>td]:py-2">
-                      <td className="whitespace-nowrap font-medium tabular-nums">{maskPhone(r.phone)}</td>
+                      <td className="whitespace-nowrap font-medium tabular-nums">{formatPhoneDisplay(r.phone)}</td>
                       <td>
                         <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${s.cls}`}>{s.label}</span>
                       </td>
