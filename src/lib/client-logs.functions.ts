@@ -2,7 +2,8 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware'
-import { eachSimulatedLog, maskPhone, type SimLogRow } from './dispatch-log-sim'
+import { eachSimulatedLog, type SimLogRow } from './dispatch-log-sim'
+import { formatPhoneDisplay } from './phone-country'
 
 export type CampaignLogRow = SimLogRow & { simulated: boolean }
 
@@ -187,7 +188,7 @@ const cell = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`
 
 function rowToLine(r: SimLogRow): string {
   return [
-    cell(maskPhone(r.phone)),
+    cell(formatPhoneDisplay(r.phone)),
     cell(STATUS_LABEL[r.status] ?? r.status),
     cell(r.wamid ?? ''),
     cell(fmtDt(r.sent_at)),

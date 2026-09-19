@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { slugify } from "./slugify";
+import { formatPhoneDisplay } from "./phone-country";
 
 const statusEnum = z.enum(["draft", "active", "paused", "archived"]);
 const openModeEnum = z.enum(["smart", "iframe", "redirect", "wrapper"]);
@@ -1138,13 +1139,6 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
     }
     if (dispatchIds.length > 0) {
       const { extractDddBR } = await import("@/lib/ddd-cities");
-      const maskPhone = (raw: string | null | undefined): string => {
-        const digits = String(raw ?? "").replace(/\D/g, "");
-        if (digits.length < 6) return raw ?? "—";
-        const head = digits.slice(0, digits.length - 6);
-        const tail = digits.slice(-2);
-        return `+${head} ****${tail}`;
-      };
       const PER_DISPATCH = 100;
       const DDD_SAMPLE = 20000;
       await Promise.all(
@@ -1165,7 +1159,7 @@ export const getPublicCampaignReport = createServerFn({ method: "GET" })
           if (recRes.error) throw recRes.error;
           if (dddRes.error) throw dddRes.error;
           recipientsByDispatch[cid] = (recRes.data ?? []).map((r) => ({
-            phone: maskPhone(r.phone as string),
+            phone: formatPhoneDisplay(r.phone),
             status: (r.status as string | null) ?? null,
             sent_at: (r.sent_at as string | null) ?? null,
             delivered_at: (r.delivered_at as string | null) ?? null,

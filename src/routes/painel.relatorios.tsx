@@ -12,7 +12,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { getMyContext } from "@/lib/auth.functions";
 
 export const Route = createFileRoute("/painel/relatorios")({
-  head: () => ({ meta: [{ title: "Relatórios — Disparos FR" }] }),
+  head: () => ({
+    meta: [
+      { title: "Relatórios — next DISPAROS" },
+      { name: "description", content: "Desempenho e resultados das campanhas de WhatsApp." },
+      { property: "og:title", content: "Relatórios — next DISPAROS" },
+      { property: "og:description", content: "Desempenho e resultados das campanhas de WhatsApp." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: Page,
 });
 
