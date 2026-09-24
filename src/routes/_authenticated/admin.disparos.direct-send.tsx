@@ -1,13 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { AlertTriangle, Send, Rocket, Upload, Loader2, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, Send, Rocket, Upload, Loader2, Plus, Trash2, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
 import {
-  validateDirectConfig, IMAGE_MIME, VIDEO_MIME, IMAGE_MAX_MB, VIDEO_MAX_MB,
+  validateDirectConfig, BODY_MAX, IMAGE_MIME, VIDEO_MIME, IMAGE_MAX_MB, VIDEO_MAX_MB,
   type DirectConfig, type DirectHeaderType, type DirectButtonsType,
 } from "@/lib/direct-send";
 import { PageHeader } from "@/components/admin/page-header";
@@ -18,9 +18,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { listConnections } from "@/lib/whatsapp.functions";
 import { listLists } from "@/lib/contact-lists.functions";
-import { createWaCampaign, buildRecipients, startWaCampaign, scheduleWaCampaign, testDirectSend } from "@/lib/wa-campaigns.functions";
+import { createWaCampaign, updateWaCampaign, getWaCampaign, buildRecipients, startWaCampaign, scheduleWaCampaign, testDirectSend } from "@/lib/wa-campaigns.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/disparos/direct-send")({
+  validateSearch: (s: Record<string, unknown>): { id?: string } => (typeof s.id === "string" ? { id: s.id } : {}),
   head: () => ({ meta: [{ title: "Direct Send — Utilidade" }] }),
   component: Page,
 });
@@ -31,6 +32,9 @@ function render(text: string, nome: string) {
 
 function Page() {
   const navigate = useNavigate();
+  const { id: draftId } = Route.useSearch();
+  const updateFn = useServerFn(updateWaCampaign);
+  const getFn = useServerFn(getWaCampaign);
   const connsFn = useServerFn(listConnections);
   const listsFn = useServerFn(listLists);
   const createFn = useServerFn(createWaCampaign);
@@ -58,6 +62,24 @@ function Page() {
   const [urlBtn, setUrlBtn] = useState({ text: "", url: "https://" });
   const [replies, setReplies] = useState([{ id: "opcao_1", title: "" }]);
 
+  const draftQ = useQuery({ queryKey: ["direct-draft", draftId], queryFn: () => getFn({ data: { id: draftId! } }), enabled: !!draftId });
+  useEffect(() => {
+    const d: any = draftQ.data;
+    if (!d) return;
+    setName(d.name ?? ""); setConnId(d.connection_id ?? ""); setListId(d.list_id ?? ""); setText(d.direct_text ?? "");
+    const c = d.direct_config ?? {};
+    setHeaderType(c.header_type ?? "none"); setHeaderText(c.header_text ?? ""); setFooter(c.footer ?? "");
+    setButtonsType(c.buttons_type ?? "none");
+    if (c.url_button) setUrlBtn(c.url_button);
+    if (c.reply_buttons?.length) setReplies(c.reply_buttons);
+    if (c.media_path) {
+      setMedia({ path: c.media_path, mime: c.media_mime ?? "", previewUrl: "" });
+      supabase.storage.from("campaign-images").createSignedUrl(c.media_path, 3600).then(({ data: su }) => {
+        if (su?.signedUrl) setMedia({ path: c.media_path, mime: c.media_mime ?? "", previewUrl: su.signedUrl });
+      });
+    } else setMedia(null);
+  }, [draftQ.data]);
+
   const interactive = buttonsType !== "none";
   const effHeader: DirectHeaderType = interactive ? headerType : "none";
   const config: DirectConfig = {
@@ -81,7 +103,8 @@ function Page() {
     setUploading(true);
     try {
       const ext = f.name.split(".").pop()?.toLowerCase() || "bin";
-      const path = `direct-send/${crypto.randomUUID()}.${ext}`;
+      // 1ª pasta precisa ser um UUID: a regra de acesso do bucket converte esse trecho para UUID.
+      const path = `${crypto.randomUUID()}/direct-send.${ext}`;
       const { error } = await supabase.storage.from("campaign-images").upload(path, f, { contentType: f.type });
       if (error) throw error;
       setMedia({ path, mime: f.type, previewUrl: URL.createObjectURL(f) });
@@ -101,16 +124,27 @@ function Page() {
     onError: (e: any) => toast.error(e?.message ?? "Falha no teste"),
   });
 
+  async function persist(): Promise<string> {
+    const payload = { name, connection_id: connId, list_id: listId, send_mode: "direct_utility", direct_text: text, direct_config: config, participants: [] } as any;
+    if (draftId) { await updateFn({ data: { id: draftId, ...payload } }); return draftId; }
+    const camp: any = await createFn({ data: payload });
+    return camp.id as string;
+  }
+
+  const save = useMutation({
+    mutationFn: persist,
+    onSuccess: (id) => { toast.success("Demanda salva como rascunho"); if (id !== draftId) navigate({ to: "/admin/disparos/direct-send", search: { id } }); else draftQ.refetch(); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao salvar"),
+  });
+
   const launch = useMutation({
     mutationFn: async () => {
-      const camp: any = await createFn({ data: {
-        name, connection_id: connId, list_id: listId, send_mode: "direct_utility", direct_text: text, direct_config: config, participants: [],
-      } as any });
+      const camp = { id: await persist() };
       const b = await buildFn({ data: { id: camp.id } });
       if (!b.total) throw new Error("A lista não tem contatos elegíveis (após opt-out/supressão).");
       if (when) await schedFn({ data: { id: camp.id, scheduled_at: new Date(when).toISOString() } });
       else await startFn({ data: { id: camp.id, confirm_warnings: true } });
-      return camp.id as string;
+      return camp.id;
     },
     onSuccess: (id) => { toast.success(when ? "Demanda agendada" : "Demanda iniciada"); navigate({ to: "/admin/disparos/$id", params: { id } }); },
     onError: (e: any) => toast.error(e?.message ?? "Erro"),
@@ -148,8 +182,8 @@ function Page() {
             </Select>
           </div>
           <div><Label>Mensagem (use {"{nome}"} para o nome do contato)</Label>
-            <Textarea rows={6} maxLength={interactive ? 1024 : 4096} value={text} onChange={(e) => setText(e.target.value)} />
-            <p className="mt-1 text-xs text-muted-foreground">{text.length}/{interactive ? 1024 : 4096}</p>
+            <Textarea rows={6} maxLength={BODY_MAX} value={text} onChange={(e) => setText(e.target.value)} />
+            <p className="mt-1 text-xs text-muted-foreground">{text.length}/{BODY_MAX}</p>
           </div>
           <div><Label>Botões</Label>
             <Select value={buttonsType} onValueChange={(v) => { setButtonsType(v as DirectButtonsType); setTestResult(null); }}>
@@ -158,9 +192,13 @@ function Page() {
                 <SelectItem value="none">Nenhum (texto simples)</SelectItem>
                 <SelectItem value="url">Botão de URL (1)</SelectItem>
                 <SelectItem value="reply">Botões de resposta (até 3)</SelectItem>
+                <SelectItem value="mixed" disabled>URL + respostas (em breve)</SelectItem>
               </SelectContent>
             </Select>
-            <p className="mt-1 text-xs text-muted-foreground">A Meta não permite misturar botão de URL com botões de resposta. Cabeçalho e rodapé só existem com botões.</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              A Meta aceita URL e respostas juntos (até 10 botões, no máximo 2 de URL, URL primeiro), mas o formato oficial
+              ainda não foi confirmado — por isso essa opção está desligada. Cabeçalho e rodapé só existem com botões.
+            </p>
           </div>
           {buttonsType === "url" && (
             <div className="grid grid-cols-3 gap-2">
@@ -213,6 +251,10 @@ function Page() {
           {errors.length > 0 && (
             <ul className="list-disc space-y-0.5 pl-5 text-xs text-destructive">{errors.map((e) => <li key={e}>{e}</li>)}</ul>
           )}
+          {draftId && <p className="text-xs text-muted-foreground">Editando rascunho salvo{draftQ.isFetching ? " (carregando…)" : ""}.</p>}
+          <Button variant="outline" className="w-full" disabled={!name.trim() || errors.length > 0 || save.isPending || uploading} onClick={() => save.mutate()}>
+            <Save className="mr-2 h-4 w-4" />{draftId ? "Salvar alterações" : "Salvar rascunho"}
+          </Button>
           <div><Label>Agendar (opcional)</Label><Input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} /></div>
           <Button className="w-full" disabled={!ready || launch.isPending || blocked} onClick={() => launch.mutate()}>
             <Rocket className="mr-2 h-4 w-4" />{when ? "Agendar demanda" : "Iniciar demanda"}
