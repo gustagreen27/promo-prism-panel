@@ -25,6 +25,9 @@ const HOST_ZONE: Record<string, Zone> = {
 
   "metodovidacursos.com.br": "slug",
   "www.metodovidacursos.com.br": "slug",
+
+  "acompanhamentofacil.app": "slug",
+  "www.acompanhamentofacil.app": "slug",
 };
 
 /** Host canônico (sem www) de cada zona. */
@@ -34,6 +37,12 @@ export const ZONE_HOST: Record<Zone, string> = {
   admin: "disparosfr.com",
   slug: "metodovidacursos.com.br",
 };
+
+/** Apex canônico por host (www -> apex do MESMO domínio). */
+function canonicalHostFor(host: string, zone: Zone): string {
+  if (host.startsWith("www.")) return host.slice(4);
+  return ZONE_HOST[zone];
+}
 
 export function zoneForHost(host: string | null | undefined): Zone | null {
   if (!host) return null;
@@ -152,7 +161,7 @@ export function decide(host: string, pathnameRaw: string, search = ""): DomainDe
   if (isTechnicalPath(pathname)) return { kind: "allow" };
 
   // www -> apex (301), preservando caminho e query
-  const canonical = ZONE_HOST[zone];
+  const canonical = canonicalHostFor(host, zone);
   if (host !== canonical && host.startsWith("www.")) {
     return { kind: "redirect", location: `https://${canonical}${pathnameRaw}${search}`, status: 301 };
   }
