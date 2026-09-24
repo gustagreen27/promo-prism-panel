@@ -38,6 +38,12 @@ export const ZONE_HOST: Record<Zone, string> = {
   slug: "metodovidacursos.com.br",
 };
 
+/** Apex canônico por host (www -> apex do MESMO domínio). */
+function canonicalHostFor(host: string, zone: Zone): string {
+  if (host.startsWith("www.")) return host.slice(4);
+  return ZONE_HOST[zone];
+}
+
 export function zoneForHost(host: string | null | undefined): Zone | null {
   if (!host) return null;
   const clean = host.toLowerCase().split(":")[0]!;
