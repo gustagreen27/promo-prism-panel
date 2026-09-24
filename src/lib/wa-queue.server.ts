@@ -1168,6 +1168,24 @@ export async function processCampaignTick(
           });
           return;
         }
+        if (!dres.ok && classifyDirectSendError(dres) === "rate_limited") {
+          // 131064: limite de 24h por classificação incorreta — pausa sem travar (temporário).
+          const message = `Limite diário do Direct Send atingido pela Meta (131064): ${dres.error}`;
+          systemicPause = { reason: "direct_send_rate_limited", message };
+          try { laneAbort.abort(); } catch { /* noop */ }
+          await supabaseAdmin
+            .from("campaign_recipients")
+            .update({ status: "pending", failed_reason: dres.error, error_code: "131064", request_payload: payloadNoToken } as any)
+            .eq("id", r.id);
+          await supabaseAdmin
+            .from("wa_campaigns")
+            .update({ status: "paused", paused_at: new Date().toISOString(), pause_reason: "direct_send_rate_limited", last_error: message })
+            .eq("id", campaignId);
+          await logEvent(campaignId, "direct_send_rate_limited", `⏸ ${message} — retome após a janela de 24h.`, {
+            recipient_id: r.id, http_status: dres.httpStatus, raw: dres.raw,
+          });
+          return;
+        }
         await supabaseAdmin.from("campaign_recipients").update({ request_payload: payloadNoToken } as any).eq("id", r.id);
         // Reaproveita o mesmo tratamento de sucesso/falha abaixo.
         (r as any).__directResult = dres;
