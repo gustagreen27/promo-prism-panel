@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AlertTriangle, Send, Rocket, Upload, Loader2, Plus, Trash2, Save } from "lucide-react";
@@ -10,6 +10,7 @@ import {
   validateDirectConfig, BODY_MAX, IMAGE_MIME, VIDEO_MIME, IMAGE_MAX_MB, VIDEO_MAX_MB,
   type DirectConfig, type DirectHeaderType, type DirectButtonsType,
 } from "@/lib/direct-send";
+import { NewContactListDialog } from "@/components/campaigns/NewContactListDialog";
 import { PageHeader } from "@/components/admin/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +44,8 @@ function Page() {
   const schedFn = useServerFn(scheduleWaCampaign);
   const testFn = useServerFn(testDirectSend);
   const { data: conns = [] } = useQuery({ queryKey: ["wa-conns-all"], queryFn: () => connsFn() });
+  const qc = useQueryClient();
+  const [newListOpen, setNewListOpen] = useState(false);
   const { data: lists = [] } = useQuery({ queryKey: ["contact-lists-all"], queryFn: () => listsFn() });
 
   const [name, setName] = useState("Direct Send — ");
@@ -176,10 +179,19 @@ function Page() {
             </Select>
           </div>
           <div><Label>Lista de contatos</Label>
-            <Select value={listId} onValueChange={setListId}>
+            <Select value={listId} onValueChange={(v) => { if (v === "__new__") setNewListOpen(true); else setListId(v); }}>
               <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>{(lists as any[]).map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent>
+              <SelectContent>
+                <SelectItem value="__new__">+ Criar nova lista</SelectItem>
+                {(lists as any[]).map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+              </SelectContent>
             </Select>
+            <NewContactListDialog open={newListOpen} onOpenChange={setNewListOpen}
+              onCreated={async (l) => {
+                qc.setQueryData(["contact-lists-all"], (old: any[] = []) => [{ id: l.id, name: l.name }, ...old.filter((x) => x.id !== l.id)]);
+                setListId(l.id);
+                qc.invalidateQueries({ queryKey: ["contact-lists-all"] });
+              }} />
           </div>
           <div><Label>Mensagem (use {"{nome}"} para o nome do contato)</Label>
             <Textarea rows={6} maxLength={BODY_MAX} value={text} onChange={(e) => setText(e.target.value)} />
