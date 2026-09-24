@@ -399,19 +399,47 @@ export async function uploadMediaToMeta(input: {
   }
 }
 
+/**
+ * Diagnóstico: GET /{media-id} com o mesmo token. Confirma se a Meta reconhece o id
+ * (mime, tamanho, phone_number_id dono). Não devolve a URL (é temporária e autenticada).
+ */
+export async function inspectMetaMediaId(mediaId: string, accessToken: string, phoneNumberId: string) {
+  try {
+    const res = await fetchWithTimeout(
+      `https://graph.facebook.com/${GRAPH_VERSION}/${encodeURIComponent(mediaId)}?phone_number_id=${encodeURIComponent(phoneNumberId)}`,
+      { method: "GET", headers: { Authorization: `Bearer ${accessToken}` } },
+      15000,
+    );
+    const json: any = await res.json().catch(() => ({}));
+    if (!res.ok) return { recognized: false, http_status: res.status, error: json?.error?.message ?? `HTTP ${res.status}`, code: json?.error?.code ?? null };
+    return { recognized: !!json?.id, http_status: res.status, id: json?.id ?? null, mime_type: json?.mime_type ?? null, file_size: json?.file_size ?? null, owner_phone_number_id: json?.phone_number_id ?? null, has_url: !!json?.url };
+  } catch (e: any) {
+    return { recognized: false, http_status: null, error: e?.message ?? "falha ao consultar a mídia" };
+  }
+}
+
 /** Baixa a mídia do armazenamento interno e envia à Meta. */
 export async function uploadStoredMediaToMeta(supabaseAdmin: any, input: {
   phoneNumberId: string; accessToken: string; mediaPath: string; mime: string;
-}) {
+}): Promise<({ ok: true; id: string } | { ok: false; error: string; code?: string; raw?: any }) & { bytes?: number }> {
   const { data, error } = await supabaseAdmin.storage.from("campaign-images").download(input.mediaPath);
-  if (error || !data) return { ok: false as const, error: `Arquivo de mídia não encontrado: ${error?.message ?? input.mediaPath}` };
-  return uploadMediaToMeta({
+  if (error || !data) return { ok: false as const, error: `Arquivo de mídia não encontrado: ${error?.message ?? input.mediaPath}`, code: "storage_missing" };
+  const r = await uploadMediaToMeta({
     phoneNumberId: input.phoneNumberId,
     accessToken: input.accessToken,
     file: data,
     mime: input.mime,
     filename: input.mediaPath.split("/").pop() || "media",
   });
+  return { ...r, bytes: (data as Blob).size };
+}
+
+/** Oculta o número do destinatário (mantém os 4 últimos dígitos). O token nunca entra no payload. */
+export function redactDirectPayload(p: any) {
+  if (!p) return p;
+  const c = JSON.parse(JSON.stringify(p));
+  if (typeof c.to === "string") c.to = c.to.replace(/\d(?=\d{4})/g, "•");
+  return c;
 }
 
 export function buildDirectUtilityPayload(to: string, text: string, bizOpaque?: string | null) {
