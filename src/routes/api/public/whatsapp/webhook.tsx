@@ -965,6 +965,12 @@ async function upsertConversationFromInbound(
       msgRow.interactive_list_title = lr.title ?? null;
       if (lr.description && !msgRow.body) msgRow.body = String(lr.description).slice(0, 500);
     }
+  } else if (type === "button") {
+    // Direct Send entrega como template: o toque no botão de resposta chega como
+    // type "button", com button.payload = id definido no envio e button.text = rótulo.
+    msgRow.interactive_type = "button_reply";
+    msgRow.interactive_button_id = message?.button?.payload ?? null;
+    msgRow.interactive_button_title = message?.button?.text ?? null;
   } else if (
     type === "image" ||
     type === "video" ||

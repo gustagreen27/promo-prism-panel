@@ -19,7 +19,7 @@ const fields = {
   notes: z.string().max(2000).optional().nullable(),
   participants: z.array(z.enum(["gustavo", "cayo"])).optional().default([]),
   send_mode: z.enum(["template", "direct_utility"]).optional(),
-  direct_text: z.string().max(4096).optional().nullable(),
+  direct_text: z.string().max(1024).optional().nullable(),
   direct_config: directConfigSchema.optional().nullable(),
 };
 
@@ -96,6 +96,10 @@ export const updateWaCampaign = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { id, ...patch } = data;
+    if (patch.send_mode === "direct_utility") {
+      const errs = validateDirectConfig(patch.direct_text ?? "", (patch.direct_config ?? { header_type: "none", buttons_type: "none" }) as any);
+      if (errs.length) throw new Error(errs.join(" "));
+    }
     const { data: row, error } = await context.supabase
       .from("wa_campaigns")
       .update(patch)
@@ -852,7 +856,7 @@ export const testDirectSend = createServerFn({ method: "POST" })
     z.object({
       connection_id: z.string().uuid(),
       to: z.string().trim().min(8).max(20),
-      text: z.string().trim().min(1).max(4096),
+      text: z.string().trim().min(1).max(1024),
       nome: z.string().max(80).optional().nullable(),
       direct_config: directConfigSchema.optional().nullable(),
     }).parse(d),
