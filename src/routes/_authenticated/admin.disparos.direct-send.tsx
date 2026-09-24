@@ -103,7 +103,8 @@ function Page() {
     setUploading(true);
     try {
       const ext = f.name.split(".").pop()?.toLowerCase() || "bin";
-      const path = `direct-send/${crypto.randomUUID()}.${ext}`;
+      // 1ª pasta precisa ser um UUID: a regra de acesso do bucket converte esse trecho para UUID.
+      const path = `${crypto.randomUUID()}/direct-send.${ext}`;
       const { error } = await supabase.storage.from("campaign-images").upload(path, f, { contentType: f.type });
       if (error) throw error;
       setMedia({ path, mime: f.type, previewUrl: URL.createObjectURL(f) });
