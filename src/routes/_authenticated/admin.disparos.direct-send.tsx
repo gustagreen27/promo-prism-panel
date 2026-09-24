@@ -298,16 +298,11 @@ function Page() {
                 {testResult.upload && (
                   <div className="space-y-1 rounded border p-2">
                     <div className={testResult.upload.ok ? "text-primary" : "text-destructive"}>
-                      <b>1. Upload da mídia:</b> {testResult.upload.ok ? `ok — id ${testResult.upload.media_id} (${testResult.upload.mime}, ${testResult.upload.bytes ?? "?"} bytes)` : `erro ${testResult.upload.code ?? ""} — ${testResult.upload.error}`}
+                      <b>1. Link temporário da mídia:</b> {testResult.upload.ok ? `gerado (${testResult.upload.mime}, válido por ${Math.round((testResult.upload.expires_in ?? 0) / 3600)}h; teste de acesso: HTTP ${testResult.upload.link_http ?? "?"} ${testResult.upload.link_type ?? ""})` : `erro — ${testResult.upload.error}`}
                     </div>
-                    {testResult.upload.inspect && (
-                      <div className={testResult.upload.inspect.recognized ? "text-primary" : "text-destructive"}>
-                        <b>Consulta do id na Meta:</b> {testResult.upload.inspect.recognized ? `reconhecido (${testResult.upload.inspect.mime_type}, ${testResult.upload.inspect.file_size} bytes)` : `não reconhecido — ${testResult.upload.inspect.error}`}
-                      </div>
-                    )}
-                    {testResult.upload.ok && testResult.upload.id_in_payload !== undefined && (
-                      <div className={testResult.upload.id_in_payload ? "text-primary" : "text-destructive"}>
-                        <b>id no payload final:</b> {testResult.upload.id_in_payload ? `sim, em ${testResult.upload.header_path}` : "NÃO — o id do upload não chegou ao payload"}
+                    {testResult.upload.ok && testResult.upload.link_in_payload !== undefined && (
+                      <div className={testResult.upload.link_in_payload ? "text-primary" : "text-destructive"}>
+                        <b>Link na mensagem final:</b> {testResult.upload.link_in_payload ? `sim, em ${testResult.upload.header_path}` : "NÃO"}
                       </div>
                     )}
                     {!testResult.upload.ok && testResult.upload.raw && <pre className="max-h-40 overflow-auto rounded bg-muted p-2">{JSON.stringify(testResult.upload.raw, null, 2)}</pre>}

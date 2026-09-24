@@ -441,6 +441,8 @@ export function redactDirectPayload(p: any) {
   if (!p) return p;
   const c = JSON.parse(JSON.stringify(p));
   if (typeof c.to === "string") c.to = c.to.replace(/\d(?=\d{4})/g, "•");
+  const h = c?.interactive?.header; const m = h && h[h.type];
+  if (m?.link) m.link = String(m.link).replace(/token=[^&]+/, "token=•••");
   return c;
 }
 

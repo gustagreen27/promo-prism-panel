@@ -1,6 +1,6 @@
 // Server-only queue processor for WhatsApp campaigns (async worker with lease + timeline + final report).
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { sendTemplateMessage, sendDirectUtilityText, isDirectSendNotEnabled, classifyDirectSendError, renderDirectText, resolveCampaignDirectMediaId } from "@/lib/wa-send.server";
+import { sendTemplateMessage, sendDirectUtilityText, isDirectSendNotEnabled, classifyDirectSendError, renderDirectText, signDirectMediaLink } from "@/lib/wa-send.server";
 import { renderMapping, buildContext } from "@/lib/wa-variables";
 import { GRAPH_VERSION, resolveGraphVersion } from "@/lib/meta/graph-version";
 import { classifyMetaError, detectFatalAccountCode as classifyFatalCode } from "@/lib/wa/error-classifier";
@@ -1132,12 +1132,15 @@ export async function processCampaignTick(
           nome: (r as any).contact_name ?? null,
           telefone: directTo,
         });
-        directMediaPromise ??= resolveCampaignDirectMediaId(supabaseAdmin, {
-          campaignId, directConfig, phoneNumberId: conn.phone_number_id!, accessToken: conn.access_token!,
-        });
+        directMediaPromise ??= (async () => {
+          const dc: any = directConfig;
+          if (!dc || dc.buttons_type === "none" || (dc.header_type !== "image" && dc.header_type !== "video")) return { ok: true, link: null };
+          if (!dc.media_path) return { ok: false, error: "Mídia do cabeçalho ausente na demanda." };
+          return signDirectMediaLink(supabaseAdmin, dc.media_path, 24 * 3600);
+        })();
         const media = await directMediaPromise;
         if (!media.ok) {
-          const message = `Falha no upload da mídia do cabeçalho para a Meta: ${media.error}`;
+          const message = `Falha ao preparar o link da mídia do cabeçalho: ${media.error}`;
           systemicPause = { reason: "direct_media_upload_failed", message };
           try { laneAbort.abort(); } catch { /* noop */ }
           await supabaseAdmin.from("campaign_recipients").update({ status: "pending" } as any).eq("id", r.id);
@@ -1149,7 +1152,7 @@ export async function processCampaignTick(
         }
         const dres = await sendDirectUtilityText({
           directConfig,
-          mediaId: media.id,
+          mediaLink: media.link,
           phoneNumberId: conn.phone_number_id!,
           accessToken: conn.access_token!,
           graphVersion: resolveGraphVersion(conn.graph_api_version),
