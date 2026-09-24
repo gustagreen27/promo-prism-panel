@@ -241,6 +241,9 @@ function ListView({ onNew }: { onNew: () => void }) {
               Atualizar
             </Button>
             <Button asChild variant="outline" size="sm">
+              <Link to="/admin/disparos/direct-send">Direct Send — Utilidade</Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
               <Link to="/admin/disparos/multi">
                 <Layers className="mr-2 h-4 w-4" /> Multi-BM
               </Link>
