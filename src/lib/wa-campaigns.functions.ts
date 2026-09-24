@@ -80,10 +80,18 @@ export const createWaCampaign = createServerFn({ method: "POST" })
       const errs = validateDirectConfig(data.direct_text ?? "", (data.direct_config ?? { header_type: "none", buttons_type: "none" }) as any);
       if (errs.length) throw new Error(errs.join(" "));
     }
+    // workspace_id é obrigatório na auditoria: herda da lista, depois do número, depois do cliente.
+    let workspaceId: string | null = null;
+    for (const [table, id] of [["contact_lists", data.list_id], ["whatsapp_connections", data.connection_id], ["clients", data.client_id]] as const) {
+      if (workspaceId || !id) continue;
+      const { data: r } = await context.supabase.from(table).select("workspace_id").eq("id", id).maybeSingle();
+      workspaceId = (r as any)?.workspace_id ?? null;
+    }
+    if (!workspaceId) throw new Error("Não foi possível identificar o espaço de trabalho: escolha a lista de contatos ou o número conectado.");
     const { data: row, error } = await context.supabase
       .from("wa_campaigns")
       // Campanhas criadas pelo próprio admin em /admin/disparos não passam pela fila.
-      .insert({ approval_status: "not_required", ...data, created_by: context.userId })
+      .insert({ approval_status: "not_required", ...data, workspace_id: workspaceId, created_by: context.userId })
       .select()
       .single();
     if (error) throw error;
