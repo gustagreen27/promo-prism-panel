@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { metaEgressFetch } from "@/lib/meta/meta-egress";
+import { GRAPH_VERSION } from "@/lib/meta/graph-version";
 
 const InputSchema = z.object({
   connectionId: z.string().uuid(),
@@ -72,7 +73,7 @@ export const sendGenericTemplate = createServerFn({ method: "POST" })
     }
 
     const to = data.to.replace(/\D/g, "");
-    const graphVersion = conn.graph_api_version || "v25.0";
+    const graphVersion = GRAPH_VERSION;
     const url = `https://graph.facebook.com/${graphVersion}/${conn.phone_number_id}/messages`;
 
     let templateName = String(tpl.name ?? "");

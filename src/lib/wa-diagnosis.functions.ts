@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { loadConnectionSecure } from "@/lib/meta/wa-token-resolver.server";
 import { auditProfileEvent } from "@/lib/meta/wa-profile-audit.server";
 import { metaEgressFetch } from "@/lib/meta/meta-egress";
+import { GRAPH_VERSION } from "@/lib/meta/graph-version";
 
 /**
  * Ações corretivas usadas pela tela de diagnóstico do WhatsApp.
@@ -179,7 +180,7 @@ export const debugConnectionToken = createServerFn({ method: "POST" })
 
     const appAccessToken = `${appId}|${appSecret}`;
     try {
-      const url = "https://graph.facebook.com/v21.0/debug_token"
+      const url = `https://graph.facebook.com/${GRAPH_VERSION}/debug_token`
         + "?input_token=" + encodeURIComponent(inputToken)
         + "&access_token=" + encodeURIComponent(appAccessToken);
       const r = await metaEgressFetch(url);
@@ -235,7 +236,7 @@ export const getConnectionSubscribedApps = createServerFn({ method: "POST" })
     if (!token) return { ok: false, reason: "MISSING_TOKEN" };
 
     try {
-      const r = await metaEgressFetch(`https://graph.facebook.com/v21.0/${conn.waba_id}/subscribed_apps`, {
+      const r = await metaEgressFetch(`https://graph.facebook.com/${GRAPH_VERSION}/${conn.waba_id}/subscribed_apps`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const j: any = await r.json().catch(() => ({}));
@@ -337,7 +338,7 @@ export const subscribeAppToWaba = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const conn = await loadConnectionSecure(context.supabase, context.userId, data.connection_id);
     if (!conn.waba_id) throw new Error("Conexão sem waba_id.");
-    const url = `https://graph.facebook.com/v21.0/${conn.waba_id}/subscribed_apps`;
+    const url = `https://graph.facebook.com/${GRAPH_VERSION}/${conn.waba_id}/subscribed_apps`;
     const r = await metaEgressFetch(url, {
       method: "POST",
       headers: { Authorization: `Bearer ${conn.access_token}`, "Content-Type": "application/json" },
@@ -376,7 +377,7 @@ export const runWhatsAppDiagnostics = createServerFn({ method: "POST" })
     };
     if (globalToken) {
       try {
-        const r = await metaEgressFetch("https://graph.facebook.com/v21.0/debug_token?input_token=" + encodeURIComponent(globalToken) + "&access_token=" + encodeURIComponent(globalToken));
+        const r = await metaEgressFetch(`https://graph.facebook.com/${GRAPH_VERSION}/debug_token?input_token=` + encodeURIComponent(globalToken) + "&access_token=" + encodeURIComponent(globalToken));
         const j: any = await r.json().catch(() => ({}));
         if (j?.data?.is_valid) globalCheck.valid = true;
         else globalCheck.error = j?.data?.error?.message || j?.error?.message || "Token inválido (debug_token)";
@@ -401,7 +402,7 @@ export const runWhatsAppDiagnostics = createServerFn({ method: "POST" })
       let tokenError: string | null = null;
       if (token) {
         try {
-          const r = await metaEgressFetch(`https://graph.facebook.com/v21.0/${c.phone_number_id ?? "me"}?fields=id`, {
+          const r = await metaEgressFetch(`https://graph.facebook.com/${GRAPH_VERSION}/${c.phone_number_id ?? "me"}?fields=id`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           const j: any = await r.json().catch(() => ({}));

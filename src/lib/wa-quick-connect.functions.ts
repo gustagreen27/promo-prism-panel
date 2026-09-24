@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { _syncOneWabaInternal } from "@/lib/wa-meta-sync.functions";
+import { GRAPH_VERSION } from "@/lib/meta/graph-version";
 
 async function assertAdmin(ctx: { supabase: any; userId: string }) {
   const { data } = await ctx.supabase.rpc("has_role", { _user_id: ctx.userId, _role: "admin" });
@@ -190,7 +191,7 @@ export const quickConnectWa = createServerFn({ method: "POST" })
           display_name: parsed.phone_display_name ?? null,
           verified_name: parsed.phone_display_name ?? null,
           provider: "meta_cloud",
-          graph_api_version: "v21.0",
+          graph_api_version: GRAPH_VERSION,
           status: "aguardando_verificacao",
           meta_sync_status: syncError ? "pending" : "connected",
           last_seen_at: new Date().toISOString(),

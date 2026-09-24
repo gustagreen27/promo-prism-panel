@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { GRAPH_VERSION } from "@/lib/meta/graph-version";
 
 /**
  * Sincroniza números de WhatsApp de uma (ou todas) WABAs a partir da Meta Graph API.
@@ -120,7 +121,7 @@ async function syncOneWaba(supabase: any, wabaRow: {
         name: label,
         nome_interno: label,
         provider: "meta_cloud",
-        graph_api_version: "v21.0",
+        graph_api_version: GRAPH_VERSION,
         access_token: wabaRow.access_token,
         status: n.code_verification_status === "VERIFIED" ? "ativa" : "aguardando_verificacao",
       });

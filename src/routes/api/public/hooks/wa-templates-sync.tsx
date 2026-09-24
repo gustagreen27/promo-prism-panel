@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { GRAPH_VERSION } from "@/lib/meta/graph-version";
 
 const STATUS_MAP: Record<string, string> = {
   APPROVED: "approved",
@@ -13,7 +14,7 @@ async function syncWaba(supabaseAdmin: any, waba: any) {
 
   // Resolve access token: prefer WABA token, else first connection token, else global env
   let accessToken: string | null = waba.access_token ?? null;
-  let graphVersion = "v21.0";
+  let graphVersion = GRAPH_VERSION;
   const { data: conn } = await supabaseAdmin
     .from("whatsapp_connections")
     .select("id,access_token,graph_api_version")
@@ -22,7 +23,6 @@ async function syncWaba(supabaseAdmin: any, waba: any) {
     .limit(1)
     .maybeSingle();
   if (!accessToken) accessToken = conn?.access_token ?? null;
-  if (conn?.graph_api_version) graphVersion = conn.graph_api_version;
   if (!accessToken) accessToken = process.env.WHATSAPP_ACCESS_TOKEN ?? null;
   if (!accessToken) {
     await supabaseAdmin

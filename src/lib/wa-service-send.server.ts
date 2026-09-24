@@ -1,3 +1,4 @@
+import { GRAPH_VERSION } from "@/lib/meta/graph-version";
 // Server-only helpers for sending WhatsApp Cloud API messages from the ATTENDANCE module.
 // Reuses the same Graph API but supports non-template payloads (text, media, interactive)
 // that require an OPEN 24h service window.
@@ -26,7 +27,7 @@ export type WaServiceSendResult =
   | { ok: false; error: string; code?: string; raw?: any; httpStatus?: number };
 
 function graphUrl(v: string | undefined, phoneNumberId: string) {
-  return `https://graph.facebook.com/${v || "v21.0"}/${phoneNumberId}/messages`;
+  return `https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}/messages`;
 }
 
 function withCommon(base: WaServiceSendBase, body: Record<string, any>) {

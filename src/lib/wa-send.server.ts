@@ -1,3 +1,4 @@
+import { GRAPH_VERSION } from "@/lib/meta/graph-version";
 // Server-only helper for sending official WhatsApp Cloud API messages.
 // Never import this from a route or *.functions.ts module scope.
 // Always: const { sendTemplateMessage } = await import("@/lib/wa-send.server");
@@ -125,7 +126,7 @@ function buildButtonComponents(
 
 
 export async function sendTemplateMessage(input: WaSendInput): Promise<WaSendResult> {
-  const ver = input.graphVersion || "v21.0";
+  const ver = GRAPH_VERSION;
   const endpoint = input.useMmLite ? "marketing_messages" : "messages";
   const url = `https://graph.facebook.com/${ver}/${input.phoneNumberId}/${endpoint}`;
   const body: Record<string, any> = {
@@ -226,7 +227,7 @@ export async function syncTemplatesFromMeta(opts: {
   accessToken: string;
   graphVersion?: string;
 }) {
-  const ver = opts.graphVersion || "v21.0";
+  const ver = GRAPH_VERSION;
   const url = `https://graph.facebook.com/${ver}/${opts.wabaId}/message_templates?limit=200`;
   const { metaEgressFetch } = await import("@/lib/meta/meta-egress");
   const res = await metaEgressFetch(url, { headers: { Authorization: `Bearer ${opts.accessToken}` } });
@@ -302,7 +303,7 @@ export function buildFrgc01Payload(input: SendFrgc01Input) {
 }
 
 export async function sendWhatsAppTemplateFrgc01(input: SendFrgc01Input): Promise<SendFrgc01Result> {
-  const ver = input.graphVersion || "v25.0";
+  const ver = GRAPH_VERSION;
   const url = `https://graph.facebook.com/${ver}/${input.phoneNumberId}/messages`;
   const payload = buildFrgc01Payload(input);
 
@@ -384,7 +385,7 @@ export function isDirectSendNotEnabled(result: { ok: boolean; error?: string; co
 }
 
 export async function sendDirectUtilityText(input: DirectUtilityInput): Promise<WaSendResult & { payload: any }> {
-  const ver = input.graphVersion || "v21.0";
+  const ver = GRAPH_VERSION;
   const url = `https://graph.facebook.com/${ver}/${input.phoneNumberId}/messages`;
   const payload = buildDirectUtilityPayload(input.to, input.text, input.bizOpaqueCallbackData);
   const requestStartedAt = new Date().toISOString();

@@ -22,6 +22,7 @@ import { addNumberToWaba, requestNumberCode, verifyNumberCode, registerNumberOnC
 import { listWabas, listBusinessNames } from "@/lib/wa-wabas.functions";
 import { listClients } from "@/lib/clients.functions";
 import { listProjects } from "@/lib/projects.functions";
+import { GRAPH_VERSION } from "@/lib/meta/graph-version";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp/numeros/")({
   head: () => ({ meta: [{ title: "Números WhatsApp" }] }),
@@ -364,7 +365,7 @@ function initialNumberForm(editing: any) {
   return editing ? { ...editing, access_token: "" } : {
     name: "", display_phone: "", phone: "", provider: "meta_cloud", phone_number_id: "",
     waba_id: "", business_id: "", access_token: "", verify_token: "", webhook_url: "",
-    quality_rating: "", daily_limit: 1000, graph_api_version: "v21.0",
+    quality_rating: "", daily_limit: 1000, graph_api_version: GRAPH_VERSION,
     client_id: "", project_id: "", status: "ativa",
   };
 }
@@ -382,7 +383,7 @@ function FormDialog({ editing, clients, projects, onSubmit, saving }: any) {
         <div><Label>Phone Number ID *</Label><Input value={form.phone_number_id ?? ""} onChange={(e) => set("phone_number_id", e.target.value)} /></div>
         <div><Label>WABA ID *</Label><Input value={form.waba_id ?? ""} onChange={(e) => set("waba_id", e.target.value)} /></div>
         <div><Label>Business ID</Label><Input value={form.business_id ?? ""} onChange={(e) => set("business_id", e.target.value)} /></div>
-        <div><Label>Versão da Graph API</Label><Input value={form.graph_api_version ?? "v21.0"} onChange={(e) => set("graph_api_version", e.target.value)} /></div>
+        <div><Label>Versão da Graph API</Label><Input value={form.graph_api_version ?? GRAPH_VERSION} onChange={(e) => set("graph_api_version", e.target.value)} /></div>
         <div className="sm:col-span-2"><Label>Access Token (permanente){editing ? " — deixe em branco para manter" : ""}</Label><Input type="password" value={form.access_token ?? ""} onChange={(e) => set("access_token", e.target.value)} placeholder={editing ? "Cole apenas se quiser trocar" : "EAAG…"} autoComplete="off" /></div>
         <div><Label>Verify Token (webhook)</Label><Input value={form.verify_token ?? ""} onChange={(e) => set("verify_token", e.target.value)} /></div>
         <div><Label>Webhook URL</Label><Input value={form.webhook_url ?? ""} onChange={(e) => set("webhook_url", e.target.value)} placeholder="https://.../api/public/whatsapp/webhook" /></div>
