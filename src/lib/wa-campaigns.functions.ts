@@ -898,13 +898,42 @@ export const testDirectSend = createServerFn({ method: "POST" })
       directConfig: cfg,
       mediaId,
     });
+    // Confere o payload enviado contra a configuração exibida na prévia.
+    const p: any = res.payload ?? {};
+    const mismatches: string[] = [];
+    const wantInteractive = !!cfg && cfg.buttons_type !== "none";
+    if (wantInteractive && p.type !== "interactive") mismatches.push(`tipo enviado "${p.type}" em vez de "interactive"`);
+    if (wantInteractive && cfg.header_type === "text" && p.interactive?.header?.text !== cfg.header_text?.trim()) mismatches.push("cabeçalho de texto ausente/diferente");
+    if (wantInteractive && cfg.buttons_type === "url") {
+      const prm = p.interactive?.action?.parameters;
+      if (prm?.display_text !== cfg.url_button?.text?.trim() || prm?.url !== cfg.url_button?.url?.trim()) mismatches.push("botão de URL ausente/diferente");
+    }
+    if (wantInteractive && cfg.footer?.trim() && p.interactive?.footer?.text !== cfg.footer.trim()) mismatches.push("rodapé ausente/diferente");
+    // Auditoria separada: falha interna nunca vira falha de envio.
+    let audit_error: string | null = null;
+    try {
+      const { error: aerr } = await supabaseAdmin.from("wa_test_sends").insert({
+        connection_id: conn.id, to_phone: to, ok: res.ok, wamid: res.ok ? res.wamid : null,
+        error: res.ok ? null : res.error, payload: res.payload, created_by: context.userId,
+      } as any);
+      if (aerr) audit_error = aerr.message;
+    } catch (e: any) { audit_error = e?.message ?? String(e); }
     return {
-      raw: res.ok ? null : ((res as any).raw ?? null),
+      meta: {
+        ok: res.ok,
+        wamid: res.ok ? res.wamid : null,
+        error: res.ok ? null : res.error,
+        code: res.ok ? null : (res.code ?? null),
+        raw: (res as any).raw ?? null,
+      },
       ok: res.ok,
       wamid: res.ok ? res.wamid : null,
       error: res.ok ? null : res.error,
       code: res.ok ? null : (res.code ?? null),
       not_enabled: isDirectSendNotEnabled(res),
+      matches_preview: mismatches.length === 0,
+      mismatches,
+      internal_error: audit_error,
       payload: res.payload,
       at: res.responseReceivedAt,
     };

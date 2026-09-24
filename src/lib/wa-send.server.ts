@@ -456,8 +456,18 @@ export function isDirectSendNotEnabled(result: { ok: boolean; error?: string; co
 export async function sendDirectUtilityText(input: DirectUtilityInput): Promise<WaSendResult & { payload: any }> {
   const ver = GRAPH_VERSION;
   const url = `https://graph.facebook.com/${ver}/${input.phoneNumberId}/messages`;
-  const payload = buildDirectUtilityPayload(input.to, input.text, input.bizOpaqueCallbackData);
+  // Mesma função de montagem usada pela prévia/validação: nunca descarta cabeçalho, rodapé e botões.
   const requestStartedAt = new Date().toISOString();
+  let payload: any;
+  try {
+    const { buildDirectPayload } = await import("@/lib/direct-send");
+    payload = buildDirectPayload(input.to, input.text, input.directConfig ?? null, {
+      mediaId: input.mediaId ?? null,
+      bizOpaque: input.bizOpaqueCallbackData ?? null,
+    });
+  } catch (e: any) {
+    return { ok: false, error: e?.message ?? "Falha ao montar a mensagem", code: "payload_build", requestStartedAt, responseReceivedAt: new Date().toISOString(), payload: null };
+  }
   try {
     const res = await fetchWithTimeout(
       url,
