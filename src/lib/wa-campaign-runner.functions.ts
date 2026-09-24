@@ -855,7 +855,9 @@ export const getRecipientPreviews = createServerFn({ method: "GET" })
       camp.responsavel_id ? supabase.from("profiles").select("*").eq("id", camp.responsavel_id).single() : Promise.resolve({ data: null }),
     ]);
     const tpl = (tplRes as any).data;
-    if (!tpl) throw new Error("Template não encontrado");
+    const directCfg = (camp as any).direct_config as DirectConfig | null | undefined;
+    const isDirect = !tpl && !!directCfg && String((camp as any).direct_text ?? "").trim();
+    if (!tpl && !isDirect) throw new Error("Template não encontrado");
 
     const PAGE = 1000;
     const requestedLimit = data.limit && data.limit > 0 ? Math.floor(data.limit) : null;
