@@ -1,6 +1,6 @@
 // Server-only queue processor for WhatsApp campaigns (async worker with lease + timeline + final report).
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { sendTemplateMessage, sendDirectUtilityText, isDirectSendNotEnabled, renderDirectText } from "@/lib/wa-send.server";
+import { sendTemplateMessage, sendDirectUtilityText, isDirectSendNotEnabled, classifyDirectSendError, renderDirectText } from "@/lib/wa-send.server";
 import { renderMapping, buildContext } from "@/lib/wa-variables";
 import { GRAPH_VERSION, resolveGraphVersion } from "@/lib/meta/graph-version";
 import { classifyMetaError, detectFatalAccountCode as classifyFatalCode } from "@/lib/wa/error-classifier";
