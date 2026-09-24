@@ -109,7 +109,7 @@ export function buildDirectPayload(
   to: string,
   text: string,
   cfg: DirectConfig | null | undefined,
-  opts: { mediaId?: string | null; bizOpaque?: string | null } = {},
+  opts: { mediaId?: string | null; mediaLink?: string | null; bizOpaque?: string | null } = {},
 ) {
   const base: Record<string, any> = { messaging_product: "whatsapp", recipient_type: "individual", to };
   const c = cfg ?? ({ header_type: "none", buttons_type: "none" } as DirectConfig);
@@ -119,8 +119,10 @@ export function buildDirectPayload(
     const interactive: Record<string, any> = { body: { text } };
     if (c.header_type === "text" && c.header_text?.trim()) interactive.header = { type: "text", text: c.header_text.trim() };
     if (c.header_type === "image" || c.header_type === "video") {
-      if (!opts.mediaId) throw new Error("Mídia do cabeçalho não enviada à Meta.");
-      interactive.header = { type: c.header_type, [c.header_type]: { id: opts.mediaId } };
+      // Direct Send recusa id na prática (#131008 "header image must contain link"): usamos link assinado.
+      if (opts.mediaLink) interactive.header = { type: c.header_type, [c.header_type]: { link: opts.mediaLink } };
+      else if (opts.mediaId) interactive.header = { type: c.header_type, [c.header_type]: { id: opts.mediaId } };
+      else throw new Error("Mídia do cabeçalho sem link.");
     }
     if (c.footer?.trim()) interactive.footer = { text: c.footer.trim() };
     if (c.buttons_type === "mixed") {
