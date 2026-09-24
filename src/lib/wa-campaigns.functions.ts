@@ -880,15 +880,15 @@ export const testDirectSend = createServerFn({ method: "POST" })
     const cfg = (data.direct_config ?? null) as any;
     const errs = validateDirectConfig(data.text, cfg ?? { header_type: "none", buttons_type: "none" });
     if (errs.length) return { ok: false, wamid: null, error: errs.join(" "), code: "validation", not_enabled: false, payload: null, at: new Date().toISOString() };
-    const { sendDirectUtilityText, isDirectSendNotEnabled, renderDirectText, uploadStoredMediaToMeta, inspectMetaMediaId, redactDirectPayload } = await import("@/lib/wa-send.server");
-    let mediaId: string | null = null;
+    const { sendDirectUtilityText, isDirectSendNotEnabled, renderDirectText, signDirectMediaLink, redactDirectPayload } = await import("@/lib/wa-send.server");
+    let mediaLink: string | null = null;
     let upload: any = null;
     if (cfg && cfg.buttons_type !== "none" && (cfg.header_type === "image" || cfg.header_type === "video")) {
-      const up = await uploadStoredMediaToMeta(supabaseAdmin, { phoneNumberId: conn.phone_number_id, accessToken: token, mediaPath: cfg.media_path, mime: cfg.media_mime });
-      upload = { stage: "upload", ok: up.ok, media_id: up.ok ? up.id : null, mime: cfg.media_mime, bytes: up.bytes ?? null, error: up.ok ? null : up.error, code: up.ok ? null : (up.code ?? null), raw: up.ok ? null : (up.raw ?? null) };
-      if (!up.ok) return { ok: false, wamid: null, error: null, code: null, not_enabled: false, upload, meta: null, payload: null, at: new Date().toISOString() };
-      mediaId = up.id;
-      upload.inspect = await inspectMetaMediaId(up.id, token, conn.phone_number_id);
+      const sl = await signDirectMediaLink(supabaseAdmin, cfg.media_path, 6 * 3600);
+      upload = { stage: "media_link", ok: sl.ok, mime: cfg.media_mime, expires_in: sl.ok ? sl.expires_in : null, error: sl.ok ? null : sl.error, code: sl.ok ? null : sl.code };
+      if (!sl.ok) return { ok: false, wamid: null, error: null, code: null, not_enabled: false, upload, meta: null, payload: null, at: new Date().toISOString() };
+      mediaLink = sl.link;
+      try { const h = await fetch(sl.link, { method: "HEAD" }); upload.link_http = h.status; upload.link_type = h.headers.get("content-type"); } catch (e: any) { upload.link_http = null; upload.link_error = e?.message; }
     }
     const { resolveGraphVersion } = await import("@/lib/meta/graph-version");
     const to = data.to.replace(/\D/g, "");
@@ -899,13 +899,13 @@ export const testDirectSend = createServerFn({ method: "POST" })
       to,
       text: renderDirectText(data.text, { nome: data.nome ?? null, telefone: to }),
       directConfig: cfg,
-      mediaId,
+      mediaLink,
     });
     // Confere se o id devolvido pelo upload chegou ao payload final no local oficial.
     if (upload) {
       const h = (res.payload as any)?.interactive?.header;
-      upload.id_in_payload = h?.[cfg.header_type]?.id === mediaId;
-      upload.header_path = `interactive.header.${cfg.header_type}.id`;
+      upload.link_in_payload = h?.[cfg.header_type]?.link === mediaLink;
+      upload.header_path = `interactive.header.${cfg.header_type}.link`;
     }
     // Confere o payload enviado contra a configuração exibida na prévia.
     const p: any = res.payload ?? {};

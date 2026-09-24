@@ -363,6 +363,8 @@ export type DirectUtilityInput = {
   directConfig?: import("@/lib/direct-send").DirectConfig | null;
   /** id da mídia já enviada à Meta (obrigatório com cabeçalho imagem/vídeo). */
   mediaId?: string | null;
+  /** link temporário assinado da mídia (preferido: Direct Send exige link). */
+  mediaLink?: string | null;
 };
 
 /**
@@ -439,6 +441,8 @@ export function redactDirectPayload(p: any) {
   if (!p) return p;
   const c = JSON.parse(JSON.stringify(p));
   if (typeof c.to === "string") c.to = c.to.replace(/\d(?=\d{4})/g, "•");
+  const h = c?.interactive?.header; const m = h && h[h.type];
+  if (m?.link) m.link = String(m.link).replace(/token=[^&]+/, "token=•••");
   return c;
 }
 
@@ -491,6 +495,7 @@ export async function sendDirectUtilityText(input: DirectUtilityInput): Promise<
     const { buildDirectPayload } = await import("@/lib/direct-send");
     payload = buildDirectPayload(input.to, input.text, input.directConfig ?? null, {
       mediaId: input.mediaId ?? null,
+      mediaLink: input.mediaLink ?? null,
       bizOpaque: input.bizOpaqueCallbackData ?? null,
     });
   } catch (e: any) {
@@ -562,4 +567,11 @@ export async function resolveCampaignDirectMediaId(supabaseAdmin: any, input: {
   cfg.media_ids = media_ids;
   await supabaseAdmin.from("wa_campaigns").update({ direct_config: { ...cfg, media_ids } }).eq("id", input.campaignId);
   return { ok: true, id: up.id };
+}
+
+/** Link temporário assinado (armazenamento privado) para o cabeçalho de mídia do Direct Send. */
+export async function signDirectMediaLink(supabaseAdmin: any, mediaPath: string, expiresSec = 24 * 3600) {
+  const { data, error } = await supabaseAdmin.storage.from("campaign-images").createSignedUrl(mediaPath, expiresSec);
+  if (error || !data?.signedUrl) return { ok: false as const, error: `Não foi possível gerar o link da mídia: ${error?.message ?? mediaPath}`, code: "media_link" };
+  return { ok: true as const, link: String(data.signedUrl), expires_in: expiresSec };
 }
