@@ -294,7 +294,18 @@ function Page() {
               <Send className="mr-2 h-4 w-4" />Enviar teste
             </Button>
             {testResult && (
-              <pre className="max-h-64 overflow-auto rounded bg-muted p-2 text-xs">{JSON.stringify(testResult, null, 2)}</pre>
+              <div className="space-y-2 text-xs" data-testid="test-result">
+                <div className={testResult.ok ? "text-primary" : "text-destructive"}>
+                  <b>Resultado da Meta:</b> {testResult.ok ? `aceito (wamid ${testResult.wamid})` : `erro ${testResult.code ?? ""} — ${testResult.error}`}
+                </div>
+                <div className={testResult.matches_preview ? "text-primary" : "text-destructive"}>
+                  <b>Payload x prévia:</b> {testResult.matches_preview ? "idênticos (cabeçalho, corpo e botões incluídos)" : (testResult.mismatches ?? []).join("; ")}
+                </div>
+                {testResult.internal_error && <div className="text-muted-foreground"><b>Erro interno (registro do teste, não afeta o envio):</b> {testResult.internal_error}</div>}
+                <div className="font-medium">Payload enviado à Meta</div>
+                <pre className="max-h-64 overflow-auto rounded bg-muted p-2">{JSON.stringify(testResult.payload, null, 2)}</pre>
+                {!testResult.ok && testResult.meta?.raw && (<><div className="font-medium">Resposta da Meta</div><pre className="max-h-40 overflow-auto rounded bg-muted p-2">{JSON.stringify(testResult.meta.raw, null, 2)}</pre></>)}
+              </div>
             )}
           </div>
         </div>
