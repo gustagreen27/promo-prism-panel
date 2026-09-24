@@ -1,15 +1,23 @@
 // Direct Send — formatos interativos (client-safe: usado no formulário e no servidor).
-// Regras da Cloud API para mensagens interativas (categoria utility):
+// Regras (docs oficiais do Direct Send — "Supported features and limits" e "Supported message types"):
+//  - Corpo: até 1024 caracteres em qualquer formato (Direct Send segue o limite dos templates).
 //  - Sem botões: mensagem de texto (type "text"), sem cabeçalho.
 //  - Botão de URL: interactive "cta_url" — exatamente 1 botão (texto até 20 caracteres, URL https).
 //  - Botões de resposta: interactive "button" — 1 a 3 botões (título até 20, id até 256, únicos).
-//  - URL e resposta não podem ser combinados na mesma mensagem.
+//  - Botões mistos (URL + resposta): documentados pela Meta — até 10 no total, no máximo 2 de URL,
+//    URL sempre antes das respostas. O JSON de exemplo fica numa página que exige login na Meta,
+//    então o envio misto fica DESLIGADO (MIXED_BUTTONS_ENABLED) até termos o formato oficial.
 //  - Cabeçalho (texto até 60, imagem ou vídeo) e rodapé (até 60) só existem com botões.
-//  - Corpo: até 4096 no texto simples, até 1024 na mensagem interativa.
 import { z } from "zod";
 
 export type DirectHeaderType = "none" | "text" | "image" | "video";
-export type DirectButtonsType = "none" | "url" | "reply";
+export type DirectButtonsType = "none" | "url" | "reply" | "mixed";
+
+export const BODY_MAX = 1024;
+export const MIXED_MAX_TOTAL = 10;
+export const MIXED_MAX_URL = 2;
+/** Desligado até termos o JSON oficial do exemplo "Multiple call-to-action URL button samples". */
+export const MIXED_BUTTONS_ENABLED = false;
 
 export const IMAGE_MIME = ["image/jpeg", "image/png"] as const;
 export const VIDEO_MIME = ["video/mp4", "video/3gpp"] as const;
@@ -22,9 +30,11 @@ export const directConfigSchema = z.object({
   media_path: z.string().max(300).optional().nullable(),
   media_mime: z.string().max(60).optional().nullable(),
   footer: z.string().max(60).optional().nullable(),
-  buttons_type: z.enum(["none", "url", "reply"]).default("none"),
+  buttons_type: z.enum(["none", "url", "reply", "mixed"]).default("none"),
   url_button: z.object({ text: z.string().max(20), url: z.string().max(2000) }).optional().nullable(),
-  reply_buttons: z.array(z.object({ id: z.string().max(256), title: z.string().max(20) })).max(3).optional().nullable(),
+  // Usado só no formato misto (máx. 2, sempre antes das respostas).
+  url_buttons: z.array(z.object({ text: z.string().max(20), url: z.string().max(2000) })).max(MIXED_MAX_URL).optional().nullable(),
+  reply_buttons: z.array(z.object({ id: z.string().max(256), title: z.string().max(20) })).max(MIXED_MAX_TOTAL).optional().nullable(),
   // Cache de upload na Meta: { [phone_number_id]: { id, uploaded_at } }
   media_ids: z.record(z.string(), z.object({ id: z.string(), uploaded_at: z.string() })).optional().nullable(),
 });
@@ -44,34 +54,52 @@ export function validateDirectConfig(text: string, cfg: DirectConfig): string[] 
   const errs: string[] = [];
   const body = text.trim();
   if (!body) errs.push("O texto da mensagem é obrigatório.");
+  if (body.length > BODY_MAX) errs.push(`O texto aceita até ${BODY_MAX} caracteres no Direct Send.`);
   const interactive = cfg.buttons_type !== "none";
   if (!interactive) {
-    if (body.length > 4096) errs.push("Texto acima de 4096 caracteres.");
     if (cfg.header_type !== "none") errs.push("Cabeçalho só é aceito em mensagens com botões.");
     if (cfg.footer?.trim()) errs.push("Rodapé só é aceito em mensagens com botões.");
     return errs;
   }
-  if (body.length > 1024) errs.push("Em mensagens com botões o texto aceita até 1024 caracteres.");
   if (cfg.header_type === "text" && !cfg.header_text?.trim()) errs.push("Informe o texto do cabeçalho.");
   if ((cfg.header_type === "image" || cfg.header_type === "video") && !cfg.media_path) errs.push("Envie o arquivo do cabeçalho.");
   if (cfg.header_type === "image" && cfg.media_mime && !(IMAGE_MIME as readonly string[]).includes(cfg.media_mime)) errs.push("Imagem deve ser JPG ou PNG.");
   if (cfg.header_type === "video" && cfg.media_mime && !(VIDEO_MIME as readonly string[]).includes(cfg.media_mime)) errs.push("Vídeo deve ser MP4 ou 3GP.");
   if (cfg.buttons_type === "url") {
     const b = cfg.url_button;
-    if (!b?.text?.trim()) errs.push("Informe o texto do botão de URL.");
-    if (!b?.url?.trim() || !isValidHttpsUrl(b.url)) errs.push("URL do botão inválida (use https://…).");
+    checkUrl(b, "Botão de URL");
   }
-  if (cfg.buttons_type === "reply") {
-    const rb = cfg.reply_buttons ?? [];
-    if (rb.length < 1 || rb.length > 3) errs.push("Use de 1 a 3 botões de resposta.");
+  function checkUrl(b: { text?: string; url?: string } | null | undefined, label: string) {
+    if (!b?.text?.trim()) errs.push(`${label}: informe o texto.`);
+    if (!b?.url?.trim() || !isValidHttpsUrl(b.url)) errs.push(`${label}: URL inválida (use https://…).`);
+  }
+  const checkReplies = (rb: { id: string; title: string }[]) => {
     rb.forEach((b, i) => {
       if (!b.title.trim()) errs.push(`Botão de resposta ${i + 1}: texto obrigatório.`);
       if (!b.id.trim()) errs.push(`Botão de resposta ${i + 1}: identificação obrigatória.`);
     });
     const ids = rb.map((b) => b.id.trim());
-    const titles = rb.map((b) => b.title.trim().toLowerCase());
     if (new Set(ids).size !== ids.length) errs.push("As identificações dos botões de resposta devem ser únicas.");
+  };
+  if (cfg.buttons_type === "reply") {
+    const rb = cfg.reply_buttons ?? [];
+    if (rb.length < 1 || rb.length > 3) errs.push("Use de 1 a 3 botões de resposta.");
+    checkReplies(rb);
+    const titles = rb.map((b) => b.title.trim().toLowerCase());
     if (new Set(titles).size !== titles.length) errs.push("Os textos dos botões de resposta devem ser diferentes.");
+  }
+  if (cfg.buttons_type === "mixed") {
+    const ub = cfg.url_buttons ?? [];
+    const rb = cfg.reply_buttons ?? [];
+    if (ub.length < 1) errs.push("A combinação precisa de pelo menos 1 botão de URL.");
+    if (ub.length > MIXED_MAX_URL) errs.push(`No máximo ${MIXED_MAX_URL} botões de URL.`);
+    if (rb.length < 1) errs.push("A combinação precisa de pelo menos 1 botão de resposta.");
+    if (ub.length + rb.length > MIXED_MAX_TOTAL) errs.push(`No máximo ${MIXED_MAX_TOTAL} botões no total.`);
+    ub.forEach((b, i) => checkUrl(b, `Botão de URL ${i + 1}`));
+    checkReplies(rb);
+    const titles = [...ub.map((b) => b.text), ...rb.map((b) => b.title)].map((t) => t.trim().toLowerCase());
+    if (new Set(titles).size !== titles.length) errs.push("Os textos dos botões devem ser diferentes.");
+    if (!MIXED_BUTTONS_ENABLED) errs.push("Envio com botões de URL e de resposta juntos ainda indisponível: aguardando o exemplo oficial da Meta.");
   }
   return errs;
 }
@@ -95,6 +123,9 @@ export function buildDirectPayload(
       interactive.header = { type: c.header_type, [c.header_type]: { id: opts.mediaId } };
     }
     if (c.footer?.trim()) interactive.footer = { text: c.footer.trim() };
+    if (c.buttons_type === "mixed") {
+      throw new Error("Formato misto (URL + resposta) desligado até termos o exemplo oficial da Meta.");
+    }
     if (c.buttons_type === "url") {
       interactive.type = "cta_url";
       interactive.action = { name: "cta_url", parameters: { display_text: c.url_button!.text.trim(), url: c.url_button!.url.trim() } };
