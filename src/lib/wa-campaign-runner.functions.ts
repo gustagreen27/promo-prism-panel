@@ -6,6 +6,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { renderMapping, fillMetaTemplate, metaVarsIn, buildContext } from "@/lib/wa-variables";
 import { metaEgressFetch } from "@/lib/meta/meta-egress";
 import { GRAPH_VERSION } from "@/lib/meta/graph-version";
+import type { DirectConfig } from "@/lib/direct-send";
 
 async function assertAdmin(ctx: { supabase: any; userId: string }) {
   const { data } = await ctx.supabase.rpc("has_role", { _user_id: ctx.userId, _role: "admin" });
@@ -855,7 +856,9 @@ export const getRecipientPreviews = createServerFn({ method: "GET" })
       camp.responsavel_id ? supabase.from("profiles").select("*").eq("id", camp.responsavel_id).single() : Promise.resolve({ data: null }),
     ]);
     const tpl = (tplRes as any).data;
-    if (!tpl) throw new Error("Template não encontrado");
+    const directCfg = (camp as any).direct_config as DirectConfig | null | undefined;
+    const isDirect = !tpl && !!directCfg && String((camp as any).direct_text ?? "").trim();
+    if (!tpl && !isDirect) throw new Error("Template não encontrado");
 
     const PAGE = 1000;
     const requestedLimit = data.limit && data.limit > 0 ? Math.floor(data.limit) : null;
@@ -875,8 +878,9 @@ export const getRecipientPreviews = createServerFn({ method: "GET" })
 
     const varsMap = ((camp.variables_mapping ?? camp.template_variables) as any) ?? {};
     const btnMap = (camp.button_url_mapping as any) ?? {};
-    const bodyVars = metaVarsIn(tpl.body ?? "");
-    const btns = (Array.isArray(tpl.buttons) ? tpl.buttons : []) as any[];
+    const bodyVars = metaVarsIn(tpl?.body ?? "");
+    const btns = (Array.isArray(tpl?.buttons) ? tpl.buttons : []) as any[];
+    const { renderDirectText } = await import("@/lib/wa-send.server");
 
     const result = recs.map((r: any) => {
       const ctx = buildContext({
@@ -886,8 +890,37 @@ export const getRecipientPreviews = createServerFn({ method: "GET" })
         responsavel: (respRes as any).data,
         campaign: camp,
       });
-      const resolved: Record<number, string> = {};
       const warnings: string[] = [];
+
+      if (isDirect && directCfg) {
+        const body = renderDirectText(String((camp as any).direct_text ?? ""), {
+          nome: r.contact?.name ?? null,
+          telefone: r.phone,
+        });
+        const buttons: { text: string; url: string }[] = [];
+        if (directCfg.buttons_type === "url" && directCfg.url_button) {
+          buttons.push({ text: directCfg.url_button.text, url: directCfg.url_button.url });
+        }
+        if (directCfg.buttons_type === "reply" || directCfg.buttons_type === "mixed") {
+          for (const b of directCfg.reply_buttons ?? []) buttons.push({ text: b.title, url: "" });
+        }
+        if (directCfg.buttons_type === "mixed") {
+          for (const b of directCfg.url_buttons ?? []) buttons.unshift({ text: b.text, url: b.url });
+        }
+        return {
+          recipient_id: r.id,
+          phone: r.phone,
+          name: r.contact?.name ?? null,
+          status: r.status,
+          body,
+          header: directCfg.header_type === "text" ? directCfg.header_text ?? null : null,
+          footer: directCfg.footer ?? null,
+          buttons,
+          warnings,
+        };
+      }
+
+      const resolved: Record<number, string> = {};
       for (const n of bodyVars) {
         const mapping = varsMap[String(n)] ?? "";
         const v = renderMapping(mapping, ctx);
@@ -922,7 +955,9 @@ export const getRecipientPreviews = createServerFn({ method: "GET" })
     });
 
     return {
-      template: { name: tpl.name, language: tpl.language, status: tpl.status },
+      template: tpl
+        ? { name: tpl.name, language: tpl.language, status: tpl.status }
+        : { name: "Direct Send (sem template)", language: "—", status: "utility" },
       previews: result,
     };
   });
