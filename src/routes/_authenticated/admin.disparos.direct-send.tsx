@@ -21,7 +21,7 @@ import { listLists } from "@/lib/contact-lists.functions";
 import { createWaCampaign, updateWaCampaign, getWaCampaign, buildRecipients, startWaCampaign, scheduleWaCampaign, testDirectSend } from "@/lib/wa-campaigns.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/disparos/direct-send")({
-  validateSearch: (s: Record<string, unknown>) => ({ id: typeof s.id === "string" ? s.id : undefined }),
+  validateSearch: (s: Record<string, unknown>): { id?: string } => (typeof s.id === "string" ? { id: s.id } : {}),
   head: () => ({ meta: [{ title: "Direct Send — Utilidade" }] }),
   component: Page,
 });
