@@ -161,7 +161,7 @@ export function decide(host: string, pathnameRaw: string, search = ""): DomainDe
   if (isTechnicalPath(pathname)) return { kind: "allow" };
 
   // www -> apex (301), preservando caminho e query
-  const canonical = ZONE_HOST[zone];
+  const canonical = canonicalHostFor(host, zone);
   if (host !== canonical && host.startsWith("www.")) {
     return { kind: "redirect", location: `https://${canonical}${pathnameRaw}${search}`, status: 301 };
   }
