@@ -502,3 +502,26 @@ export function renderDirectText(text: string, vars: { nome?: string | null; tel
     .replace(/\{\{\s*nome\s*\}\}|\{\s*nome\s*\}/gi, nome)
     .replace(/\{\{\s*telefone\s*\}\}|\{\s*telefone\s*\}/gi, vars.telefone ?? "");
 }
+
+/**
+ * Garante o id de mídia da Meta para o cabeçalho de uma demanda Direct Send.
+ * Reaproveita o id salvo em direct_config.media_ids enquanto tiver menos de 25 dias
+ * (a Meta mantém a mídia por 30 dias); senão refaz o upload oficial.
+ */
+export async function resolveCampaignDirectMediaId(supabaseAdmin: any, input: {
+  campaignId: string; directConfig: any; phoneNumberId: string; accessToken: string;
+}): Promise<{ ok: true; id: string | null } | { ok: false; error: string; code?: string; raw?: any }> {
+  const cfg = input.directConfig;
+  if (!cfg || cfg.buttons_type === "none" || (cfg.header_type !== "image" && cfg.header_type !== "video")) return { ok: true, id: null };
+  const cached = cfg.media_ids?.[input.phoneNumberId];
+  if (cached?.id && Date.now() - new Date(cached.uploaded_at).getTime() < 25 * 86400_000) return { ok: true, id: cached.id };
+  if (!cfg.media_path || !cfg.media_mime) return { ok: false, error: "Mídia do cabeçalho ausente na demanda." };
+  const up = await uploadStoredMediaToMeta(supabaseAdmin, {
+    phoneNumberId: input.phoneNumberId, accessToken: input.accessToken, mediaPath: cfg.media_path, mime: cfg.media_mime,
+  });
+  if (!up.ok) return up;
+  const media_ids = { ...(cfg.media_ids ?? {}), [input.phoneNumberId]: { id: up.id, uploaded_at: new Date().toISOString() } };
+  cfg.media_ids = media_ids;
+  await supabaseAdmin.from("wa_campaigns").update({ direct_config: { ...cfg, media_ids } }).eq("id", input.campaignId);
+  return { ok: true, id: up.id };
+}
