@@ -1,6 +1,6 @@
 // Server-only queue processor for WhatsApp campaigns (async worker with lease + timeline + final report).
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { sendTemplateMessage, sendDirectUtilityText, isDirectSendNotEnabled, classifyDirectSendError, renderDirectText } from "@/lib/wa-send.server";
+import { sendTemplateMessage, sendDirectUtilityText, isDirectSendNotEnabled, classifyDirectSendError, renderDirectText, resolveCampaignDirectMediaId } from "@/lib/wa-send.server";
 import { renderMapping, buildContext } from "@/lib/wa-variables";
 import { GRAPH_VERSION, resolveGraphVersion } from "@/lib/meta/graph-version";
 import { classifyMetaError, detectFatalAccountCode as classifyFatalCode } from "@/lib/wa/error-classifier";
@@ -425,6 +425,8 @@ export async function processCampaignTick(
     await resetStaleProcessing(campaignId);
 
     const isDirect = (camp as any).send_mode === "direct_utility";
+    const directConfig: any = (camp as any).direct_config ?? null;
+    let directMediaPromise: Promise<any> | null = null;
     if (!camp.connection_id || (!isDirect && !camp.template_id) || (isDirect && !String((camp as any).direct_text ?? "").trim())) {
       await supabaseAdmin
         .from("wa_campaigns")
@@ -1130,7 +1132,24 @@ export async function processCampaignTick(
           nome: (r as any).contact_name ?? null,
           telefone: directTo,
         });
+        directMediaPromise ??= resolveCampaignDirectMediaId(supabaseAdmin, {
+          campaignId, directConfig, phoneNumberId: conn.phone_number_id!, accessToken: conn.access_token!,
+        });
+        const media = await directMediaPromise;
+        if (!media.ok) {
+          const message = `Falha no upload da mídia do cabeçalho para a Meta: ${media.error}`;
+          systemicPause = { reason: "direct_media_upload_failed", message };
+          try { laneAbort.abort(); } catch { /* noop */ }
+          await supabaseAdmin.from("campaign_recipients").update({ status: "pending" } as any).eq("id", r.id);
+          await supabaseAdmin.from("wa_campaigns")
+            .update({ status: "paused", paused_at: new Date().toISOString(), pause_reason: "direct_media_upload_failed", last_error: message })
+            .eq("id", campaignId);
+          await logEvent(campaignId, "direct_media_upload_failed", `⏸ ${message}`, { recipient_id: r.id, code: media.code, raw: media.raw });
+          return;
+        }
         const dres = await sendDirectUtilityText({
+          directConfig,
+          mediaId: media.id,
           phoneNumberId: conn.phone_number_id!,
           accessToken: conn.access_token!,
           graphVersion: resolveGraphVersion(conn.graph_api_version),

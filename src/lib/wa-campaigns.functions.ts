@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { directConfigSchema, validateDirectConfig } from "@/lib/direct-send";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -19,6 +20,7 @@ const fields = {
   participants: z.array(z.enum(["gustavo", "cayo"])).optional().default([]),
   send_mode: z.enum(["template", "direct_utility"]).optional(),
   direct_text: z.string().max(4096).optional().nullable(),
+  direct_config: directConfigSchema.optional().nullable(),
 };
 
 async function assertAdmin(ctx: { supabase: any; userId: string }) {
@@ -74,6 +76,10 @@ export const createWaCampaign = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object(fields).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    if (data.send_mode === "direct_utility") {
+      const errs = validateDirectConfig(data.direct_text ?? "", (data.direct_config ?? { header_type: "none", buttons_type: "none" }) as any);
+      if (errs.length) throw new Error(errs.join(" "));
+    }
     const { data: row, error } = await context.supabase
       .from("wa_campaigns")
       // Campanhas criadas pelo próprio admin em /admin/disparos não passam pela fila.
@@ -848,6 +854,7 @@ export const testDirectSend = createServerFn({ method: "POST" })
       to: z.string().trim().min(8).max(20),
       text: z.string().trim().min(1).max(4096),
       nome: z.string().max(80).optional().nullable(),
+      direct_config: directConfigSchema.optional().nullable(),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
@@ -858,7 +865,16 @@ export const testDirectSend = createServerFn({ method: "POST" })
     const { resolveConnectionToken } = await import("@/lib/meta/wa-waba-token.server");
     const token = await resolveConnectionToken(supabaseAdmin, conn as any);
     if (!token) throw new Error("Sem token de acesso para este número.");
-    const { sendDirectUtilityText, isDirectSendNotEnabled, renderDirectText } = await import("@/lib/wa-send.server");
+    const cfg = (data.direct_config ?? null) as any;
+    const errs = validateDirectConfig(data.text, cfg ?? { header_type: "none", buttons_type: "none" });
+    if (errs.length) return { ok: false, wamid: null, error: errs.join(" "), code: "validation", not_enabled: false, payload: null, at: new Date().toISOString() };
+    const { sendDirectUtilityText, isDirectSendNotEnabled, renderDirectText, uploadStoredMediaToMeta } = await import("@/lib/wa-send.server");
+    let mediaId: string | null = null;
+    if (cfg && cfg.buttons_type !== "none" && (cfg.header_type === "image" || cfg.header_type === "video")) {
+      const up = await uploadStoredMediaToMeta(supabaseAdmin, { phoneNumberId: conn.phone_number_id, accessToken: token, mediaPath: cfg.media_path, mime: cfg.media_mime });
+      if (!up.ok) return { ok: false, wamid: null, error: `Upload da mídia na Meta falhou: ${up.error}`, code: (up as any).code ?? "media_upload", not_enabled: false, payload: null, raw: (up as any).raw ?? null, at: new Date().toISOString() };
+      mediaId = up.id;
+    }
     const { resolveGraphVersion } = await import("@/lib/meta/graph-version");
     const to = data.to.replace(/\D/g, "");
     const res = await sendDirectUtilityText({
@@ -867,8 +883,11 @@ export const testDirectSend = createServerFn({ method: "POST" })
       graphVersion: resolveGraphVersion((conn as any).graph_api_version),
       to,
       text: renderDirectText(data.text, { nome: data.nome ?? null, telefone: to }),
+      directConfig: cfg,
+      mediaId,
     });
     return {
+      raw: res.ok ? null : ((res as any).raw ?? null),
       ok: res.ok,
       wamid: res.ok ? res.wamid : null,
       error: res.ok ? null : res.error,

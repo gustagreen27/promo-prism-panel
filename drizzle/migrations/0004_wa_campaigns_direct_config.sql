@@ -1,0 +1,2 @@
+ALTER TABLE public.wa_campaigns ADD COLUMN IF NOT EXISTS direct_config jsonb;
+COMMENT ON COLUMN public.wa_campaigns.direct_config IS 'Direct Send interativo: header (none|text|image|video), footer, buttons (url|reply), media_path e cache de media_ids por phone_number_id.';

@@ -359,7 +359,60 @@ export type DirectUtilityInput = {
   text: string;
   bizOpaqueCallbackData?: string | null;
   signal?: AbortSignal;
+  /** Formato interativo (cabeçalho/botões). Ausente = texto simples. */
+  directConfig?: import("@/lib/direct-send").DirectConfig | null;
+  /** id da mídia já enviada à Meta (obrigatório com cabeçalho imagem/vídeo). */
+  mediaId?: string | null;
 };
+
+/**
+ * Upload oficial de mídia: POST /{phone-number-id}/media (multipart).
+ * Retorna o id da mídia (válido por 30 dias) ou o erro real da Meta.
+ */
+export async function uploadMediaToMeta(input: {
+  phoneNumberId: string;
+  accessToken: string;
+  file: Blob;
+  mime: string;
+  filename: string;
+}): Promise<{ ok: true; id: string } | { ok: false; error: string; code?: string; raw?: any }> {
+  const form = new FormData();
+  form.append("messaging_product", "whatsapp");
+  form.append("type", input.mime);
+  form.append("file", new Blob([await input.file.arrayBuffer()], { type: input.mime }), input.filename);
+  try {
+    const res = await fetchWithTimeout(
+      `https://graph.facebook.com/${GRAPH_VERSION}/${input.phoneNumberId}/media`,
+      { method: "POST", headers: { Authorization: `Bearer ${input.accessToken}` }, body: form },
+      60000,
+    );
+    const json: any = await res.json().catch(() => ({}));
+    if (!res.ok || !json?.id) {
+      const err = json?.error;
+      const details = err?.error_data?.details;
+      const msg = err?.message ?? `HTTP ${res.status}`;
+      return { ok: false, error: details ? `${msg} — ${details}` : msg, code: err?.code ? String(err.code) : String(res.status), raw: json };
+    }
+    return { ok: true, id: String(json.id) };
+  } catch (e: any) {
+    return { ok: false, error: e?.message ?? "Falha no upload da mídia", code: "network_error" };
+  }
+}
+
+/** Baixa a mídia do armazenamento interno e envia à Meta. */
+export async function uploadStoredMediaToMeta(supabaseAdmin: any, input: {
+  phoneNumberId: string; accessToken: string; mediaPath: string; mime: string;
+}) {
+  const { data, error } = await supabaseAdmin.storage.from("campaign-images").download(input.mediaPath);
+  if (error || !data) return { ok: false as const, error: `Arquivo de mídia não encontrado: ${error?.message ?? input.mediaPath}` };
+  return uploadMediaToMeta({
+    phoneNumberId: input.phoneNumberId,
+    accessToken: input.accessToken,
+    file: data,
+    mime: input.mime,
+    filename: input.mediaPath.split("/").pop() || "media",
+  });
+}
 
 export function buildDirectUtilityPayload(to: string, text: string, bizOpaque?: string | null) {
   const body: Record<string, any> = {
@@ -448,4 +501,27 @@ export function renderDirectText(text: string, vars: { nome?: string | null; tel
   return text
     .replace(/\{\{\s*nome\s*\}\}|\{\s*nome\s*\}/gi, nome)
     .replace(/\{\{\s*telefone\s*\}\}|\{\s*telefone\s*\}/gi, vars.telefone ?? "");
+}
+
+/**
+ * Garante o id de mídia da Meta para o cabeçalho de uma demanda Direct Send.
+ * Reaproveita o id salvo em direct_config.media_ids enquanto tiver menos de 25 dias
+ * (a Meta mantém a mídia por 30 dias); senão refaz o upload oficial.
+ */
+export async function resolveCampaignDirectMediaId(supabaseAdmin: any, input: {
+  campaignId: string; directConfig: any; phoneNumberId: string; accessToken: string;
+}): Promise<{ ok: true; id: string | null } | { ok: false; error: string; code?: string; raw?: any }> {
+  const cfg = input.directConfig;
+  if (!cfg || cfg.buttons_type === "none" || (cfg.header_type !== "image" && cfg.header_type !== "video")) return { ok: true, id: null };
+  const cached = cfg.media_ids?.[input.phoneNumberId];
+  if (cached?.id && Date.now() - new Date(cached.uploaded_at).getTime() < 25 * 86400_000) return { ok: true, id: cached.id };
+  if (!cfg.media_path || !cfg.media_mime) return { ok: false, error: "Mídia do cabeçalho ausente na demanda." };
+  const up = await uploadStoredMediaToMeta(supabaseAdmin, {
+    phoneNumberId: input.phoneNumberId, accessToken: input.accessToken, mediaPath: cfg.media_path, mime: cfg.media_mime,
+  });
+  if (!up.ok) return up;
+  const media_ids = { ...(cfg.media_ids ?? {}), [input.phoneNumberId]: { id: up.id, uploaded_at: new Date().toISOString() } };
+  cfg.media_ids = media_ids;
+  await supabaseAdmin.from("wa_campaigns").update({ direct_config: { ...cfg, media_ids } }).eq("id", input.campaignId);
+  return { ok: true, id: up.id };
 }

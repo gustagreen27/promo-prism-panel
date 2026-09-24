@@ -3,7 +3,13 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { AlertTriangle, Send, Rocket } from "lucide-react";
+import { AlertTriangle, Send, Rocket, Upload, Loader2, Plus, Trash2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
+import {
+  validateDirectConfig, IMAGE_MIME, VIDEO_MIME, IMAGE_MAX_MB, VIDEO_MAX_MB,
+  type DirectConfig, type DirectHeaderType, type DirectButtonsType,
+} from "@/lib/direct-send";
 import { PageHeader } from "@/components/admin/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,9 +49,50 @@ function Page() {
   const [testName, setTestName] = useState("");
   const [when, setWhen] = useState("");
   const [testResult, setTestResult] = useState<any>(null);
+  const [headerType, setHeaderType] = useState<DirectHeaderType>("none");
+  const [headerText, setHeaderText] = useState("");
+  const [media, setMedia] = useState<{ path: string; mime: string; previewUrl: string } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [footer, setFooter] = useState("");
+  const [buttonsType, setButtonsType] = useState<DirectButtonsType>("none");
+  const [urlBtn, setUrlBtn] = useState({ text: "", url: "https://" });
+  const [replies, setReplies] = useState([{ id: "opcao_1", title: "" }]);
+
+  const interactive = buttonsType !== "none";
+  const effHeader: DirectHeaderType = interactive ? headerType : "none";
+  const config: DirectConfig = {
+    header_type: effHeader,
+    header_text: effHeader === "text" ? headerText : null,
+    media_path: effHeader === "image" || effHeader === "video" ? media?.path ?? null : null,
+    media_mime: effHeader === "image" || effHeader === "video" ? media?.mime ?? null : null,
+    footer: interactive ? footer : null,
+    buttons_type: buttonsType,
+    url_button: buttonsType === "url" ? urlBtn : null,
+    reply_buttons: buttonsType === "reply" ? replies : null,
+  };
+  const errors = validateDirectConfig(text, config);
+
+  async function onFile(f: File) {
+    const kind = headerType;
+    const allowed = kind === "image" ? (IMAGE_MIME as readonly string[]) : (VIDEO_MIME as readonly string[]);
+    const maxMb = kind === "image" ? IMAGE_MAX_MB : VIDEO_MAX_MB;
+    if (!allowed.includes(f.type)) return toast.error(kind === "image" ? "Use JPG ou PNG." : "Use MP4 ou 3GP.");
+    if (f.size > maxMb * 1024 * 1024) return toast.error(`Arquivo acima de ${maxMb}MB (limite da Meta).`);
+    setUploading(true);
+    try {
+      const ext = f.name.split(".").pop()?.toLowerCase() || "bin";
+      const path = `direct-send/${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from("campaign-images").upload(path, f, { contentType: f.type });
+      if (error) throw error;
+      setMedia({ path, mime: f.type, previewUrl: URL.createObjectURL(f) });
+      toast.success("Arquivo salvo");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha no upload");
+    } finally { setUploading(false); }
+  }
 
   const test = useMutation({
-    mutationFn: () => testFn({ data: { connection_id: connId, to: testTo, text, nome: testName || null } }),
+    mutationFn: () => testFn({ data: { connection_id: connId, to: testTo, text, nome: testName || null, direct_config: config } }),
     onSuccess: (r: any) => {
       setTestResult(r);
       if (r.ok) toast.success(`Teste aceito pela Meta (${r.wamid})`);
@@ -57,7 +104,7 @@ function Page() {
   const launch = useMutation({
     mutationFn: async () => {
       const camp: any = await createFn({ data: {
-        name, connection_id: connId, list_id: listId, send_mode: "direct_utility", direct_text: text, participants: [],
+        name, connection_id: connId, list_id: listId, send_mode: "direct_utility", direct_text: text, direct_config: config, participants: [],
       } as any });
       const b = await buildFn({ data: { id: camp.id } });
       if (!b.total) throw new Error("A lista não tem contatos elegíveis (após opt-out/supressão).");
@@ -69,7 +116,7 @@ function Page() {
     onError: (e: any) => toast.error(e?.message ?? "Erro"),
   });
 
-  const ready = connId && listId && text.trim() && name.trim();
+  const ready = connId && listId && name.trim() && errors.length === 0;
   const blocked = testResult?.not_enabled;
 
   return (
@@ -101,8 +148,71 @@ function Page() {
             </Select>
           </div>
           <div><Label>Mensagem (use {"{nome}"} para o nome do contato)</Label>
-            <Textarea rows={6} maxLength={4096} value={text} onChange={(e) => setText(e.target.value)} />
+            <Textarea rows={6} maxLength={interactive ? 1024 : 4096} value={text} onChange={(e) => setText(e.target.value)} />
+            <p className="mt-1 text-xs text-muted-foreground">{text.length}/{interactive ? 1024 : 4096}</p>
           </div>
+          <div><Label>Botões</Label>
+            <Select value={buttonsType} onValueChange={(v) => { setButtonsType(v as DirectButtonsType); setTestResult(null); }}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Nenhum (texto simples)</SelectItem>
+                <SelectItem value="url">Botão de URL (1)</SelectItem>
+                <SelectItem value="reply">Botões de resposta (até 3)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-xs text-muted-foreground">A Meta não permite misturar botão de URL com botões de resposta. Cabeçalho e rodapé só existem com botões.</p>
+          </div>
+          {buttonsType === "url" && (
+            <div className="grid grid-cols-3 gap-2">
+              <div><Label>Texto do botão</Label><Input maxLength={20} value={urlBtn.text} onChange={(e) => setUrlBtn({ ...urlBtn, text: e.target.value })} /></div>
+              <div className="col-span-2"><Label>URL de destino</Label><Input value={urlBtn.url} onChange={(e) => setUrlBtn({ ...urlBtn, url: e.target.value })} /></div>
+            </div>
+          )}
+          {buttonsType === "reply" && (
+            <div className="space-y-2">
+              {replies.map((r, i) => (
+                <div key={i} className="grid grid-cols-[1fr_1fr_auto] items-end gap-2">
+                  <div><Label>Texto da resposta {i + 1}</Label><Input maxLength={20} value={r.title} onChange={(e) => setReplies(replies.map((x, j) => j === i ? { ...x, title: e.target.value } : x))} /></div>
+                  <div><Label>Identificação no webhook</Label><Input maxLength={256} value={r.id} onChange={(e) => setReplies(replies.map((x, j) => j === i ? { ...x, id: e.target.value } : x))} /></div>
+                  <Button type="button" variant="ghost" size="icon" disabled={replies.length === 1} onClick={() => setReplies(replies.filter((_, j) => j !== i))}><Trash2 className="h-4 w-4" /></Button>
+                </div>
+              ))}
+              {replies.length < 3 && (
+                <Button type="button" variant="outline" size="sm" onClick={() => setReplies([...replies, { id: `opcao_${replies.length + 1}`, title: "" }])}><Plus className="mr-1 h-4 w-4" />Adicionar resposta</Button>
+              )}
+            </div>
+          )}
+          {interactive && (
+            <>
+              <div><Label>Cabeçalho</Label>
+                <Select value={headerType} onValueChange={(v) => { setHeaderType(v as DirectHeaderType); setMedia(null); }}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
+                    <SelectItem value="text">Texto</SelectItem>
+                    <SelectItem value="image">Imagem</SelectItem>
+                    <SelectItem value="video">Vídeo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {headerType === "text" && <div><Label>Texto do cabeçalho</Label><Input maxLength={60} value={headerText} onChange={(e) => setHeaderText(e.target.value)} /></div>}
+              {(headerType === "image" || headerType === "video") && (
+                <div>
+                  <Label>{headerType === "image" ? `Imagem (JPG/PNG, até ${IMAGE_MAX_MB}MB)` : `Vídeo (MP4/3GP, até ${VIDEO_MAX_MB}MB)`}</Label>
+                  <label className="mt-1 flex cursor-pointer items-center gap-2 rounded-md border border-dashed p-3 text-sm">
+                    {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                    {media ? "Trocar arquivo" : "Enviar arquivo"}
+                    <input type="file" className="hidden" accept={(headerType === "image" ? IMAGE_MIME : VIDEO_MIME).join(",")}
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ""; }} />
+                  </label>
+                </div>
+              )}
+              <div><Label>Rodapé (opcional)</Label><Input maxLength={60} value={footer} onChange={(e) => setFooter(e.target.value)} /></div>
+            </>
+          )}
+          {errors.length > 0 && (
+            <ul className="list-disc space-y-0.5 pl-5 text-xs text-destructive">{errors.map((e) => <li key={e}>{e}</li>)}</ul>
+          )}
           <div><Label>Agendar (opcional)</Label><Input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} /></div>
           <Button className="w-full" disabled={!ready || launch.isPending || blocked} onClick={() => launch.mutate()}>
             <Rocket className="mr-2 h-4 w-4" />{when ? "Agendar demanda" : "Iniciar demanda"}
@@ -112,7 +222,12 @@ function Page() {
         <div className="space-y-3">
           <div className="rounded-xl border bg-card p-4">
             <div className="mb-2 text-xs font-medium text-muted-foreground">Prévia</div>
-            <div className="max-w-sm whitespace-pre-wrap rounded-lg bg-muted p-3 text-sm">{render(text, testName)}</div>
+            <WhatsAppPreview
+              body={render(text, testName)}
+              header={effHeader === "none" ? null : { type: effHeader, text: headerText, media_url: media?.previewUrl }}
+              footer={interactive ? footer : null}
+              buttons={buttonsType === "url" ? [{ type: "url", text: urlBtn.text }] : buttonsType === "reply" ? replies.map((r) => ({ type: "reply", text: r.title })) : []}
+            />
           </div>
           <div className="space-y-3 rounded-xl border bg-card p-4">
             <div className="text-sm font-medium">Envio de teste</div>
@@ -121,7 +236,7 @@ function Page() {
               <Input placeholder="5562999999999" value={testTo} onChange={(e) => setTestTo(e.target.value)} />
               <Input placeholder="Nome (opcional)" value={testName} onChange={(e) => setTestName(e.target.value)} />
             </div>
-            <Button variant="secondary" disabled={!connId || !testTo || !text.trim() || test.isPending} onClick={() => test.mutate()}>
+            <Button variant="secondary" disabled={!connId || !testTo || errors.length > 0 || uploading || test.isPending} onClick={() => test.mutate()}>
               <Send className="mr-2 h-4 w-4" />Enviar teste
             </Button>
             {testResult && (
