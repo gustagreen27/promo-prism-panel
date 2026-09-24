@@ -6,6 +6,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { renderMapping, fillMetaTemplate, metaVarsIn, buildContext } from "@/lib/wa-variables";
 import { metaEgressFetch } from "@/lib/meta/meta-egress";
 import { GRAPH_VERSION } from "@/lib/meta/graph-version";
+import type { DirectConfig } from "@/lib/direct-send";
 
 async function assertAdmin(ctx: { supabase: any; userId: string }) {
   const { data } = await ctx.supabase.rpc("has_role", { _user_id: ctx.userId, _role: "admin" });
@@ -877,8 +878,9 @@ export const getRecipientPreviews = createServerFn({ method: "GET" })
 
     const varsMap = ((camp.variables_mapping ?? camp.template_variables) as any) ?? {};
     const btnMap = (camp.button_url_mapping as any) ?? {};
-    const bodyVars = metaVarsIn(tpl.body ?? "");
-    const btns = (Array.isArray(tpl.buttons) ? tpl.buttons : []) as any[];
+    const bodyVars = metaVarsIn(tpl?.body ?? "");
+    const btns = (Array.isArray(tpl?.buttons) ? tpl.buttons : []) as any[];
+    const { renderDirectText } = await import("@/lib/wa-send.server");
 
     const result = recs.map((r: any) => {
       const ctx = buildContext({
