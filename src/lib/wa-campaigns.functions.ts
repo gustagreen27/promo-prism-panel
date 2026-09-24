@@ -912,9 +912,12 @@ export const testDirectSend = createServerFn({ method: "POST" })
     // Auditoria separada: falha interna nunca vira falha de envio.
     let audit_error: string | null = null;
     try {
+      const wsId = (conn as any).workspace_id ?? "2156c069-7c38-4e35-bfa2-39500f542f6d";
       const { error: aerr } = await supabaseAdmin.from("wa_test_sends").insert({
-        connection_id: conn.id, to_phone: to, ok: res.ok, wamid: res.ok ? res.wamid : null,
-        error: res.ok ? null : res.error, payload: res.payload, created_by: context.userId,
+        workspace_id: wsId, connection_id: conn.id, phone: to, phone_raw: data.to,
+        status: res.ok ? "accepted" : "failed", meta_message_id: res.ok ? res.wamid : null,
+        error_code: res.ok ? null : (res.code ?? null), error_message: res.ok ? null : res.error,
+        created_by: context.userId,
       } as any);
       if (aerr) audit_error = aerr.message;
     } catch (e: any) { audit_error = e?.message ?? String(e); }
