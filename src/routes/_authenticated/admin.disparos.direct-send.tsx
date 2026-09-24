@@ -73,8 +73,10 @@ function Page() {
     if (c.url_button) setUrlBtn(c.url_button);
     if (c.reply_buttons?.length) setReplies(c.reply_buttons);
     if (c.media_path) {
-      const { data: pub } = supabase.storage.from("campaign-images").getPublicUrl(c.media_path);
-      setMedia({ path: c.media_path, mime: c.media_mime ?? "", previewUrl: pub.publicUrl });
+      setMedia({ path: c.media_path, mime: c.media_mime ?? "", previewUrl: "" });
+      supabase.storage.from("campaign-images").createSignedUrl(c.media_path, 3600).then(({ data: su }) => {
+        if (su?.signedUrl) setMedia({ path: c.media_path, mime: c.media_mime ?? "", previewUrl: su.signedUrl });
+      });
     } else setMedia(null);
   }, [draftQ.data]);
 
