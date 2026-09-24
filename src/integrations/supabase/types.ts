@@ -2974,6 +2974,7 @@ export type Database = {
           created_by: string | null
           custom_fields: Json | null
           delivered_count: number
+          direct_config: Json | null
           direct_text: string | null
           distribution_strategy: string
           estimated_cost: number
@@ -3092,6 +3093,7 @@ export type Database = {
           created_by?: string | null
           custom_fields?: Json | null
           delivered_count?: number
+          direct_config?: Json | null
           direct_text?: string | null
           distribution_strategy?: string
           estimated_cost?: number
@@ -3210,6 +3212,7 @@ export type Database = {
           created_by?: string | null
           custom_fields?: Json | null
           delivered_count?: number
+          direct_config?: Json | null
           direct_text?: string | null
           distribution_strategy?: string
           estimated_cost?: number
