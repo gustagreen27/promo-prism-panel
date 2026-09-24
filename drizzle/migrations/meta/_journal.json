@@ -36,6 +36,13 @@
       "when": 1790288739480,
       "tag": "0004_wa_campaigns_direct_config",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790289965924,
+      "tag": "0005_wa_campaigns_fill_workspace",
+      "breakpoints": true
     }
   ]
 }
