@@ -890,8 +890,37 @@ export const getRecipientPreviews = createServerFn({ method: "GET" })
         responsavel: (respRes as any).data,
         campaign: camp,
       });
-      const resolved: Record<number, string> = {};
       const warnings: string[] = [];
+
+      if (isDirect && directCfg) {
+        const body = renderDirectText(String((camp as any).direct_text ?? ""), {
+          nome: r.contact?.name ?? null,
+          telefone: r.phone,
+        });
+        const buttons: { text: string; url: string }[] = [];
+        if (directCfg.buttons_type === "url" && directCfg.url_button) {
+          buttons.push({ text: directCfg.url_button.text, url: directCfg.url_button.url });
+        }
+        if (directCfg.buttons_type === "reply" || directCfg.buttons_type === "mixed") {
+          for (const b of directCfg.reply_buttons ?? []) buttons.push({ text: b.title, url: "" });
+        }
+        if (directCfg.buttons_type === "mixed") {
+          for (const b of directCfg.url_buttons ?? []) buttons.unshift({ text: b.text, url: b.url });
+        }
+        return {
+          recipient_id: r.id,
+          phone: r.phone,
+          name: r.contact?.name ?? null,
+          status: r.status,
+          body,
+          header: directCfg.header_type === "text" ? directCfg.header_text ?? null : null,
+          footer: directCfg.footer ?? null,
+          buttons,
+          warnings,
+        };
+      }
+
+      const resolved: Record<number, string> = {};
       for (const n of bodyVars) {
         const mapping = varsMap[String(n)] ?? "";
         const v = renderMapping(mapping, ctx);
@@ -926,7 +955,9 @@ export const getRecipientPreviews = createServerFn({ method: "GET" })
     });
 
     return {
-      template: { name: tpl.name, language: tpl.language, status: tpl.status },
+      template: tpl
+        ? { name: tpl.name, language: tpl.language, status: tpl.status }
+        : { name: "Direct Send (sem template)", language: "—", status: "utility" },
       previews: result,
     };
   });
