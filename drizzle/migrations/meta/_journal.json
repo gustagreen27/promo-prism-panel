@@ -43,6 +43,13 @@
       "when": 1790289965924,
       "tag": "0005_wa_campaigns_fill_workspace",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790290211235,
+      "tag": "0006_audit_log_fill_workspace",
+      "breakpoints": true
     }
   ]
 }
