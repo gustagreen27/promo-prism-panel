@@ -359,7 +359,60 @@ export type DirectUtilityInput = {
   text: string;
   bizOpaqueCallbackData?: string | null;
   signal?: AbortSignal;
+  /** Formato interativo (cabeçalho/botões). Ausente = texto simples. */
+  directConfig?: import("@/lib/direct-send").DirectConfig | null;
+  /** id da mídia já enviada à Meta (obrigatório com cabeçalho imagem/vídeo). */
+  mediaId?: string | null;
 };
+
+/**
+ * Upload oficial de mídia: POST /{phone-number-id}/media (multipart).
+ * Retorna o id da mídia (válido por 30 dias) ou o erro real da Meta.
+ */
+export async function uploadMediaToMeta(input: {
+  phoneNumberId: string;
+  accessToken: string;
+  file: Blob;
+  mime: string;
+  filename: string;
+}): Promise<{ ok: true; id: string } | { ok: false; error: string; code?: string; raw?: any }> {
+  const form = new FormData();
+  form.append("messaging_product", "whatsapp");
+  form.append("type", input.mime);
+  form.append("file", new Blob([await input.file.arrayBuffer()], { type: input.mime }), input.filename);
+  try {
+    const res = await fetchWithTimeout(
+      `https://graph.facebook.com/${GRAPH_VERSION}/${input.phoneNumberId}/media`,
+      { method: "POST", headers: { Authorization: `Bearer ${input.accessToken}` }, body: form },
+      60000,
+    );
+    const json: any = await res.json().catch(() => ({}));
+    if (!res.ok || !json?.id) {
+      const err = json?.error;
+      const details = err?.error_data?.details;
+      const msg = err?.message ?? `HTTP ${res.status}`;
+      return { ok: false, error: details ? `${msg} — ${details}` : msg, code: err?.code ? String(err.code) : String(res.status), raw: json };
+    }
+    return { ok: true, id: String(json.id) };
+  } catch (e: any) {
+    return { ok: false, error: e?.message ?? "Falha no upload da mídia", code: "network_error" };
+  }
+}
+
+/** Baixa a mídia do armazenamento interno e envia à Meta. */
+export async function uploadStoredMediaToMeta(supabaseAdmin: any, input: {
+  phoneNumberId: string; accessToken: string; mediaPath: string; mime: string;
+}) {
+  const { data, error } = await supabaseAdmin.storage.from("campaign-images").download(input.mediaPath);
+  if (error || !data) return { ok: false as const, error: `Arquivo de mídia não encontrado: ${error?.message ?? input.mediaPath}` };
+  return uploadMediaToMeta({
+    phoneNumberId: input.phoneNumberId,
+    accessToken: input.accessToken,
+    file: data,
+    mime: input.mime,
+    filename: input.mediaPath.split("/").pop() || "media",
+  });
+}
 
 export function buildDirectUtilityPayload(to: string, text: string, bizOpaque?: string | null) {
   const body: Record<string, any> = {
