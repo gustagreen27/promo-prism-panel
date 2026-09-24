@@ -1168,11 +1168,7 @@ export async function processCampaignTick(
           });
           return;
         }
-        if (dres.ok) {
-          await supabaseAdmin.from("campaign_recipients").update({ request_payload: payloadNoToken } as any).eq("id", r.id);
-        } else {
-          await supabaseAdmin.from("campaign_recipients").update({ request_payload: payloadNoToken } as any).eq("id", r.id);
-        }
+        await supabaseAdmin.from("campaign_recipients").update({ request_payload: payloadNoToken } as any).eq("id", r.id);
         // Reaproveita o mesmo tratamento de sucesso/falha abaixo.
         (r as any).__directResult = dres;
       }
