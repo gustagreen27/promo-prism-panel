@@ -344,3 +344,91 @@ export async function sendWhatsAppTemplateFrgc01(input: SendFrgc01Input): Promis
   }
 }
 
+
+// ---------------------------------------------------------------------------
+// Direct Send — Utilidade: texto livre (sem template) com category "utility".
+// Usado apenas para comunicações transacionais. Nunca faz fallback para template.
+// ---------------------------------------------------------------------------
+
+export type DirectUtilityInput = {
+  phoneNumberId: string;
+  accessToken: string;
+  graphVersion?: string;
+  to: string;
+  text: string;
+  bizOpaqueCallbackData?: string | null;
+  signal?: AbortSignal;
+};
+
+export function buildDirectUtilityPayload(to: string, text: string, bizOpaque?: string | null) {
+  const body: Record<string, any> = {
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to,
+    type: "text",
+    text: { body: text },
+    category: "utility",
+  };
+  if (bizOpaque) body.biz_opaque_callback_data = String(bizOpaque);
+  return body;
+}
+
+/** Detecta resposta da Meta indicando que Direct Send não está habilitado para a conta. */
+export function isDirectSendNotEnabled(result: { ok: boolean; error?: string; code?: string; raw?: any }) {
+  if (result.ok) return false;
+  const err = (result as any).raw?.error;
+  const txt = `${err?.message ?? ""} ${err?.error_data?.details ?? ""} ${result.error ?? ""}`.toLowerCase();
+  if (/direct[\s_-]?send/.test(txt)) return true;
+  if (/category/.test(txt) && /(not (allowed|enabled|eligible|supported)|invalid|unknown|unexpected)/.test(txt)) return true;
+  return false;
+}
+
+export async function sendDirectUtilityText(input: DirectUtilityInput): Promise<WaSendResult & { payload: any }> {
+  const ver = input.graphVersion || "v21.0";
+  const url = `https://graph.facebook.com/${ver}/${input.phoneNumberId}/messages`;
+  const payload = buildDirectUtilityPayload(input.to, input.text, input.bizOpaqueCallbackData);
+  const requestStartedAt = new Date().toISOString();
+  try {
+    const res = await fetchWithTimeout(
+      url,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${input.accessToken}` },
+        body: JSON.stringify(payload),
+      },
+      META_SEND_TIMEOUT_MS,
+      input.signal,
+    );
+    const json: any = await res.json().catch(() => ({}));
+    const responseReceivedAt = new Date().toISOString();
+    if (!res.ok) {
+      const err = json?.error;
+      const details = err?.error_data?.details;
+      const baseMsg = err?.message ?? `HTTP ${res.status}`;
+      return { ok: false, error: details ? `${baseMsg} — ${details}` : baseMsg, code: err?.code ? String(err.code) : String(res.status), raw: json, httpStatus: res.status, requestStartedAt, responseReceivedAt, payload };
+    }
+    const msg = json?.messages?.[0];
+    if (!msg?.id) return { ok: false, error: "No message id returned", raw: json, httpStatus: res.status, requestStartedAt, responseReceivedAt, payload };
+    return { ok: true, metaMessageId: msg.id, messageStatus: msg?.message_status ?? null, wamid: msg.id, raw: json, httpStatus: res.status, requestStartedAt, responseReceivedAt, payload };
+  } catch (e: any) {
+    const egress = e?.source === "egress";
+    const aborted = e?.name === "AbortError" || e?.code === "egress_timeout";
+    const cancelled = e?.code === "egress_cancelled" || (aborted && input.signal?.aborted === true);
+    return {
+      ok: false,
+      error: cancelled ? "Envio cancelado pelo circuit breaker" : egress ? `Falha na saída de rede (${e.code}): ${e.message}` : aborted ? `Meta Graph timeout após ${META_SEND_TIMEOUT_MS}ms` : (e?.message ?? "Network error"),
+      code: cancelled ? "cancelled" : egress ? String(e.code ?? "egress_unavailable") : "network_error",
+      requestStartedAt,
+      responseReceivedAt: new Date().toISOString(),
+      payload,
+    };
+  }
+}
+
+/** Renderiza {nome} / {{nome}} e {telefone} no texto do Direct Send. */
+export function renderDirectText(text: string, vars: { nome?: string | null; telefone?: string | null }) {
+  const nome = (vars.nome ?? "").trim() || "cliente";
+  return text
+    .replace(/\{\{\s*nome\s*\}\}|\{\s*nome\s*\}/gi, nome)
+    .replace(/\{\{\s*telefone\s*\}\}|\{\s*telefone\s*\}/gi, vars.telefone ?? "");
+}

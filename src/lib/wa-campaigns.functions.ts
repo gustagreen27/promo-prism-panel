@@ -17,6 +17,8 @@ const fields = {
   send_rate_per_min: z.union([z.number(), z.string(), z.null()]).transform((v) => (v == null || v === "" ? 30 : Number(v))).optional(),
   notes: z.string().max(2000).optional().nullable(),
   participants: z.array(z.enum(["gustavo", "cayo"])).optional().default([]),
+  send_mode: z.enum(["template", "direct_utility"]).optional(),
+  direct_text: z.string().max(4096).optional().nullable(),
 };
 
 async function assertAdmin(ctx: { supabase: any; userId: string }) {
@@ -206,7 +208,7 @@ export const startWaCampaign = createServerFn({ method: "POST" })
       const { assertCampaignApproved } = await import("@/lib/campaign-approval.server");
       await assertCampaignApproved(context.supabase, data.id, { userId: context.userId });
     }
-    if (!camp.connection_id || !camp.template_id) throw new Error("Configure número e template antes de iniciar.");
+    if (!camp.connection_id || ((camp as any).send_mode !== "direct_utility" && !camp.template_id)) throw new Error("Configure número e template antes de iniciar.");
     if (!camp.total_recipients) throw new Error("Gere a fila de destinatários antes de iniciar.");
     if ((camp as any).fatal_locked && !["131031", "131042"].includes(String((camp as any).fatal_error_code ?? ""))) {
       throw new Error(
@@ -266,7 +268,7 @@ export const scheduleWaCampaign = createServerFn({ method: "POST" })
 
     const { data: camp } = await context.supabase.from("wa_campaigns").select("*").eq("id", data.id).single();
     if (!camp) throw new Error("Campanha não encontrada");
-    if (!camp.connection_id || !camp.template_id) throw new Error("Configure número e template antes de agendar.");
+    if (!camp.connection_id || ((camp as any).send_mode !== "direct_utility" && !camp.template_id)) throw new Error("Configure número e template antes de agendar.");
     if (!camp.total_recipients) throw new Error("Gere a fila de destinatários antes de agendar.");
     // Admin schedule bypasses stock — dispatches administrativos não descontam estoque neste fluxo.
 
@@ -834,4 +836,45 @@ export const setCampaignTurbo = createServerFn({ method: "POST" })
     } catch { /* best-effort */ }
 
     return { ...row, effective_rate_per_second: cap, phone_label: phoneLabel };
+  });
+
+
+/** Direct Send — Utilidade: envio de teste para um único número, antes de iniciar a demanda. */
+export const testDirectSend = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      connection_id: z.string().uuid(),
+      to: z.string().trim().min(8).max(20),
+      text: z.string().trim().min(1).max(4096),
+      nome: z.string().max(80).optional().nullable(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: conn } = await supabaseAdmin.from("whatsapp_connections").select("*").eq("id", data.connection_id).single();
+    if (!conn?.phone_number_id) throw new Error("Número sem phone_number_id.");
+    const { resolveConnectionToken } = await import("@/lib/meta/wa-waba-token.server");
+    const token = await resolveConnectionToken(supabaseAdmin, conn as any);
+    if (!token) throw new Error("Sem token de acesso para este número.");
+    const { sendDirectUtilityText, isDirectSendNotEnabled, renderDirectText } = await import("@/lib/wa-send.server");
+    const { resolveGraphVersion } = await import("@/lib/meta/graph-version");
+    const to = data.to.replace(/\D/g, "");
+    const res = await sendDirectUtilityText({
+      phoneNumberId: conn.phone_number_id,
+      accessToken: token,
+      graphVersion: resolveGraphVersion((conn as any).graph_api_version),
+      to,
+      text: renderDirectText(data.text, { nome: data.nome ?? null, telefone: to }),
+    });
+    return {
+      ok: res.ok,
+      wamid: res.ok ? res.wamid : null,
+      error: res.ok ? null : res.error,
+      code: res.ok ? null : (res.code ?? null),
+      not_enabled: isDirectSendNotEnabled(res),
+      payload: res.payload,
+      at: res.responseReceivedAt,
+    };
   });

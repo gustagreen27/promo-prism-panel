@@ -1,6 +1,6 @@
 // Server-only queue processor for WhatsApp campaigns (async worker with lease + timeline + final report).
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { sendTemplateMessage } from "@/lib/wa-send.server";
+import { sendTemplateMessage, sendDirectUtilityText, isDirectSendNotEnabled, renderDirectText } from "@/lib/wa-send.server";
 import { renderMapping, buildContext } from "@/lib/wa-variables";
 import { GRAPH_VERSION, resolveGraphVersion } from "@/lib/meta/graph-version";
 import { classifyMetaError, detectFatalAccountCode as classifyFatalCode } from "@/lib/wa/error-classifier";
@@ -424,7 +424,8 @@ export async function processCampaignTick(
 
     await resetStaleProcessing(campaignId);
 
-    if (!camp.connection_id || !camp.template_id) {
+    const isDirect = (camp as any).send_mode === "direct_utility";
+    if (!camp.connection_id || (!isDirect && !camp.template_id) || (isDirect && !String((camp as any).direct_text ?? "").trim())) {
       await supabaseAdmin
         .from("wa_campaigns")
         .update({ status: "error", last_error: "Conexão ou template ausente" })
@@ -439,11 +440,18 @@ export async function processCampaignTick(
       .select("*")
       .eq("id", camp.connection_id)
       .single();
-    const { data: tpl } = await supabaseAdmin
-      .from("whatsapp_templates")
-      .select("*")
-      .eq("id", camp.template_id)
-      .single();
+    // Direct Send — Utilidade: sem template; objeto sintético mantém o pipeline
+    // (supressão, limites, lanes, retries) idêntico ao envio por template.
+    const { data: tplRow } = isDirect
+      ? ({ data: null } as any)
+      : await supabaseAdmin
+          .from("whatsapp_templates")
+          .select("*")
+          .eq("id", camp.template_id!)
+          .single();
+    const tpl: any = isDirect
+      ? { name: "direct_send_utility", language: "pt_BR", header_type: null, header_text: null, variables: [], buttons: [], category: "UTILITY" }
+      : tplRow;
     // Token: conexão → token da WABA dona do número → token global.
     if (conn) {
       const { resolveConnectionToken } = await import("@/lib/meta/wa-waba-token.server");
@@ -456,7 +464,7 @@ export async function processCampaignTick(
       useMmLite: false,
       activitySharing: undefined,
     };
-    if (conn && tpl) {
+    if (conn && tpl && !isDirect) {
       try {
         const { resolveMmLiteSend } = await import("@/lib/meta/mm-lite.server");
         mmLite = await resolveMmLiteSend(supabaseAdmin, conn as any, tpl as any);
@@ -1116,7 +1124,55 @@ export async function processCampaignTick(
       // Não faz write no banco antes do fetch da Meta: esse update por mensagem
       // no hot path era suficiente para transformar 80/s em blocos lentos.
       // Persistimos o timestamp junto com o resultado final abaixo.
-      const result = await transport.sendTemplateMessage({
+      if (isDirect) {
+        const directTo = r.phone.replace(/\D/g, "");
+        const directText = renderDirectText(String((camp as any).direct_text ?? ""), {
+          nome: (r as any).contact_name ?? null,
+          telefone: directTo,
+        });
+        const dres = await sendDirectUtilityText({
+          phoneNumberId: conn.phone_number_id!,
+          accessToken: conn.access_token!,
+          graphVersion: resolveGraphVersion(conn.graph_api_version),
+          to: directTo,
+          text: directText,
+          bizOpaqueCallbackData: r.id,
+          signal: laneAbort.signal,
+        });
+        // Payload registrado sem token (o token vai só no header).
+        const payloadNoToken = dres.payload;
+        if (!dres.ok && isDirectSendNotEnabled(dres)) {
+          const message = `Direct Send não está habilitado para esta conta: ${dres.error}`;
+          fatalStop = { code: "direct_send_not_enabled", message };
+          systemicPause = { reason: "direct_send_not_enabled", message };
+          try { laneAbort.abort(); } catch { /* noop */ }
+          await supabaseAdmin
+            .from("campaign_recipients")
+            .update({ status: "pending", failed_reason: dres.error, error_code: String(dres.code ?? "direct_send_not_enabled"), request_payload: payloadNoToken } as any)
+            .eq("id", r.id);
+          await supabaseAdmin
+            .from("wa_campaigns")
+            .update({
+              status: "paused",
+              paused_at: new Date().toISOString(),
+              pause_reason: "direct_send_not_enabled",
+              last_error: message,
+              fatal_locked: true,
+              fatal_error_code: "direct_send_not_enabled",
+              fatal_error_message: message,
+              fatal_locked_at: new Date().toISOString(),
+            })
+            .eq("id", campaignId);
+          await logEvent(campaignId, "direct_send_not_enabled", `⛔ ${message} — modalidade interrompida, sem troca automática para template.`, {
+            recipient_id: r.id, http_status: dres.httpStatus, raw: dres.raw,
+          });
+          return;
+        }
+        await supabaseAdmin.from("campaign_recipients").update({ request_payload: payloadNoToken } as any).eq("id", r.id);
+        // Reaproveita o mesmo tratamento de sucesso/falha abaixo.
+        (r as any).__directResult = dres;
+      }
+      const result = isDirect ? (r as any).__directResult : await transport.sendTemplateMessage({
 
         phoneNumberId: conn.phone_number_id!,
         accessToken: conn.access_token!,

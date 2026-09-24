@@ -60,7 +60,7 @@ export async function runCampaignPreflight(
 ): Promise<PreflightResult> {
   const { data: camp } = await db
     .from("wa_campaigns")
-    .select("id, name, connection_id, template_id, total_recipients, fatal_locked, fatal_error_code, fatal_error_message")
+    .select("id, name, connection_id, template_id, total_recipients, fatal_locked, fatal_error_code, fatal_error_message, send_mode, direct_text")
     .eq("id", campaignId)
     .maybeSingle();
   if (!camp) throw new Error("Campanha não encontrada.");
@@ -73,6 +73,7 @@ export async function runCampaignPreflight(
     fatal_error_code: camp.fatal_error_code,
     fatal_error_message: camp.fatal_error_message,
     require_queue: true,
+    direct_send: camp.send_mode === "direct_utility",
   });
 }
 
@@ -85,6 +86,8 @@ export async function runSelectionPreflight(
   opts: {
     connection_id: string | null;
     template_id: string | null;
+    /** Direct Send — Utilidade: não exige template. */
+    direct_send?: boolean;
     total_recipients?: number | null;
     fatal_locked?: boolean | null;
     fatal_error_code?: string | null;
@@ -139,7 +142,7 @@ export async function runSelectionPreflight(
     if (!restrictionOnly) return finish();
   }
 
-  if (!camp.connection_id || !camp.template_id) {
+  if (!camp.connection_id || (!opts.direct_send && !camp.template_id)) {
     push({ key: "config", label: "Configuração", status: "fail", detail: "Selecione número e template antes de iniciar." });
     return finish();
   }
@@ -235,13 +238,17 @@ export async function runSelectionPreflight(
 
   }
 
-  // 3) Template aprovado e ativo
-  const { data: tpl } = await db
-    .from("whatsapp_templates")
-    .select("id, name, language, status, meta_template_id")
-    .eq("id", camp.template_id)
-    .maybeSingle();
-  if (!tpl) {
+  // 3) Template aprovado e ativo (Direct Send não usa template)
+  const { data: tpl } = opts.direct_send
+    ? { data: null }
+    : await db
+        .from("whatsapp_templates")
+        .select("id, name, language, status, meta_template_id")
+        .eq("id", camp.template_id)
+        .maybeSingle();
+  if (opts.direct_send) {
+    push({ key: "template", label: "Direct Send — Utilidade", status: "ok", detail: "Texto livre com categoria utility (sem template)." });
+  } else if (!tpl) {
     push({ key: "template", label: "Template", status: "fail", detail: "Template não encontrado." });
   } else {
     const st = String(tpl.status ?? "").toUpperCase();

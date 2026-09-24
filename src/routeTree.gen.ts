@@ -100,6 +100,7 @@ import { Route as AuthenticatedAdminRelatoriosMagistrarRouteImport } from './rou
 import { Route as AuthenticatedAdminRelatoriosAnalyticsRouteImport } from './routes/_authenticated/admin.relatorios.analytics'
 import { Route as AuthenticatedAdminRelatoriosIdRouteImport } from './routes/_authenticated/admin.relatorios.$id'
 import { Route as AuthenticatedAdminDisparosMultiRouteImport } from './routes/_authenticated/admin.disparos.multi'
+import { Route as AuthenticatedAdminDisparosDirectSendRouteImport } from './routes/_authenticated/admin.disparos.direct-send'
 import { Route as AuthenticatedAdminDisparosApiExternaRouteImport } from './routes/_authenticated/admin.disparos.api-externa'
 import { Route as AuthenticatedAdminDisparosIdRouteImport } from './routes/_authenticated/admin.disparos.$id'
 import { Route as AuthenticatedAdminContatosListasRouteImport } from './routes/_authenticated/admin.contatos.listas'
@@ -624,6 +625,12 @@ const AuthenticatedAdminDisparosMultiRoute =
     path: '/multi',
     getParentRoute: () => AuthenticatedAdminDisparosRoute,
   } as any)
+const AuthenticatedAdminDisparosDirectSendRoute =
+  AuthenticatedAdminDisparosDirectSendRouteImport.update({
+    id: '/direct-send',
+    path: '/direct-send',
+    getParentRoute: () => AuthenticatedAdminDisparosRoute,
+  } as any)
 const AuthenticatedAdminDisparosApiExternaRoute =
   AuthenticatedAdminDisparosApiExternaRouteImport.update({
     id: '/api-externa',
@@ -743,6 +750,7 @@ export interface FileRoutesByFullPath {
   '/admin/contatos/listas': typeof AuthenticatedAdminContatosListasRoute
   '/admin/disparos/$id': typeof AuthenticatedAdminDisparosIdRoute
   '/admin/disparos/api-externa': typeof AuthenticatedAdminDisparosApiExternaRoute
+  '/admin/disparos/direct-send': typeof AuthenticatedAdminDisparosDirectSendRoute
   '/admin/disparos/multi': typeof AuthenticatedAdminDisparosMultiRoute
   '/admin/relatorios/$id': typeof AuthenticatedAdminRelatoriosIdRoute
   '/admin/relatorios/analytics': typeof AuthenticatedAdminRelatoriosAnalyticsRoute
@@ -843,6 +851,7 @@ export interface FileRoutesByTo {
   '/admin/contatos/listas': typeof AuthenticatedAdminContatosListasRoute
   '/admin/disparos/$id': typeof AuthenticatedAdminDisparosIdRoute
   '/admin/disparos/api-externa': typeof AuthenticatedAdminDisparosApiExternaRoute
+  '/admin/disparos/direct-send': typeof AuthenticatedAdminDisparosDirectSendRoute
   '/admin/disparos/multi': typeof AuthenticatedAdminDisparosMultiRoute
   '/admin/relatorios/$id': typeof AuthenticatedAdminRelatoriosIdRoute
   '/admin/relatorios/analytics': typeof AuthenticatedAdminRelatoriosAnalyticsRoute
@@ -947,6 +956,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/contatos/listas': typeof AuthenticatedAdminContatosListasRoute
   '/_authenticated/admin/disparos/$id': typeof AuthenticatedAdminDisparosIdRoute
   '/_authenticated/admin/disparos/api-externa': typeof AuthenticatedAdminDisparosApiExternaRoute
+  '/_authenticated/admin/disparos/direct-send': typeof AuthenticatedAdminDisparosDirectSendRoute
   '/_authenticated/admin/disparos/multi': typeof AuthenticatedAdminDisparosMultiRoute
   '/_authenticated/admin/relatorios/$id': typeof AuthenticatedAdminRelatoriosIdRoute
   '/_authenticated/admin/relatorios/analytics': typeof AuthenticatedAdminRelatoriosAnalyticsRoute
@@ -1051,6 +1061,7 @@ export interface FileRouteTypes {
     | '/admin/contatos/listas'
     | '/admin/disparos/$id'
     | '/admin/disparos/api-externa'
+    | '/admin/disparos/direct-send'
     | '/admin/disparos/multi'
     | '/admin/relatorios/$id'
     | '/admin/relatorios/analytics'
@@ -1151,6 +1162,7 @@ export interface FileRouteTypes {
     | '/admin/contatos/listas'
     | '/admin/disparos/$id'
     | '/admin/disparos/api-externa'
+    | '/admin/disparos/direct-send'
     | '/admin/disparos/multi'
     | '/admin/relatorios/$id'
     | '/admin/relatorios/analytics'
@@ -1254,6 +1266,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/contatos/listas'
     | '/_authenticated/admin/disparos/$id'
     | '/_authenticated/admin/disparos/api-externa'
+    | '/_authenticated/admin/disparos/direct-send'
     | '/_authenticated/admin/disparos/multi'
     | '/_authenticated/admin/relatorios/$id'
     | '/_authenticated/admin/relatorios/analytics'
@@ -1969,6 +1982,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminDisparosMultiRouteImport
       parentRoute: typeof AuthenticatedAdminDisparosRoute
     }
+    '/_authenticated/admin/disparos/direct-send': {
+      id: '/_authenticated/admin/disparos/direct-send'
+      path: '/direct-send'
+      fullPath: '/admin/disparos/direct-send'
+      preLoaderRoute: typeof AuthenticatedAdminDisparosDirectSendRouteImport
+      parentRoute: typeof AuthenticatedAdminDisparosRoute
+    }
     '/_authenticated/admin/disparos/api-externa': {
       id: '/_authenticated/admin/disparos/api-externa'
       path: '/api-externa'
@@ -2045,6 +2065,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedAdminDisparosRouteChildren {
   AuthenticatedAdminDisparosIdRoute: typeof AuthenticatedAdminDisparosIdRoute
   AuthenticatedAdminDisparosApiExternaRoute: typeof AuthenticatedAdminDisparosApiExternaRoute
+  AuthenticatedAdminDisparosDirectSendRoute: typeof AuthenticatedAdminDisparosDirectSendRoute
   AuthenticatedAdminDisparosMultiRoute: typeof AuthenticatedAdminDisparosMultiRoute
   AuthenticatedAdminDisparosIndexRoute: typeof AuthenticatedAdminDisparosIndexRoute
 }
@@ -2054,6 +2075,8 @@ const AuthenticatedAdminDisparosRouteChildren: AuthenticatedAdminDisparosRouteCh
     AuthenticatedAdminDisparosIdRoute: AuthenticatedAdminDisparosIdRoute,
     AuthenticatedAdminDisparosApiExternaRoute:
       AuthenticatedAdminDisparosApiExternaRoute,
+    AuthenticatedAdminDisparosDirectSendRoute:
+      AuthenticatedAdminDisparosDirectSendRoute,
     AuthenticatedAdminDisparosMultiRoute: AuthenticatedAdminDisparosMultiRoute,
     AuthenticatedAdminDisparosIndexRoute: AuthenticatedAdminDisparosIndexRoute,
   }

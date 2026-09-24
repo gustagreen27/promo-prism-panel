@@ -599,6 +599,7 @@ export type Database = {
           phone: string
           read_at: string | null
           replied_at: string | null
+          request_payload: Json | null
           request_started_at: string | null
           responded_at: string | null
           response_received_at: string | null
@@ -631,6 +632,7 @@ export type Database = {
           phone: string
           read_at?: string | null
           replied_at?: string | null
+          request_payload?: Json | null
           request_started_at?: string | null
           responded_at?: string | null
           response_received_at?: string | null
@@ -663,6 +665,7 @@ export type Database = {
           phone?: string
           read_at?: string | null
           replied_at?: string | null
+          request_payload?: Json | null
           request_started_at?: string | null
           responded_at?: string | null
           response_received_at?: string | null
@@ -2971,6 +2974,7 @@ export type Database = {
           created_by: string | null
           custom_fields: Json | null
           delivered_count: number
+          direct_text: string | null
           distribution_strategy: string
           estimated_cost: number
           execution_type: string | null
@@ -3039,6 +3043,7 @@ export type Database = {
           scheduled_at: string | null
           scheduled_pause_enabled: boolean
           scheduled_pause_until: string | null
+          send_mode: string
           send_rate_per_min: number
           sent_count: number
           split_group_id: string | null
@@ -3087,6 +3092,7 @@ export type Database = {
           created_by?: string | null
           custom_fields?: Json | null
           delivered_count?: number
+          direct_text?: string | null
           distribution_strategy?: string
           estimated_cost?: number
           execution_type?: string | null
@@ -3155,6 +3161,7 @@ export type Database = {
           scheduled_at?: string | null
           scheduled_pause_enabled?: boolean
           scheduled_pause_until?: string | null
+          send_mode?: string
           send_rate_per_min?: number
           sent_count?: number
           split_group_id?: string | null
@@ -3203,6 +3210,7 @@ export type Database = {
           created_by?: string | null
           custom_fields?: Json | null
           delivered_count?: number
+          direct_text?: string | null
           distribution_strategy?: string
           estimated_cost?: number
           execution_type?: string | null
@@ -3271,6 +3279,7 @@ export type Database = {
           scheduled_at?: string | null
           scheduled_pause_enabled?: boolean
           scheduled_pause_until?: string | null
+          send_mode?: string
           send_rate_per_min?: number
           sent_count?: number
           split_group_id?: string | null
