@@ -25,6 +25,9 @@ const HOST_ZONE: Record<string, Zone> = {
 
   "metodovidacursos.com.br": "slug",
   "www.metodovidacursos.com.br": "slug",
+
+  "acompanhamentofacil.app": "slug",
+  "www.acompanhamentofacil.app": "slug",
 };
 
 /** Host canônico (sem www) de cada zona. */
