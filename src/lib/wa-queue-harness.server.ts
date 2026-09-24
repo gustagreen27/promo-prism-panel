@@ -9,6 +9,7 @@ import {
   type WaTransport,
   type WaRpcSample,
 } from "@/lib/wa-queue.server";
+import { GRAPH_VERSION } from "@/lib/meta/graph-version";
 
 const ADMIN_USER_ID = "869c12fd-8d99-41fa-a970-77608a94fe02";
 const HARNESS_WORKSPACE_ID = "2156c069-7c38-4e35-bfa2-39500f542f6d";
@@ -56,7 +57,7 @@ async function setup(params: {
       nome_interno: tag,
       phone_number_id: phoneNumberId,
       access_token: "harness-fake",
-      graph_api_version: "v21.0",
+      graph_api_version: GRAPH_VERSION,
       use_global_token: false,
       global_rate_per_second: params.numberMaxRate,
       maximum_rate_per_second: params.numberMaxRate,

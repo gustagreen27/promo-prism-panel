@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { renderMapping, fillMetaTemplate, metaVarsIn, buildContext } from "@/lib/wa-variables";
 import { metaEgressFetch } from "@/lib/meta/meta-egress";
+import { GRAPH_VERSION } from "@/lib/meta/graph-version";
 
 async function assertAdmin(ctx: { supabase: any; userId: string }) {
   const { data } = await ctx.supabase.rpc("has_role", { _user_id: ctx.userId, _role: "admin" });
@@ -116,7 +117,7 @@ async function checkPhoneNumberRegistration(phone_number_id: string, access_toke
   reason?: string;
 }> {
   try {
-    const url = `https://graph.facebook.com/v20.0/${encodeURIComponent(phone_number_id)}?fields=id,display_phone_number,verified_name,code_verification_status,name_status,status,platform_type,quality_rating`;
+    const url = `https://graph.facebook.com/${GRAPH_VERSION}/${encodeURIComponent(phone_number_id)}?fields=id,display_phone_number,verified_name,code_verification_status,name_status,status,platform_type,quality_rating`;
     const r = await metaEgressFetch(url, { headers: { Authorization: `Bearer ${access_token}` } });
     const j: any = await r.json().catch(() => ({}));
     if (!r.ok || j?.error) {

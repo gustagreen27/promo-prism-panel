@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { metaEgressFetch } from "@/lib/meta/meta-egress";
+import { GRAPH_VERSION } from "@/lib/meta/graph-version";
 
 async function assertAdmin(ctx: { supabase: any; userId: string }) {
   const { data } = await ctx.supabase.rpc("has_role", { _user_id: ctx.userId, _role: "admin" });
@@ -82,7 +83,7 @@ export const testWhatsappConnection = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     await assertAdmin(context);
     const creds = (await loadCreds(context)) as any;
-    const version = "v25.0";
+    const version = GRAPH_VERSION;
     const results: CheckResult[] = [];
 
     // 1) Credenciais presentes
@@ -184,7 +185,7 @@ export const listWabaTemplates = createServerFn({ method: "GET" })
         },
       } satisfies ListWabaTemplatesResult;
     }
-    const version = "v25.0";
+    const version = GRAPH_VERSION;
     const url = `https://graph.facebook.com/${version}/${creds.waba_id}/message_templates?limit=200&fields=name,status,language,category,components,parameter_format`;
     try {
       const res = await metaEgressFetch(url, {
@@ -229,7 +230,7 @@ export const sendTestTemplate = createServerFn({ method: "POST" })
         params: z.array(z.string().max(500)).max(10).default([]),
         button_url_param: z.string().max(500).optional(),
         button_index: z.number().int().min(0).max(9).default(0),
-        graph_api_version: z.string().trim().max(10).default("v25.0"),
+        graph_api_version: z.string().trim().max(10).optional(),
       })
       .parse(d),
   )
@@ -260,7 +261,7 @@ export const sendTestTemplate = createServerFn({ method: "POST" })
       });
     }
 
-    const url = `https://graph.facebook.com/${data.graph_api_version}/${creds.phone_number_id}/messages`;
+    const url = `https://graph.facebook.com/${GRAPH_VERSION}/${creds.phone_number_id}/messages`;
     const body = {
       messaging_product: "whatsapp",
       to: data.to.replace(/\D/g, ""),

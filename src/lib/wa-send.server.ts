@@ -1,3 +1,4 @@
+import { GRAPH_VERSION } from "@/lib/meta/graph-version";
 // Server-only helper for sending official WhatsApp Cloud API messages.
 // Never import this from a route or *.functions.ts module scope.
 // Always: const { sendTemplateMessage } = await import("@/lib/wa-send.server");
@@ -125,7 +126,7 @@ function buildButtonComponents(
 
 
 export async function sendTemplateMessage(input: WaSendInput): Promise<WaSendResult> {
-  const ver = input.graphVersion || "v21.0";
+  const ver = GRAPH_VERSION;
   const endpoint = input.useMmLite ? "marketing_messages" : "messages";
   const url = `https://graph.facebook.com/${ver}/${input.phoneNumberId}/${endpoint}`;
   const body: Record<string, any> = {
@@ -226,7 +227,7 @@ export async function syncTemplatesFromMeta(opts: {
   accessToken: string;
   graphVersion?: string;
 }) {
-  const ver = opts.graphVersion || "v21.0";
+  const ver = GRAPH_VERSION;
   const url = `https://graph.facebook.com/${ver}/${opts.wabaId}/message_templates?limit=200`;
   const { metaEgressFetch } = await import("@/lib/meta/meta-egress");
   const res = await metaEgressFetch(url, { headers: { Authorization: `Bearer ${opts.accessToken}` } });
@@ -302,7 +303,7 @@ export function buildFrgc01Payload(input: SendFrgc01Input) {
 }
 
 export async function sendWhatsAppTemplateFrgc01(input: SendFrgc01Input): Promise<SendFrgc01Result> {
-  const ver = input.graphVersion || "v25.0";
+  const ver = GRAPH_VERSION;
   const url = `https://graph.facebook.com/${ver}/${input.phoneNumberId}/messages`;
   const payload = buildFrgc01Payload(input);
 
@@ -374,17 +375,33 @@ export function buildDirectUtilityPayload(to: string, text: string, bizOpaque?: 
 }
 
 /** Detecta resposta da Meta indicando que Direct Send não está habilitado para a conta. */
-export function isDirectSendNotEnabled(result: { ok: boolean; error?: string; code?: string; raw?: any }) {
-  if (result.ok) return false;
+/**
+ * Classifica erros específicos do Direct Send (doc oficial "Direct Send API reference"):
+ *  - "not_enabled": code 100 com detalhe "requires Direct Send, which isn't enabled"
+ *  - "blocked":     code 139200 (acesso bloqueado por classificação incorreta)
+ *  - "rate_limited":code 131064 (limite de 24h por classificação incorreta — temporário)
+ */
+export function classifyDirectSendError(result: { ok: boolean; error?: string; code?: string; raw?: any }):
+  | "not_enabled" | "blocked" | "rate_limited" | null {
+  if (result.ok) return null;
   const err = (result as any).raw?.error;
+  const code = String(err?.code ?? result.code ?? "");
+  if (code === "131064") return "rate_limited";
+  if (code === "139200") return "blocked";
   const txt = `${err?.message ?? ""} ${err?.error_data?.details ?? ""} ${result.error ?? ""}`.toLowerCase();
-  if (/direct[\s_-]?send/.test(txt)) return true;
-  if (/category/.test(txt) && /(not (allowed|enabled|eligible|supported)|invalid|unknown|unexpected)/.test(txt)) return true;
-  return false;
+  if (code === "100" && /direct[\s_-]?send/.test(txt)) return "not_enabled";
+  if (/requires direct send|direct send isn.?t enabled/.test(txt)) return "not_enabled";
+  return null;
+}
+
+/** Erros que impedem continuar a demanda (conta não habilitada ou bloqueada). */
+export function isDirectSendNotEnabled(result: { ok: boolean; error?: string; code?: string; raw?: any }) {
+  const c = classifyDirectSendError(result);
+  return c === "not_enabled" || c === "blocked";
 }
 
 export async function sendDirectUtilityText(input: DirectUtilityInput): Promise<WaSendResult & { payload: any }> {
-  const ver = input.graphVersion || "v21.0";
+  const ver = GRAPH_VERSION;
   const url = `https://graph.facebook.com/${ver}/${input.phoneNumberId}/messages`;
   const payload = buildDirectUtilityPayload(input.to, input.text, input.bizOpaqueCallbackData);
   const requestStartedAt = new Date().toISOString();

@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { listNumbers, updateNumber } from "@/lib/whatsapp-numbers.functions";
 import { listSettings, upsertSetting } from "@/lib/settings.functions";
 import { ErrorCard } from "@/components/admin/query-state";
+import { GRAPH_VERSION } from "@/lib/meta/graph-version";
 
 const KEY = "whatsapp_webhook";
 
@@ -63,7 +64,7 @@ function Page() {
   const [form, setForm] = useState<WebhookConfig>({
     callback_url: defaultUrl,
     verify_token: "",
-    graph_api_version: "v21.0",
+    graph_api_version: GRAPH_VERSION,
     events: ["messages", "message_template_status_update"],
   });
   const [visibleTokens, setVisibleTokens] = useState<Record<string, boolean>>({});
@@ -180,7 +181,7 @@ function Page() {
                   <Input
                     value={form.graph_api_version}
                     onChange={(e) => set("graph_api_version", e.target.value)}
-                    placeholder="v21.0"
+                    placeholder={GRAPH_VERSION}
                   />
                 </div>
               </div>

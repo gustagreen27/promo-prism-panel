@@ -19,7 +19,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { metaFetch, META_GRAPH_VERSION } from "@/lib/meta/meta-client.server";
+import { metaFetch } from "@/lib/meta/meta-client.server";
 
 async function assertAdmin(ctx: { supabase: any; userId: string }) {
   const { data } = await ctx.supabase.rpc("has_role", {
@@ -83,13 +83,13 @@ export const subscribeWabaToApp = createServerFn({ method: "POST" })
     const { waba_id, token, source } = await resolveWabaToken(supabase, data.waba_ref_id);
 
     // POST /{waba-id}/subscribed_apps
-    const subscribed = await metaFetch(`/${META_GRAPH_VERSION}/${waba_id}/subscribed_apps`, {
+    const subscribed = await metaFetch(`/${waba_id}/subscribed_apps`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
     });
 
     // GET /{waba-id}/subscribed_apps para confirmar
-    const listing = await metaFetch(`/${META_GRAPH_VERSION}/${waba_id}/subscribed_apps`, {
+    const listing = await metaFetch(`/${waba_id}/subscribed_apps`, {
       method: "GET",
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -122,7 +122,7 @@ export const listSubscribedApps = createServerFn({ method: "POST" })
     const supabase = context.supabase as any;
     const { waba_id, token, source } = await resolveWabaToken(supabase, data.waba_ref_id);
 
-    const listing = await metaFetch(`/${META_GRAPH_VERSION}/${waba_id}/subscribed_apps`, {
+    const listing = await metaFetch(`/${waba_id}/subscribed_apps`, {
       method: "GET",
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -146,7 +146,7 @@ export const unsubscribeWabaFromApp = createServerFn({ method: "POST" })
     const supabase = context.supabase as any;
     const { waba_id, token, source } = await resolveWabaToken(supabase, data.waba_ref_id);
 
-    const res = await metaFetch(`/${META_GRAPH_VERSION}/${waba_id}/subscribed_apps`, {
+    const res = await metaFetch(`/${waba_id}/subscribed_apps`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
     });

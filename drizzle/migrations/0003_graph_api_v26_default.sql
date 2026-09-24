@@ -1,0 +1,2 @@
+ALTER TABLE public.whatsapp_connections ALTER COLUMN graph_api_version SET DEFAULT 'v26.0';
+UPDATE public.whatsapp_connections SET graph_api_version = 'v26.0' WHERE graph_api_version IS DISTINCT FROM 'v26.0';

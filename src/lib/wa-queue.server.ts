@@ -1,6 +1,6 @@
 // Server-only queue processor for WhatsApp campaigns (async worker with lease + timeline + final report).
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { sendTemplateMessage, sendDirectUtilityText, isDirectSendNotEnabled, renderDirectText } from "@/lib/wa-send.server";
+import { sendTemplateMessage, sendDirectUtilityText, isDirectSendNotEnabled, classifyDirectSendError, renderDirectText } from "@/lib/wa-send.server";
 import { renderMapping, buildContext } from "@/lib/wa-variables";
 import { GRAPH_VERSION, resolveGraphVersion } from "@/lib/meta/graph-version";
 import { classifyMetaError, detectFatalAccountCode as classifyFatalCode } from "@/lib/wa/error-classifier";
@@ -1164,6 +1164,24 @@ export async function processCampaignTick(
             })
             .eq("id", campaignId);
           await logEvent(campaignId, "direct_send_not_enabled", `⛔ ${message} — modalidade interrompida, sem troca automática para template.`, {
+            recipient_id: r.id, http_status: dres.httpStatus, raw: dres.raw,
+          });
+          return;
+        }
+        if (!dres.ok && classifyDirectSendError(dres) === "rate_limited") {
+          // 131064: limite de 24h por classificação incorreta — pausa sem travar (temporário).
+          const message = `Limite diário do Direct Send atingido pela Meta (131064): ${dres.error}`;
+          systemicPause = { reason: "direct_send_rate_limited", message };
+          try { laneAbort.abort(); } catch { /* noop */ }
+          await supabaseAdmin
+            .from("campaign_recipients")
+            .update({ status: "pending", failed_reason: dres.error, error_code: "131064", request_payload: payloadNoToken } as any)
+            .eq("id", r.id);
+          await supabaseAdmin
+            .from("wa_campaigns")
+            .update({ status: "paused", paused_at: new Date().toISOString(), pause_reason: "direct_send_rate_limited", last_error: message })
+            .eq("id", campaignId);
+          await logEvent(campaignId, "direct_send_rate_limited", `⏸ ${message} — retome após a janela de 24h.`, {
             recipient_id: r.id, http_status: dres.httpStatus, raw: dres.raw,
           });
           return;
