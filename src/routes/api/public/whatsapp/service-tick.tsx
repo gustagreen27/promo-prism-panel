@@ -4,6 +4,7 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { metaEgressFetch } from "@/lib/meta/meta-egress";
+import { GRAPH_VERSION } from "@/lib/meta/graph-version";
 
 const TIMEOUT_MS = 10000;
 
@@ -70,7 +71,7 @@ async function runTick() {
         .eq("id", row.connection_id ?? "")
         .maybeSingle();
       const token = (conn as any)?.access_token || process.env.WHATSAPP_ACCESS_TOKEN;
-      const version = (conn as any)?.graph_api_version || process.env.META_GRAPH_API_VERSION || "v21.0";
+      const version = GRAPH_VERSION;
       if (!token) throw new Error("Sem access_token na conexão");
 
       const payload = row.payload ?? {};

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { GRAPH_VERSION } from "@/lib/meta/graph-version";
 
 const optStr = (max: number) =>
   z.union([z.string().trim().max(max), z.literal(""), z.null()])
@@ -106,7 +107,7 @@ export const syncTemplates = createServerFn({ method: "POST" })
     const list = await syncTemplatesFromMeta({
       wabaId: conn.waba_id,
       accessToken,
-      graphVersion: conn.graph_api_version || "v21.0",
+      graphVersion: GRAPH_VERSION,
     });
 
     let upserted = 0;
@@ -164,7 +165,7 @@ async function _syncWabaTemplates(supabase: any, waba_ref_id: string) {
   if (!waba?.waba_id) throw new Error("WABA sem waba_id configurado.");
 
   let accessToken: string | null = waba.access_token ?? null;
-  let graphVersion = "v21.0";
+  let graphVersion = GRAPH_VERSION;
   const { data: conn } = await supabase
     .from("whatsapp_connections")
     .select("id,access_token,graph_api_version")
@@ -173,7 +174,6 @@ async function _syncWabaTemplates(supabase: any, waba_ref_id: string) {
     .limit(1)
     .maybeSingle();
   if (!accessToken) accessToken = conn?.access_token ?? null;
-  if (conn?.graph_api_version) graphVersion = conn.graph_api_version;
   if (!accessToken) accessToken = process.env.WHATSAPP_ACCESS_TOKEN ?? null;
   if (!accessToken) {
     throw new Error(

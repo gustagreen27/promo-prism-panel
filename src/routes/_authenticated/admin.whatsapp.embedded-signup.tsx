@@ -146,7 +146,7 @@ function Page() {
             <li>Seleção/criação da WABA</li>
             <li>Adição/verificação do número</li>
             <li>Meta devolve <code>code</code>, <code>waba_id</code>, <code>phone_number_id</code>, <code>business_id</code></li>
-            <li>Backend troca <code>code</code> por <code>access_token</code> (v21.0)</li>
+            <li>Backend troca <code>code</code> por <code>access_token</code> (versão central da Graph API)</li>
             <li>Assina webhooks e salva na base</li>
           </ol>
         </div>
