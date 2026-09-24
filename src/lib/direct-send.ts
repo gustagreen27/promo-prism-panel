@@ -36,7 +36,7 @@ export const directConfigSchema = z.object({
   url_buttons: z.array(z.object({ text: z.string().max(20), url: z.string().max(2000) })).max(MIXED_MAX_URL).optional().nullable(),
   reply_buttons: z.array(z.object({ id: z.string().max(256), title: z.string().max(20) })).max(MIXED_MAX_TOTAL).optional().nullable(),
   // Cache de upload na Meta: { [phone_number_id]: { id, uploaded_at } }
-  media_ids: z.record(z.string(), z.object({ id: z.string(), uploaded_at: z.string() })).optional().nullable(),
+  media_ids: z.record(z.string(), z.object({ id: z.string(), uploaded_at: z.string(), path: z.string().optional().nullable() })).optional().nullable(),
 });
 export type DirectConfig = z.infer<typeof directConfigSchema>;
 

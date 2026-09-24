@@ -552,13 +552,13 @@ export async function resolveCampaignDirectMediaId(supabaseAdmin: any, input: {
   const cfg = input.directConfig;
   if (!cfg || cfg.buttons_type === "none" || (cfg.header_type !== "image" && cfg.header_type !== "video")) return { ok: true, id: null };
   const cached = cfg.media_ids?.[input.phoneNumberId];
-  if (cached?.id && Date.now() - new Date(cached.uploaded_at).getTime() < 25 * 86400_000) return { ok: true, id: cached.id };
+  if (cached?.id && (!(cached as any).path || (cached as any).path === cfg.media_path) && Date.now() - new Date(cached.uploaded_at).getTime() < 25 * 86400_000) return { ok: true, id: cached.id };
   if (!cfg.media_path || !cfg.media_mime) return { ok: false, error: "Mídia do cabeçalho ausente na demanda." };
   const up = await uploadStoredMediaToMeta(supabaseAdmin, {
     phoneNumberId: input.phoneNumberId, accessToken: input.accessToken, mediaPath: cfg.media_path, mime: cfg.media_mime,
   });
   if (!up.ok) return up;
-  const media_ids = { ...(cfg.media_ids ?? {}), [input.phoneNumberId]: { id: up.id, uploaded_at: new Date().toISOString() } };
+  const media_ids = { ...(cfg.media_ids ?? {}), [input.phoneNumberId]: { id: up.id, uploaded_at: new Date().toISOString(), path: cfg.media_path } };
   cfg.media_ids = media_ids;
   await supabaseAdmin.from("wa_campaigns").update({ direct_config: { ...cfg, media_ids } }).eq("id", input.campaignId);
   return { ok: true, id: up.id };

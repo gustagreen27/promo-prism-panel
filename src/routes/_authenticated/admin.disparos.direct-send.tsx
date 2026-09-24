@@ -324,7 +324,7 @@ function Page() {
                   </div>
                 )}
                 {testResult.internal_error && <div className="text-muted-foreground"><b>Erro interno (registro do teste, não afeta o envio):</b> {testResult.internal_error}</div>}
-                <div className="font-medium">Payload enviado à Meta</div>
+                <div className="font-medium">Payload final enviado à Meta (número parcialmente oculto; o token nunca faz parte do payload)</div>
                 <pre className="max-h-64 overflow-auto rounded bg-muted p-2">{JSON.stringify(testResult.payload, null, 2)}</pre>
                 {!testResult.ok && testResult.meta?.raw && (<><div className="font-medium">Resposta da Meta</div><pre className="max-h-40 overflow-auto rounded bg-muted p-2">{JSON.stringify(testResult.meta.raw, null, 2)}</pre></>)}
               </div>
