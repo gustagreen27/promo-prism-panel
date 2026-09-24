@@ -280,7 +280,7 @@ export function SiteFooter() {
 
       <div className="border-t border-white/10">
         <p className="mx-auto w-full max-w-7xl px-4 py-6 text-xs text-white/40 sm:px-6 lg:px-8">
-          © {new Date().getFullYear()} Next Disparos. Todos os direitos reservados.
+          © {new Date().getFullYear()} Agencia Next LTDA — Next Disparos. Todos os direitos reservados.
         </p>
       </div>
     </footer>
