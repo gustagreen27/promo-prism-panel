@@ -152,7 +152,7 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
           // Preflight validation of scheduled campaigns whose time has come
           const { data: due } = await supabaseAdmin
             .from("wa_campaigns")
-            .select("id,workspace_id,connection_id,template_id,total_recipients,list_id,name")
+            .select("id,workspace_id,connection_id,template_id,total_recipients,list_id,name,send_mode")
             .eq("status", "scheduled")
             .or("execution_type.is.null,execution_type.neq.external")
             .lte("scheduled_at", nowIso);
@@ -168,7 +168,7 @@ export const Route = createFileRoute("/api/public/whatsapp/queue-tick")({
               errors.push("Demanda sem aprovação do admin");
             }
             if (!camp.connection_id) errors.push("Sem número de WhatsApp");
-            if (!camp.template_id) errors.push("Sem template");
+            if (!camp.template_id && (camp as any).send_mode !== "direct_utility") errors.push("Sem template");
             if (!camp.total_recipients) errors.push("Sem destinatários");
 
             if (camp.connection_id) {

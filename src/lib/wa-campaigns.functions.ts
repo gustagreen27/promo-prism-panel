@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { directConfigSchema, validateDirectConfig } from "@/lib/direct-send";
+import { pacingConfigSchema, validatePacing } from "@/lib/direct-pacing";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -21,7 +22,16 @@ const fields = {
   send_mode: z.enum(["template", "direct_utility"]).optional(),
   direct_text: z.string().max(1024).optional().nullable(),
   direct_config: directConfigSchema.optional().nullable(),
+  pacing_enabled: z.boolean().optional(),
+  pacing_config: pacingConfigSchema.optional().nullable(),
 };
+
+function assertPacing(d: { pacing_enabled?: boolean; pacing_config?: any }) {
+  if (!d.pacing_enabled) return;
+  if (!d.pacing_config) throw new Error("Configure o ritmo de envio.");
+  const errs = validatePacing(d.pacing_config);
+  if (errs.length) throw new Error(errs.join(" "));
+}
 
 async function assertAdmin(ctx: { supabase: any; userId: string }) {
   const { data } = await ctx.supabase.rpc("has_role", { _user_id: ctx.userId, _role: "admin" });
@@ -76,6 +86,7 @@ export const createWaCampaign = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object(fields).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    assertPacing(data);
     if (data.send_mode === "direct_utility") {
       const errs = validateDirectConfig(data.direct_text ?? "", (data.direct_config ?? { header_type: "none", buttons_type: "none" }) as any);
       if (errs.length) throw new Error(errs.join(" "));
@@ -104,6 +115,7 @@ export const updateWaCampaign = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { id, ...patch } = data;
+    assertPacing(patch);
     if (patch.send_mode === "direct_utility") {
       const errs = validateDirectConfig(patch.direct_text ?? "", (patch.direct_config ?? { header_type: "none", buttons_type: "none" }) as any);
       if (errs.length) throw new Error(errs.join(" "));
@@ -253,17 +265,19 @@ export const startWaCampaign = createServerFn({ method: "POST" })
     }
 
     // Admin dispatch bypasses stock — não há débito automático de estoque neste fluxo.
+    // Retomar (status paused) preserva ciclo/sorteios do ritmo; início novo zera.
+    const resuming = camp.status === "paused";
     await context.supabase
       .from("wa_campaigns")
       .update({
         status: "running",
-        started_at: new Date().toISOString(),
+        ...(resuming ? {} : { started_at: new Date().toISOString(), pacing_state: null, pacing_next_at: null }),
         fatal_locked: false,
         fatal_error_code: null,
         fatal_error_message: null,
         fatal_locked_at: null,
         pause_reason: null,
-      })
+      } as any)
       .eq("id", data.id);
     try {
       const url = new URL("/api/public/whatsapp/queue-tick", process.env.SUPABASE_URL?.replace(".supabase.co", ".lovable.app") ?? "https://project--9c7682d6-edcd-4388-a36c-36249d4d6ab8.lovable.app");

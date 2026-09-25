@@ -17,6 +17,8 @@ import { decideRetry, MAX_ATTEMPTS as RETRY_MAX_ATTEMPTS } from "@/lib/wa/retry-
 // ---------------------------------------------------------------------------
 export type WaTransport = {
   sendTemplateMessage: typeof sendTemplateMessage;
+  /** Opcional (testes): substitui o envio Direct Send. */
+  sendDirectUtilityText?: typeof sendDirectUtilityText;
 };
 export type WaClock = {
   now: () => number;
@@ -346,11 +348,133 @@ function addDispatchTrackingToButtonParam(value: string, templateUrl: string, ca
   return `${beforeHash}${sep}wac=${encodeURIComponent(campaignId)}&r=${encodeURIComponent(recipientId)}${hash}`;
 }
 
+type TickResult = { processed: number; done: boolean; skipped?: boolean; reason?: string };
+
+/**
+ * Ritmo de envio (Direct Send). Quando a demanda tem pacing_enabled, só a
+ * trilha 0 trabalha e envia UMA mensagem por vez, respeitando pacing_next_at.
+ * O estado (ciclo, sorteios, próximo horário) fica em wa_campaigns, então um
+ * reinício retoma exatamente de onde parou. A "reivindicação" do próximo
+ * envio é um UPDATE condicional (compare-and-set em pacing_next_at): dois
+ * workers nunca enviam o mesmo slot, e o destinatário continua protegido pela
+ * reserva atômica da fila (sem duplicar mensagens).
+ */
 export async function processCampaignTick(
   campaignId: string,
   reservationBudget?: number,
   opts?: WaTickOptions,
-): Promise<{ processed: number; done: boolean; skipped?: boolean; reason?: string }> {
+): Promise<TickResult> {
+  const { data: pc } = await supabaseAdmin
+    .from("wa_campaigns")
+    .select("status,send_mode,pacing_enabled")
+    .eq("id", campaignId)
+    .maybeSingle();
+  const paced = !!pc && (pc as any).pacing_enabled && (pc as any).send_mode === "direct_utility" && pc.status === "running";
+  if (!paced) return processCampaignTickInner(campaignId, reservationBudget, opts);
+  const lane = Math.max(0, Number(opts?.lane ?? 0));
+  if (lane !== 0) return { processed: 0, done: false, skipped: true, reason: "pacing_single_lane" };
+
+  const { advancePacing, initialPacingState } = await import("@/lib/direct-pacing");
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, Math.max(0, ms)));
+  const deadline = Date.now() + Math.min(opts?.maxRuntimeMs ?? 45000, 45000) - 3000;
+  let processed = 0;
+
+  while (Date.now() < deadline) {
+    const { data: c } = await supabaseAdmin
+      .from("wa_campaigns")
+      .select("status,pacing_config,pacing_state,pacing_next_at")
+      .eq("id", campaignId)
+      .maybeSingle();
+    if (!c || c.status !== "running") {
+      const r = await processCampaignTickInner(campaignId, 1, opts);
+      return { ...r, processed: processed + r.processed };
+    }
+    const cfg = (c as any).pacing_config;
+    if (!cfg) return processCampaignTickInner(campaignId, reservationBudget, opts);
+    const state = (c as any).pacing_state ?? initialPacingState(cfg);
+    const prevNext = (c as any).pacing_next_at as string | null;
+    const dueMs = prevNext ? new Date(prevNext).getTime() : Date.now();
+    if (dueMs > Date.now()) {
+      if (dueMs > deadline) break;
+      await sleep(dueMs - Date.now());
+      continue;
+    }
+
+    // Reivindica o slot (trava de 2 min caso o worker morra no meio).
+    const lockIso = new Date(Date.now() + 120_000).toISOString();
+    let claim = supabaseAdmin
+      .from("wa_campaigns")
+      .update({ pacing_next_at: lockIso, pacing_state: state } as any)
+      .eq("id", campaignId)
+      .eq("status", "running");
+    claim = prevNext ? claim.eq("pacing_next_at", prevNext) : claim.is("pacing_next_at", null);
+    const { data: claimed } = await claim.select("id");
+    if (!claimed?.length) { await sleep(1000); continue; }
+
+    const claimMs = Date.now();
+    const r = await processCampaignTickInner(campaignId, 1, { ...opts, lane: 0, maxRuntimeMs: 20000 });
+    const nowMs = Date.now();
+    if (r.processed > 0) {
+      // Base = momento real do envio (last_attempt_at do destinatário), e
+      // descontamos o preparo que antecede o envio (checagens), para que o
+      // espaço entre dois envios reais seja o intervalo sorteado.
+      const { data: last } = await supabaseAdmin
+        .from("campaign_recipients")
+        .select("last_attempt_at")
+        .eq("campaign_id", campaignId)
+        .not("last_attempt_at", "is", null)
+        .order("last_attempt_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const sentMs = Math.min(nowMs, Math.max(claimMs, last?.last_attempt_at ? new Date(last.last_attempt_at).getTime() : nowMs));
+      const prepMs = Math.min(15000, Math.max(0, sentMs - claimMs));
+      const adv = advancePacing(cfg, state, sentMs);
+      const nextIso = new Date(Math.max(nowMs, sentMs + adv.waitS * 1000 - prepMs)).toISOString();
+      await supabaseAdmin
+        .from("wa_campaigns")
+        .update({ pacing_state: adv.state, pacing_next_at: nextIso } as any)
+        .eq("id", campaignId)
+        .eq("pacing_next_at", lockIso);
+      await logEvent(
+        campaignId,
+        adv.kind === "pause" ? "pacing_cycle_end" : "pacing_send",
+        adv.kind === "pause"
+          ? `Ciclo ${state.cycle} concluído (${state.cycle_sent + 1}/${state.cycle_target}). Pausa sorteada: ${adv.waitS}s. Próximo ciclo: ${adv.state.cycle_target} msg.`
+          : `Ciclo ${state.cycle}: mensagem ${state.cycle_sent + 1}/${state.cycle_target} enviada. Próximo intervalo sorteado: ${adv.waitS}s.`,
+        {
+          cycle: state.cycle,
+          cycle_sent: state.cycle_sent + 1,
+          cycle_target: state.cycle_target,
+          due_at: prevNext,
+          sent_at: new Date(sentMs).toISOString(),
+          prep_ms: prepMs,
+          late_ms: prevNext ? nowMs - new Date(prevNext).getTime() : null,
+          wait_kind: adv.kind,
+          wait_s: adv.waitS,
+          next_at: nextIso,
+        },
+      );
+      processed += r.processed;
+      if (r.done) return { processed, done: true };
+    } else {
+      // Nada enviado (fim da fila, horário silencioso, cota, erro da Meta que
+      // pausou a demanda...). Não conta no ciclo; tenta de novo em 5s.
+      await supabaseAdmin
+        .from("wa_campaigns")
+        .update({ pacing_next_at: new Date(nowMs + 5000).toISOString() } as any)
+        .eq("id", campaignId)
+        .eq("pacing_next_at", lockIso);
+      return { processed, done: r.done, reason: r.reason };
+    }
+  }
+  return { processed, done: false, reason: "pacing_wait" };
+}
+
+async function processCampaignTickInner(
+  campaignId: string,
+  reservationBudget?: number,
+  opts?: WaTickOptions,
+): Promise<TickResult> {
   const clock = opts?.clock ?? REAL_CLOCK;
   const transport = opts?.transport ?? REAL_TRANSPORT;
   const onRpc = opts?.instrumentation?.onRpc;
@@ -1150,7 +1274,7 @@ export async function processCampaignTick(
           await logEvent(campaignId, "direct_media_upload_failed", `⏸ ${message}`, { recipient_id: r.id, code: media.code, raw: media.raw });
           return;
         }
-        const dres = await sendDirectUtilityText({
+        const dres = await (transport.sendDirectUtilityText ?? sendDirectUtilityText)({
           directConfig,
           mediaLink: media.link,
           phoneNumberId: conn.phone_number_id!,
