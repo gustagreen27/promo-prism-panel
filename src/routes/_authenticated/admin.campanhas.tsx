@@ -341,6 +341,19 @@ function CampaignDialog(props: CampaignDialogProps) {
   const [intermediateText, setIntermediateText] = useState(c?.intermediate_text ?? "");
   const [ctaLabel, setCtaLabel] = useState(c?.cta_label ?? "");
   const [openMode, setOpenMode] = useState<string>(c?.open_mode ?? "smart");
+  const [ogImage, setOgImage] = useState<string>(c?.og_image_url ?? "");
+  const [ogImgBroken, setOgImgBroken] = useState(false);
+  const ogImageError = (() => {
+    const v = ogImage.trim();
+    if (!v) return null;
+    try {
+      const u = new URL(v);
+      if (u.protocol !== "https:") return "A imagem de prévia precisa usar HTTPS.";
+      return null;
+    } catch {
+      return "URL da imagem inválida.";
+    }
+  })();
   const [participants, setParticipants] = useState<Participant[]>(
     (c?.participants as Participant[]) ?? [],
   );
@@ -363,6 +376,8 @@ function CampaignDialog(props: CampaignDialogProps) {
     setIntermediateText(c.intermediate_text ?? "");
     setCtaLabel(c.cta_label ?? "");
     setOpenMode(c.open_mode ?? "smart");
+    setOgImage(c.og_image_url ?? "");
+    setOgImgBroken(false);
     setParticipants((c.participants as Participant[]) ?? []);
     setSlugTouched(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -390,6 +405,7 @@ function CampaignDialog(props: CampaignDialogProps) {
         setCampaignType(""); setLinkIntent(""); setPageCategory("");
         setLinkTitle(""); setLinkDescription(""); setIntermediateText(""); setCtaLabel("");
         setOpenMode("smart");
+        setOgImage("");
         setParticipants([]);
         router.navigate({ to: "/admin/campaigns/$id/edit", params: { id: saved.id } });
       }
@@ -437,6 +453,7 @@ function CampaignDialog(props: CampaignDialogProps) {
         <form
           onSubmit={(e) => {
             e.preventDefault();
+            if (ogImageError) { toast.error(ogImageError); return; }
             mutation.mutate({
               name: name.trim(),
               slug: slug.trim() || undefined,
@@ -452,6 +469,7 @@ function CampaignDialog(props: CampaignDialogProps) {
               intermediate_text: intermediateText.trim() || undefined,
               cta_label: ctaLabel.trim() || undefined,
               open_mode: openMode as "smart" | "iframe" | "redirect" | "wrapper",
+              og_image_url: ogImage.trim() || (isEdit ? "" : undefined),
               participants,
             });
           }}
@@ -503,6 +521,38 @@ function CampaignDialog(props: CampaignDialogProps) {
                 Facebook/Instagram. Não altera o destino dos demais acessos.
               </p>
             </div>
+
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="ogimg">Imagem de prévia do link (opcional)</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="ogimg" type="url"
+                  placeholder="https://exemplo.com/imagem-1200x630.jpg"
+                  value={ogImage}
+                  onChange={(e) => { setOgImage(e.target.value); setOgImgBroken(false); }}
+                />
+                {ogImage && (
+                  <Button type="button" variant="outline" onClick={() => { setOgImage(""); setOgImgBroken(false); }}>
+                    Remover
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Aparece como capa quando o link é compartilhado no WhatsApp, Facebook, Instagram e outras redes. Use uma URL pública HTTPS (recomendado 1200x630).
+              </p>
+              {ogImageError && <p className="text-xs text-destructive">{ogImageError}</p>}
+              {ogImage.trim() && !ogImageError && !ogImgBroken && (
+                <img
+                  src={ogImage.trim()} alt="Prévia do link"
+                  className="aspect-[1.91/1] w-full max-w-sm rounded-md border object-cover"
+                  onError={() => setOgImgBroken(true)}
+                />
+              )}
+              {ogImgBroken && !ogImageError && (
+                <p className="text-xs text-destructive">Não foi possível carregar a imagem nessa URL. Confira se ela é pública.</p>
+              )}
+            </div>
+
 
 
             <div className="space-y-3 sm:col-span-2 rounded-lg border bg-muted/20 p-4">
