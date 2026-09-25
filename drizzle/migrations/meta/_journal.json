@@ -64,6 +64,13 @@
       "when": 1790349884144,
       "tag": "0008_campaign_images_safe_uuid_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790355648202,
+      "tag": "0009_inter_pix_deposits",
+      "breakpoints": true
     }
   ]
 }
