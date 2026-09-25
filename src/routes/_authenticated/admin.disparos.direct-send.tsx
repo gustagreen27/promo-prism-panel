@@ -10,6 +10,8 @@ import {
   validateDirectConfig, BODY_MAX, IMAGE_MIME, VIDEO_MIME, IMAGE_MAX_MB, VIDEO_MAX_MB,
   type DirectConfig, type DirectHeaderType, type DirectButtonsType,
 } from "@/lib/direct-send";
+import { validatePacing, type PacingConfig } from "@/lib/direct-pacing";
+import { PacingPanel } from "@/components/campaigns/PacingPanel";
 import { NewContactListDialog } from "@/components/campaigns/NewContactListDialog";
 import { PageHeader } from "@/components/admin/page-header";
 import { Button } from "@/components/ui/button";
@@ -64,6 +66,9 @@ function Page() {
   const [buttonsType, setButtonsType] = useState<DirectButtonsType>("none");
   const [urlBtn, setUrlBtn] = useState({ text: "", url: "https://" });
   const [replies, setReplies] = useState([{ id: "opcao_1", title: "" }]);
+  const [pacingOn, setPacingOn] = useState(false);
+  const [pace, setPace] = useState({ msgs_min: "3", msgs_max: "6", interval_min_s: "10", interval_max_s: "30", pause_min: "2", pause_max: "5" });
+  const [pauseUnit, setPauseUnit] = useState<"s" | "min">("min");
 
   const draftQ = useQuery({ queryKey: ["direct-draft", draftId], queryFn: () => getFn({ data: { id: draftId! } }), enabled: !!draftId });
   useEffect(() => {
@@ -75,6 +80,14 @@ function Page() {
     setButtonsType(c.buttons_type ?? "none");
     if (c.url_button) setUrlBtn(c.url_button);
     if (c.reply_buttons?.length) setReplies(c.reply_buttons);
+    setPacingOn(!!d.pacing_enabled);
+    if (d.pacing_config) {
+      const p = d.pacing_config;
+      const useMin = p.pause_min_s % 60 === 0 && p.pause_max_s % 60 === 0;
+      setPauseUnit(useMin ? "min" : "s");
+      const k = useMin ? 60 : 1;
+      setPace({ msgs_min: String(p.msgs_min), msgs_max: String(p.msgs_max), interval_min_s: String(p.interval_min_s), interval_max_s: String(p.interval_max_s), pause_min: String(p.pause_min_s / k), pause_max: String(p.pause_max_s / k) });
+    }
     if (c.media_path) {
       setMedia({ path: c.media_path, mime: c.media_mime ?? "", previewUrl: "" });
       supabase.storage.from("campaign-images").createSignedUrl(c.media_path, 3600).then(({ data: su }) => {
@@ -95,7 +108,14 @@ function Page() {
     url_button: buttonsType === "url" ? urlBtn : null,
     reply_buttons: buttonsType === "reply" ? replies : null,
   };
-  const errors = validateDirectConfig(text, config);
+  const unitK = pauseUnit === "min" ? 60 : 1;
+  const toInt = (v: string) => (v.trim() === "" ? NaN : Number(v));
+  const pacingConfig: PacingConfig = {
+    msgs_min: toInt(pace.msgs_min), msgs_max: toInt(pace.msgs_max),
+    interval_min_s: toInt(pace.interval_min_s), interval_max_s: toInt(pace.interval_max_s),
+    pause_min_s: Math.round(toInt(pace.pause_min) * unitK), pause_max_s: Math.round(toInt(pace.pause_max) * unitK),
+  };
+  const errors = [...validateDirectConfig(text, config), ...(pacingOn ? validatePacing(pacingConfig) : [])];
 
   async function onFile(f: File) {
     const kind = headerType;
@@ -128,7 +148,7 @@ function Page() {
   });
 
   async function persist(): Promise<string> {
-    const payload = { name, connection_id: connId, list_id: listId, send_mode: "direct_utility", direct_text: text, direct_config: config, participants: [] } as any;
+    const payload = { name, connection_id: connId, list_id: listId, send_mode: "direct_utility", direct_text: text, direct_config: config, participants: [], pacing_enabled: pacingOn, pacing_config: pacingOn ? pacingConfig : null } as any;
     if (draftId) { await updateFn({ data: { id: draftId, ...payload } }); return draftId; }
     const camp: any = await createFn({ data: payload });
     return camp.id as string;
@@ -260,6 +280,35 @@ function Page() {
               <div><Label>Rodapé (opcional)</Label><Input maxLength={60} value={footer} onChange={(e) => setFooter(e.target.value)} /></div>
             </>
           )}
+          <div className="space-y-2 rounded-lg border p-3">
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input type="checkbox" checked={pacingOn} onChange={(e) => setPacingOn(e.target.checked)} />
+              Ritmo de envio (ciclos com quantidades, intervalos e pausas sorteados)
+            </label>
+            {pacingOn && (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <div><Label>Mensagens por ciclo — mín.</Label><Input type="number" min={1} value={pace.msgs_min} onChange={(e) => setPace({ ...pace, msgs_min: e.target.value })} /></div>
+                  <div><Label>Mensagens por ciclo — máx.</Label><Input type="number" min={1} value={pace.msgs_max} onChange={(e) => setPace({ ...pace, msgs_max: e.target.value })} /></div>
+                  <div><Label>Intervalo entre mensagens — mín. (s)</Label><Input type="number" min={1} value={pace.interval_min_s} onChange={(e) => setPace({ ...pace, interval_min_s: e.target.value })} /></div>
+                  <div><Label>Intervalo entre mensagens — máx. (s)</Label><Input type="number" min={1} value={pace.interval_max_s} onChange={(e) => setPace({ ...pace, interval_max_s: e.target.value })} /></div>
+                  <div><Label>Pausa entre ciclos — mín.</Label><Input type="number" min={0} value={pace.pause_min} onChange={(e) => setPace({ ...pace, pause_min: e.target.value })} /></div>
+                  <div><Label>Pausa entre ciclos — máx.</Label><Input type="number" min={0} value={pace.pause_max} onChange={(e) => setPace({ ...pace, pause_max: e.target.value })} /></div>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <span>Unidade da pausa:</span>
+                  <Select value={pauseUnit} onValueChange={(v) => setPauseUnit(v as "s" | "min")}>
+                    <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="s">segundos</SelectItem><SelectItem value="min">minutos</SelectItem></SelectContent>
+                  </Select>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  A cada ciclo é sorteada a quantidade de mensagens; antes de cada envio, um novo intervalo; ao fim do ciclo, uma nova pausa.
+                  Envio uma mensagem por vez. Limites e erros da Meta continuam valendo e podem pausar a demanda.
+                </p>
+              </>
+            )}
+          </div>
           {errors.length > 0 && (
             <ul className="list-disc space-y-0.5 pl-5 text-xs text-destructive">{errors.map((e) => <li key={e}>{e}</li>)}</ul>
           )}
@@ -274,6 +323,7 @@ function Page() {
           {blocked && <p className="text-sm text-destructive">Direct Send não está habilitado para esta conta. Escolha outra conta — não há troca automática para template.</p>}
         </div>
         <div className="space-y-3">
+          {draftId && <PacingPanel id={draftId} />}
           <div className="rounded-xl border bg-card p-4">
             <div className="mb-2 text-xs font-medium text-muted-foreground">Prévia</div>
             <WhatsAppPreview
