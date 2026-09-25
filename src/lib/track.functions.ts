@@ -410,16 +410,18 @@ export const resolveCampaign = createServerFn({ method: "POST" })
     const chosen = pickDestination(campaign as never, cursor);
     let finalUrl = applyUtms(chosen, campaign);
     const fbUrl = ((campaign as Record<string, unknown>).facebook_destination_url as string | null)?.trim() || null;
-    let mode = ((campaign as Record<string, unknown>).open_mode as string) || "smart";
+    const configuredMode = ((campaign as Record<string, unknown>).open_mode as string) || "smart";
+    let mode = configuredMode;
+    // Só o modo "smart" pode ser trocado automaticamente. Modos explícitos
+    // (redirect/iframe/wrapper) valem para qualquer dispositivo, rede ou VPN.
+    const autoMode = configuredMode === "smart";
 
-    // Detecta in-app browser do Facebook/Instagram pelo User-Agent (instantâneo).
-    // O lookup de geo roda em paralelo e só é usado como reforço/métrica.
     const earlyIp = pickIp();
     const geoPromise = earlyIp ? lookupIp(earlyIp) : Promise.resolve(null);
     const uaHeader = getRequestHeader("user-agent") ?? "";
     const fbInApp = /FBAN|FBAV|FB_IAB|Instagram/i.test(uaHeader);
     let isFacebookTraffic = fbInApp;
-    if (fbInApp) mode = "wrapper";
+    if (fbInApp && autoMode) mode = "wrapper";
 
     let iframeAllowed = true;
     if (mode === "redirect") {
@@ -448,23 +450,22 @@ export const resolveCampaign = createServerFn({ method: "POST" })
       }
     }
 
-    // Geo nunca pode segurar o link: espera no máximo 350ms pela decisão.
-    // Se demorar mais, seguimos sem geo (o clique ainda é gravado com o
-    // resultado quando chegar).
+    // Geo nunca pode segurar o link: espera no máximo 350ms.
     const earlyGeo = await Promise.race([
       geoPromise,
       new Promise<null>((r) => setTimeout(() => r(null), 350)),
     ]);
     if (!fbInApp && isFacebookGeo(earlyGeo)) {
-      mode = "wrapper";
-      iframeAllowed = false;
       isFacebookTraffic = true;
+      if (autoMode) {
+        mode = "wrapper";
+        iframeAllowed = false;
+      }
     }
 
-    // Fora do Brasil (país detectado e diferente de BR) também vai para a
-    // página estática com CTA, usando o mesmo destino alternativo.
+    // Fora do Brasil: só no modo "smart" vai para a página estática.
     const nonBrazil = isNonBrazil(earlyGeo);
-    if (nonBrazil) {
+    if (nonBrazil && autoMode) {
       mode = "wrapper";
       iframeAllowed = false;
     }
