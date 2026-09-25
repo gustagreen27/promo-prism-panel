@@ -16,6 +16,8 @@ type Props = {
   maxMb?: number;
   /** Shape of the preview thumb */
   shape?: "square" | "rect";
+  /** Recebe a URL exibível (local antes de salvar). */
+  onPreviewChange?: (src: string) => void;
 };
 
 function proxyUrl(path: string) {
@@ -31,8 +33,12 @@ export function ImageUpload({
   accept = "image/png,image/jpeg,image/webp,image/gif,image/svg+xml,image/x-icon",
   maxMb = 4,
   shape = "rect",
+  onPreviewChange,
 }: Props) {
   const [uploading, setUploading] = useState(false);
+  // Prévia local: o arquivo só fica público depois que a campanha é salva.
+  const [local, setLocal] = useState<{ url: string; blob: string } | null>(null);
+  const shown = local && local.url === value ? local.blob : value;
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function handleFile(file: File) {
@@ -48,7 +54,11 @@ export function ImageUpload({
         .from("campaign-images")
         .upload(key, file, { contentType: file.type, upsert: false });
       if (error) throw error;
-      onChange(proxyUrl(key));
+      const url = proxyUrl(key);
+      const blob = URL.createObjectURL(file);
+      setLocal({ url, blob });
+      onChange(url);
+      onPreviewChange?.(blob);
       toast.success("Imagem enviada");
     } catch (e: any) {
       toast.error(e?.message || "Falha no upload");
@@ -67,10 +77,11 @@ export function ImageUpload({
             (shape === "square" ? "h-16 w-16" : "h-16 w-28")
           }
         >
-          {value ? (
+          {shown ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={value}
+              key={shown}
+              src={shown}
               alt=""
               referrerPolicy="no-referrer"
               className="h-full w-full object-cover"
