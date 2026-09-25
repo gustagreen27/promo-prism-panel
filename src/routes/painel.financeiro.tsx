@@ -492,6 +492,11 @@ function Page() {
                     <Badge variant={d.status === "paid" ? "default" : d.status === "pending" ? "secondary" : "destructive"}>
                       {DEP_LABEL[d.status] ?? d.status}
                     </Badge>
+                    {d.status === "pending" && d.pix_copia_cola && (
+                      <Button size="sm" variant="outline" onClick={() => { setActiveDep(d); setOpen(true); }}>
+                        Ver Pix
+                      </Button>
+                    )}
                     {d.receipt_url && (
                       <a href={d.receipt_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">
                         Recibo
