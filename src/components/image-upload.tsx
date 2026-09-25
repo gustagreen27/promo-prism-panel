@@ -33,6 +33,9 @@ export function ImageUpload({
   shape = "rect",
 }: Props) {
   const [uploading, setUploading] = useState(false);
+  // Prévia local: o arquivo só fica público depois que a campanha é salva.
+  const [local, setLocal] = useState<{ url: string; blob: string } | null>(null);
+  const shown = local && local.url === value ? local.blob : value;
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function handleFile(file: File) {
@@ -48,7 +51,9 @@ export function ImageUpload({
         .from("campaign-images")
         .upload(key, file, { contentType: file.type, upsert: false });
       if (error) throw error;
-      onChange(proxyUrl(key));
+      const url = proxyUrl(key);
+      setLocal({ url, blob: URL.createObjectURL(file) });
+      onChange(url);
       toast.success("Imagem enviada");
     } catch (e: any) {
       toast.error(e?.message || "Falha no upload");
@@ -67,10 +72,11 @@ export function ImageUpload({
             (shape === "square" ? "h-16 w-16" : "h-16 w-28")
           }
         >
-          {value ? (
+          {shown ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={value}
+              key={shown}
+              src={shown}
               alt=""
               referrerPolicy="no-referrer"
               className="h-full w-full object-cover"
