@@ -15,12 +15,111 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  listMyTransactions, listMyDeposits, createDepositCheckout,
+  listMyTransactions, listMyDeposits, createDepositCheckout, checkMyDeposit,
 } from "@/lib/billing.functions";
 import { usePanelWorkspace, useWallet, useBalanceConsistency } from "@/lib/use-panel-workspace";
 import {
   Building2, TrendingUp, TrendingDown, Loader2, ArrowUpRight, ArrowDownRight, Download, AlertTriangle,
+  QrCode, Copy, CheckCircle2,
 } from "lucide-react";
+import QRCode from "qrcode";
+
+const brl = (cents: number) =>
+  (Math.max(0, cents) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+function PixPanel({ deposit, credits, onPaid, onClose }: {
+  deposit: any; credits: number; onPaid: () => void; onClose: () => void;
+}) {
+  const check = useServerFn(checkMyDeposit);
+  const [img, setImg] = useState<string | null>(null);
+  const [status, setStatus] = useState<string>(deposit.status);
+  const [now, setNow] = useState(Date.now());
+  const code: string = deposit.pix_copia_cola ?? "";
+  const expiresAt = deposit.pix_expires_at ? new Date(deposit.pix_expires_at).getTime() : 0;
+
+  useEffect(() => {
+    if (code) QRCode.toDataURL(code, { margin: 1, width: 260 }).then(setImg).catch(() => setImg(null));
+  }, [code]);
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Enquanto a tela está aberta, consulta a cada 15 s (servidor limita a 1 consulta / 10 s).
+  useEffect(() => {
+    if (status !== "pending") return;
+    const t = setInterval(async () => {
+      try {
+        const r = await check({ data: { deposit_id: deposit.id } });
+        if (r.status !== "pending") {
+          setStatus(r.status);
+          if (r.status === "paid") { onPaid(); toast.success("Pagamento confirmado! Créditos liberados."); }
+        }
+      } catch { /* tenta de novo no próximo ciclo */ }
+    }, 15000);
+    return () => clearInterval(t);
+  }, [status, deposit.id]);
+
+  const left = Math.max(0, Math.floor((expiresAt - now) / 1000));
+  const mm = String(Math.floor(left / 60)).padStart(2, "0");
+  const ss = String(left % 60).padStart(2, "0");
+
+  if (status === "paid") {
+    return (
+      <div className="flex flex-col items-center gap-3 py-6 text-center">
+        <CheckCircle2 className="h-12 w-12 text-primary" />
+        <DialogTitle>Pagamento confirmado</DialogTitle>
+        <p className="text-sm text-muted-foreground">{nf(credits)} créditos foram adicionados ao seu saldo.</p>
+        <Button onClick={onClose}>Fechar</Button>
+      </div>
+    );
+  }
+  if (status !== "pending") {
+    return (
+      <div className="flex flex-col items-center gap-3 py-6 text-center">
+        <DialogTitle>Pix {status === "expired" ? "expirado" : "cancelado"}</DialogTitle>
+        <p className="text-sm text-muted-foreground">Gere um novo Pix para comprar créditos.</p>
+        <Button onClick={onClose}>Fechar</Button>
+      </div>
+    );
+  }
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Pague com Pix</DialogTitle>
+        <DialogDescription>
+          {nf(credits)} créditos · <strong>{brl(Number(deposit.amount_cents))}</strong> · expira em {mm}:{ss}
+        </DialogDescription>
+      </DialogHeader>
+      <div className="flex flex-col items-center gap-3">
+        {img ? (
+          <img src={img} alt="QR Code Pix" className="h-56 w-56 rounded-lg border bg-card p-2" />
+        ) : (
+          <div className="grid h-56 w-56 place-items-center"><Loader2 className="h-6 w-6 animate-spin" /></div>
+        )}
+        <div className="w-full">
+          <Label>Pix copia e cola</Label>
+          <div className="mt-1 flex gap-2">
+            <Input readOnly value={code} className="font-mono text-xs" onFocus={(e) => e.currentTarget.select()} />
+            <Button
+              variant="outline"
+              onClick={() => navigator.clipboard.writeText(code).then(() => toast.success("Código copiado"))}
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        <p className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="h-3 w-3 animate-spin" /> Aguardando pagamento — o saldo é liberado sozinho.
+        </p>
+      </div>
+      <DialogFooter>
+        <Button variant="ghost" onClick={onClose}>Fechar</Button>
+      </DialogFooter>
+    </>
+  );
+}
 
 export const Route = createFileRoute("/painel/financeiro")({
   head: () => ({
@@ -161,6 +260,7 @@ function Page() {
     URL.revokeObjectURL(url);
   }
 
+  const [activeDep, setActiveDep] = useState<any | null>(null);
   const deposit = useMutation({
     mutationFn: async () => {
       const credits = Math.round(Number(amountStr || 0));
@@ -169,18 +269,11 @@ function Page() {
       }
       return createDep({ data: { workspace_id: wsId as string, amount_cents: credits * unit } });
     },
-
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["deposits", wsId] });
-      qc.invalidateQueries({ queryKey: ["wallet"] });
-      if (res.checkout_url) {
-        window.location.href = res.checkout_url;
-      } else {
-        toast.success("Pedido de depósito criado", { description: res.message });
-        setOpen(false);
-      }
+      setActiveDep(res.deposit);
     },
-    onError: (e: any) => toast.error(e?.message ?? "Erro ao criar depósito"),
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao gerar Pix"),
   });
 
   return (
@@ -192,6 +285,9 @@ function Page() {
             Acompanhe seu saldo e histórico de créditos · 1 crédito = 1 mensagem
           </p>
         </div>
+        <Button onClick={() => { setActiveDep(null); setOpen(true); }} disabled={!wsId}>
+          <QrCode className="mr-2 h-4 w-4" /> Depositar via Pix
+        </Button>
       </header>
 
       {divergence && (
@@ -396,6 +492,11 @@ function Page() {
                     <Badge variant={d.status === "paid" ? "default" : d.status === "pending" ? "secondary" : "destructive"}>
                       {DEP_LABEL[d.status] ?? d.status}
                     </Badge>
+                    {d.status === "pending" && d.pix_copia_cola && (
+                      <Button size="sm" variant="outline" onClick={() => { setActiveDep(d); setOpen(true); }}>
+                        Ver Pix
+                      </Button>
+                    )}
                     {d.receipt_url && (
                       <a href={d.receipt_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">
                         Recibo
@@ -409,34 +510,50 @@ function Page() {
         </Card>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setActiveDep(null); }}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Comprar créditos</DialogTitle>
-            <DialogDescription>
-              Compra mínima: <strong>{nf(minCreditsRequired)}</strong> créditos (1 crédito = 1 mensagem).
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label>Quantidade de créditos</Label>
-              <Input
-                inputMode="numeric"
-                value={amountStr}
-                onChange={(e) => setAmountStr(e.target.value.replace(/\D/g, ""))}
-                placeholder={String(minCreditsRequired)}
-              />
-              <p className="mt-1 text-xs text-muted-foreground">Mínimo {nf(minCreditsRequired)} créditos</p>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button onClick={() => deposit.mutate()} disabled={deposit.isPending}>
-              {deposit.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Ir para pagamento
-            </Button>
-          </DialogFooter>
+          {activeDep ? (
+            <PixPanel
+              deposit={activeDep}
+              credits={Math.round(Number(activeDep.amount_cents) / unit)}
+              onPaid={() => {
+                qc.invalidateQueries({ queryKey: ["deposits", wsId] });
+                qc.invalidateQueries({ queryKey: ["wallet"] });
+                qc.invalidateQueries({ queryKey: ["wallet-tx", wsId] });
+              }}
+              onClose={() => { setOpen(false); setActiveDep(null); }}
+            />
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Comprar créditos via Pix</DialogTitle>
+                <DialogDescription>
+                  Compra mínima: <strong>{nf(minCreditsRequired)}</strong> créditos (1 crédito = 1 mensagem). O saldo é liberado automaticamente após o pagamento.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3">
+                <div>
+                  <Label>Quantidade de créditos</Label>
+                  <Input
+                    inputMode="numeric"
+                    value={amountStr}
+                    onChange={(e) => setAmountStr(e.target.value.replace(/\D/g, ""))}
+                    placeholder={String(minCreditsRequired)}
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Total: <strong>{brl(Math.round(Number(amountStr || 0)) * unit)}</strong> · mínimo {nf(minCreditsRequired)} créditos
+                  </p>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+                <Button onClick={() => deposit.mutate()} disabled={deposit.isPending}>
+                  {deposit.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Gerar Pix
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>

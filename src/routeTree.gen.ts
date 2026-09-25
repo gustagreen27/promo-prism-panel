@@ -74,6 +74,7 @@ import { Route as ApiPublicWhatsappHealthRefreshRouteImport } from './routes/api
 import { Route as ApiPublicWhatsappHarnessRouteImport } from './routes/api/public/whatsapp/harness'
 import { Route as ApiPublicHooksWaTemplatesSyncRouteImport } from './routes/api/public/hooks/wa-templates-sync'
 import { Route as ApiPublicHooksNotifyUpcomingCampaignsRouteImport } from './routes/api/public/hooks/notify-upcoming-campaigns'
+import { Route as ApiPublicHooksInterPixPollRouteImport } from './routes/api/public/hooks/inter-pix-poll'
 import { Route as ApiPublicHooksExternalProgressRouteImport } from './routes/api/public/hooks/external-progress'
 import { Route as ApiPublicGoogleOauthCallbackRouteImport } from './routes/api/public/google/oauth-callback'
 import { Route as ApiPublicDiagEgressIpRouteImport } from './routes/api/public/diag/egress-ip'
@@ -471,6 +472,12 @@ const ApiPublicHooksNotifyUpcomingCampaignsRoute =
     path: '/api/public/hooks/notify-upcoming-campaigns',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksInterPixPollRoute =
+  ApiPublicHooksInterPixPollRouteImport.update({
+    id: '/api/public/hooks/inter-pix-poll',
+    path: '/api/public/hooks/inter-pix-poll',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksExternalProgressRoute =
   ApiPublicHooksExternalProgressRouteImport.update({
     id: '/api/public/hooks/external-progress',
@@ -777,6 +784,7 @@ export interface FileRoutesByFullPath {
   '/api/public/diag/egress-ip': typeof ApiPublicDiagEgressIpRoute
   '/api/public/google/oauth-callback': typeof ApiPublicGoogleOauthCallbackRoute
   '/api/public/hooks/external-progress': typeof ApiPublicHooksExternalProgressRoute
+  '/api/public/hooks/inter-pix-poll': typeof ApiPublicHooksInterPixPollRoute
   '/api/public/hooks/notify-upcoming-campaigns': typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
   '/api/public/hooks/wa-templates-sync': typeof ApiPublicHooksWaTemplatesSyncRoute
   '/api/public/whatsapp/harness': typeof ApiPublicWhatsappHarnessRoute
@@ -878,6 +886,7 @@ export interface FileRoutesByTo {
   '/api/public/diag/egress-ip': typeof ApiPublicDiagEgressIpRoute
   '/api/public/google/oauth-callback': typeof ApiPublicGoogleOauthCallbackRoute
   '/api/public/hooks/external-progress': typeof ApiPublicHooksExternalProgressRoute
+  '/api/public/hooks/inter-pix-poll': typeof ApiPublicHooksInterPixPollRoute
   '/api/public/hooks/notify-upcoming-campaigns': typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
   '/api/public/hooks/wa-templates-sync': typeof ApiPublicHooksWaTemplatesSyncRoute
   '/api/public/whatsapp/harness': typeof ApiPublicWhatsappHarnessRoute
@@ -983,6 +992,7 @@ export interface FileRoutesById {
   '/api/public/diag/egress-ip': typeof ApiPublicDiagEgressIpRoute
   '/api/public/google/oauth-callback': typeof ApiPublicGoogleOauthCallbackRoute
   '/api/public/hooks/external-progress': typeof ApiPublicHooksExternalProgressRoute
+  '/api/public/hooks/inter-pix-poll': typeof ApiPublicHooksInterPixPollRoute
   '/api/public/hooks/notify-upcoming-campaigns': typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
   '/api/public/hooks/wa-templates-sync': typeof ApiPublicHooksWaTemplatesSyncRoute
   '/api/public/whatsapp/harness': typeof ApiPublicWhatsappHarnessRoute
@@ -1088,6 +1098,7 @@ export interface FileRouteTypes {
     | '/api/public/diag/egress-ip'
     | '/api/public/google/oauth-callback'
     | '/api/public/hooks/external-progress'
+    | '/api/public/hooks/inter-pix-poll'
     | '/api/public/hooks/notify-upcoming-campaigns'
     | '/api/public/hooks/wa-templates-sync'
     | '/api/public/whatsapp/harness'
@@ -1189,6 +1200,7 @@ export interface FileRouteTypes {
     | '/api/public/diag/egress-ip'
     | '/api/public/google/oauth-callback'
     | '/api/public/hooks/external-progress'
+    | '/api/public/hooks/inter-pix-poll'
     | '/api/public/hooks/notify-upcoming-campaigns'
     | '/api/public/hooks/wa-templates-sync'
     | '/api/public/whatsapp/harness'
@@ -1293,6 +1305,7 @@ export interface FileRouteTypes {
     | '/api/public/diag/egress-ip'
     | '/api/public/google/oauth-callback'
     | '/api/public/hooks/external-progress'
+    | '/api/public/hooks/inter-pix-poll'
     | '/api/public/hooks/notify-upcoming-campaigns'
     | '/api/public/hooks/wa-templates-sync'
     | '/api/public/whatsapp/harness'
@@ -1332,6 +1345,7 @@ export interface RootRouteChildren {
   ApiPublicDiagEgressIpRoute: typeof ApiPublicDiagEgressIpRoute
   ApiPublicGoogleOauthCallbackRoute: typeof ApiPublicGoogleOauthCallbackRoute
   ApiPublicHooksExternalProgressRoute: typeof ApiPublicHooksExternalProgressRoute
+  ApiPublicHooksInterPixPollRoute: typeof ApiPublicHooksInterPixPollRoute
   ApiPublicHooksNotifyUpcomingCampaignsRoute: typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
   ApiPublicHooksWaTemplatesSyncRoute: typeof ApiPublicHooksWaTemplatesSyncRoute
   ApiPublicWhatsappHarnessRoute: typeof ApiPublicWhatsappHarnessRoute
@@ -1798,6 +1812,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/hooks/notify-upcoming-campaigns'
       fullPath: '/api/public/hooks/notify-upcoming-campaigns'
       preLoaderRoute: typeof ApiPublicHooksNotifyUpcomingCampaignsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/inter-pix-poll': {
+      id: '/api/public/hooks/inter-pix-poll'
+      path: '/api/public/hooks/inter-pix-poll'
+      fullPath: '/api/public/hooks/inter-pix-poll'
+      preLoaderRoute: typeof ApiPublicHooksInterPixPollRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/external-progress': {
@@ -2310,6 +2331,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicDiagEgressIpRoute: ApiPublicDiagEgressIpRoute,
   ApiPublicGoogleOauthCallbackRoute: ApiPublicGoogleOauthCallbackRoute,
   ApiPublicHooksExternalProgressRoute: ApiPublicHooksExternalProgressRoute,
+  ApiPublicHooksInterPixPollRoute: ApiPublicHooksInterPixPollRoute,
   ApiPublicHooksNotifyUpcomingCampaignsRoute:
     ApiPublicHooksNotifyUpcomingCampaignsRoute,
   ApiPublicHooksWaTemplatesSyncRoute: ApiPublicHooksWaTemplatesSyncRoute,

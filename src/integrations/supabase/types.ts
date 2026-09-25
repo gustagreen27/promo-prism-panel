@@ -1358,12 +1358,21 @@ export type Database = {
       deposits: {
         Row: {
           amount_cents: number
+          check_count: number
           created_at: string
           created_by: string | null
+          error_message: string | null
           id: string
+          last_checked_at: string | null
+          paid_amount_cents: number | null
           paid_at: string | null
           payment_method: string | null
+          pix_copia_cola: string | null
+          pix_e2eid: string | null
+          pix_expires_at: string | null
+          pix_txid: string | null
           provider: string
+          provider_status: string | null
           receipt_url: string | null
           status: string
           stripe_payment_intent_id: string | null
@@ -1372,12 +1381,21 @@ export type Database = {
         }
         Insert: {
           amount_cents: number
+          check_count?: number
           created_at?: string
           created_by?: string | null
+          error_message?: string | null
           id?: string
+          last_checked_at?: string | null
+          paid_amount_cents?: number | null
           paid_at?: string | null
           payment_method?: string | null
+          pix_copia_cola?: string | null
+          pix_e2eid?: string | null
+          pix_expires_at?: string | null
+          pix_txid?: string | null
           provider?: string
+          provider_status?: string | null
           receipt_url?: string | null
           status?: string
           stripe_payment_intent_id?: string | null
@@ -1386,12 +1404,21 @@ export type Database = {
         }
         Update: {
           amount_cents?: number
+          check_count?: number
           created_at?: string
           created_by?: string | null
+          error_message?: string | null
           id?: string
+          last_checked_at?: string | null
+          paid_amount_cents?: number | null
           paid_at?: string | null
           payment_method?: string | null
+          pix_copia_cola?: string | null
+          pix_e2eid?: string | null
+          pix_expires_at?: string | null
+          pix_txid?: string | null
           provider?: string
+          provider_status?: string | null
           receipt_url?: string | null
           status?: string
           stripe_payment_intent_id?: string | null
@@ -5799,6 +5826,10 @@ export type Database = {
       }
       ci_folder_workspace: { Args: { _name: string }; Returns: string }
       ci_path_is_public: { Args: { _path: string }; Returns: boolean }
+      confirm_pix_deposit: {
+        Args: { _deposit_id: string; _e2eid: string; _paid_cents: number }
+        Returns: string
+      }
       cron_headers: { Args: { _src?: string }; Returns: Json }
       get_my_context: { Args: never; Returns: Json }
       has_role: {
@@ -5816,6 +5847,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      inter_pix_poll_start: { Args: never; Returns: undefined }
+      inter_pix_poll_stop_if_idle: { Args: never; Returns: boolean }
       is_internal_staff: { Args: { _user: string }; Returns: boolean }
       is_workspace_member: {
         Args: { _user: string; _ws: string }
