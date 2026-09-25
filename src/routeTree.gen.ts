@@ -76,7 +76,6 @@ import { Route as ApiPublicHooksWaTemplatesSyncRouteImport } from './routes/api/
 import { Route as ApiPublicHooksNotifyUpcomingCampaignsRouteImport } from './routes/api/public/hooks/notify-upcoming-campaigns'
 import { Route as ApiPublicHooksExternalProgressRouteImport } from './routes/api/public/hooks/external-progress'
 import { Route as ApiPublicGoogleOauthCallbackRouteImport } from './routes/api/public/google/oauth-callback'
-import { Route as ApiPublicDiagInterMtlsRouteImport } from './routes/api/public/diag/inter-mtls'
 import { Route as ApiPublicDiagEgressIpRouteImport } from './routes/api/public/diag/egress-ip'
 import { Route as ApiPublicCiSplatRouteImport } from './routes/api/public/ci.$'
 import { Route as AuthenticatedAdminWhatsappWebhooksRouteImport } from './routes/_authenticated/admin.whatsapp.webhooks'
@@ -484,11 +483,6 @@ const ApiPublicGoogleOauthCallbackRoute =
     path: '/api/public/google/oauth-callback',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicDiagInterMtlsRoute = ApiPublicDiagInterMtlsRouteImport.update({
-  id: '/api/public/diag/inter-mtls',
-  path: '/api/public/diag/inter-mtls',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPublicDiagEgressIpRoute = ApiPublicDiagEgressIpRouteImport.update({
   id: '/api/public/diag/egress-ip',
   path: '/api/public/diag/egress-ip',
@@ -781,7 +775,6 @@ export interface FileRoutesByFullPath {
   '/admin/whatsapp/webhooks': typeof AuthenticatedAdminWhatsappWebhooksRoute
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
   '/api/public/diag/egress-ip': typeof ApiPublicDiagEgressIpRoute
-  '/api/public/diag/inter-mtls': typeof ApiPublicDiagInterMtlsRoute
   '/api/public/google/oauth-callback': typeof ApiPublicGoogleOauthCallbackRoute
   '/api/public/hooks/external-progress': typeof ApiPublicHooksExternalProgressRoute
   '/api/public/hooks/notify-upcoming-campaigns': typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
@@ -883,7 +876,6 @@ export interface FileRoutesByTo {
   '/admin/whatsapp/webhooks': typeof AuthenticatedAdminWhatsappWebhooksRoute
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
   '/api/public/diag/egress-ip': typeof ApiPublicDiagEgressIpRoute
-  '/api/public/diag/inter-mtls': typeof ApiPublicDiagInterMtlsRoute
   '/api/public/google/oauth-callback': typeof ApiPublicGoogleOauthCallbackRoute
   '/api/public/hooks/external-progress': typeof ApiPublicHooksExternalProgressRoute
   '/api/public/hooks/notify-upcoming-campaigns': typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
@@ -989,7 +981,6 @@ export interface FileRoutesById {
   '/_authenticated/admin/whatsapp/webhooks': typeof AuthenticatedAdminWhatsappWebhooksRoute
   '/api/public/ci/$': typeof ApiPublicCiSplatRoute
   '/api/public/diag/egress-ip': typeof ApiPublicDiagEgressIpRoute
-  '/api/public/diag/inter-mtls': typeof ApiPublicDiagInterMtlsRoute
   '/api/public/google/oauth-callback': typeof ApiPublicGoogleOauthCallbackRoute
   '/api/public/hooks/external-progress': typeof ApiPublicHooksExternalProgressRoute
   '/api/public/hooks/notify-upcoming-campaigns': typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
@@ -1095,7 +1086,6 @@ export interface FileRouteTypes {
     | '/admin/whatsapp/webhooks'
     | '/api/public/ci/$'
     | '/api/public/diag/egress-ip'
-    | '/api/public/diag/inter-mtls'
     | '/api/public/google/oauth-callback'
     | '/api/public/hooks/external-progress'
     | '/api/public/hooks/notify-upcoming-campaigns'
@@ -1197,7 +1187,6 @@ export interface FileRouteTypes {
     | '/admin/whatsapp/webhooks'
     | '/api/public/ci/$'
     | '/api/public/diag/egress-ip'
-    | '/api/public/diag/inter-mtls'
     | '/api/public/google/oauth-callback'
     | '/api/public/hooks/external-progress'
     | '/api/public/hooks/notify-upcoming-campaigns'
@@ -1302,7 +1291,6 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/whatsapp/webhooks'
     | '/api/public/ci/$'
     | '/api/public/diag/egress-ip'
-    | '/api/public/diag/inter-mtls'
     | '/api/public/google/oauth-callback'
     | '/api/public/hooks/external-progress'
     | '/api/public/hooks/notify-upcoming-campaigns'
@@ -1342,7 +1330,6 @@ export interface RootRouteChildren {
   RelatoriosSlugRoute: typeof RelatoriosSlugRoute
   ApiPublicCiSplatRoute: typeof ApiPublicCiSplatRoute
   ApiPublicDiagEgressIpRoute: typeof ApiPublicDiagEgressIpRoute
-  ApiPublicDiagInterMtlsRoute: typeof ApiPublicDiagInterMtlsRoute
   ApiPublicGoogleOauthCallbackRoute: typeof ApiPublicGoogleOauthCallbackRoute
   ApiPublicHooksExternalProgressRoute: typeof ApiPublicHooksExternalProgressRoute
   ApiPublicHooksNotifyUpcomingCampaignsRoute: typeof ApiPublicHooksNotifyUpcomingCampaignsRoute
@@ -1825,13 +1812,6 @@ declare module '@tanstack/react-router' {
       path: '/api/public/google/oauth-callback'
       fullPath: '/api/public/google/oauth-callback'
       preLoaderRoute: typeof ApiPublicGoogleOauthCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/diag/inter-mtls': {
-      id: '/api/public/diag/inter-mtls'
-      path: '/api/public/diag/inter-mtls'
-      fullPath: '/api/public/diag/inter-mtls'
-      preLoaderRoute: typeof ApiPublicDiagInterMtlsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/diag/egress-ip': {
@@ -2328,7 +2308,6 @@ const rootRouteChildren: RootRouteChildren = {
   RelatoriosSlugRoute: RelatoriosSlugRoute,
   ApiPublicCiSplatRoute: ApiPublicCiSplatRoute,
   ApiPublicDiagEgressIpRoute: ApiPublicDiagEgressIpRoute,
-  ApiPublicDiagInterMtlsRoute: ApiPublicDiagInterMtlsRoute,
   ApiPublicGoogleOauthCallbackRoute: ApiPublicGoogleOauthCallbackRoute,
   ApiPublicHooksExternalProgressRoute: ApiPublicHooksExternalProgressRoute,
   ApiPublicHooksNotifyUpcomingCampaignsRoute:
