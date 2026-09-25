@@ -15,107 +15,72 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  listMyTransactions, listMyDeposits, createDepositCheckout, checkMyDeposit,
+  listMyTransactions, listMyDeposits, createDepositCheckout,
 } from "@/lib/billing.functions";
+import { depositCode } from "@/lib/pix-brcode";
 import { usePanelWorkspace, useWallet, useBalanceConsistency } from "@/lib/use-panel-workspace";
 import {
   Building2, TrendingUp, TrendingDown, Loader2, ArrowUpRight, ArrowDownRight, Download, AlertTriangle,
-  QrCode, Copy, CheckCircle2,
+  QrCode, Copy, MessageCircle,
 } from "lucide-react";
 import QRCode from "qrcode";
 
 const brl = (cents: number) =>
   (Math.max(0, cents) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-function PixPanel({ deposit, credits, onPaid, onClose }: {
-  deposit: any; credits: number; onPaid: () => void; onClose: () => void;
+const WHATSAPP = "5562991301856";
+
+function PixPanel({ deposit, clientId, onClose }: {
+  deposit: any; clientId: string; onClose: () => void;
 }) {
-  const check = useServerFn(checkMyDeposit);
   const [img, setImg] = useState<string | null>(null);
-  const [status, setStatus] = useState<string>(deposit.status);
-  const [now, setNow] = useState(Date.now());
   const code: string = deposit.pix_copia_cola ?? "";
-  const expiresAt = deposit.pix_expires_at ? new Date(deposit.pix_expires_at).getTime() : 0;
+  const valor = (Number(deposit.amount_cents) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const identificador = `${clientId} / ${depositCode(deposit.id)}`;
 
   useEffect(() => {
     if (code) QRCode.toDataURL(code, { margin: 1, width: 260 }).then(setImg).catch(() => setImg(null));
   }, [code]);
 
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, []);
+  const waText = `Olá! Fiz um Pix de R$ ${valor} para adicionar saldo à minha conta. Meu identificador é ${identificador}. Vou enviar o comprovante para conferência.`;
+  const waUrl = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(waText)}`;
 
-  // Enquanto a tela está aberta, consulta a cada 15 s (servidor limita a 1 consulta / 10 s).
-  useEffect(() => {
-    if (status !== "pending") return;
-    const t = setInterval(async () => {
-      try {
-        const r = await check({ data: { deposit_id: deposit.id } });
-        if (r.status !== "pending") {
-          setStatus(r.status);
-          if (r.status === "paid") { onPaid(); toast.success("Pagamento confirmado! Créditos liberados."); }
-        }
-      } catch { /* tenta de novo no próximo ciclo */ }
-    }, 15000);
-    return () => clearInterval(t);
-  }, [status, deposit.id]);
-
-  const left = Math.max(0, Math.floor((expiresAt - now) / 1000));
-  const mm = String(Math.floor(left / 60)).padStart(2, "0");
-  const ss = String(left % 60).padStart(2, "0");
-
-  if (status === "paid") {
-    return (
-      <div className="flex flex-col items-center gap-3 py-6 text-center">
-        <CheckCircle2 className="h-12 w-12 text-primary" />
-        <DialogTitle>Pagamento confirmado</DialogTitle>
-        <p className="text-sm text-muted-foreground">{nf(credits)} créditos foram adicionados ao seu saldo.</p>
-        <Button onClick={onClose}>Fechar</Button>
-      </div>
-    );
-  }
-  if (status !== "pending") {
-    return (
-      <div className="flex flex-col items-center gap-3 py-6 text-center">
-        <DialogTitle>Pix {status === "expired" ? "expirado" : "cancelado"}</DialogTitle>
-        <p className="text-sm text-muted-foreground">Gere um novo Pix para comprar créditos.</p>
-        <Button onClick={onClose}>Fechar</Button>
-      </div>
-    );
-  }
   return (
     <>
       <DialogHeader>
         <DialogTitle>Pague com Pix</DialogTitle>
         <DialogDescription>
-          {nf(credits)} créditos · <strong>{brl(Number(deposit.amount_cents))}</strong> · expira em {mm}:{ss}
+          Valor: <strong>R$ {valor}</strong> · Identificador: <span className="font-mono">{identificador}</span>
         </DialogDescription>
       </DialogHeader>
       <div className="flex flex-col items-center gap-3">
         {img ? (
-          <img src={img} alt="QR Code Pix" className="h-56 w-56 rounded-lg border bg-card p-2" />
+          <img src={img} alt="QR Code Pix" className="h-52 w-52 max-w-full rounded-lg border bg-card p-2 sm:h-56 sm:w-56" />
         ) : (
-          <div className="grid h-56 w-56 place-items-center"><Loader2 className="h-6 w-6 animate-spin" /></div>
+          <div className="grid h-52 w-52 place-items-center"><Loader2 className="h-6 w-6 animate-spin" /></div>
         )}
         <div className="w-full">
-          <Label>Pix copia e cola</Label>
-          <div className="mt-1 flex gap-2">
-            <Input readOnly value={code} className="font-mono text-xs" onFocus={(e) => e.currentTarget.select()} />
-            <Button
-              variant="outline"
-              onClick={() => navigator.clipboard.writeText(code).then(() => toast.success("Código copiado"))}
-            >
-              <Copy className="h-4 w-4" />
-            </Button>
-          </div>
+          <Label>Pix Copia e Cola</Label>
+          <Input readOnly value={code} className="mt-1 font-mono text-xs" onFocus={(e) => e.currentTarget.select()} />
+          <Button
+            variant="outline"
+            className="mt-2 w-full"
+            onClick={() => navigator.clipboard.writeText(code).then(() => toast.success("Código Pix copiado"))}
+          >
+            <Copy className="mr-2 h-4 w-4" /> Copiar código Pix
+          </Button>
         </div>
-        <p className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Loader2 className="h-3 w-3 animate-spin" /> Aguardando pagamento — o saldo é liberado sozinho.
+        <p className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
+          Após pagar, clique em ‘Fiz o pagamento’ e envie o comprovante pelo WhatsApp. O saldo será liberado após a conferência.
         </p>
       </div>
-      <DialogFooter>
+      <DialogFooter className="gap-2">
         <Button variant="ghost" onClick={onClose}>Fechar</Button>
+        <Button asChild>
+          <a href={waUrl} target="_blank" rel="noopener noreferrer">
+            <MessageCircle className="mr-2 h-4 w-4" /> Fiz o pagamento
+          </a>
+        </Button>
       </DialogFooter>
     </>
   );
