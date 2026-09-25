@@ -458,7 +458,7 @@ function Page() {
                   </div>
                   <div className="flex items-center gap-3">
                     <Badge variant={d.status === "paid" ? "default" : d.status === "pending" ? "secondary" : "destructive"}>
-                      {DEP_LABEL[d.status] ?? d.status}
+                      {d.status === "pending" ? "Aguardando conferência" : DEP_LABEL[d.status] ?? d.status}
                     </Badge>
                     {d.status === "pending" && d.pix_copia_cola && (
                       <Button size="sm" variant="outline" onClick={() => { setActiveDep(d); setOpen(true); }}>
@@ -479,37 +479,32 @@ function Page() {
       )}
 
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setActiveDep(null); }}>
-        <DialogContent>
+        <DialogContent className="max-h-[92vh] overflow-y-auto">
           {activeDep ? (
             <PixPanel
               deposit={activeDep}
-              credits={Math.round(Number(activeDep.amount_cents) / unit)}
-              onPaid={() => {
-                qc.invalidateQueries({ queryKey: ["deposits", wsId] });
-                qc.invalidateQueries({ queryKey: ["wallet"] });
-                qc.invalidateQueries({ queryKey: ["wallet-tx", wsId] });
-              }}
+              clientId={clientId}
               onClose={() => { setOpen(false); setActiveDep(null); }}
             />
           ) : (
             <>
               <DialogHeader>
-                <DialogTitle>Comprar créditos via Pix</DialogTitle>
+                <DialogTitle>Depositar via Pix</DialogTitle>
                 <DialogDescription>
-                  Compra mínima: <strong>{nf(minCreditsRequired)}</strong> créditos (1 crédito = 1 mensagem). O saldo é liberado automaticamente após o pagamento.
+                  Depósito mínimo: <strong>{brl(minCents)}</strong>. O saldo é liberado após a conferência do comprovante.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3">
                 <div>
-                  <Label>Quantidade de créditos</Label>
+                  <Label>Valor do depósito (R$)</Label>
                   <Input
-                    inputMode="numeric"
-                    value={amountStr}
-                    onChange={(e) => setAmountStr(e.target.value.replace(/\D/g, ""))}
-                    placeholder={String(minCreditsRequired)}
+                    inputMode="decimal"
+                    value={valueStr}
+                    onChange={(e) => setValueStr(e.target.value.replace(/[^\d.,]/g, ""))}
+                    placeholder={(minCents / 100).toFixed(2).replace(".", ",")}
                   />
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Total: <strong>{brl(Math.round(Number(amountStr || 0)) * unit)}</strong> · mínimo {nf(minCreditsRequired)} créditos
+                    Equivale a <strong>{nf(Math.floor(valueCents / unit))}</strong> créditos
                   </p>
                 </div>
               </div>
