@@ -20,6 +20,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { getWaCampaign, clearCampaignFatalLock } from "@/lib/wa-campaigns.functions";
+import { PacingPanel } from "@/components/campaigns/PacingPanel";
 import { DispatchPerformancePanel } from "@/components/admin/dispatch-performance-panel";
 import { FailureReasonsCard } from "@/components/admin/failure-reasons-card";
 import {
@@ -471,6 +472,7 @@ function Page() {
           </div>
         }
       />
+      {(camp as any)?.pacing_enabled && <PacingPanel id={id} />}
 
       {(camp as any)?.fatal_locked && (
         <Card className="border-destructive/50 bg-destructive/5">
