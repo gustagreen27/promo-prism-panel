@@ -57,8 +57,8 @@ export function ImageUpload({
       const url = proxyUrl(key);
       const blob = URL.createObjectURL(file);
       setLocal({ url, blob });
-      onPreviewChange?.(blob);
       onChange(url);
+      onPreviewChange?.(blob);
       toast.success("Imagem enviada");
     } catch (e: any) {
       toast.error(e?.message || "Falha no upload");
