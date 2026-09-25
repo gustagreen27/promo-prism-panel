@@ -116,15 +116,14 @@ export const listMyDeposits = createServerFn({ method: 'POST' })
     return rows ?? []
   })
 
-// Cria pedido de depósito. Stripe ainda não está ativado — retorna deposit "pending"
-// e um erro amigável no lugar do checkout_url. Quando Stripe estiver ativo,
-// substituir por criação de Checkout Session.
+// Cria cobrança Pix (Inter) válida por 1 hora. O saldo é liberado sozinho
+// quando a consulta ao Inter confirma o pagamento (confirm_pix_deposit).
 export const createDepositCheckout = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { workspace_id: string; amount_cents: number }) =>
     z.object({
       workspace_id: z.string().uuid(),
-      amount_cents: z.number().int().positive(),
+      amount_cents: z.number().int().positive().max(100_000_000),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
@@ -143,28 +142,79 @@ export const createDepositCheckout = createServerFn({ method: 'POST' })
         `Valor mínimo de depósito para este workspace é R$ ${(minimum / 100).toFixed(2).replace('.', ',')} (${minMessages.toLocaleString('pt-BR')} mensagens × R$ ${(unitPrice / 100).toFixed(2).replace('.', ',')}).`,
       )
     }
-    const { data: deposit, error } = await supabase
+
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
+    const { createCob, txidFor, BridgeNotConfigured } = await import('@/lib/inter-pix.server')
+
+    // Evita acumular cobranças abertas: no máximo 3 pendentes por workspace.
+    const { count } = await supabaseAdmin
+      .from('deposits')
+      .select('id', { count: 'exact', head: true })
+      .eq('workspace_id', data.workspace_id)
+      .eq('status', 'pending')
+      .eq('provider', 'inter')
+    if ((count ?? 0) >= 3) throw new Error('Você já tem 3 Pix aguardando pagamento. Pague ou aguarde expirarem.')
+
+    const EXP = 3600
+    const { data: deposit, error } = await supabaseAdmin
       .from('deposits')
       .insert({
         workspace_id: data.workspace_id,
         amount_cents: data.amount_cents,
         status: 'pending',
-        provider: 'stripe',
+        provider: 'inter',
+        payment_method: 'pix',
         created_by: userId,
       })
       .select()
       .single()
     if (error) throw error
 
-    // TODO: quando Stripe for ativado (enable_stripe_payments), criar
-    // um Checkout Session aqui e retornar { checkout_url }.
-    return {
-      deposit,
-      checkout_url: null as string | null,
-      pending_setup: true as const,
-      message:
-        'Pagamento online ainda não foi ativado. Envie o comprovante de pagamento ao suporte com o ID abaixo e o saldo será liberado.',
+    try {
+      const cob = await createCob(deposit.id, data.amount_cents, EXP)
+      if (!cob.pixCopiaECola) throw new Error('Inter não retornou o código Pix')
+      const expiresAt = new Date(Date.now() + EXP * 1000).toISOString()
+      const { data: saved, error: upErr } = await supabaseAdmin
+        .from('deposits')
+        .update({
+          pix_txid: txidFor(deposit.id),
+          pix_copia_cola: cob.pixCopiaECola,
+          pix_expires_at: expiresAt,
+          provider_status: cob.status,
+        })
+        .eq('id', deposit.id)
+        .select()
+        .single()
+      if (upErr) throw upErr
+      await supabaseAdmin.rpc('inter_pix_poll_start')
+      return { deposit: saved }
+    } catch (e) {
+      await supabaseAdmin
+        .from('deposits')
+        .update({ status: 'failed', error_message: String((e as Error).message).slice(0, 200) })
+        .eq('id', deposit.id)
+      if (e instanceof BridgeNotConfigured) throw new Error('O pagamento por Pix ainda está sendo configurado. Tente mais tarde.')
+      throw new Error('Não foi possível gerar o Pix agora. Tente novamente em instantes.')
     }
+  })
+
+// Verificação sob demanda (tela aberta / botão "Já paguei"). Limitada a 1 consulta a cada 10 s por Pix.
+export const checkMyDeposit = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { deposit_id: string }) => z.object({ deposit_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any
+    const { data: dep } = await supabase.from('deposits').select('*').eq('id', data.deposit_id).maybeSingle()
+    if (!dep) throw new Error('Depósito não encontrado')
+    await assertMember(supabase, userId, dep.workspace_id)
+    if (dep.status !== 'pending' || dep.provider !== 'inter') return { status: dep.status }
+    if (dep.last_checked_at && Date.now() - new Date(dep.last_checked_at).getTime() < 10_000) {
+      return { status: dep.status }
+    }
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
+    const { checkDeposit } = await import('@/lib/inter-pix.server')
+    const r = await checkDeposit(supabaseAdmin, dep)
+    return { status: r === 'credited' || r === 'already_paid' ? 'paid' : r === 'error' ? 'pending' : r }
   })
 
 // ---------- Admin ----------
