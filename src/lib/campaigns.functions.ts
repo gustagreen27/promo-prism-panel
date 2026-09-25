@@ -34,7 +34,14 @@ const campaignFields = {
   favicon_url: optUrl(),
   og_title: optStr(160),
   og_description: optStr(400),
-  og_image_url: optUrl(),
+  og_image_url: z
+    .union([
+      z.string().trim().url().max(2048).refine((v) => v.startsWith("https://"), "A imagem de prévia precisa usar HTTPS"),
+      z.literal(""),
+      z.null(),
+    ])
+    .transform((v) => (v === "" || v == null ? null : v))
+    .optional(),
   og_type: optStr(40),
   utm_source: optStr(80),
   utm_medium: optStr(80),
