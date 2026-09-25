@@ -411,11 +411,25 @@ export async function processCampaignTick(
     const { data: claimed } = await claim.select("id");
     if (!claimed?.length) { await sleep(1000); continue; }
 
+    const claimMs = Date.now();
     const r = await processCampaignTickInner(campaignId, 1, { ...opts, lane: 0, maxRuntimeMs: 20000 });
     const nowMs = Date.now();
     if (r.processed > 0) {
-      const adv = advancePacing(cfg, state, nowMs);
-      const nextIso = new Date(nowMs + adv.waitS * 1000).toISOString();
+      // Base = momento real do envio (last_attempt_at do destinatário), e
+      // descontamos o preparo que antecede o envio (checagens), para que o
+      // espaço entre dois envios reais seja o intervalo sorteado.
+      const { data: last } = await supabaseAdmin
+        .from("campaign_recipients")
+        .select("last_attempt_at")
+        .eq("campaign_id", campaignId)
+        .not("last_attempt_at", "is", null)
+        .order("last_attempt_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const sentMs = Math.min(nowMs, Math.max(claimMs, last?.last_attempt_at ? new Date(last.last_attempt_at).getTime() : nowMs));
+      const prepMs = Math.min(15000, Math.max(0, sentMs - claimMs));
+      const adv = advancePacing(cfg, state, sentMs);
+      const nextIso = new Date(Math.max(nowMs, sentMs + adv.waitS * 1000 - prepMs)).toISOString();
       await supabaseAdmin
         .from("wa_campaigns")
         .update({ pacing_state: adv.state, pacing_next_at: nextIso } as any)
@@ -432,7 +446,8 @@ export async function processCampaignTick(
           cycle_sent: state.cycle_sent + 1,
           cycle_target: state.cycle_target,
           due_at: prevNext,
-          sent_at: new Date(nowMs).toISOString(),
+          sent_at: new Date(sentMs).toISOString(),
+          prep_ms: prepMs,
           late_ms: prevNext ? nowMs - new Date(prevNext).getTime() : null,
           wait_kind: adv.kind,
           wait_s: adv.waitS,
