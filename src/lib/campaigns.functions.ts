@@ -30,7 +30,10 @@ const campaignFields = {
   cta_label: optStr(80),
   preview_image_url: optUrl(),
   loading_image_url: optUrl(),
-  loading_bg_color: optStr(20),
+  loading_bg_color: z
+    .union([z.string().trim().regex(/^#[0-9a-fA-F]{6}$/, "Cor inválida (use #RRGGBB)"), z.literal(""), z.null()])
+    .transform((v) => (v === "" || v == null ? null : v))
+    .optional(),
   favicon_url: optUrl(),
   og_title: optStr(160),
   og_description: optStr(400),

@@ -35,6 +35,8 @@ import { toast } from "sonner";
 import { ErrorCard } from "@/components/admin/query-state";
 import { Copy, ExternalLink, Trash2, BarChart3, Pencil, Play, Pause, Info, MoreVertical, Sparkles } from "lucide-react";
 import { PublicOverridesDialog } from "@/components/admin/public-overrides-dialog";
+import { ImageUpload } from "@/components/image-upload";
+const DEFAULT_SPLASH_BG = "#C4C7C8";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -343,6 +345,13 @@ function CampaignDialog(props: CampaignDialogProps) {
   const [openMode, setOpenMode] = useState<string>(c?.open_mode ?? "smart");
   const [ogImage, setOgImage] = useState<string>(c?.og_image_url ?? "");
   const [ogImgBroken, setOgImgBroken] = useState(false);
+  const [loadingLogo, setLoadingLogo] = useState<string>(
+    (c as { loading_image_url?: string | null } | undefined)?.loading_image_url ?? "",
+  );
+  const [loadingBg, setLoadingBg] = useState<string>(
+    ((c as { loading_bg_color?: string | null } | undefined)?.loading_bg_color ?? "").toUpperCase(),
+  );
+  const bgValid = /^#[0-9A-Fa-f]{6}$/.test(loadingBg);
   const ogImageError = (() => {
     const v = ogImage.trim();
     if (!v) return null;
@@ -378,6 +387,8 @@ function CampaignDialog(props: CampaignDialogProps) {
     setOpenMode(c.open_mode ?? "smart");
     setOgImage(c.og_image_url ?? "");
     setOgImgBroken(false);
+    setLoadingLogo((c as { loading_image_url?: string | null }).loading_image_url ?? "");
+    setLoadingBg(((c as { loading_bg_color?: string | null }).loading_bg_color ?? "").toUpperCase());
     setParticipants((c.participants as Participant[]) ?? []);
     setSlugTouched(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -454,6 +465,7 @@ function CampaignDialog(props: CampaignDialogProps) {
           onSubmit={(e) => {
             e.preventDefault();
             if (ogImageError) { toast.error(ogImageError); return; }
+            if (loadingBg && !bgValid) { toast.error("Cor de fundo inválida (use #RRGGBB)."); return; }
             mutation.mutate({
               name: name.trim(),
               slug: slug.trim() || undefined,
@@ -470,6 +482,8 @@ function CampaignDialog(props: CampaignDialogProps) {
               cta_label: ctaLabel.trim() || undefined,
               open_mode: openMode as "smart" | "iframe" | "redirect" | "wrapper",
               og_image_url: ogImage.trim() || (isEdit ? "" : undefined),
+              loading_image_url: loadingLogo.trim() || (isEdit ? "" : undefined),
+              loading_bg_color: loadingBg || (isEdit ? "" : undefined),
               participants,
             });
           }}
@@ -551,6 +565,62 @@ function CampaignDialog(props: CampaignDialogProps) {
               {ogImgBroken && !ogImageError && (
                 <p className="text-xs text-destructive">Não foi possível carregar a imagem nessa URL. Confira se ela é pública.</p>
               )}
+            </div>
+
+            <div className="space-y-3 sm:col-span-2 rounded-lg border p-4">
+              <div>
+                <Label>Tela de carregamento</Label>
+                <p className="text-xs text-muted-foreground">
+                  Aparece ao abrir o link, enquanto o destino carrega. Independente da imagem de prévia do WhatsApp. Sem configuração, usa a aparência padrão.
+                </p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label>Logo da campanha</Label>
+                    <ImageUpload value={loadingLogo} onChange={setLoadingLogo} folder="loading" shape="square" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="loadbg">Cor de fundo</Label>
+                    <div className="flex gap-2">
+                      <input
+                        type="color" aria-label="Seletor de cor"
+                        className="h-10 w-12 cursor-pointer rounded-md border bg-transparent p-1"
+                        value={bgValid ? loadingBg : DEFAULT_SPLASH_BG}
+                        onChange={(e) => setLoadingBg(e.target.value.toUpperCase())}
+                      />
+                      <Input
+                        id="loadbg" placeholder={DEFAULT_SPLASH_BG} maxLength={7}
+                        value={loadingBg}
+                        onChange={(e) => {
+                          let v = e.target.value.trim();
+                          if (v && !v.startsWith("#")) v = `#${v}`;
+                          setLoadingBg(v.toUpperCase());
+                        }}
+                      />
+                      {loadingBg && (
+                        <Button type="button" variant="outline" onClick={() => setLoadingBg("")}>Padrão</Button>
+                      )}
+                    </div>
+                    {loadingBg && !bgValid && (
+                      <p className="text-xs text-destructive">Use o formato #RRGGBB, ex.: #1A2B3C.</p>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Prévia</p>
+                  <div
+                    className="flex h-64 w-36 items-center justify-center rounded-2xl border shadow-inner"
+                    style={{ backgroundColor: bgValid ? loadingBg : DEFAULT_SPLASH_BG }}
+                  >
+                    {loadingLogo ? (
+                      <img src={loadingLogo} alt="" className="max-h-[40%] max-w-[60%] object-contain" />
+                    ) : (
+                      <div className="h-8 w-8 animate-spin rounded-full border-2 border-foreground/20 border-t-foreground/60" />
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
 
 
