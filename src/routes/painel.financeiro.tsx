@@ -226,13 +226,16 @@ function Page() {
   }
 
   const [activeDep, setActiveDep] = useState<any | null>(null);
+  const [valueStr, setValueStr] = useState("");
+  const valueCents = Math.round(Number((valueStr || "0").replace(/\./g, "").replace(",", ".")) * 100) || 0;
+  const minCents = minCreditsRequired * unit;
+  const clientId = (workspace as any)?.slug || (wsId ? String(wsId).slice(0, 8) : "");
   const deposit = useMutation({
     mutationFn: async () => {
-      const credits = Math.round(Number(amountStr || 0));
-      if (!Number.isFinite(credits) || credits < minCreditsRequired) {
-        throw new Error(`A compra mínima é de ${nf(minCreditsRequired)} créditos`);
+      if (!valueCents || valueCents < minCents) {
+        throw new Error(`O depósito mínimo é de ${brl(minCents)}`);
       }
-      return createDep({ data: { workspace_id: wsId as string, amount_cents: credits * unit } });
+      return createDep({ data: { workspace_id: wsId as string, amount_cents: valueCents } });
     },
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["deposits", wsId] });
