@@ -17,6 +17,8 @@ import { decideRetry, MAX_ATTEMPTS as RETRY_MAX_ATTEMPTS } from "@/lib/wa/retry-
 // ---------------------------------------------------------------------------
 export type WaTransport = {
   sendTemplateMessage: typeof sendTemplateMessage;
+  /** Opcional (testes): substitui o envio Direct Send. */
+  sendDirectUtilityText?: typeof sendDirectUtilityText;
 };
 export type WaClock = {
   now: () => number;
@@ -1257,7 +1259,7 @@ async function processCampaignTickInner(
           await logEvent(campaignId, "direct_media_upload_failed", `⏸ ${message}`, { recipient_id: r.id, code: media.code, raw: media.raw });
           return;
         }
-        const dres = await sendDirectUtilityText({
+        const dres = await (transport.sendDirectUtilityText ?? sendDirectUtilityText)({
           directConfig,
           mediaLink: media.link,
           phoneNumberId: conn.phone_number_id!,
