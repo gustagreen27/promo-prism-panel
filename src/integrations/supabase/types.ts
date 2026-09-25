@@ -3017,6 +3017,10 @@ export type Database = {
           name: string
           notes: string | null
           number_failover_mode: string
+          pacing_config: Json | null
+          pacing_enabled: boolean
+          pacing_next_at: string | null
+          pacing_state: Json | null
           parallelism: number | null
           participants: Database["public"]["Enums"]["partner_participant"][]
           pause_duration_seconds: number | null
@@ -3136,6 +3140,10 @@ export type Database = {
           name: string
           notes?: string | null
           number_failover_mode?: string
+          pacing_config?: Json | null
+          pacing_enabled?: boolean
+          pacing_next_at?: string | null
+          pacing_state?: Json | null
           parallelism?: number | null
           participants?: Database["public"]["Enums"]["partner_participant"][]
           pause_duration_seconds?: number | null
@@ -3255,6 +3263,10 @@ export type Database = {
           name?: string
           notes?: string | null
           number_failover_mode?: string
+          pacing_config?: Json | null
+          pacing_enabled?: boolean
+          pacing_next_at?: string | null
+          pacing_state?: Json | null
           parallelism?: number | null
           participants?: Database["public"]["Enums"]["partner_participant"][]
           pause_duration_seconds?: number | null
