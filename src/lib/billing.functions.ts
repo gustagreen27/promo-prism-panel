@@ -377,7 +377,7 @@ export const adminMarkDepositPaid = createServerFn({ method: 'POST' })
       _amount_cents: claimed.amount_cents,
       _type: 'deposit',
       _description: `Depósito Pix ${claimed.id.slice(0, 8)} aprovado`,
-      _campaign_id: null,
+      _campaign_id: null as any,
       _deposit_id: claimed.id,
       _created_by: userId,
     })
