@@ -30,7 +30,8 @@ type Meta = {
 };
 
 function LoadingSplash({ meta }: { meta: Meta }) {
-  const bg = meta.loading_bg_color?.trim() || "#C4C7C8";
+  const raw = meta.loading_bg_color?.trim() ?? "";
+  const bg = /^#[0-9a-fA-F]{6}$/.test(raw) ? raw : "#C4C7C8";
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
@@ -40,7 +41,7 @@ function LoadingSplash({ meta }: { meta: Meta }) {
         <img
           src={meta.loading_image_url}
           alt=""
-          className="h-28 w-28 animate-pulse rounded-[22%] object-cover shadow-lg sm:h-32 sm:w-32"
+          className="max-h-[35vh] max-w-[60vw] object-contain sm:max-h-48 sm:max-w-xs"
         />
       ) : (
         <div className="h-10 w-10 animate-spin rounded-full border-2 border-black/20 border-t-black/60" />
@@ -348,7 +349,8 @@ function ImmediateRedirect({ url, slug, meta }: { url: string; slug: string; met
     // Mantém a splash (logo da campanha) visível por um instante antes de
     // sair da página — sem isso o navegador troca de página antes do primeiro
     // paint e o visitante só vê tela branca / "sem conexão".
-    const hold = meta.loading_image_url ? 1100 : 250;
+    // Sem espera artificial: só o tempo mínimo para o primeiro paint.
+    const hold = 50;
     const inApp = isMetaInAppBrowser();
     const go = setTimeout(() => {
       if (inApp) {
@@ -366,7 +368,7 @@ function ImmediateRedirect({ url, slug, meta }: { url: string; slug: string; met
       clearTimeout(go);
       clearTimeout(t);
     };
-  }, [url, slug, meta.loading_image_url]);
+  }, [url, slug]);
   return <LoadingSplash meta={meta} />;
 }
 
