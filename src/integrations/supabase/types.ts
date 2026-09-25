@@ -5797,6 +5797,7 @@ export type Database = {
           uniques: number
         }[]
       }
+      ci_folder_workspace: { Args: { _name: string }; Returns: string }
       ci_path_is_public: { Args: { _path: string }; Returns: boolean }
       cron_headers: { Args: { _src?: string }; Returns: Json }
       get_my_context: { Args: never; Returns: Json }
