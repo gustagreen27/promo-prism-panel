@@ -16,7 +16,9 @@ import {
 } from "@/components/ui/dialog";
 import {
   adminListWorkspacesWithBalance, adminSetCustomPrice, adminSetCustomMinimumMessages, adminAdjustWallet, adminListAllTransactions,
+  adminListPendingDeposits, adminMarkDepositPaid, adminRejectDeposit,
 } from "@/lib/billing.functions";
+import { depositCode } from "@/lib/pix-brcode";
 import { ErrorCard } from "@/components/admin/query-state";
 
 export const Route = createFileRoute("/_authenticated/admin/financeiro")({
@@ -43,6 +45,25 @@ function Page() {
   const setMinMsg = useServerFn(adminSetCustomMinimumMessages);
   const adjust = useServerFn(adminAdjustWallet);
   const qc = useQueryClient();
+  const listPend = useServerFn(adminListPendingDeposits);
+  const approveFn = useServerFn(adminMarkDepositPaid);
+  const rejectFn = useServerFn(adminRejectDeposit);
+  const pendQuery = useQuery({ queryKey: ["admin-pending-deposits"], queryFn: () => listPend() });
+  const refreshDeps = () => {
+    qc.invalidateQueries({ queryKey: ["admin-pending-deposits"] });
+    qc.invalidateQueries({ queryKey: ["admin-ws-balance"] });
+    qc.invalidateQueries({ queryKey: ["admin-all-tx"] });
+  };
+  const approve = useMutation({
+    mutationFn: (id: string) => approveFn({ data: { deposit_id: id } }),
+    onSuccess: (r: any) => { toast.success(r?.already ? "Este depósito já tinha sido aprovado" : "Saldo liberado"); refreshDeps(); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro"),
+  });
+  const reject = useMutation({
+    mutationFn: (id: string) => rejectFn({ data: { deposit_id: id } }),
+    onSuccess: () => { toast.success("Depósito recusado"); refreshDeps(); },
+    onError: (e: any) => toast.error(e?.message ?? "Erro"),
+  });
 
   const wsQuery = useQuery({ queryKey: ["admin-ws-balance"], queryFn: () => listWs() });
   const txQuery = useQuery({
@@ -97,6 +118,34 @@ function Page() {
   return (
     <>
       <PageHeader tabs={FINANCEIRO_TABS} title="Financeiro" description="Saldos, preços personalizados, ajustes e histórico de todos os workspaces." />
+
+      <Card className="mb-6">
+        <CardHeader><CardTitle>Depósitos Pix aguardando conferência</CardTitle></CardHeader>
+        <CardContent>
+          {(pendQuery.data ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum depósito aguardando.</p>
+          ) : (
+            <div className="divide-y">
+              {(pendQuery.data as any[]).map((d) => (
+                <div key={d.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                  <div className="min-w-0 text-sm">
+                    <div className="font-medium">{d.workspaces?.name ?? "—"} · {(d.amount_cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</div>
+                    <div className="text-xs text-muted-foreground font-mono">
+                      {(d.workspaces?.slug ?? d.workspace_id.slice(0, 8))} / {depositCode(d.id)} · {new Date(d.created_at).toLocaleString("pt-BR")}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" disabled={reject.isPending || approve.isPending}
+                      onClick={() => { if (confirm("Recusar este depósito?")) reject.mutate(d.id); }}>Recusar</Button>
+                    <Button size="sm" disabled={approve.isPending || reject.isPending}
+                      onClick={() => { if (confirm("Confirmar que o Pix foi recebido e liberar o saldo?")) approve.mutate(d.id); }}>Aprovar</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="mb-6">
         <CardHeader><CardTitle>Workspaces</CardTitle></CardHeader>
