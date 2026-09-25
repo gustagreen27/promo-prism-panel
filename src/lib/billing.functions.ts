@@ -144,25 +144,23 @@ export const createDepositCheckout = createServerFn({ method: 'POST' })
     }
 
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
-    const { createCob, txidFor, BridgeNotConfigured } = await import('@/lib/inter-pix.server')
+    const { buildPixBrCode, depositCode } = await import('@/lib/pix-brcode')
 
-    // Evita acumular cobranças abertas: no máximo 3 pendentes por workspace.
+    // Evita acumular pedidos abertos: no máximo 5 pendentes por workspace.
     const { count } = await supabaseAdmin
       .from('deposits')
       .select('id', { count: 'exact', head: true })
       .eq('workspace_id', data.workspace_id)
       .eq('status', 'pending')
-      .eq('provider', 'inter')
-    if ((count ?? 0) >= 3) throw new Error('Você já tem 3 Pix aguardando pagamento. Pague ou aguarde expirarem.')
+    if ((count ?? 0) >= 5) throw new Error('Você já tem 5 depósitos aguardando conferência. Envie os comprovantes ou fale com o suporte.')
 
-    const EXP = 3600
     const { data: deposit, error } = await supabaseAdmin
       .from('deposits')
       .insert({
         workspace_id: data.workspace_id,
         amount_cents: data.amount_cents,
         status: 'pending',
-        provider: 'inter',
+        provider: 'manual',
         payment_method: 'pix',
         created_by: userId,
       })
@@ -170,51 +168,15 @@ export const createDepositCheckout = createServerFn({ method: 'POST' })
       .single()
     if (error) throw error
 
-    try {
-      const cob = await createCob(deposit.id, data.amount_cents, EXP)
-      if (!cob.pixCopiaECola) throw new Error('Inter não retornou o código Pix')
-      const expiresAt = new Date(Date.now() + EXP * 1000).toISOString()
-      const { data: saved, error: upErr } = await supabaseAdmin
-        .from('deposits')
-        .update({
-          pix_txid: txidFor(deposit.id),
-          pix_copia_cola: cob.pixCopiaECola,
-          pix_expires_at: expiresAt,
-          provider_status: cob.status,
-        })
-        .eq('id', deposit.id)
-        .select()
-        .single()
-      if (upErr) throw upErr
-      await supabaseAdmin.rpc('inter_pix_poll_start')
-      return { deposit: saved }
-    } catch (e) {
-      await supabaseAdmin
-        .from('deposits')
-        .update({ status: 'failed', error_message: String((e as Error).message).slice(0, 200) })
-        .eq('id', deposit.id)
-      if (e instanceof BridgeNotConfigured) throw new Error('O pagamento por Pix ainda está sendo configurado. Tente mais tarde.')
-      throw new Error('Não foi possível gerar o Pix agora. Tente novamente em instantes.')
-    }
-  })
-
-// Verificação sob demanda (tela aberta / botão "Já paguei"). Limitada a 1 consulta a cada 10 s por Pix.
-export const checkMyDeposit = createServerFn({ method: 'POST' })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: { deposit_id: string }) => z.object({ deposit_id: z.string().uuid() }).parse(d))
-  .handler(async ({ data, context }) => {
-    const { supabase, userId } = context as any
-    const { data: dep } = await supabase.from('deposits').select('*').eq('id', data.deposit_id).maybeSingle()
-    if (!dep) throw new Error('Depósito não encontrado')
-    await assertMember(supabase, userId, dep.workspace_id)
-    if (dep.status !== 'pending' || dep.provider !== 'inter') return { status: dep.status }
-    if (dep.last_checked_at && Date.now() - new Date(dep.last_checked_at).getTime() < 10_000) {
-      return { status: dep.status }
-    }
-    const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
-    const { checkDeposit } = await import('@/lib/inter-pix.server')
-    const r = await checkDeposit(supabaseAdmin, dep)
-    return { status: r === 'credited' || r === 'already_paid' ? 'paid' : r === 'error' ? 'pending' : r }
+    const code = depositCode(deposit.id)
+    const { data: saved, error: upErr } = await supabaseAdmin
+      .from('deposits')
+      .update({ pix_copia_cola: buildPixBrCode(data.amount_cents, code) })
+      .eq('id', deposit.id)
+      .select()
+      .single()
+    if (upErr) throw upErr
+    return { deposit: saved }
   })
 
 // ---------- Admin ----------
@@ -373,6 +335,25 @@ export const adminListAllTransactions = createServerFn({ method: 'POST' })
     return rows ?? []
   })
 
+export const adminListPendingDeposits = createServerFn({ method: 'GET' })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context as any
+    await assertStaff(supabase, userId)
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
+    const { data: rows, error } = await supabaseAdmin
+      .from('deposits')
+      .select('id, workspace_id, amount_cents, status, created_at, provider, workspaces(name, slug)')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(100)
+    if (error) throw error
+    return rows ?? []
+  })
+
+// Aprovação manual: trava o depósito (pending → paid) numa única atualização
+// condicional; só quem conseguir a trava credita. Índice único por depósito em
+// wallet_transactions impede crédito duplicado mesmo em corrida.
 export const adminMarkDepositPaid = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { deposit_id: string }) =>
@@ -381,23 +362,46 @@ export const adminMarkDepositPaid = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any
     await assertStaff(supabase, userId)
-    const { data: deposit } = await supabase.from('deposits').select('*').eq('id', data.deposit_id).maybeSingle()
-    if (!deposit) throw new Error('Depósito não encontrado')
-    if (deposit.status === 'paid') return { ok: true, already: true }
-    const { error: creditErr } = await supabase.rpc('wallet_credit', {
-      _ws: deposit.workspace_id,
-      _amount_cents: deposit.amount_cents,
-      _type: 'deposit',
-      _description: `Depósito ${deposit.id.slice(0, 8)} confirmado`,
-      _campaign_id: null,
-      _deposit_id: deposit.id,
-      _created_by: userId,
-    })
-    if (creditErr) throw creditErr
-    const { error } = await supabase
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
+    const { data: claimed, error: claimErr } = await supabaseAdmin
       .from('deposits')
       .update({ status: 'paid', paid_at: new Date().toISOString() })
       .eq('id', data.deposit_id)
+      .eq('status', 'pending')
+      .select()
+      .maybeSingle()
+    if (claimErr) throw claimErr
+    if (!claimed) return { ok: true, already: true }
+    const { error: creditErr } = await supabaseAdmin.rpc('wallet_credit', {
+      _ws: claimed.workspace_id,
+      _amount_cents: claimed.amount_cents,
+      _type: 'deposit',
+      _description: `Depósito Pix ${claimed.id.slice(0, 8)} aprovado`,
+      _campaign_id: null as any,
+      _deposit_id: claimed.id,
+      _created_by: userId,
+    })
+    if (creditErr) {
+      await supabaseAdmin.from('deposits').update({ status: 'pending', paid_at: null }).eq('id', claimed.id)
+      throw new Error('Não foi possível creditar o saldo. Tente novamente.')
+    }
+    return { ok: true }
+  })
+
+export const adminRejectDeposit = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { deposit_id: string }) =>
+    z.object({ deposit_id: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any
+    await assertStaff(supabase, userId)
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
+    const { error } = await supabaseAdmin
+      .from('deposits')
+      .update({ status: 'cancelled' })
+      .eq('id', data.deposit_id)
+      .eq('status', 'pending')
     if (error) throw error
     return { ok: true }
   })
