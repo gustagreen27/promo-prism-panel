@@ -351,6 +351,7 @@ function CampaignDialog(props: CampaignDialogProps) {
   const [loadingBg, setLoadingBg] = useState<string>(
     ((c as { loading_bg_color?: string | null } | undefined)?.loading_bg_color ?? "").toUpperCase(),
   );
+  const [logoPreview, setLogoPreview] = useState("");
   const bgValid = /^#[0-9A-Fa-f]{6}$/.test(loadingBg);
   const ogImageError = (() => {
     const v = ogImage.trim();
@@ -578,7 +579,7 @@ function CampaignDialog(props: CampaignDialogProps) {
                 <div className="space-y-3">
                   <div className="space-y-2">
                     <Label>Logo da campanha</Label>
-                    <ImageUpload value={loadingLogo} onChange={setLoadingLogo} folder="loading" shape="square" />
+                    <ImageUpload value={loadingLogo} onChange={(v) => { setLoadingLogo(v); setLogoPreview(""); }} onPreviewChange={setLogoPreview} folder="loading" shape="square" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="loadbg">Cor de fundo</Label>
@@ -614,7 +615,7 @@ function CampaignDialog(props: CampaignDialogProps) {
                     style={{ backgroundColor: bgValid ? loadingBg : DEFAULT_SPLASH_BG }}
                   >
                     {loadingLogo ? (
-                      <img src={loadingLogo} alt="" className="max-h-[40%] max-w-[60%] object-contain" />
+                      <img src={logoPreview || loadingLogo} alt="" className="max-h-[40%] max-w-[60%] object-contain" />
                     ) : (
                       <div className="h-8 w-8 animate-spin rounded-full border-2 border-foreground/20 border-t-foreground/60" />
                     )}

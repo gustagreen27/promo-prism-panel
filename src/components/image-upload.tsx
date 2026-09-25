@@ -16,6 +16,8 @@ type Props = {
   maxMb?: number;
   /** Shape of the preview thumb */
   shape?: "square" | "rect";
+  /** Recebe a URL exibível (local antes de salvar). */
+  onPreviewChange?: (src: string) => void;
 };
 
 function proxyUrl(path: string) {
@@ -31,6 +33,7 @@ export function ImageUpload({
   accept = "image/png,image/jpeg,image/webp,image/gif,image/svg+xml,image/x-icon",
   maxMb = 4,
   shape = "rect",
+  onPreviewChange,
 }: Props) {
   const [uploading, setUploading] = useState(false);
   // Prévia local: o arquivo só fica público depois que a campanha é salva.
@@ -52,7 +55,9 @@ export function ImageUpload({
         .upload(key, file, { contentType: file.type, upsert: false });
       if (error) throw error;
       const url = proxyUrl(key);
-      setLocal({ url, blob: URL.createObjectURL(file) });
+      const blob = URL.createObjectURL(file);
+      setLocal({ url, blob });
+      onPreviewChange?.(blob);
       onChange(url);
       toast.success("Imagem enviada");
     } catch (e: any) {
