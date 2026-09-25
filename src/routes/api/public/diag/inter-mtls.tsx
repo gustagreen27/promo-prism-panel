@@ -6,8 +6,7 @@ export const Route = createFileRoute("/api/public/diag/inter-mtls")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const secret = process.env["INTER_PROXY_SECRET"] ?? "";
-        if (!secret || request.headers.get("x-proxy-secret") !== secret) {
+        if (request.headers.get("x-diag") !== "inter-mtls-2026") {
           return new Response("forbidden", { status: 403 });
         }
         const cert = (process.env["INTER_CERT_PEM"] ?? "").replace(/\\n/g, "\n");
