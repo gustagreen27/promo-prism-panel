@@ -636,7 +636,7 @@ async function handleEvent(db: Db, ev: any) {
     const consumed = await consumeReply(db, { connectionId: p.connection_id, phone: p.from, text: p.text ?? "", buttonId: p.button_id, buttonTitle: p.button_title, wamid: p.wamid });
     if (consumed) return;
     // 2) Gatilho "mensagem recebida".
-    for (const a of await activeAutomations(db, "trigger_message_received", { connectionId: p.connection_id })) {
+    for (const a of await activeAutomations(db, "message_received", { connectionId: p.connection_id })) {
       const cfg = await triggerConfig(db, a.published_version_id);
       if (cfg.keyword && !evalCompare(cfg.match === "equals" ? "equals" : cfg.match === "starts_with" ? "starts_with" : "contains", p.text, cfg.keyword)) continue;
       const { data: active } = await db.from("automation_runs").select("id").eq("automation_id", a.id).eq("contact_phone", normPhone(p.from)).in("status", ["pending", "running", "waiting"]).limit(1);
@@ -647,7 +647,7 @@ async function handleEvent(db: Db, ev: any) {
 }
 
 export async function processScheduled(db: Db) {
-  const { data: autos } = await db.from("automations").select("id, workspace_id, published_version_id").eq("status", "active").eq("trigger_type", "trigger_scheduled").is("schedule_fired_at", null);
+  const { data: autos } = await db.from("automations").select("id, workspace_id, published_version_id").eq("status", "active").eq("trigger_type", "scheduled").is("schedule_fired_at", null);
   for (const a of autos ?? []) {
     const cfg = await triggerConfig(db, a.published_version_id);
     if (!cfg.at || Date.parse(cfg.at) > Date.now()) continue;
@@ -664,7 +664,7 @@ export async function processScheduled(db: Db) {
 export async function onInboundMessage(db: Db, args: { workspaceId: string | null; connectionId: string | null; from: string; text: string; buttonId?: string | null; buttonTitle?: string | null; wamid: string | null }) {
   if (!args.wamid) return;
   const hasWait = await db.from("automation_waits").select("id", { count: "exact", head: true }).eq("status", "waiting").eq("contact_phone", normPhone(args.from));
-  const hasTrig = await db.from("automations").select("id", { count: "exact", head: true }).eq("status", "active").eq("trigger_type", "trigger_message_received");
+  const hasTrig = await db.from("automations").select("id", { count: "exact", head: true }).eq("status", "active").eq("trigger_type", "message_received");
   if (!hasWait.count && !hasTrig.count) return;
   const { data: ev, error } = await db.from("automation_events").insert({
     event_type: "message_received", dedup_key: `msg:${args.wamid}`, workspace_id: args.workspaceId,
