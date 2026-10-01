@@ -629,7 +629,7 @@ async function handleEvent(db: Db, ev: any): Promise<boolean> {
       }
       await startRun(db, { automationId: a.id, versionId: a.published_version_id, triggerType: ev.event_type, contactId: ct.id, triggerData: p, dedupKey: `${ev.dedup_key}:${a.id}` });
     }
-    return;
+    return false;
   }
   if (ev.event_type === "message_received") {
     // 1) Resposta para uma espera ativa consome a mensagem (não inicia novos fluxos).
