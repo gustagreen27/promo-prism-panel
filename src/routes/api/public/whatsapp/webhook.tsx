@@ -1033,6 +1033,25 @@ async function upsertConversationFromInbound(
   }
   await supabaseAdmin.from("wa_conversations").update(convPatch).eq("id", conversationId);
 
+  // Automações: respostas para esperas ativas e gatilho "mensagem recebida".
+  // Evento durável deduplicado pelo wamid; falhas ficam pendentes para o scheduler.
+  if (isNewest) {
+    try {
+      const { onInboundMessage } = await import("@/lib/automation-engine.server");
+      await onInboundMessage(supabaseAdmin, {
+        workspaceId,
+        connectionId,
+        from,
+        text: String(msgRow.interactive_button_title ?? msgRow.interactive_list_title ?? body ?? ""),
+        buttonId: msgRow.interactive_button_id ?? msgRow.interactive_list_id ?? null,
+        buttonTitle: msgRow.interactive_button_title ?? msgRow.interactive_list_title ?? null,
+        wamid,
+      });
+    } catch (e) {
+      console.error("automation inbound", e);
+    }
+  }
+
   // Fluxo de resposta automática: só dispara para a mensagem mais nova
   // (mensagens fora de ordem não devem re-executar automação).
   let campaignFlowSent = false;
