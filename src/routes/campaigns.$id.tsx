@@ -66,7 +66,7 @@ export const Route = createFileRoute("/campaigns/$id")({
       description="O link do relatório pode estar incorreto ou expirado."
     />
   ),
-  errorComponent: ({ error }) => (
+  errorComponent: ({ error }: { error: Error }) => (
     <div className="mx-auto flex min-h-screen max-w-md items-center justify-center p-6 text-center">
       <div>
         <h1 className="text-2xl font-semibold">Não foi possível carregar</h1>
