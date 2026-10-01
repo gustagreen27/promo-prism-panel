@@ -30,7 +30,8 @@ export const Route = createFileRoute("/_authenticated/admin/disparos/direct-send
 });
 
 function render(text: string, nome: string) {
-  return text.replace(/\{\{\s*nome\s*\}\}|\{\s*nome\s*\}/gi, nome || "cliente");
+  const v = (k: string) => new RegExp(`\\{\\{\\s*${k}\\s*\\}\\}|\\{\\s*${k}\\s*\\}|\\(\\s*${k}\\s*\\)|\\[\\s*${k}\\s*\\]`, "gi");
+  return text.replace(v("nome"), nome || "cliente").replace(v("telefone"), "5562999999999");
 }
 
 function Page() {

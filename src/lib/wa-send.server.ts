@@ -538,12 +538,12 @@ export async function sendDirectUtilityText(input: DirectUtilityInput): Promise<
   }
 }
 
-/** Renderiza {nome} / {{nome}} e {telefone} no texto do Direct Send. */
+/** Renderiza {nome}, {{nome}}, (nome), [nome] e o mesmo para telefone no texto do Direct Send. */
 export function renderDirectText(text: string, vars: { nome?: string | null; telefone?: string | null }) {
   const nome = (vars.nome ?? "").trim() || "cliente";
-  return text
-    .replace(/\{\{\s*nome\s*\}\}|\{\s*nome\s*\}/gi, nome)
-    .replace(/\{\{\s*telefone\s*\}\}|\{\s*telefone\s*\}/gi, vars.telefone ?? "");
+  const tel = (vars.telefone ?? "").trim();
+  const v = (k: string) => new RegExp(`\\{\\{\\s*${k}\\s*\\}\\}|\\{\\s*${k}\\s*\\}|\\(\\s*${k}\\s*\\)|\\[\\s*${k}\\s*\\]`, "gi");
+  return text.replace(v("nome"), nome).replace(v("telefone"), tel);
 }
 
 /**
