@@ -234,7 +234,8 @@ export const runAutomation = createServerFn({ method: "POST" })
     const eng = await import("@/lib/automation-engine.server");
     const r = await eng.startRun(db, {
       automationId: a.id, versionId, triggerType: data.mode === "live" ? "manual" : `test:${a.trigger_type ?? "manual"}`,
-      contactPhone: data.phone, simulate: data.mode === "simulate", isTest: data.mode !== "live", startedBy: context.userId,
+      contactPhone: data.phone, simulate: data.mode === "simulate",
+      message: data.mode === "simulate" && a.trigger_type === "campaign_reply" ? { text: data.simulatedReply ?? "", buttonId: data.simulatedButtonId ?? null } : null, isTest: data.mode !== "live", startedBy: context.userId,
       triggerData: data.mode === "simulate" ? { simulatedReply: data.simulatedReply ?? "", simulatedButtonId: data.simulatedButtonId ?? null } : {},
     });
     if (!r.runId) throw new Error(r.error ?? "Não foi possível iniciar");
