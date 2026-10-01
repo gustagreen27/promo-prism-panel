@@ -1039,6 +1039,7 @@ async function upsertConversationFromInbound(
     try {
       const { onInboundMessage } = await import("@/lib/automation-engine.server");
       await onInboundMessage(supabaseAdmin, {
+        campaignId,
         workspaceId,
         connectionId,
         from,

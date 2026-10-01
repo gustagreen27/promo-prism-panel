@@ -32,6 +32,7 @@ export const BLOCKS: BlockDef[] = [
   { type: "trigger_contact_created", category: "trigger", label: "Contato criado", description: "Quando um contato é cadastrado no cliente.", outputs: OUT, defaults: {} },
   { type: "trigger_message_received", category: "trigger", label: "Mensagem recebida", description: "Mensagem recebida no número WhatsApp da automação.", outputs: OUT, defaults: { keyword: "", match: "any" } },
   { type: "trigger_tag_added", category: "trigger", label: "Etiqueta adicionada", description: "Quando uma etiqueta é adicionada ao contato.", outputs: OUT, defaults: { tagId: "" } },
+  { type: "trigger_campaign_reply", category: "trigger", label: "Resposta a um disparo", description: "Lead respondeu (texto ou botão) a um Direct Send vinculado.", outputs: OUT, defaults: {} },
   { type: "trigger_webhook", category: "trigger", label: "Webhook externo", description: "Chamada autenticada de outro sistema.", outputs: OUT, defaults: {} },
   { type: "trigger_scheduled", category: "trigger", label: "Data e horário", description: "Executa uma vez para os contatos de uma lista.", outputs: OUT, defaults: { at: "", listId: "" } },
 
@@ -154,6 +155,7 @@ export function summarize(n: AutoNode, names?: { tags?: Record<string, string>; 
   const c = n.data?.config ?? {};
   const tag = (id: string) => names?.tags?.[id] ?? (id ? "etiqueta" : "—");
   switch (n.type) {
+    case "trigger_campaign_reply": return "Disparos vinculados a esta automação";
     case "trigger_message_received": return c.keyword ? `Contém "${c.keyword}"` : "Qualquer mensagem";
     case "trigger_tag_added": return tag(c.tagId);
     case "trigger_scheduled": return c.at ? `${new Date(c.at).toLocaleString("pt-BR")} · ${names?.lists?.[c.listId] ?? "lista"}` : "Sem data";
@@ -329,4 +331,28 @@ export function exampleGraph(): AutoGraph {
 
 export function emptyGraph(): AutoGraph {
   return { schema: 1, nodes: [], edges: [] };
+}
+
+/** Fluxo inicial de respostas para um Direct Send: uma ação por botão, demais respostas vão para atendimento. */
+export function replyFlowGraph(buttons: { id: string; title: string }[]): AutoGraph {
+  const nodes: AutoNode[] = [];
+  const edges: AutoEdge[] = [];
+  const mk = (id: string, type: string, x: number, y: number, config: Record<string, any> = {}, label?: string) =>
+    nodes.push({ id, type, position: { x, y }, data: { label, config: { ...BLOCK_MAP[type].defaults, ...config } } });
+  mk("trigger", "trigger_campaign_reply", 0, 0);
+  let prev = "trigger", prevHandle = "out";
+  buttons.forEach((b, i) => {
+    const y = 160 + i * 200;
+    const cid = `btn_${i + 1}`;
+    mk(cid, "cond_button", 0, y, { buttonId: b.id }, `Botão "${b.title || b.id}"`);
+    edges.push({ id: `e_${prev}_${cid}`, source: prev, target: cid, sourceHandle: prevHandle });
+    mk(`msg_${i + 1}`, "send_text", 300, y, { text: `Obrigado, {{contact.name}}! Recebemos sua resposta: ${b.title || b.id}.`, onMissing: "empty" }, `Resposta ao botão ${i + 1}`);
+    mk(`end_${i + 1}`, "end", 600, y);
+    edges.push({ id: `e_${cid}_t`, source: cid, target: `msg_${i + 1}`, sourceHandle: "true" });
+    edges.push({ id: `e_msg_${i + 1}`, source: `msg_${i + 1}`, target: `end_${i + 1}`, sourceHandle: "out" });
+    prev = cid; prevHandle = "false";
+  });
+  mk("handoff", "act_handoff", 0, 160 + buttons.length * 200, { note: "Lead respondeu ao disparo com texto livre" }, "Outra resposta → atendimento");
+  edges.push({ id: `e_${prev}_handoff`, source: prev, target: "handoff", sourceHandle: prevHandle });
+  return { schema: 1, nodes, edges };
 }

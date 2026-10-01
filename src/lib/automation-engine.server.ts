@@ -635,7 +635,25 @@ async function handleEvent(db: Db, ev: any) {
     // 1) Resposta para uma espera ativa consome a mensagem (não inicia novos fluxos).
     const consumed = await consumeReply(db, { connectionId: p.connection_id, phone: p.from, text: p.text ?? "", buttonId: p.button_id, buttonTitle: p.button_title, wamid: p.wamid });
     if (consumed) return;
-    // 2) Gatilho "mensagem recebida".
+    // 2) Resposta a um Direct Send vinculado a uma automação ("Resposta a um disparo").
+    //    Um fluxo por lead por disparo; respostas seguintes vão para a espera do fluxo (se houver).
+    if (p.campaign_id) {
+      const { data: camp } = await db.from("wa_campaigns").select("id, workspace_id, direct_config").eq("id", p.campaign_id).maybeSingle();
+      const autoId = (camp?.direct_config as any)?.automation_id;
+      if (autoId) {
+        const { data: a } = await db.from("automations").select("id, status, trigger_type, published_version_id, workspace_id").eq("id", autoId).maybeSingle();
+        if (a && a.status === "active" && a.trigger_type === "campaign_reply" && a.published_version_id && (!a.workspace_id || !camp.workspace_id || a.workspace_id === camp.workspace_id)) {
+          await startRun(db, {
+            automationId: a.id, versionId: a.published_version_id, triggerType: "campaign_reply", contactPhone: p.from,
+            triggerData: { campaign_id: p.campaign_id, text: p.text, button_id: p.button_id },
+            message: { text: p.text, buttonId: p.button_id, buttonTitle: p.button_title },
+            dedupKey: `camp:${a.id}:${p.campaign_id}:${normPhone(p.from)}`,
+          });
+          return;
+        }
+      }
+    }
+    // 3) Gatilho "mensagem recebida".
     for (const a of await activeAutomations(db, "message_received", { connectionId: p.connection_id })) {
       const cfg = await triggerConfig(db, a.published_version_id);
       if (cfg.keyword && !evalCompare(cfg.match === "equals" ? "equals" : cfg.match === "starts_with" ? "starts_with" : "contains", p.text, cfg.keyword)) continue;
@@ -661,14 +679,14 @@ export async function processScheduled(db: Db) {
 }
 
 /** Registra a mensagem recebida como evento durável e processa na hora. */
-export async function onInboundMessage(db: Db, args: { workspaceId: string | null; connectionId: string | null; from: string; text: string; buttonId?: string | null; buttonTitle?: string | null; wamid: string | null }) {
+export async function onInboundMessage(db: Db, args: { campaignId?: string | null; workspaceId: string | null; connectionId: string | null; from: string; text: string; buttonId?: string | null; buttonTitle?: string | null; wamid: string | null }) {
   if (!args.wamid) return;
   const hasWait = await db.from("automation_waits").select("id", { count: "exact", head: true }).eq("status", "waiting").eq("contact_phone", normPhone(args.from));
   const hasTrig = await db.from("automations").select("id", { count: "exact", head: true }).eq("status", "active").eq("trigger_type", "message_received");
-  if (!hasWait.count && !hasTrig.count) return;
+  if (!hasWait.count && !hasTrig.count && !args.campaignId) return;
   const { data: ev, error } = await db.from("automation_events").insert({
     event_type: "message_received", dedup_key: `msg:${args.wamid}`, workspace_id: args.workspaceId,
-    payload: { connection_id: args.connectionId, from: normPhone(args.from), text: args.text, button_id: args.buttonId ?? null, button_title: args.buttonTitle ?? null, wamid: args.wamid },
+    payload: { campaign_id: args.campaignId ?? null, connection_id: args.connectionId, from: normPhone(args.from), text: args.text, button_id: args.buttonId ?? null, button_title: args.buttonTitle ?? null, wamid: args.wamid },
   }).select("*").maybeSingle();
   if (error) return; // duplicado (23505) ou falha: o tick reprocessa pendentes
   try {
