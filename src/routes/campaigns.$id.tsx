@@ -1,4 +1,4 @@
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute, notFound, type ErrorComponentProps } from "@tanstack/react-router";
 import { NotFound as GhostNotFound } from "@/components/ui/ghost-404-page";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -66,7 +66,7 @@ export const Route = createFileRoute("/campaigns/$id")({
       description="O link do relatório pode estar incorreto ou expirado."
     />
   ),
-  errorComponent: ({ error }: { error: Error }) => (
+  errorComponent: ({ error }: ErrorComponentProps) => (
     <div className="mx-auto flex min-h-screen max-w-md items-center justify-center p-6 text-center">
       <div>
         <h1 className="text-2xl font-semibold">Não foi possível carregar</h1>
