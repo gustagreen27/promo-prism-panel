@@ -558,6 +558,16 @@ async function handleChange(supabaseAdmin: any, change: any, entryId: string | n
       .eq("meta_message_id", id)
       .maybeSingle();
 
+    // Automações: status real de entrega/leitura das mensagens enviadas pelos fluxos.
+    if (!rec && String(s?.biz_opaque_callback_data ?? "").startsWith("auto:")) {
+      try {
+        const { applyDeliveryStatus } = await import("@/lib/automation-engine.server");
+        await applyDeliveryStatus(supabaseAdmin, id, status, tsIso, s?.errors ?? null);
+      } catch (e) {
+        console.error("automation status", e);
+      }
+    }
+
     // Idempotência: se o timestamp do status já existe, é um evento
     // duplicado — pulamos a atualização mas seguimos com o log.
     const patch: Record<string, any> = {};
@@ -1023,10 +1033,32 @@ async function upsertConversationFromInbound(
   }
   await supabaseAdmin.from("wa_conversations").update(convPatch).eq("id", conversationId);
 
+  // Automações: respostas para esperas ativas e gatilho "mensagem recebida".
+  // Evento durável deduplicado pelo wamid; falhas ficam pendentes para o scheduler.
+  let automationHandled = false;
+  if (isNewest) {
+    try {
+      const { onInboundMessage } = await import("@/lib/automation-engine.server");
+      automationHandled = await onInboundMessage(supabaseAdmin, {
+        campaignId,
+        workspaceId,
+        connectionId,
+        from,
+        text: String(msgRow.interactive_button_title ?? msgRow.interactive_list_title ?? body ?? ""),
+        buttonId: msgRow.interactive_button_id ?? msgRow.interactive_list_id ?? null,
+        buttonTitle: msgRow.interactive_button_title ?? msgRow.interactive_list_title ?? null,
+        wamid,
+      });
+    } catch (e) {
+      console.error("automation inbound", e);
+    }
+  }
+
   // Fluxo de resposta automática: só dispara para a mensagem mais nova
   // (mensagens fora de ordem não devem re-executar automação).
-  let campaignFlowSent = false;
-  if (campaignId && isNewest) {
+  // Se uma automação assumiu a resposta, as respostas automáticas antigas não disparam (evita mensagem dupla).
+  let campaignFlowSent = automationHandled;
+  if (campaignId && isNewest && !automationHandled) {
     try {
       campaignFlowSent = await applyResponseFlow(supabaseAdmin, {
         workspaceId,

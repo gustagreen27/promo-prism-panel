@@ -86,6 +86,445 @@ export type Database = {
         }
         Relationships: []
       }
+      automation_events: {
+        Row: {
+          attempts: number
+          dedup_key: string
+          error: string | null
+          event_type: string
+          id: string
+          payload: Json
+          processed_at: string | null
+          received_at: string
+          status: string
+          workspace_id: string | null
+        }
+        Insert: {
+          attempts?: number
+          dedup_key: string
+          error?: string | null
+          event_type: string
+          id?: string
+          payload?: Json
+          processed_at?: string | null
+          received_at?: string
+          status?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          attempts?: number
+          dedup_key?: string
+          error?: string | null
+          event_type?: string
+          id?: string
+          payload?: Json
+          processed_at?: string | null
+          received_at?: string
+          status?: string
+          workspace_id?: string | null
+        }
+        Relationships: []
+      }
+      automation_jobs: {
+        Row: {
+          attempt: number
+          created_at: string
+          id: string
+          idempotency_key: string
+          kind: string
+          last_error: string | null
+          locked_at: string | null
+          locked_by: string | null
+          max_attempts: number
+          node_id: string
+          run_at: string
+          run_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempt?: number
+          created_at?: string
+          id?: string
+          idempotency_key: string
+          kind?: string
+          last_error?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          max_attempts?: number
+          node_id: string
+          run_at?: string
+          run_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempt?: number
+          created_at?: string
+          id?: string
+          idempotency_key?: string
+          kind?: string
+          last_error?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          max_attempts?: number
+          node_id?: string
+          run_at?: string
+          run_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_jobs_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "automation_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_run_steps: {
+        Row: {
+          attempt: number
+          delivery_status: string | null
+          delivery_updated_at: string | null
+          error: string | null
+          finished_at: string | null
+          id: string
+          input: Json | null
+          label: string | null
+          node_id: string
+          node_type: string
+          output: Json | null
+          output_handle: string | null
+          run_id: string
+          started_at: string
+          status: string
+          wamid: string | null
+        }
+        Insert: {
+          attempt?: number
+          delivery_status?: string | null
+          delivery_updated_at?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          input?: Json | null
+          label?: string | null
+          node_id: string
+          node_type: string
+          output?: Json | null
+          output_handle?: string | null
+          run_id: string
+          started_at?: string
+          status?: string
+          wamid?: string | null
+        }
+        Update: {
+          attempt?: number
+          delivery_status?: string | null
+          delivery_updated_at?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          input?: Json | null
+          label?: string | null
+          node_id?: string
+          node_type?: string
+          output?: Json | null
+          output_handle?: string | null
+          run_id?: string
+          started_at?: string
+          status?: string
+          wamid?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_run_steps_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "automation_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_runs: {
+        Row: {
+          automation_id: string
+          connection_id: string | null
+          contact_id: string | null
+          contact_phone: string | null
+          context: Json
+          current_node_id: string | null
+          dedup_key: string | null
+          error: string | null
+          finished_at: string | null
+          id: string
+          is_test: boolean
+          path: string[]
+          simulate: boolean
+          started_at: string
+          started_by: string | null
+          status: string
+          trigger_data: Json
+          trigger_type: string
+          updated_at: string
+          version_id: string
+          workspace_id: string | null
+        }
+        Insert: {
+          automation_id: string
+          connection_id?: string | null
+          contact_id?: string | null
+          contact_phone?: string | null
+          context?: Json
+          current_node_id?: string | null
+          dedup_key?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          is_test?: boolean
+          path?: string[]
+          simulate?: boolean
+          started_at?: string
+          started_by?: string | null
+          status?: string
+          trigger_data?: Json
+          trigger_type: string
+          updated_at?: string
+          version_id: string
+          workspace_id?: string | null
+        }
+        Update: {
+          automation_id?: string
+          connection_id?: string | null
+          contact_id?: string | null
+          contact_phone?: string | null
+          context?: Json
+          current_node_id?: string | null
+          dedup_key?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          is_test?: boolean
+          path?: string[]
+          simulate?: boolean
+          started_at?: string
+          started_by?: string | null
+          status?: string
+          trigger_data?: Json
+          trigger_type?: string
+          updated_at?: string
+          version_id?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_runs_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_runs_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_numbers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_runs_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_runs_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_runs_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "automation_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_versions: {
+        Row: {
+          automation_id: string
+          graph: Json
+          id: string
+          published_at: string
+          published_by: string | null
+          version: number
+        }
+        Insert: {
+          automation_id: string
+          graph: Json
+          id?: string
+          published_at?: string
+          published_by?: string | null
+          version: number
+        }
+        Update: {
+          automation_id?: string
+          graph?: Json
+          id?: string
+          published_at?: string
+          published_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_versions_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_waits: {
+        Row: {
+          connection_id: string | null
+          contact_phone: string
+          created_at: string
+          expires_at: string
+          id: string
+          node_id: string
+          reply: Json | null
+          resolved_at: string | null
+          run_id: string
+          status: string
+        }
+        Insert: {
+          connection_id?: string | null
+          contact_phone: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          node_id: string
+          reply?: Json | null
+          resolved_at?: string | null
+          run_id: string
+          status?: string
+        }
+        Update: {
+          connection_id?: string | null
+          contact_phone?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          node_id?: string
+          reply?: Json | null
+          resolved_at?: string | null
+          run_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_waits_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "automation_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automations: {
+        Row: {
+          connection_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          draft_graph: Json
+          draft_updated_at: string
+          id: string
+          name: string
+          published_version_id: string | null
+          runs_count: number
+          schedule_fired_at: string | null
+          status: string
+          trigger_type: string | null
+          updated_at: string
+          webhook_token: string
+          workspace_id: string | null
+        }
+        Insert: {
+          connection_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          draft_graph?: Json
+          draft_updated_at?: string
+          id?: string
+          name: string
+          published_version_id?: string | null
+          runs_count?: number
+          schedule_fired_at?: string | null
+          status?: string
+          trigger_type?: string | null
+          updated_at?: string
+          webhook_token?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          connection_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          draft_graph?: Json
+          draft_updated_at?: string
+          id?: string
+          name?: string
+          published_version_id?: string | null
+          runs_count?: number
+          schedule_fired_at?: string | null
+          status?: string
+          trigger_type?: string | null
+          updated_at?: string
+          webhook_token?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automations_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "v_client_numbers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automations_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automations_published_version_fk"
+            columns: ["published_version_id"]
+            isOneToOne: false
+            referencedRelation: "automation_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automations_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       billing_settings: {
         Row: {
           currency: string
@@ -5811,6 +6250,37 @@ export type Database = {
     }
     Functions: {
       admin_purge_workspace: { Args: { _ws: string }; Returns: Json }
+      automation_claim_jobs: {
+        Args: { _holder: string; _limit?: number }
+        Returns: {
+          attempt: number
+          created_at: string
+          id: string
+          idempotency_key: string
+          kind: string
+          last_error: string | null
+          locked_at: string | null
+          locked_by: string | null
+          max_attempts: number
+          node_id: string
+          run_at: string
+          run_id: string
+          status: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "automation_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      automation_resolve_wait: {
+        Args: { _outcome: string; _reply?: Json; _wait_id: string }
+        Returns: boolean
+      }
+      automation_tick_start: { Args: never; Returns: undefined }
+      automation_tick_stop_if_idle: { Args: never; Returns: boolean }
       backfill_contact_workspace_ids: { Args: never; Returns: Json }
       campaign_next_destination_cursor: {
         Args: { _campaign_id: string }

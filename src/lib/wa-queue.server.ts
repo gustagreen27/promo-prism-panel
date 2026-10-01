@@ -1253,7 +1253,7 @@ async function processCampaignTickInner(
       if (isDirect) {
         const directTo = r.phone.replace(/\D/g, "");
         const directText = renderDirectText(String((camp as any).direct_text ?? ""), {
-          nome: (r as any).contact_name ?? null,
+          nome: (r as any)._contact?.name ?? (r as any).variables?.nome ?? (r as any).variables?.name ?? null,
           telefone: directTo,
         });
         directMediaPromise ??= (async () => {
