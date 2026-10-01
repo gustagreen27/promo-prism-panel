@@ -71,6 +71,13 @@
       "when": 1790355648202,
       "tag": "0009_inter_pix_deposits",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790874780784,
+      "tag": "0010_automations_module",
+      "breakpoints": true
     }
   ]
 }
