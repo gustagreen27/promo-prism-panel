@@ -558,6 +558,16 @@ async function handleChange(supabaseAdmin: any, change: any, entryId: string | n
       .eq("meta_message_id", id)
       .maybeSingle();
 
+    // Automações: status real de entrega/leitura das mensagens enviadas pelos fluxos.
+    if (!rec && String(s?.biz_opaque_callback_data ?? "").startsWith("auto:")) {
+      try {
+        const { applyDeliveryStatus } = await import("@/lib/automation-engine.server");
+        await applyDeliveryStatus(supabaseAdmin, id, status, tsIso, s?.errors ?? null);
+      } catch (e) {
+        console.error("automation status", e);
+      }
+    }
+
     // Idempotência: se o timestamp do status já existe, é um evento
     // duplicado — pulamos a atualização mas seguimos com o log.
     const patch: Record<string, any> = {};
