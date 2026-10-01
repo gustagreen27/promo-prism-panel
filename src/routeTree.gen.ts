@@ -9,162 +9,117 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SiteRouteImport } from './routes/site'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as RecuperarSenhaRouteImport } from './routes/recuperar-senha'
-import { Route as Politica2026RouteImport } from './routes/politica2026'
-import { Route as PoliticaDePrivacidadeRouteImport } from './routes/politica-de-privacidade'
-import { Route as PainelRouteImport } from './routes/painel'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as ConformidadeRouteImport } from './routes/conformidade'
-import { Route as CadastroRouteImport } from './routes/cadastro'
-import { Route as AuthRouteImport } from './routes/auth'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as SlugRouteImport } from './routes/$slug'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as PainelIndexRouteImport } from './routes/painel.index'
-import { Route as RelatoriosSlugRouteImport } from './routes/relatorios.$slug'
-import { Route as PainelTemplatesRouteImport } from './routes/painel.templates'
-import { Route as PainelRelatoriosRouteImport } from './routes/painel.relatorios'
-import { Route as PainelNotificacoesRouteImport } from './routes/painel.notificacoes'
-import { Route as PainelFinanceiroRouteImport } from './routes/painel.financeiro'
-import { Route as PainelDemandasRouteImport } from './routes/painel.demandas'
-import { Route as PainelContatosRouteImport } from './routes/painel.contatos'
-import { Route as PainelConfiguracoesRouteImport } from './routes/painel.configuracoes'
-import { Route as PainelAtendimentoRouteImport } from './routes/painel.atendimento'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CadastroRouteImport } from './routes/cadastro'
+import { Route as ConformidadeRouteImport } from './routes/conformidade'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as PainelRouteImport } from './routes/painel'
+import { Route as PoliticaDePrivacidadeRouteImport } from './routes/politica-de-privacidade'
+import { Route as Politica2026RouteImport } from './routes/politica2026'
+import { Route as RecuperarSenhaRouteImport } from './routes/recuperar-senha'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as SiteRouteImport } from './routes/site'
 import { Route as CampaignsIdRouteImport } from './routes/campaigns.$id'
-import { Route as PainelCampanhasIndexRouteImport } from './routes/painel.campanhas.index'
+import { Route as PainelIndexRouteImport } from './routes/painel.index'
+import { Route as PainelAtendimentoRouteImport } from './routes/painel.atendimento'
+import { Route as PainelConfiguracoesRouteImport } from './routes/painel.configuracoes'
+import { Route as PainelContatosRouteImport } from './routes/painel.contatos'
+import { Route as PainelDemandasRouteImport } from './routes/painel.demandas'
+import { Route as PainelFinanceiroRouteImport } from './routes/painel.financeiro'
+import { Route as PainelNotificacoesRouteImport } from './routes/painel.notificacoes'
+import { Route as PainelRelatoriosRouteImport } from './routes/painel.relatorios'
+import { Route as PainelTemplatesRouteImport } from './routes/painel.templates'
+import { Route as RelatoriosSlugRouteImport } from './routes/relatorios.$slug'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
-import { Route as PainelRelatorioIdRouteImport } from './routes/painel.relatorio.$id'
-import { Route as PainelDemandaIdRouteImport } from './routes/painel.demanda.$id'
-import { Route as PainelCampanhasNovaRouteImport } from './routes/painel.campanhas.nova'
-import { Route as PainelCampanhasHistoricoRouteImport } from './routes/painel.campanhas.historico'
-import { Route as AuthenticatedAdminWhatsappRouteImport } from './routes/_authenticated/admin.whatsapp'
-import { Route as AuthenticatedAdminUpsellRouteImport } from './routes/_authenticated/admin.upsell'
-import { Route as AuthenticatedAdminTvRouteImport } from './routes/_authenticated/admin.tv'
-import { Route as AuthenticatedAdminSendingLatRouteImport } from './routes/_authenticated/admin.sending-lat'
-import { Route as AuthenticatedAdminProjetosRouteImport } from './routes/_authenticated/admin.projetos'
-import { Route as AuthenticatedAdminPrecificacaoRouteImport } from './routes/_authenticated/admin.precificacao'
-import { Route as AuthenticatedAdminMetaAtivosRouteImport } from './routes/_authenticated/admin.meta-ativos'
-import { Route as AuthenticatedAdminHistoricoRouteImport } from './routes/_authenticated/admin.historico'
-import { Route as AuthenticatedAdminFinanceiroRouteImport } from './routes/_authenticated/admin.financeiro'
-import { Route as AuthenticatedAdminFechamentoRouteImport } from './routes/_authenticated/admin.fechamento'
-import { Route as AuthenticatedAdminFaturamentoRouteImport } from './routes/_authenticated/admin.faturamento'
-import { Route as AuthenticatedAdminEstoqueRouteImport } from './routes/_authenticated/admin.estoque'
-import { Route as AuthenticatedAdminDisparosRouteImport } from './routes/_authenticated/admin.disparos'
-import { Route as AuthenticatedAdminDemandasRouteImport } from './routes/_authenticated/admin.demandas'
-import { Route as AuthenticatedAdminCustosRouteImport } from './routes/_authenticated/admin.custos'
-import { Route as AuthenticatedAdminContasRouteImport } from './routes/_authenticated/admin.contas'
-import { Route as AuthenticatedAdminConfiguracoesRouteImport } from './routes/_authenticated/admin.configuracoes'
-import { Route as AuthenticatedAdminConciliacaoRouteImport } from './routes/_authenticated/admin.conciliacao'
-import { Route as AuthenticatedAdminClientesRouteImport } from './routes/_authenticated/admin.clientes'
-import { Route as AuthenticatedAdminCampanhasAprovacaoRouteImport } from './routes/_authenticated/admin.campanhas-aprovacao'
-import { Route as AuthenticatedAdminCampanhasRouteImport } from './routes/_authenticated/admin.campanhas'
-import { Route as AuthenticatedAdminAutomacoesRouteImport } from './routes/_authenticated/admin.automacoes'
-import { Route as AuthenticatedAdminAtendimentoRouteImport } from './routes/_authenticated/admin.atendimento'
 import { Route as AuthenticatedAdminAgendaRouteImport } from './routes/_authenticated/admin.agenda'
-import { Route as AuthenticatedAdminRelatoriosIndexRouteImport } from './routes/_authenticated/admin.relatorios.index'
-import { Route as AuthenticatedAdminDisparosIndexRouteImport } from './routes/_authenticated/admin.disparos.index'
-import { Route as AuthenticatedAdminContatosIndexRouteImport } from './routes/_authenticated/admin.contatos.index'
+import { Route as AuthenticatedAdminAtendimentoRouteImport } from './routes/_authenticated/admin.atendimento'
+import { Route as AuthenticatedAdminAutomacoesRouteImport } from './routes/_authenticated/admin.automacoes'
+import { Route as AuthenticatedAdminCampanhasRouteImport } from './routes/_authenticated/admin.campanhas'
+import { Route as AuthenticatedAdminCampanhasAprovacaoRouteImport } from './routes/_authenticated/admin.campanhas-aprovacao'
+import { Route as AuthenticatedAdminClientesRouteImport } from './routes/_authenticated/admin.clientes'
+import { Route as AuthenticatedAdminConciliacaoRouteImport } from './routes/_authenticated/admin.conciliacao'
+import { Route as AuthenticatedAdminConfiguracoesRouteImport } from './routes/_authenticated/admin.configuracoes'
+import { Route as AuthenticatedAdminContasRouteImport } from './routes/_authenticated/admin.contas'
+import { Route as AuthenticatedAdminCustosRouteImport } from './routes/_authenticated/admin.custos'
+import { Route as AuthenticatedAdminDemandasRouteImport } from './routes/_authenticated/admin.demandas'
+import { Route as AuthenticatedAdminDisparosRouteImport } from './routes/_authenticated/admin.disparos'
+import { Route as AuthenticatedAdminEstoqueRouteImport } from './routes/_authenticated/admin.estoque'
+import { Route as AuthenticatedAdminFaturamentoRouteImport } from './routes/_authenticated/admin.faturamento'
+import { Route as AuthenticatedAdminFechamentoRouteImport } from './routes/_authenticated/admin.fechamento'
+import { Route as AuthenticatedAdminFinanceiroRouteImport } from './routes/_authenticated/admin.financeiro'
+import { Route as AuthenticatedAdminHistoricoRouteImport } from './routes/_authenticated/admin.historico'
+import { Route as AuthenticatedAdminMetaAtivosRouteImport } from './routes/_authenticated/admin.meta-ativos'
+import { Route as AuthenticatedAdminPrecificacaoRouteImport } from './routes/_authenticated/admin.precificacao'
+import { Route as AuthenticatedAdminProjetosRouteImport } from './routes/_authenticated/admin.projetos'
+import { Route as AuthenticatedAdminSendingLatRouteImport } from './routes/_authenticated/admin.sending-lat'
+import { Route as AuthenticatedAdminTvRouteImport } from './routes/_authenticated/admin.tv'
+import { Route as AuthenticatedAdminUpsellRouteImport } from './routes/_authenticated/admin.upsell'
+import { Route as AuthenticatedAdminWhatsappRouteImport } from './routes/_authenticated/admin.whatsapp'
+import { Route as PainelCampanhasIndexRouteImport } from './routes/painel.campanhas.index'
+import { Route as PainelCampanhasHistoricoRouteImport } from './routes/painel.campanhas.historico'
+import { Route as PainelCampanhasNovaRouteImport } from './routes/painel.campanhas.nova'
+import { Route as PainelDemandaIdRouteImport } from './routes/painel.demanda.$id'
+import { Route as PainelRelatorioIdRouteImport } from './routes/painel.relatorio.$id'
 import { Route as AuthenticatedAdminAutomacoesIndexRouteImport } from './routes/_authenticated/admin.automacoes.index'
-import { Route as ApiPublicWhatsappWebhookHealthRouteImport } from './routes/api/public/whatsapp/webhook-health'
-import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp/webhook'
-import { Route as ApiPublicWhatsappSyncNumbersRouteImport } from './routes/api/public/whatsapp/sync-numbers'
-import { Route as ApiPublicWhatsappServiceTickRouteImport } from './routes/api/public/whatsapp/service-tick'
-import { Route as ApiPublicWhatsappQueueTickRouteImport } from './routes/api/public/whatsapp/queue-tick'
-import { Route as ApiPublicWhatsappHealthRefreshRouteImport } from './routes/api/public/whatsapp/health-refresh'
-import { Route as ApiPublicWhatsappHarnessRouteImport } from './routes/api/public/whatsapp/harness'
-import { Route as ApiPublicHooksWaTemplatesSyncRouteImport } from './routes/api/public/hooks/wa-templates-sync'
-import { Route as ApiPublicHooksNotifyUpcomingCampaignsRouteImport } from './routes/api/public/hooks/notify-upcoming-campaigns'
-import { Route as ApiPublicHooksInterPixPollRouteImport } from './routes/api/public/hooks/inter-pix-poll'
-import { Route as ApiPublicHooksExternalProgressRouteImport } from './routes/api/public/hooks/external-progress'
-import { Route as ApiPublicHooksAutomationTickRouteImport } from './routes/api/public/hooks/automation-tick'
-import { Route as ApiPublicGoogleOauthCallbackRouteImport } from './routes/api/public/google/oauth-callback'
-import { Route as ApiPublicDiagEgressIpRouteImport } from './routes/api/public/diag/egress-ip'
-import { Route as ApiPublicCiSplatRouteImport } from './routes/api/public/ci.$'
-import { Route as AuthenticatedAdminWhatsappWebhooksRouteImport } from './routes/_authenticated/admin.whatsapp.webhooks'
-import { Route as AuthenticatedAdminWhatsappWabasRouteImport } from './routes/_authenticated/admin.whatsapp.wabas'
-import { Route as AuthenticatedAdminWhatsappUtilityRouteImport } from './routes/_authenticated/admin.whatsapp.utility'
-import { Route as AuthenticatedAdminWhatsappTemplatesRouteImport } from './routes/_authenticated/admin.whatsapp.templates'
-import { Route as AuthenticatedAdminWhatsappSupressaoRouteImport } from './routes/_authenticated/admin.whatsapp.supressao'
-import { Route as AuthenticatedAdminWhatsappSaudeRouteImport } from './routes/_authenticated/admin.whatsapp.saude'
-import { Route as AuthenticatedAdminWhatsappRelatoriosRouteImport } from './routes/_authenticated/admin.whatsapp.relatorios'
-import { Route as AuthenticatedAdminWhatsappQualidadeRouteImport } from './routes/_authenticated/admin.whatsapp.qualidade'
-import { Route as AuthenticatedAdminWhatsappLogsRouteImport } from './routes/_authenticated/admin.whatsapp.logs'
-import { Route as AuthenticatedAdminWhatsappLiberacoesRouteImport } from './routes/_authenticated/admin.whatsapp.liberacoes'
-import { Route as AuthenticatedAdminWhatsappInboxRouteImport } from './routes/_authenticated/admin.whatsapp.inbox'
-import { Route as AuthenticatedAdminWhatsappEmbeddedSignupRouteImport } from './routes/_authenticated/admin.whatsapp.embedded-signup'
-import { Route as AuthenticatedAdminWhatsappEmbeddedCallbackRouteImport } from './routes/_authenticated/admin.whatsapp.embedded-callback'
-import { Route as AuthenticatedAdminWhatsappDiagnosticoRouteImport } from './routes/_authenticated/admin.whatsapp.diagnostico'
-import { Route as AuthenticatedAdminWhatsappConversasRouteImport } from './routes/_authenticated/admin.whatsapp.conversas'
-import { Route as AuthenticatedAdminWhatsappConfiguracoesRouteImport } from './routes/_authenticated/admin.whatsapp.configuracoes'
-import { Route as AuthenticatedAdminWhatsappConexoesRouteImport } from './routes/_authenticated/admin.whatsapp.conexoes'
-import { Route as AuthenticatedAdminRelatoriosNewRouteImport } from './routes/_authenticated/admin.relatorios.new'
-import { Route as AuthenticatedAdminRelatoriosMagistrarRouteImport } from './routes/_authenticated/admin.relatorios.magistrar'
-import { Route as AuthenticatedAdminRelatoriosAnalyticsRouteImport } from './routes/_authenticated/admin.relatorios.analytics'
-import { Route as AuthenticatedAdminRelatoriosIdRouteImport } from './routes/_authenticated/admin.relatorios.$id'
-import { Route as AuthenticatedAdminDisparosMultiRouteImport } from './routes/_authenticated/admin.disparos.multi'
-import { Route as AuthenticatedAdminDisparosDirectSendRouteImport } from './routes/_authenticated/admin.disparos.direct-send'
-import { Route as AuthenticatedAdminDisparosApiExternaRouteImport } from './routes/_authenticated/admin.disparos.api-externa'
-import { Route as AuthenticatedAdminDisparosIdRouteImport } from './routes/_authenticated/admin.disparos.$id'
-import { Route as AuthenticatedAdminContatosListasRouteImport } from './routes/_authenticated/admin.contatos.listas'
-import { Route as AuthenticatedAdminContatosAuditoriaRouteImport } from './routes/_authenticated/admin.contatos.auditoria'
 import { Route as AuthenticatedAdminCampaignsIdRouteImport } from './routes/_authenticated/admin.campaigns.$id'
+import { Route as AuthenticatedAdminContatosIndexRouteImport } from './routes/_authenticated/admin.contatos.index'
+import { Route as AuthenticatedAdminContatosAuditoriaRouteImport } from './routes/_authenticated/admin.contatos.auditoria'
+import { Route as AuthenticatedAdminContatosListasRouteImport } from './routes/_authenticated/admin.contatos.listas'
+import { Route as AuthenticatedAdminDisparosIndexRouteImport } from './routes/_authenticated/admin.disparos.index'
+import { Route as AuthenticatedAdminDisparosIdRouteImport } from './routes/_authenticated/admin.disparos.$id'
+import { Route as AuthenticatedAdminDisparosApiExternaRouteImport } from './routes/_authenticated/admin.disparos.api-externa'
+import { Route as AuthenticatedAdminDisparosDirectSendRouteImport } from './routes/_authenticated/admin.disparos.direct-send'
+import { Route as AuthenticatedAdminDisparosMultiRouteImport } from './routes/_authenticated/admin.disparos.multi'
+import { Route as AuthenticatedAdminRelatoriosIndexRouteImport } from './routes/_authenticated/admin.relatorios.index'
+import { Route as AuthenticatedAdminRelatoriosIdRouteImport } from './routes/_authenticated/admin.relatorios.$id'
+import { Route as AuthenticatedAdminRelatoriosAnalyticsRouteImport } from './routes/_authenticated/admin.relatorios.analytics'
+import { Route as AuthenticatedAdminRelatoriosMagistrarRouteImport } from './routes/_authenticated/admin.relatorios.magistrar'
+import { Route as AuthenticatedAdminRelatoriosNewRouteImport } from './routes/_authenticated/admin.relatorios.new'
+import { Route as AuthenticatedAdminWhatsappConexoesRouteImport } from './routes/_authenticated/admin.whatsapp.conexoes'
+import { Route as AuthenticatedAdminWhatsappConfiguracoesRouteImport } from './routes/_authenticated/admin.whatsapp.configuracoes'
+import { Route as AuthenticatedAdminWhatsappConversasRouteImport } from './routes/_authenticated/admin.whatsapp.conversas'
+import { Route as AuthenticatedAdminWhatsappDiagnosticoRouteImport } from './routes/_authenticated/admin.whatsapp.diagnostico'
+import { Route as AuthenticatedAdminWhatsappEmbeddedCallbackRouteImport } from './routes/_authenticated/admin.whatsapp.embedded-callback'
+import { Route as AuthenticatedAdminWhatsappEmbeddedSignupRouteImport } from './routes/_authenticated/admin.whatsapp.embedded-signup'
+import { Route as AuthenticatedAdminWhatsappInboxRouteImport } from './routes/_authenticated/admin.whatsapp.inbox'
+import { Route as AuthenticatedAdminWhatsappLiberacoesRouteImport } from './routes/_authenticated/admin.whatsapp.liberacoes'
+import { Route as AuthenticatedAdminWhatsappLogsRouteImport } from './routes/_authenticated/admin.whatsapp.logs'
+import { Route as AuthenticatedAdminWhatsappQualidadeRouteImport } from './routes/_authenticated/admin.whatsapp.qualidade'
+import { Route as AuthenticatedAdminWhatsappRelatoriosRouteImport } from './routes/_authenticated/admin.whatsapp.relatorios'
+import { Route as AuthenticatedAdminWhatsappSaudeRouteImport } from './routes/_authenticated/admin.whatsapp.saude'
+import { Route as AuthenticatedAdminWhatsappSupressaoRouteImport } from './routes/_authenticated/admin.whatsapp.supressao'
+import { Route as AuthenticatedAdminWhatsappTemplatesRouteImport } from './routes/_authenticated/admin.whatsapp.templates'
+import { Route as AuthenticatedAdminWhatsappUtilityRouteImport } from './routes/_authenticated/admin.whatsapp.utility'
+import { Route as AuthenticatedAdminWhatsappWabasRouteImport } from './routes/_authenticated/admin.whatsapp.wabas'
+import { Route as AuthenticatedAdminWhatsappWebhooksRouteImport } from './routes/_authenticated/admin.whatsapp.webhooks'
+import { Route as ApiPublicCiSplatRouteImport } from './routes/api/public/ci.$'
+import { Route as ApiPublicDiagEgressIpRouteImport } from './routes/api/public/diag/egress-ip'
+import { Route as ApiPublicGoogleOauthCallbackRouteImport } from './routes/api/public/google/oauth-callback'
+import { Route as ApiPublicHooksAutomationTickRouteImport } from './routes/api/public/hooks/automation-tick'
+import { Route as ApiPublicHooksExternalProgressRouteImport } from './routes/api/public/hooks/external-progress'
+import { Route as ApiPublicHooksInterPixPollRouteImport } from './routes/api/public/hooks/inter-pix-poll'
+import { Route as ApiPublicHooksNotifyUpcomingCampaignsRouteImport } from './routes/api/public/hooks/notify-upcoming-campaigns'
+import { Route as ApiPublicHooksWaTemplatesSyncRouteImport } from './routes/api/public/hooks/wa-templates-sync'
+import { Route as ApiPublicWhatsappHarnessRouteImport } from './routes/api/public/whatsapp/harness'
+import { Route as ApiPublicWhatsappHealthRefreshRouteImport } from './routes/api/public/whatsapp/health-refresh'
+import { Route as ApiPublicWhatsappQueueTickRouteImport } from './routes/api/public/whatsapp/queue-tick'
+import { Route as ApiPublicWhatsappServiceTickRouteImport } from './routes/api/public/whatsapp/service-tick'
+import { Route as ApiPublicWhatsappSyncNumbersRouteImport } from './routes/api/public/whatsapp/sync-numbers'
+import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp/webhook'
+import { Route as ApiPublicWhatsappWebhookHealthRouteImport } from './routes/api/public/whatsapp/webhook-health'
+import { Route as AuthenticatedAdminCampaignsIdEditRouteImport } from './routes/_authenticated/admin.campaigns.$id.edit'
+import { Route as AuthenticatedAdminCampaignsIdPreviewRouteImport } from './routes/_authenticated/admin.campaigns.$id.preview'
+import { Route as AuthenticatedAdminRelatoriosImportadosIdRouteImport } from './routes/_authenticated/admin.relatorios.importados.$id'
 import { Route as AuthenticatedAdminWhatsappNumerosIndexRouteImport } from './routes/_authenticated/admin.whatsapp.numeros.index'
 import { Route as ApiPublicAutomationsIdWebhookRouteImport } from './routes/api/public/automations.$id.webhook'
-import { Route as AuthenticatedAdminRelatoriosImportadosIdRouteImport } from './routes/_authenticated/admin.relatorios.importados.$id'
-import { Route as AuthenticatedAdminCampaignsIdPreviewRouteImport } from './routes/_authenticated/admin.campaigns.$id.preview'
-import { Route as AuthenticatedAdminCampaignsIdEditRouteImport } from './routes/_authenticated/admin.campaigns.$id.edit'
 import { Route as AuthenticatedAdminWhatsappNumerosIdPerfilRouteImport } from './routes/_authenticated/admin.whatsapp.numeros.$id.perfil'
 
-const SiteRoute = SiteRouteImport.update({
-  id: '/site',
-  path: '/site',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RecuperarSenhaRoute = RecuperarSenhaRouteImport.update({
-  id: '/recuperar-senha',
-  path: '/recuperar-senha',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const Politica2026Route = Politica2026RouteImport.update({
-  id: '/politica2026',
-  path: '/politica2026',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PoliticaDePrivacidadeRoute = PoliticaDePrivacidadeRouteImport.update({
-  id: '/politica-de-privacidade',
-  path: '/politica-de-privacidade',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PainelRoute = PainelRouteImport.update({
-  id: '/painel',
-  path: '/painel',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ConformidadeRoute = ConformidadeRouteImport.update({
-  id: '/conformidade',
-  path: '/conformidade',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CadastroRoute = CadastroRouteImport.update({
-  id: '/cadastro',
-  path: '/cadastro',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SlugRoute = SlugRouteImport.update({
@@ -176,9 +131,59 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CadastroRoute = CadastroRouteImport.update({
+  id: '/cadastro',
+  path: '/cadastro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConformidadeRoute = ConformidadeRouteImport.update({
+  id: '/conformidade',
+  path: '/conformidade',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PainelRoute = PainelRouteImport.update({
+  id: '/painel',
+  path: '/painel',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PoliticaDePrivacidadeRoute = PoliticaDePrivacidadeRouteImport.update({
+  id: '/politica-de-privacidade',
+  path: '/politica-de-privacidade',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Politica2026Route = Politica2026RouteImport.update({
+  id: '/politica2026',
+  path: '/politica2026',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecuperarSenhaRoute = RecuperarSenhaRouteImport.update({
+  id: '/recuperar-senha',
+  path: '/recuperar-senha',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SiteRoute = SiteRouteImport.update({
+  id: '/site',
+  path: '/site',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CampaignsIdRoute = CampaignsIdRouteImport.update({
+  id: '/campaigns/$id',
+  path: '/campaigns/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PainelIndexRoute = PainelIndexRouteImport.update({
@@ -186,39 +191,9 @@ const PainelIndexRoute = PainelIndexRouteImport.update({
   path: '/',
   getParentRoute: () => PainelRoute,
 } as any)
-const RelatoriosSlugRoute = RelatoriosSlugRouteImport.update({
-  id: '/relatorios/$slug',
-  path: '/relatorios/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PainelTemplatesRoute = PainelTemplatesRouteImport.update({
-  id: '/templates',
-  path: '/templates',
-  getParentRoute: () => PainelRoute,
-} as any)
-const PainelRelatoriosRoute = PainelRelatoriosRouteImport.update({
-  id: '/relatorios',
-  path: '/relatorios',
-  getParentRoute: () => PainelRoute,
-} as any)
-const PainelNotificacoesRoute = PainelNotificacoesRouteImport.update({
-  id: '/notificacoes',
-  path: '/notificacoes',
-  getParentRoute: () => PainelRoute,
-} as any)
-const PainelFinanceiroRoute = PainelFinanceiroRouteImport.update({
-  id: '/financeiro',
-  path: '/financeiro',
-  getParentRoute: () => PainelRoute,
-} as any)
-const PainelDemandasRoute = PainelDemandasRouteImport.update({
-  id: '/demandas',
-  path: '/demandas',
-  getParentRoute: () => PainelRoute,
-} as any)
-const PainelContatosRoute = PainelContatosRouteImport.update({
-  id: '/contatos',
-  path: '/contatos',
+const PainelAtendimentoRoute = PainelAtendimentoRouteImport.update({
+  id: '/atendimento',
+  path: '/atendimento',
   getParentRoute: () => PainelRoute,
 } as any)
 const PainelConfiguracoesRoute = PainelConfiguracoesRouteImport.update({
@@ -226,176 +201,50 @@ const PainelConfiguracoesRoute = PainelConfiguracoesRouteImport.update({
   path: '/configuracoes',
   getParentRoute: () => PainelRoute,
 } as any)
-const PainelAtendimentoRoute = PainelAtendimentoRouteImport.update({
-  id: '/atendimento',
-  path: '/atendimento',
+const PainelContatosRoute = PainelContatosRouteImport.update({
+  id: '/contatos',
+  path: '/contatos',
   getParentRoute: () => PainelRoute,
 } as any)
-const CampaignsIdRoute = CampaignsIdRouteImport.update({
-  id: '/campaigns/$id',
-  path: '/campaigns/$id',
+const PainelDemandasRoute = PainelDemandasRouteImport.update({
+  id: '/demandas',
+  path: '/demandas',
+  getParentRoute: () => PainelRoute,
+} as any)
+const PainelFinanceiroRoute = PainelFinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
+  getParentRoute: () => PainelRoute,
+} as any)
+const PainelNotificacoesRoute = PainelNotificacoesRouteImport.update({
+  id: '/notificacoes',
+  path: '/notificacoes',
+  getParentRoute: () => PainelRoute,
+} as any)
+const PainelRelatoriosRoute = PainelRelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
+  getParentRoute: () => PainelRoute,
+} as any)
+const PainelTemplatesRoute = PainelTemplatesRouteImport.update({
+  id: '/templates',
+  path: '/templates',
+  getParentRoute: () => PainelRoute,
+} as any)
+const RelatoriosSlugRoute = RelatoriosSlugRouteImport.update({
+  id: '/relatorios/$slug',
+  path: '/relatorios/$slug',
   getParentRoute: () => rootRouteImport,
-} as any)
-const PainelCampanhasIndexRoute = PainelCampanhasIndexRouteImport.update({
-  id: '/campanhas/',
-  path: '/campanhas/',
-  getParentRoute: () => PainelRoute,
 } as any)
 const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const PainelRelatorioIdRoute = PainelRelatorioIdRouteImport.update({
-  id: '/relatorio/$id',
-  path: '/relatorio/$id',
-  getParentRoute: () => PainelRoute,
-} as any)
-const PainelDemandaIdRoute = PainelDemandaIdRouteImport.update({
-  id: '/demanda/$id',
-  path: '/demanda/$id',
-  getParentRoute: () => PainelRoute,
-} as any)
-const PainelCampanhasNovaRoute = PainelCampanhasNovaRouteImport.update({
-  id: '/campanhas/nova',
-  path: '/campanhas/nova',
-  getParentRoute: () => PainelRoute,
-} as any)
-const PainelCampanhasHistoricoRoute =
-  PainelCampanhasHistoricoRouteImport.update({
-    id: '/campanhas/historico',
-    path: '/campanhas/historico',
-    getParentRoute: () => PainelRoute,
-  } as any)
-const AuthenticatedAdminWhatsappRoute =
-  AuthenticatedAdminWhatsappRouteImport.update({
-    id: '/admin/whatsapp',
-    path: '/admin/whatsapp',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAdminUpsellRoute =
-  AuthenticatedAdminUpsellRouteImport.update({
-    id: '/admin/upsell',
-    path: '/admin/upsell',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAdminTvRoute = AuthenticatedAdminTvRouteImport.update({
-  id: '/admin/tv',
-  path: '/admin/tv',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedAdminSendingLatRoute =
-  AuthenticatedAdminSendingLatRouteImport.update({
-    id: '/admin/sending-lat',
-    path: '/admin/sending-lat',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAdminProjetosRoute =
-  AuthenticatedAdminProjetosRouteImport.update({
-    id: '/admin/projetos',
-    path: '/admin/projetos',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAdminPrecificacaoRoute =
-  AuthenticatedAdminPrecificacaoRouteImport.update({
-    id: '/admin/precificacao',
-    path: '/admin/precificacao',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAdminMetaAtivosRoute =
-  AuthenticatedAdminMetaAtivosRouteImport.update({
-    id: '/admin/meta-ativos',
-    path: '/admin/meta-ativos',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAdminHistoricoRoute =
-  AuthenticatedAdminHistoricoRouteImport.update({
-    id: '/admin/historico',
-    path: '/admin/historico',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAdminFinanceiroRoute =
-  AuthenticatedAdminFinanceiroRouteImport.update({
-    id: '/admin/financeiro',
-    path: '/admin/financeiro',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAdminFechamentoRoute =
-  AuthenticatedAdminFechamentoRouteImport.update({
-    id: '/admin/fechamento',
-    path: '/admin/fechamento',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAdminFaturamentoRoute =
-  AuthenticatedAdminFaturamentoRouteImport.update({
-    id: '/admin/faturamento',
-    path: '/admin/faturamento',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAdminEstoqueRoute =
-  AuthenticatedAdminEstoqueRouteImport.update({
-    id: '/admin/estoque',
-    path: '/admin/estoque',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAdminDisparosRoute =
-  AuthenticatedAdminDisparosRouteImport.update({
-    id: '/admin/disparos',
-    path: '/admin/disparos',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAdminDemandasRoute =
-  AuthenticatedAdminDemandasRouteImport.update({
-    id: '/admin/demandas',
-    path: '/admin/demandas',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAdminCustosRoute =
-  AuthenticatedAdminCustosRouteImport.update({
-    id: '/admin/custos',
-    path: '/admin/custos',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAdminContasRoute =
-  AuthenticatedAdminContasRouteImport.update({
-    id: '/admin/contas',
-    path: '/admin/contas',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAdminConfiguracoesRoute =
-  AuthenticatedAdminConfiguracoesRouteImport.update({
-    id: '/admin/configuracoes',
-    path: '/admin/configuracoes',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAdminConciliacaoRoute =
-  AuthenticatedAdminConciliacaoRouteImport.update({
-    id: '/admin/conciliacao',
-    path: '/admin/conciliacao',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAdminClientesRoute =
-  AuthenticatedAdminClientesRouteImport.update({
-    id: '/admin/clientes',
-    path: '/admin/clientes',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAdminCampanhasAprovacaoRoute =
-  AuthenticatedAdminCampanhasAprovacaoRouteImport.update({
-    id: '/admin/campanhas-aprovacao',
-    path: '/admin/campanhas-aprovacao',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAdminCampanhasRoute =
-  AuthenticatedAdminCampanhasRouteImport.update({
-    id: '/admin/campanhas',
-    path: '/admin/campanhas',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAdminAutomacoesRoute =
-  AuthenticatedAdminAutomacoesRouteImport.update({
-    id: '/admin/automacoes',
-    path: '/admin/automacoes',
+const AuthenticatedAdminAgendaRoute =
+  AuthenticatedAdminAgendaRouteImport.update({
+    id: '/admin/agenda',
+    path: '/admin/agenda',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAdminAtendimentoRoute =
@@ -404,278 +253,179 @@ const AuthenticatedAdminAtendimentoRoute =
     path: '/admin/atendimento',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedAdminAgendaRoute =
-  AuthenticatedAdminAgendaRouteImport.update({
-    id: '/admin/agenda',
-    path: '/admin/agenda',
+const AuthenticatedAdminAutomacoesRoute =
+  AuthenticatedAdminAutomacoesRouteImport.update({
+    id: '/admin/automacoes',
+    path: '/admin/automacoes',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedAdminRelatoriosIndexRoute =
-  AuthenticatedAdminRelatoriosIndexRouteImport.update({
-    id: '/admin/relatorios/',
-    path: '/admin/relatorios/',
+const AuthenticatedAdminCampanhasRoute =
+  AuthenticatedAdminCampanhasRouteImport.update({
+    id: '/admin/campanhas',
+    path: '/admin/campanhas',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedAdminDisparosIndexRoute =
-  AuthenticatedAdminDisparosIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => AuthenticatedAdminDisparosRoute,
-  } as any)
-const AuthenticatedAdminContatosIndexRoute =
-  AuthenticatedAdminContatosIndexRouteImport.update({
-    id: '/admin/contatos/',
-    path: '/admin/contatos/',
+const AuthenticatedAdminCampanhasAprovacaoRoute =
+  AuthenticatedAdminCampanhasAprovacaoRouteImport.update({
+    id: '/admin/campanhas-aprovacao',
+    path: '/admin/campanhas-aprovacao',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAdminClientesRoute =
+  AuthenticatedAdminClientesRouteImport.update({
+    id: '/admin/clientes',
+    path: '/admin/clientes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminConciliacaoRoute =
+  AuthenticatedAdminConciliacaoRouteImport.update({
+    id: '/admin/conciliacao',
+    path: '/admin/conciliacao',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminConfiguracoesRoute =
+  AuthenticatedAdminConfiguracoesRouteImport.update({
+    id: '/admin/configuracoes',
+    path: '/admin/configuracoes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminContasRoute =
+  AuthenticatedAdminContasRouteImport.update({
+    id: '/admin/contas',
+    path: '/admin/contas',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminCustosRoute =
+  AuthenticatedAdminCustosRouteImport.update({
+    id: '/admin/custos',
+    path: '/admin/custos',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminDemandasRoute =
+  AuthenticatedAdminDemandasRouteImport.update({
+    id: '/admin/demandas',
+    path: '/admin/demandas',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminDisparosRoute =
+  AuthenticatedAdminDisparosRouteImport.update({
+    id: '/admin/disparos',
+    path: '/admin/disparos',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminEstoqueRoute =
+  AuthenticatedAdminEstoqueRouteImport.update({
+    id: '/admin/estoque',
+    path: '/admin/estoque',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminFaturamentoRoute =
+  AuthenticatedAdminFaturamentoRouteImport.update({
+    id: '/admin/faturamento',
+    path: '/admin/faturamento',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminFechamentoRoute =
+  AuthenticatedAdminFechamentoRouteImport.update({
+    id: '/admin/fechamento',
+    path: '/admin/fechamento',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminFinanceiroRoute =
+  AuthenticatedAdminFinanceiroRouteImport.update({
+    id: '/admin/financeiro',
+    path: '/admin/financeiro',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminHistoricoRoute =
+  AuthenticatedAdminHistoricoRouteImport.update({
+    id: '/admin/historico',
+    path: '/admin/historico',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminMetaAtivosRoute =
+  AuthenticatedAdminMetaAtivosRouteImport.update({
+    id: '/admin/meta-ativos',
+    path: '/admin/meta-ativos',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminPrecificacaoRoute =
+  AuthenticatedAdminPrecificacaoRouteImport.update({
+    id: '/admin/precificacao',
+    path: '/admin/precificacao',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminProjetosRoute =
+  AuthenticatedAdminProjetosRouteImport.update({
+    id: '/admin/projetos',
+    path: '/admin/projetos',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminSendingLatRoute =
+  AuthenticatedAdminSendingLatRouteImport.update({
+    id: '/admin/sending-lat',
+    path: '/admin/sending-lat',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminTvRoute = AuthenticatedAdminTvRouteImport.update({
+  id: '/admin/tv',
+  path: '/admin/tv',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAdminUpsellRoute =
+  AuthenticatedAdminUpsellRouteImport.update({
+    id: '/admin/upsell',
+    path: '/admin/upsell',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminWhatsappRoute =
+  AuthenticatedAdminWhatsappRouteImport.update({
+    id: '/admin/whatsapp',
+    path: '/admin/whatsapp',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const PainelCampanhasIndexRoute = PainelCampanhasIndexRouteImport.update({
+  id: '/campanhas/',
+  path: '/campanhas/',
+  getParentRoute: () => PainelRoute,
+} as any)
+const PainelCampanhasHistoricoRoute =
+  PainelCampanhasHistoricoRouteImport.update({
+    id: '/campanhas/historico',
+    path: '/campanhas/historico',
+    getParentRoute: () => PainelRoute,
+  } as any)
+const PainelCampanhasNovaRoute = PainelCampanhasNovaRouteImport.update({
+  id: '/campanhas/nova',
+  path: '/campanhas/nova',
+  getParentRoute: () => PainelRoute,
+} as any)
+const PainelDemandaIdRoute = PainelDemandaIdRouteImport.update({
+  id: '/demanda/$id',
+  path: '/demanda/$id',
+  getParentRoute: () => PainelRoute,
+} as any)
+const PainelRelatorioIdRoute = PainelRelatorioIdRouteImport.update({
+  id: '/relatorio/$id',
+  path: '/relatorio/$id',
+  getParentRoute: () => PainelRoute,
+} as any)
 const AuthenticatedAdminAutomacoesIndexRoute =
   AuthenticatedAdminAutomacoesIndexRouteImport.update({
     id: '/',
     path: '/',
     getParentRoute: () => AuthenticatedAdminAutomacoesRoute,
   } as any)
-const ApiPublicWhatsappWebhookHealthRoute =
-  ApiPublicWhatsappWebhookHealthRouteImport.update({
-    id: '/api/public/whatsapp/webhook-health',
-    path: '/api/public/whatsapp/webhook-health',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicWhatsappWebhookRoute =
-  ApiPublicWhatsappWebhookRouteImport.update({
-    id: '/api/public/whatsapp/webhook',
-    path: '/api/public/whatsapp/webhook',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicWhatsappSyncNumbersRoute =
-  ApiPublicWhatsappSyncNumbersRouteImport.update({
-    id: '/api/public/whatsapp/sync-numbers',
-    path: '/api/public/whatsapp/sync-numbers',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicWhatsappServiceTickRoute =
-  ApiPublicWhatsappServiceTickRouteImport.update({
-    id: '/api/public/whatsapp/service-tick',
-    path: '/api/public/whatsapp/service-tick',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicWhatsappQueueTickRoute =
-  ApiPublicWhatsappQueueTickRouteImport.update({
-    id: '/api/public/whatsapp/queue-tick',
-    path: '/api/public/whatsapp/queue-tick',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicWhatsappHealthRefreshRoute =
-  ApiPublicWhatsappHealthRefreshRouteImport.update({
-    id: '/api/public/whatsapp/health-refresh',
-    path: '/api/public/whatsapp/health-refresh',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicWhatsappHarnessRoute =
-  ApiPublicWhatsappHarnessRouteImport.update({
-    id: '/api/public/whatsapp/harness',
-    path: '/api/public/whatsapp/harness',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksWaTemplatesSyncRoute =
-  ApiPublicHooksWaTemplatesSyncRouteImport.update({
-    id: '/api/public/hooks/wa-templates-sync',
-    path: '/api/public/hooks/wa-templates-sync',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksNotifyUpcomingCampaignsRoute =
-  ApiPublicHooksNotifyUpcomingCampaignsRouteImport.update({
-    id: '/api/public/hooks/notify-upcoming-campaigns',
-    path: '/api/public/hooks/notify-upcoming-campaigns',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksInterPixPollRoute =
-  ApiPublicHooksInterPixPollRouteImport.update({
-    id: '/api/public/hooks/inter-pix-poll',
-    path: '/api/public/hooks/inter-pix-poll',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksExternalProgressRoute =
-  ApiPublicHooksExternalProgressRouteImport.update({
-    id: '/api/public/hooks/external-progress',
-    path: '/api/public/hooks/external-progress',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksAutomationTickRoute =
-  ApiPublicHooksAutomationTickRouteImport.update({
-    id: '/api/public/hooks/automation-tick',
-    path: '/api/public/hooks/automation-tick',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicGoogleOauthCallbackRoute =
-  ApiPublicGoogleOauthCallbackRouteImport.update({
-    id: '/api/public/google/oauth-callback',
-    path: '/api/public/google/oauth-callback',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicDiagEgressIpRoute = ApiPublicDiagEgressIpRouteImport.update({
-  id: '/api/public/diag/egress-ip',
-  path: '/api/public/diag/egress-ip',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicCiSplatRoute = ApiPublicCiSplatRouteImport.update({
-  id: '/api/public/ci/$',
-  path: '/api/public/ci/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedAdminWhatsappWebhooksRoute =
-  AuthenticatedAdminWhatsappWebhooksRouteImport.update({
-    id: '/webhooks',
-    path: '/webhooks',
-    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
-  } as any)
-const AuthenticatedAdminWhatsappWabasRoute =
-  AuthenticatedAdminWhatsappWabasRouteImport.update({
-    id: '/wabas',
-    path: '/wabas',
-    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
-  } as any)
-const AuthenticatedAdminWhatsappUtilityRoute =
-  AuthenticatedAdminWhatsappUtilityRouteImport.update({
-    id: '/utility',
-    path: '/utility',
-    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
-  } as any)
-const AuthenticatedAdminWhatsappTemplatesRoute =
-  AuthenticatedAdminWhatsappTemplatesRouteImport.update({
-    id: '/templates',
-    path: '/templates',
-    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
-  } as any)
-const AuthenticatedAdminWhatsappSupressaoRoute =
-  AuthenticatedAdminWhatsappSupressaoRouteImport.update({
-    id: '/supressao',
-    path: '/supressao',
-    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
-  } as any)
-const AuthenticatedAdminWhatsappSaudeRoute =
-  AuthenticatedAdminWhatsappSaudeRouteImport.update({
-    id: '/saude',
-    path: '/saude',
-    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
-  } as any)
-const AuthenticatedAdminWhatsappRelatoriosRoute =
-  AuthenticatedAdminWhatsappRelatoriosRouteImport.update({
-    id: '/relatorios',
-    path: '/relatorios',
-    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
-  } as any)
-const AuthenticatedAdminWhatsappQualidadeRoute =
-  AuthenticatedAdminWhatsappQualidadeRouteImport.update({
-    id: '/qualidade',
-    path: '/qualidade',
-    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
-  } as any)
-const AuthenticatedAdminWhatsappLogsRoute =
-  AuthenticatedAdminWhatsappLogsRouteImport.update({
-    id: '/logs',
-    path: '/logs',
-    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
-  } as any)
-const AuthenticatedAdminWhatsappLiberacoesRoute =
-  AuthenticatedAdminWhatsappLiberacoesRouteImport.update({
-    id: '/liberacoes',
-    path: '/liberacoes',
-    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
-  } as any)
-const AuthenticatedAdminWhatsappInboxRoute =
-  AuthenticatedAdminWhatsappInboxRouteImport.update({
-    id: '/inbox',
-    path: '/inbox',
-    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
-  } as any)
-const AuthenticatedAdminWhatsappEmbeddedSignupRoute =
-  AuthenticatedAdminWhatsappEmbeddedSignupRouteImport.update({
-    id: '/embedded-signup',
-    path: '/embedded-signup',
-    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
-  } as any)
-const AuthenticatedAdminWhatsappEmbeddedCallbackRoute =
-  AuthenticatedAdminWhatsappEmbeddedCallbackRouteImport.update({
-    id: '/embedded-callback',
-    path: '/embedded-callback',
-    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
-  } as any)
-const AuthenticatedAdminWhatsappDiagnosticoRoute =
-  AuthenticatedAdminWhatsappDiagnosticoRouteImport.update({
-    id: '/diagnostico',
-    path: '/diagnostico',
-    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
-  } as any)
-const AuthenticatedAdminWhatsappConversasRoute =
-  AuthenticatedAdminWhatsappConversasRouteImport.update({
-    id: '/conversas',
-    path: '/conversas',
-    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
-  } as any)
-const AuthenticatedAdminWhatsappConfiguracoesRoute =
-  AuthenticatedAdminWhatsappConfiguracoesRouteImport.update({
-    id: '/configuracoes',
-    path: '/configuracoes',
-    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
-  } as any)
-const AuthenticatedAdminWhatsappConexoesRoute =
-  AuthenticatedAdminWhatsappConexoesRouteImport.update({
-    id: '/conexoes',
-    path: '/conexoes',
-    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
-  } as any)
-const AuthenticatedAdminRelatoriosNewRoute =
-  AuthenticatedAdminRelatoriosNewRouteImport.update({
-    id: '/admin/relatorios/new',
-    path: '/admin/relatorios/new',
+const AuthenticatedAdminCampaignsIdRoute =
+  AuthenticatedAdminCampaignsIdRouteImport.update({
+    id: '/admin/campaigns/$id',
+    path: '/admin/campaigns/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedAdminRelatoriosMagistrarRoute =
-  AuthenticatedAdminRelatoriosMagistrarRouteImport.update({
-    id: '/admin/relatorios/magistrar',
-    path: '/admin/relatorios/magistrar',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAdminRelatoriosAnalyticsRoute =
-  AuthenticatedAdminRelatoriosAnalyticsRouteImport.update({
-    id: '/admin/relatorios/analytics',
-    path: '/admin/relatorios/analytics',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAdminRelatoriosIdRoute =
-  AuthenticatedAdminRelatoriosIdRouteImport.update({
-    id: '/admin/relatorios/$id',
-    path: '/admin/relatorios/$id',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAdminDisparosMultiRoute =
-  AuthenticatedAdminDisparosMultiRouteImport.update({
-    id: '/multi',
-    path: '/multi',
-    getParentRoute: () => AuthenticatedAdminDisparosRoute,
-  } as any)
-const AuthenticatedAdminDisparosDirectSendRoute =
-  AuthenticatedAdminDisparosDirectSendRouteImport.update({
-    id: '/direct-send',
-    path: '/direct-send',
-    getParentRoute: () => AuthenticatedAdminDisparosRoute,
-  } as any)
-const AuthenticatedAdminDisparosApiExternaRoute =
-  AuthenticatedAdminDisparosApiExternaRouteImport.update({
-    id: '/api-externa',
-    path: '/api-externa',
-    getParentRoute: () => AuthenticatedAdminDisparosRoute,
-  } as any)
-const AuthenticatedAdminDisparosIdRoute =
-  AuthenticatedAdminDisparosIdRouteImport.update({
-    id: '/$id',
-    path: '/$id',
-    getParentRoute: () => AuthenticatedAdminDisparosRoute,
-  } as any)
-const AuthenticatedAdminContatosListasRoute =
-  AuthenticatedAdminContatosListasRouteImport.update({
-    id: '/admin/contatos/listas',
-    path: '/admin/contatos/listas',
+const AuthenticatedAdminContatosIndexRoute =
+  AuthenticatedAdminContatosIndexRouteImport.update({
+    id: '/admin/contatos/',
+    path: '/admin/contatos/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAdminContatosAuditoriaRoute =
@@ -684,10 +434,278 @@ const AuthenticatedAdminContatosAuditoriaRoute =
     path: '/admin/contatos/auditoria',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedAdminCampaignsIdRoute =
-  AuthenticatedAdminCampaignsIdRouteImport.update({
-    id: '/admin/campaigns/$id',
-    path: '/admin/campaigns/$id',
+const AuthenticatedAdminContatosListasRoute =
+  AuthenticatedAdminContatosListasRouteImport.update({
+    id: '/admin/contatos/listas',
+    path: '/admin/contatos/listas',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminDisparosIndexRoute =
+  AuthenticatedAdminDisparosIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAdminDisparosRoute,
+  } as any)
+const AuthenticatedAdminDisparosIdRoute =
+  AuthenticatedAdminDisparosIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedAdminDisparosRoute,
+  } as any)
+const AuthenticatedAdminDisparosApiExternaRoute =
+  AuthenticatedAdminDisparosApiExternaRouteImport.update({
+    id: '/api-externa',
+    path: '/api-externa',
+    getParentRoute: () => AuthenticatedAdminDisparosRoute,
+  } as any)
+const AuthenticatedAdminDisparosDirectSendRoute =
+  AuthenticatedAdminDisparosDirectSendRouteImport.update({
+    id: '/direct-send',
+    path: '/direct-send',
+    getParentRoute: () => AuthenticatedAdminDisparosRoute,
+  } as any)
+const AuthenticatedAdminDisparosMultiRoute =
+  AuthenticatedAdminDisparosMultiRouteImport.update({
+    id: '/multi',
+    path: '/multi',
+    getParentRoute: () => AuthenticatedAdminDisparosRoute,
+  } as any)
+const AuthenticatedAdminRelatoriosIndexRoute =
+  AuthenticatedAdminRelatoriosIndexRouteImport.update({
+    id: '/admin/relatorios/',
+    path: '/admin/relatorios/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminRelatoriosIdRoute =
+  AuthenticatedAdminRelatoriosIdRouteImport.update({
+    id: '/admin/relatorios/$id',
+    path: '/admin/relatorios/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminRelatoriosAnalyticsRoute =
+  AuthenticatedAdminRelatoriosAnalyticsRouteImport.update({
+    id: '/admin/relatorios/analytics',
+    path: '/admin/relatorios/analytics',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminRelatoriosMagistrarRoute =
+  AuthenticatedAdminRelatoriosMagistrarRouteImport.update({
+    id: '/admin/relatorios/magistrar',
+    path: '/admin/relatorios/magistrar',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminRelatoriosNewRoute =
+  AuthenticatedAdminRelatoriosNewRouteImport.update({
+    id: '/admin/relatorios/new',
+    path: '/admin/relatorios/new',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminWhatsappConexoesRoute =
+  AuthenticatedAdminWhatsappConexoesRouteImport.update({
+    id: '/conexoes',
+    path: '/conexoes',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
+const AuthenticatedAdminWhatsappConfiguracoesRoute =
+  AuthenticatedAdminWhatsappConfiguracoesRouteImport.update({
+    id: '/configuracoes',
+    path: '/configuracoes',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
+const AuthenticatedAdminWhatsappConversasRoute =
+  AuthenticatedAdminWhatsappConversasRouteImport.update({
+    id: '/conversas',
+    path: '/conversas',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
+const AuthenticatedAdminWhatsappDiagnosticoRoute =
+  AuthenticatedAdminWhatsappDiagnosticoRouteImport.update({
+    id: '/diagnostico',
+    path: '/diagnostico',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
+const AuthenticatedAdminWhatsappEmbeddedCallbackRoute =
+  AuthenticatedAdminWhatsappEmbeddedCallbackRouteImport.update({
+    id: '/embedded-callback',
+    path: '/embedded-callback',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
+const AuthenticatedAdminWhatsappEmbeddedSignupRoute =
+  AuthenticatedAdminWhatsappEmbeddedSignupRouteImport.update({
+    id: '/embedded-signup',
+    path: '/embedded-signup',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
+const AuthenticatedAdminWhatsappInboxRoute =
+  AuthenticatedAdminWhatsappInboxRouteImport.update({
+    id: '/inbox',
+    path: '/inbox',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
+const AuthenticatedAdminWhatsappLiberacoesRoute =
+  AuthenticatedAdminWhatsappLiberacoesRouteImport.update({
+    id: '/liberacoes',
+    path: '/liberacoes',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
+const AuthenticatedAdminWhatsappLogsRoute =
+  AuthenticatedAdminWhatsappLogsRouteImport.update({
+    id: '/logs',
+    path: '/logs',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
+const AuthenticatedAdminWhatsappQualidadeRoute =
+  AuthenticatedAdminWhatsappQualidadeRouteImport.update({
+    id: '/qualidade',
+    path: '/qualidade',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
+const AuthenticatedAdminWhatsappRelatoriosRoute =
+  AuthenticatedAdminWhatsappRelatoriosRouteImport.update({
+    id: '/relatorios',
+    path: '/relatorios',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
+const AuthenticatedAdminWhatsappSaudeRoute =
+  AuthenticatedAdminWhatsappSaudeRouteImport.update({
+    id: '/saude',
+    path: '/saude',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
+const AuthenticatedAdminWhatsappSupressaoRoute =
+  AuthenticatedAdminWhatsappSupressaoRouteImport.update({
+    id: '/supressao',
+    path: '/supressao',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
+const AuthenticatedAdminWhatsappTemplatesRoute =
+  AuthenticatedAdminWhatsappTemplatesRouteImport.update({
+    id: '/templates',
+    path: '/templates',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
+const AuthenticatedAdminWhatsappUtilityRoute =
+  AuthenticatedAdminWhatsappUtilityRouteImport.update({
+    id: '/utility',
+    path: '/utility',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
+const AuthenticatedAdminWhatsappWabasRoute =
+  AuthenticatedAdminWhatsappWabasRouteImport.update({
+    id: '/wabas',
+    path: '/wabas',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
+const AuthenticatedAdminWhatsappWebhooksRoute =
+  AuthenticatedAdminWhatsappWebhooksRouteImport.update({
+    id: '/webhooks',
+    path: '/webhooks',
+    getParentRoute: () => AuthenticatedAdminWhatsappRoute,
+  } as any)
+const ApiPublicCiSplatRoute = ApiPublicCiSplatRouteImport.update({
+  id: '/api/public/ci/$',
+  path: '/api/public/ci/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicDiagEgressIpRoute = ApiPublicDiagEgressIpRouteImport.update({
+  id: '/api/public/diag/egress-ip',
+  path: '/api/public/diag/egress-ip',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicGoogleOauthCallbackRoute =
+  ApiPublicGoogleOauthCallbackRouteImport.update({
+    id: '/api/public/google/oauth-callback',
+    path: '/api/public/google/oauth-callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksAutomationTickRoute =
+  ApiPublicHooksAutomationTickRouteImport.update({
+    id: '/api/public/hooks/automation-tick',
+    path: '/api/public/hooks/automation-tick',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksExternalProgressRoute =
+  ApiPublicHooksExternalProgressRouteImport.update({
+    id: '/api/public/hooks/external-progress',
+    path: '/api/public/hooks/external-progress',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksInterPixPollRoute =
+  ApiPublicHooksInterPixPollRouteImport.update({
+    id: '/api/public/hooks/inter-pix-poll',
+    path: '/api/public/hooks/inter-pix-poll',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksNotifyUpcomingCampaignsRoute =
+  ApiPublicHooksNotifyUpcomingCampaignsRouteImport.update({
+    id: '/api/public/hooks/notify-upcoming-campaigns',
+    path: '/api/public/hooks/notify-upcoming-campaigns',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksWaTemplatesSyncRoute =
+  ApiPublicHooksWaTemplatesSyncRouteImport.update({
+    id: '/api/public/hooks/wa-templates-sync',
+    path: '/api/public/hooks/wa-templates-sync',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicWhatsappHarnessRoute =
+  ApiPublicWhatsappHarnessRouteImport.update({
+    id: '/api/public/whatsapp/harness',
+    path: '/api/public/whatsapp/harness',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicWhatsappHealthRefreshRoute =
+  ApiPublicWhatsappHealthRefreshRouteImport.update({
+    id: '/api/public/whatsapp/health-refresh',
+    path: '/api/public/whatsapp/health-refresh',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicWhatsappQueueTickRoute =
+  ApiPublicWhatsappQueueTickRouteImport.update({
+    id: '/api/public/whatsapp/queue-tick',
+    path: '/api/public/whatsapp/queue-tick',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicWhatsappServiceTickRoute =
+  ApiPublicWhatsappServiceTickRouteImport.update({
+    id: '/api/public/whatsapp/service-tick',
+    path: '/api/public/whatsapp/service-tick',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicWhatsappSyncNumbersRoute =
+  ApiPublicWhatsappSyncNumbersRouteImport.update({
+    id: '/api/public/whatsapp/sync-numbers',
+    path: '/api/public/whatsapp/sync-numbers',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicWhatsappWebhookRoute =
+  ApiPublicWhatsappWebhookRouteImport.update({
+    id: '/api/public/whatsapp/webhook',
+    path: '/api/public/whatsapp/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicWhatsappWebhookHealthRoute =
+  ApiPublicWhatsappWebhookHealthRouteImport.update({
+    id: '/api/public/whatsapp/webhook-health',
+    path: '/api/public/whatsapp/webhook-health',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AuthenticatedAdminCampaignsIdEditRoute =
+  AuthenticatedAdminCampaignsIdEditRouteImport.update({
+    id: '/edit',
+    path: '/edit',
+    getParentRoute: () => AuthenticatedAdminCampaignsIdRoute,
+  } as any)
+const AuthenticatedAdminCampaignsIdPreviewRoute =
+  AuthenticatedAdminCampaignsIdPreviewRouteImport.update({
+    id: '/preview',
+    path: '/preview',
+    getParentRoute: () => AuthenticatedAdminCampaignsIdRoute,
+  } as any)
+const AuthenticatedAdminRelatoriosImportadosIdRoute =
+  AuthenticatedAdminRelatoriosImportadosIdRouteImport.update({
+    id: '/admin/relatorios/importados/$id',
+    path: '/admin/relatorios/importados/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAdminWhatsappNumerosIndexRoute =
@@ -701,24 +719,6 @@ const ApiPublicAutomationsIdWebhookRoute =
     id: '/api/public/automations/$id/webhook',
     path: '/api/public/automations/$id/webhook',
     getParentRoute: () => rootRouteImport,
-  } as any)
-const AuthenticatedAdminRelatoriosImportadosIdRoute =
-  AuthenticatedAdminRelatoriosImportadosIdRouteImport.update({
-    id: '/admin/relatorios/importados/$id',
-    path: '/admin/relatorios/importados/$id',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAdminCampaignsIdPreviewRoute =
-  AuthenticatedAdminCampaignsIdPreviewRouteImport.update({
-    id: '/preview',
-    path: '/preview',
-    getParentRoute: () => AuthenticatedAdminCampaignsIdRoute,
-  } as any)
-const AuthenticatedAdminCampaignsIdEditRoute =
-  AuthenticatedAdminCampaignsIdEditRouteImport.update({
-    id: '/edit',
-    path: '/edit',
-    getParentRoute: () => AuthenticatedAdminCampaignsIdRoute,
   } as any)
 const AuthenticatedAdminWhatsappNumerosIdPerfilRoute =
   AuthenticatedAdminWhatsappNumerosIdPerfilRouteImport.update({
@@ -1411,74 +1411,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/site': {
-      id: '/site'
-      path: '/site'
-      fullPath: '/site'
-      preLoaderRoute: typeof SiteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/recuperar-senha': {
-      id: '/recuperar-senha'
-      path: '/recuperar-senha'
-      fullPath: '/recuperar-senha'
-      preLoaderRoute: typeof RecuperarSenhaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/politica2026': {
-      id: '/politica2026'
-      path: '/politica2026'
-      fullPath: '/politica2026'
-      preLoaderRoute: typeof Politica2026RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/politica-de-privacidade': {
-      id: '/politica-de-privacidade'
-      path: '/politica-de-privacidade'
-      fullPath: '/politica-de-privacidade'
-      preLoaderRoute: typeof PoliticaDePrivacidadeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/painel': {
-      id: '/painel'
-      path: '/painel'
-      fullPath: '/painel'
-      preLoaderRoute: typeof PainelRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/conformidade': {
-      id: '/conformidade'
-      path: '/conformidade'
-      fullPath: '/conformidade'
-      preLoaderRoute: typeof ConformidadeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/cadastro': {
-      id: '/cadastro'
-      path: '/cadastro'
-      fullPath: '/cadastro'
-      preLoaderRoute: typeof CadastroRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$slug': {
@@ -1495,11 +1432,81 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cadastro': {
+      id: '/cadastro'
+      path: '/cadastro'
+      fullPath: '/cadastro'
+      preLoaderRoute: typeof CadastroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/conformidade': {
+      id: '/conformidade'
+      path: '/conformidade'
+      fullPath: '/conformidade'
+      preLoaderRoute: typeof ConformidadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/painel': {
+      id: '/painel'
+      path: '/painel'
+      fullPath: '/painel'
+      preLoaderRoute: typeof PainelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/politica-de-privacidade': {
+      id: '/politica-de-privacidade'
+      path: '/politica-de-privacidade'
+      fullPath: '/politica-de-privacidade'
+      preLoaderRoute: typeof PoliticaDePrivacidadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/politica2026': {
+      id: '/politica2026'
+      path: '/politica2026'
+      fullPath: '/politica2026'
+      preLoaderRoute: typeof Politica2026RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recuperar-senha': {
+      id: '/recuperar-senha'
+      path: '/recuperar-senha'
+      fullPath: '/recuperar-senha'
+      preLoaderRoute: typeof RecuperarSenhaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/site': {
+      id: '/site'
+      path: '/site'
+      fullPath: '/site'
+      preLoaderRoute: typeof SiteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/campaigns/$id': {
+      id: '/campaigns/$id'
+      path: '/campaigns/$id'
+      fullPath: '/campaigns/$id'
+      preLoaderRoute: typeof CampaignsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/painel/': {
@@ -1509,53 +1516,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PainelIndexRouteImport
       parentRoute: typeof PainelRoute
     }
-    '/relatorios/$slug': {
-      id: '/relatorios/$slug'
-      path: '/relatorios/$slug'
-      fullPath: '/relatorios/$slug'
-      preLoaderRoute: typeof RelatoriosSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/painel/templates': {
-      id: '/painel/templates'
-      path: '/templates'
-      fullPath: '/painel/templates'
-      preLoaderRoute: typeof PainelTemplatesRouteImport
-      parentRoute: typeof PainelRoute
-    }
-    '/painel/relatorios': {
-      id: '/painel/relatorios'
-      path: '/relatorios'
-      fullPath: '/painel/relatorios'
-      preLoaderRoute: typeof PainelRelatoriosRouteImport
-      parentRoute: typeof PainelRoute
-    }
-    '/painel/notificacoes': {
-      id: '/painel/notificacoes'
-      path: '/notificacoes'
-      fullPath: '/painel/notificacoes'
-      preLoaderRoute: typeof PainelNotificacoesRouteImport
-      parentRoute: typeof PainelRoute
-    }
-    '/painel/financeiro': {
-      id: '/painel/financeiro'
-      path: '/financeiro'
-      fullPath: '/painel/financeiro'
-      preLoaderRoute: typeof PainelFinanceiroRouteImport
-      parentRoute: typeof PainelRoute
-    }
-    '/painel/demandas': {
-      id: '/painel/demandas'
-      path: '/demandas'
-      fullPath: '/painel/demandas'
-      preLoaderRoute: typeof PainelDemandasRouteImport
-      parentRoute: typeof PainelRoute
-    }
-    '/painel/contatos': {
-      id: '/painel/contatos'
-      path: '/contatos'
-      fullPath: '/painel/contatos'
-      preLoaderRoute: typeof PainelContatosRouteImport
+    '/painel/atendimento': {
+      id: '/painel/atendimento'
+      path: '/atendimento'
+      fullPath: '/painel/atendimento'
+      preLoaderRoute: typeof PainelAtendimentoRouteImport
       parentRoute: typeof PainelRoute
     }
     '/painel/configuracoes': {
@@ -1565,221 +1530,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PainelConfiguracoesRouteImport
       parentRoute: typeof PainelRoute
     }
-    '/painel/atendimento': {
-      id: '/painel/atendimento'
-      path: '/atendimento'
-      fullPath: '/painel/atendimento'
-      preLoaderRoute: typeof PainelAtendimentoRouteImport
+    '/painel/contatos': {
+      id: '/painel/contatos'
+      path: '/contatos'
+      fullPath: '/painel/contatos'
+      preLoaderRoute: typeof PainelContatosRouteImport
       parentRoute: typeof PainelRoute
     }
-    '/campaigns/$id': {
-      id: '/campaigns/$id'
-      path: '/campaigns/$id'
-      fullPath: '/campaigns/$id'
-      preLoaderRoute: typeof CampaignsIdRouteImport
+    '/painel/demandas': {
+      id: '/painel/demandas'
+      path: '/demandas'
+      fullPath: '/painel/demandas'
+      preLoaderRoute: typeof PainelDemandasRouteImport
+      parentRoute: typeof PainelRoute
+    }
+    '/painel/financeiro': {
+      id: '/painel/financeiro'
+      path: '/financeiro'
+      fullPath: '/painel/financeiro'
+      preLoaderRoute: typeof PainelFinanceiroRouteImport
+      parentRoute: typeof PainelRoute
+    }
+    '/painel/notificacoes': {
+      id: '/painel/notificacoes'
+      path: '/notificacoes'
+      fullPath: '/painel/notificacoes'
+      preLoaderRoute: typeof PainelNotificacoesRouteImport
+      parentRoute: typeof PainelRoute
+    }
+    '/painel/relatorios': {
+      id: '/painel/relatorios'
+      path: '/relatorios'
+      fullPath: '/painel/relatorios'
+      preLoaderRoute: typeof PainelRelatoriosRouteImport
+      parentRoute: typeof PainelRoute
+    }
+    '/painel/templates': {
+      id: '/painel/templates'
+      path: '/templates'
+      fullPath: '/painel/templates'
+      preLoaderRoute: typeof PainelTemplatesRouteImport
+      parentRoute: typeof PainelRoute
+    }
+    '/relatorios/$slug': {
+      id: '/relatorios/$slug'
+      path: '/relatorios/$slug'
+      fullPath: '/relatorios/$slug'
+      preLoaderRoute: typeof RelatoriosSlugRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/painel/campanhas/': {
-      id: '/painel/campanhas/'
-      path: '/campanhas'
-      fullPath: '/painel/campanhas/'
-      preLoaderRoute: typeof PainelCampanhasIndexRouteImport
-      parentRoute: typeof PainelRoute
     }
     '/_authenticated/admin/': {
       id: '/_authenticated/admin/'
       path: '/admin'
       fullPath: '/admin/'
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/painel/relatorio/$id': {
-      id: '/painel/relatorio/$id'
-      path: '/relatorio/$id'
-      fullPath: '/painel/relatorio/$id'
-      preLoaderRoute: typeof PainelRelatorioIdRouteImport
-      parentRoute: typeof PainelRoute
-    }
-    '/painel/demanda/$id': {
-      id: '/painel/demanda/$id'
-      path: '/demanda/$id'
-      fullPath: '/painel/demanda/$id'
-      preLoaderRoute: typeof PainelDemandaIdRouteImport
-      parentRoute: typeof PainelRoute
-    }
-    '/painel/campanhas/nova': {
-      id: '/painel/campanhas/nova'
-      path: '/campanhas/nova'
-      fullPath: '/painel/campanhas/nova'
-      preLoaderRoute: typeof PainelCampanhasNovaRouteImport
-      parentRoute: typeof PainelRoute
-    }
-    '/painel/campanhas/historico': {
-      id: '/painel/campanhas/historico'
-      path: '/campanhas/historico'
-      fullPath: '/painel/campanhas/historico'
-      preLoaderRoute: typeof PainelCampanhasHistoricoRouteImport
-      parentRoute: typeof PainelRoute
-    }
-    '/_authenticated/admin/whatsapp': {
-      id: '/_authenticated/admin/whatsapp'
-      path: '/admin/whatsapp'
-      fullPath: '/admin/whatsapp'
-      preLoaderRoute: typeof AuthenticatedAdminWhatsappRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/upsell': {
-      id: '/_authenticated/admin/upsell'
-      path: '/admin/upsell'
-      fullPath: '/admin/upsell'
-      preLoaderRoute: typeof AuthenticatedAdminUpsellRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/tv': {
-      id: '/_authenticated/admin/tv'
-      path: '/admin/tv'
-      fullPath: '/admin/tv'
-      preLoaderRoute: typeof AuthenticatedAdminTvRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/sending-lat': {
-      id: '/_authenticated/admin/sending-lat'
-      path: '/admin/sending-lat'
-      fullPath: '/admin/sending-lat'
-      preLoaderRoute: typeof AuthenticatedAdminSendingLatRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/projetos': {
-      id: '/_authenticated/admin/projetos'
-      path: '/admin/projetos'
-      fullPath: '/admin/projetos'
-      preLoaderRoute: typeof AuthenticatedAdminProjetosRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/precificacao': {
-      id: '/_authenticated/admin/precificacao'
-      path: '/admin/precificacao'
-      fullPath: '/admin/precificacao'
-      preLoaderRoute: typeof AuthenticatedAdminPrecificacaoRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/meta-ativos': {
-      id: '/_authenticated/admin/meta-ativos'
-      path: '/admin/meta-ativos'
-      fullPath: '/admin/meta-ativos'
-      preLoaderRoute: typeof AuthenticatedAdminMetaAtivosRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/historico': {
-      id: '/_authenticated/admin/historico'
-      path: '/admin/historico'
-      fullPath: '/admin/historico'
-      preLoaderRoute: typeof AuthenticatedAdminHistoricoRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/financeiro': {
-      id: '/_authenticated/admin/financeiro'
-      path: '/admin/financeiro'
-      fullPath: '/admin/financeiro'
-      preLoaderRoute: typeof AuthenticatedAdminFinanceiroRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/fechamento': {
-      id: '/_authenticated/admin/fechamento'
-      path: '/admin/fechamento'
-      fullPath: '/admin/fechamento'
-      preLoaderRoute: typeof AuthenticatedAdminFechamentoRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/faturamento': {
-      id: '/_authenticated/admin/faturamento'
-      path: '/admin/faturamento'
-      fullPath: '/admin/faturamento'
-      preLoaderRoute: typeof AuthenticatedAdminFaturamentoRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/estoque': {
-      id: '/_authenticated/admin/estoque'
-      path: '/admin/estoque'
-      fullPath: '/admin/estoque'
-      preLoaderRoute: typeof AuthenticatedAdminEstoqueRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/disparos': {
-      id: '/_authenticated/admin/disparos'
-      path: '/admin/disparos'
-      fullPath: '/admin/disparos'
-      preLoaderRoute: typeof AuthenticatedAdminDisparosRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/demandas': {
-      id: '/_authenticated/admin/demandas'
-      path: '/admin/demandas'
-      fullPath: '/admin/demandas'
-      preLoaderRoute: typeof AuthenticatedAdminDemandasRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/custos': {
-      id: '/_authenticated/admin/custos'
-      path: '/admin/custos'
-      fullPath: '/admin/custos'
-      preLoaderRoute: typeof AuthenticatedAdminCustosRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/contas': {
-      id: '/_authenticated/admin/contas'
-      path: '/admin/contas'
-      fullPath: '/admin/contas'
-      preLoaderRoute: typeof AuthenticatedAdminContasRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/configuracoes': {
-      id: '/_authenticated/admin/configuracoes'
-      path: '/admin/configuracoes'
-      fullPath: '/admin/configuracoes'
-      preLoaderRoute: typeof AuthenticatedAdminConfiguracoesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/conciliacao': {
-      id: '/_authenticated/admin/conciliacao'
-      path: '/admin/conciliacao'
-      fullPath: '/admin/conciliacao'
-      preLoaderRoute: typeof AuthenticatedAdminConciliacaoRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/clientes': {
-      id: '/_authenticated/admin/clientes'
-      path: '/admin/clientes'
-      fullPath: '/admin/clientes'
-      preLoaderRoute: typeof AuthenticatedAdminClientesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/campanhas-aprovacao': {
-      id: '/_authenticated/admin/campanhas-aprovacao'
-      path: '/admin/campanhas-aprovacao'
-      fullPath: '/admin/campanhas-aprovacao'
-      preLoaderRoute: typeof AuthenticatedAdminCampanhasAprovacaoRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/campanhas': {
-      id: '/_authenticated/admin/campanhas'
-      path: '/admin/campanhas'
-      fullPath: '/admin/campanhas'
-      preLoaderRoute: typeof AuthenticatedAdminCampanhasRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/automacoes': {
-      id: '/_authenticated/admin/automacoes'
-      path: '/admin/automacoes'
-      fullPath: '/admin/automacoes'
-      preLoaderRoute: typeof AuthenticatedAdminAutomacoesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/atendimento': {
-      id: '/_authenticated/admin/atendimento'
-      path: '/admin/atendimento'
-      fullPath: '/admin/atendimento'
-      preLoaderRoute: typeof AuthenticatedAdminAtendimentoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/admin/agenda': {
@@ -1789,26 +1593,201 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminAgendaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/admin/relatorios/': {
-      id: '/_authenticated/admin/relatorios/'
-      path: '/admin/relatorios'
-      fullPath: '/admin/relatorios/'
-      preLoaderRoute: typeof AuthenticatedAdminRelatoriosIndexRouteImport
+    '/_authenticated/admin/atendimento': {
+      id: '/_authenticated/admin/atendimento'
+      path: '/admin/atendimento'
+      fullPath: '/admin/atendimento'
+      preLoaderRoute: typeof AuthenticatedAdminAtendimentoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/admin/disparos/': {
-      id: '/_authenticated/admin/disparos/'
-      path: '/'
-      fullPath: '/admin/disparos/'
-      preLoaderRoute: typeof AuthenticatedAdminDisparosIndexRouteImport
-      parentRoute: typeof AuthenticatedAdminDisparosRoute
-    }
-    '/_authenticated/admin/contatos/': {
-      id: '/_authenticated/admin/contatos/'
-      path: '/admin/contatos'
-      fullPath: '/admin/contatos/'
-      preLoaderRoute: typeof AuthenticatedAdminContatosIndexRouteImport
+    '/_authenticated/admin/automacoes': {
+      id: '/_authenticated/admin/automacoes'
+      path: '/admin/automacoes'
+      fullPath: '/admin/automacoes'
+      preLoaderRoute: typeof AuthenticatedAdminAutomacoesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/campanhas': {
+      id: '/_authenticated/admin/campanhas'
+      path: '/admin/campanhas'
+      fullPath: '/admin/campanhas'
+      preLoaderRoute: typeof AuthenticatedAdminCampanhasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/campanhas-aprovacao': {
+      id: '/_authenticated/admin/campanhas-aprovacao'
+      path: '/admin/campanhas-aprovacao'
+      fullPath: '/admin/campanhas-aprovacao'
+      preLoaderRoute: typeof AuthenticatedAdminCampanhasAprovacaoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/clientes': {
+      id: '/_authenticated/admin/clientes'
+      path: '/admin/clientes'
+      fullPath: '/admin/clientes'
+      preLoaderRoute: typeof AuthenticatedAdminClientesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/conciliacao': {
+      id: '/_authenticated/admin/conciliacao'
+      path: '/admin/conciliacao'
+      fullPath: '/admin/conciliacao'
+      preLoaderRoute: typeof AuthenticatedAdminConciliacaoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/configuracoes': {
+      id: '/_authenticated/admin/configuracoes'
+      path: '/admin/configuracoes'
+      fullPath: '/admin/configuracoes'
+      preLoaderRoute: typeof AuthenticatedAdminConfiguracoesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/contas': {
+      id: '/_authenticated/admin/contas'
+      path: '/admin/contas'
+      fullPath: '/admin/contas'
+      preLoaderRoute: typeof AuthenticatedAdminContasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/custos': {
+      id: '/_authenticated/admin/custos'
+      path: '/admin/custos'
+      fullPath: '/admin/custos'
+      preLoaderRoute: typeof AuthenticatedAdminCustosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/demandas': {
+      id: '/_authenticated/admin/demandas'
+      path: '/admin/demandas'
+      fullPath: '/admin/demandas'
+      preLoaderRoute: typeof AuthenticatedAdminDemandasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/disparos': {
+      id: '/_authenticated/admin/disparos'
+      path: '/admin/disparos'
+      fullPath: '/admin/disparos'
+      preLoaderRoute: typeof AuthenticatedAdminDisparosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/estoque': {
+      id: '/_authenticated/admin/estoque'
+      path: '/admin/estoque'
+      fullPath: '/admin/estoque'
+      preLoaderRoute: typeof AuthenticatedAdminEstoqueRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/faturamento': {
+      id: '/_authenticated/admin/faturamento'
+      path: '/admin/faturamento'
+      fullPath: '/admin/faturamento'
+      preLoaderRoute: typeof AuthenticatedAdminFaturamentoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/fechamento': {
+      id: '/_authenticated/admin/fechamento'
+      path: '/admin/fechamento'
+      fullPath: '/admin/fechamento'
+      preLoaderRoute: typeof AuthenticatedAdminFechamentoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/financeiro': {
+      id: '/_authenticated/admin/financeiro'
+      path: '/admin/financeiro'
+      fullPath: '/admin/financeiro'
+      preLoaderRoute: typeof AuthenticatedAdminFinanceiroRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/historico': {
+      id: '/_authenticated/admin/historico'
+      path: '/admin/historico'
+      fullPath: '/admin/historico'
+      preLoaderRoute: typeof AuthenticatedAdminHistoricoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/meta-ativos': {
+      id: '/_authenticated/admin/meta-ativos'
+      path: '/admin/meta-ativos'
+      fullPath: '/admin/meta-ativos'
+      preLoaderRoute: typeof AuthenticatedAdminMetaAtivosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/precificacao': {
+      id: '/_authenticated/admin/precificacao'
+      path: '/admin/precificacao'
+      fullPath: '/admin/precificacao'
+      preLoaderRoute: typeof AuthenticatedAdminPrecificacaoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/projetos': {
+      id: '/_authenticated/admin/projetos'
+      path: '/admin/projetos'
+      fullPath: '/admin/projetos'
+      preLoaderRoute: typeof AuthenticatedAdminProjetosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/sending-lat': {
+      id: '/_authenticated/admin/sending-lat'
+      path: '/admin/sending-lat'
+      fullPath: '/admin/sending-lat'
+      preLoaderRoute: typeof AuthenticatedAdminSendingLatRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/tv': {
+      id: '/_authenticated/admin/tv'
+      path: '/admin/tv'
+      fullPath: '/admin/tv'
+      preLoaderRoute: typeof AuthenticatedAdminTvRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/upsell': {
+      id: '/_authenticated/admin/upsell'
+      path: '/admin/upsell'
+      fullPath: '/admin/upsell'
+      preLoaderRoute: typeof AuthenticatedAdminUpsellRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/whatsapp': {
+      id: '/_authenticated/admin/whatsapp'
+      path: '/admin/whatsapp'
+      fullPath: '/admin/whatsapp'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/painel/campanhas/': {
+      id: '/painel/campanhas/'
+      path: '/campanhas'
+      fullPath: '/painel/campanhas/'
+      preLoaderRoute: typeof PainelCampanhasIndexRouteImport
+      parentRoute: typeof PainelRoute
+    }
+    '/painel/campanhas/historico': {
+      id: '/painel/campanhas/historico'
+      path: '/campanhas/historico'
+      fullPath: '/painel/campanhas/historico'
+      preLoaderRoute: typeof PainelCampanhasHistoricoRouteImport
+      parentRoute: typeof PainelRoute
+    }
+    '/painel/campanhas/nova': {
+      id: '/painel/campanhas/nova'
+      path: '/campanhas/nova'
+      fullPath: '/painel/campanhas/nova'
+      preLoaderRoute: typeof PainelCampanhasNovaRouteImport
+      parentRoute: typeof PainelRoute
+    }
+    '/painel/demanda/$id': {
+      id: '/painel/demanda/$id'
+      path: '/demanda/$id'
+      fullPath: '/painel/demanda/$id'
+      preLoaderRoute: typeof PainelDemandaIdRouteImport
+      parentRoute: typeof PainelRoute
+    }
+    '/painel/relatorio/$id': {
+      id: '/painel/relatorio/$id'
+      path: '/relatorio/$id'
+      fullPath: '/painel/relatorio/$id'
+      preLoaderRoute: typeof PainelRelatorioIdRouteImport
+      parentRoute: typeof PainelRoute
     }
     '/_authenticated/admin/automacoes/': {
       id: '/_authenticated/admin/automacoes/'
@@ -1817,291 +1796,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminAutomacoesIndexRouteImport
       parentRoute: typeof AuthenticatedAdminAutomacoesRoute
     }
-    '/api/public/whatsapp/webhook-health': {
-      id: '/api/public/whatsapp/webhook-health'
-      path: '/api/public/whatsapp/webhook-health'
-      fullPath: '/api/public/whatsapp/webhook-health'
-      preLoaderRoute: typeof ApiPublicWhatsappWebhookHealthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/whatsapp/webhook': {
-      id: '/api/public/whatsapp/webhook'
-      path: '/api/public/whatsapp/webhook'
-      fullPath: '/api/public/whatsapp/webhook'
-      preLoaderRoute: typeof ApiPublicWhatsappWebhookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/whatsapp/sync-numbers': {
-      id: '/api/public/whatsapp/sync-numbers'
-      path: '/api/public/whatsapp/sync-numbers'
-      fullPath: '/api/public/whatsapp/sync-numbers'
-      preLoaderRoute: typeof ApiPublicWhatsappSyncNumbersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/whatsapp/service-tick': {
-      id: '/api/public/whatsapp/service-tick'
-      path: '/api/public/whatsapp/service-tick'
-      fullPath: '/api/public/whatsapp/service-tick'
-      preLoaderRoute: typeof ApiPublicWhatsappServiceTickRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/whatsapp/queue-tick': {
-      id: '/api/public/whatsapp/queue-tick'
-      path: '/api/public/whatsapp/queue-tick'
-      fullPath: '/api/public/whatsapp/queue-tick'
-      preLoaderRoute: typeof ApiPublicWhatsappQueueTickRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/whatsapp/health-refresh': {
-      id: '/api/public/whatsapp/health-refresh'
-      path: '/api/public/whatsapp/health-refresh'
-      fullPath: '/api/public/whatsapp/health-refresh'
-      preLoaderRoute: typeof ApiPublicWhatsappHealthRefreshRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/whatsapp/harness': {
-      id: '/api/public/whatsapp/harness'
-      path: '/api/public/whatsapp/harness'
-      fullPath: '/api/public/whatsapp/harness'
-      preLoaderRoute: typeof ApiPublicWhatsappHarnessRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/wa-templates-sync': {
-      id: '/api/public/hooks/wa-templates-sync'
-      path: '/api/public/hooks/wa-templates-sync'
-      fullPath: '/api/public/hooks/wa-templates-sync'
-      preLoaderRoute: typeof ApiPublicHooksWaTemplatesSyncRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/notify-upcoming-campaigns': {
-      id: '/api/public/hooks/notify-upcoming-campaigns'
-      path: '/api/public/hooks/notify-upcoming-campaigns'
-      fullPath: '/api/public/hooks/notify-upcoming-campaigns'
-      preLoaderRoute: typeof ApiPublicHooksNotifyUpcomingCampaignsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/inter-pix-poll': {
-      id: '/api/public/hooks/inter-pix-poll'
-      path: '/api/public/hooks/inter-pix-poll'
-      fullPath: '/api/public/hooks/inter-pix-poll'
-      preLoaderRoute: typeof ApiPublicHooksInterPixPollRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/external-progress': {
-      id: '/api/public/hooks/external-progress'
-      path: '/api/public/hooks/external-progress'
-      fullPath: '/api/public/hooks/external-progress'
-      preLoaderRoute: typeof ApiPublicHooksExternalProgressRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/automation-tick': {
-      id: '/api/public/hooks/automation-tick'
-      path: '/api/public/hooks/automation-tick'
-      fullPath: '/api/public/hooks/automation-tick'
-      preLoaderRoute: typeof ApiPublicHooksAutomationTickRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/google/oauth-callback': {
-      id: '/api/public/google/oauth-callback'
-      path: '/api/public/google/oauth-callback'
-      fullPath: '/api/public/google/oauth-callback'
-      preLoaderRoute: typeof ApiPublicGoogleOauthCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/diag/egress-ip': {
-      id: '/api/public/diag/egress-ip'
-      path: '/api/public/diag/egress-ip'
-      fullPath: '/api/public/diag/egress-ip'
-      preLoaderRoute: typeof ApiPublicDiagEgressIpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/ci/$': {
-      id: '/api/public/ci/$'
-      path: '/api/public/ci/$'
-      fullPath: '/api/public/ci/$'
-      preLoaderRoute: typeof ApiPublicCiSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/admin/whatsapp/webhooks': {
-      id: '/_authenticated/admin/whatsapp/webhooks'
-      path: '/webhooks'
-      fullPath: '/admin/whatsapp/webhooks'
-      preLoaderRoute: typeof AuthenticatedAdminWhatsappWebhooksRouteImport
-      parentRoute: typeof AuthenticatedAdminWhatsappRoute
-    }
-    '/_authenticated/admin/whatsapp/wabas': {
-      id: '/_authenticated/admin/whatsapp/wabas'
-      path: '/wabas'
-      fullPath: '/admin/whatsapp/wabas'
-      preLoaderRoute: typeof AuthenticatedAdminWhatsappWabasRouteImport
-      parentRoute: typeof AuthenticatedAdminWhatsappRoute
-    }
-    '/_authenticated/admin/whatsapp/utility': {
-      id: '/_authenticated/admin/whatsapp/utility'
-      path: '/utility'
-      fullPath: '/admin/whatsapp/utility'
-      preLoaderRoute: typeof AuthenticatedAdminWhatsappUtilityRouteImport
-      parentRoute: typeof AuthenticatedAdminWhatsappRoute
-    }
-    '/_authenticated/admin/whatsapp/templates': {
-      id: '/_authenticated/admin/whatsapp/templates'
-      path: '/templates'
-      fullPath: '/admin/whatsapp/templates'
-      preLoaderRoute: typeof AuthenticatedAdminWhatsappTemplatesRouteImport
-      parentRoute: typeof AuthenticatedAdminWhatsappRoute
-    }
-    '/_authenticated/admin/whatsapp/supressao': {
-      id: '/_authenticated/admin/whatsapp/supressao'
-      path: '/supressao'
-      fullPath: '/admin/whatsapp/supressao'
-      preLoaderRoute: typeof AuthenticatedAdminWhatsappSupressaoRouteImport
-      parentRoute: typeof AuthenticatedAdminWhatsappRoute
-    }
-    '/_authenticated/admin/whatsapp/saude': {
-      id: '/_authenticated/admin/whatsapp/saude'
-      path: '/saude'
-      fullPath: '/admin/whatsapp/saude'
-      preLoaderRoute: typeof AuthenticatedAdminWhatsappSaudeRouteImport
-      parentRoute: typeof AuthenticatedAdminWhatsappRoute
-    }
-    '/_authenticated/admin/whatsapp/relatorios': {
-      id: '/_authenticated/admin/whatsapp/relatorios'
-      path: '/relatorios'
-      fullPath: '/admin/whatsapp/relatorios'
-      preLoaderRoute: typeof AuthenticatedAdminWhatsappRelatoriosRouteImport
-      parentRoute: typeof AuthenticatedAdminWhatsappRoute
-    }
-    '/_authenticated/admin/whatsapp/qualidade': {
-      id: '/_authenticated/admin/whatsapp/qualidade'
-      path: '/qualidade'
-      fullPath: '/admin/whatsapp/qualidade'
-      preLoaderRoute: typeof AuthenticatedAdminWhatsappQualidadeRouteImport
-      parentRoute: typeof AuthenticatedAdminWhatsappRoute
-    }
-    '/_authenticated/admin/whatsapp/logs': {
-      id: '/_authenticated/admin/whatsapp/logs'
-      path: '/logs'
-      fullPath: '/admin/whatsapp/logs'
-      preLoaderRoute: typeof AuthenticatedAdminWhatsappLogsRouteImport
-      parentRoute: typeof AuthenticatedAdminWhatsappRoute
-    }
-    '/_authenticated/admin/whatsapp/liberacoes': {
-      id: '/_authenticated/admin/whatsapp/liberacoes'
-      path: '/liberacoes'
-      fullPath: '/admin/whatsapp/liberacoes'
-      preLoaderRoute: typeof AuthenticatedAdminWhatsappLiberacoesRouteImport
-      parentRoute: typeof AuthenticatedAdminWhatsappRoute
-    }
-    '/_authenticated/admin/whatsapp/inbox': {
-      id: '/_authenticated/admin/whatsapp/inbox'
-      path: '/inbox'
-      fullPath: '/admin/whatsapp/inbox'
-      preLoaderRoute: typeof AuthenticatedAdminWhatsappInboxRouteImport
-      parentRoute: typeof AuthenticatedAdminWhatsappRoute
-    }
-    '/_authenticated/admin/whatsapp/embedded-signup': {
-      id: '/_authenticated/admin/whatsapp/embedded-signup'
-      path: '/embedded-signup'
-      fullPath: '/admin/whatsapp/embedded-signup'
-      preLoaderRoute: typeof AuthenticatedAdminWhatsappEmbeddedSignupRouteImport
-      parentRoute: typeof AuthenticatedAdminWhatsappRoute
-    }
-    '/_authenticated/admin/whatsapp/embedded-callback': {
-      id: '/_authenticated/admin/whatsapp/embedded-callback'
-      path: '/embedded-callback'
-      fullPath: '/admin/whatsapp/embedded-callback'
-      preLoaderRoute: typeof AuthenticatedAdminWhatsappEmbeddedCallbackRouteImport
-      parentRoute: typeof AuthenticatedAdminWhatsappRoute
-    }
-    '/_authenticated/admin/whatsapp/diagnostico': {
-      id: '/_authenticated/admin/whatsapp/diagnostico'
-      path: '/diagnostico'
-      fullPath: '/admin/whatsapp/diagnostico'
-      preLoaderRoute: typeof AuthenticatedAdminWhatsappDiagnosticoRouteImport
-      parentRoute: typeof AuthenticatedAdminWhatsappRoute
-    }
-    '/_authenticated/admin/whatsapp/conversas': {
-      id: '/_authenticated/admin/whatsapp/conversas'
-      path: '/conversas'
-      fullPath: '/admin/whatsapp/conversas'
-      preLoaderRoute: typeof AuthenticatedAdminWhatsappConversasRouteImport
-      parentRoute: typeof AuthenticatedAdminWhatsappRoute
-    }
-    '/_authenticated/admin/whatsapp/configuracoes': {
-      id: '/_authenticated/admin/whatsapp/configuracoes'
-      path: '/configuracoes'
-      fullPath: '/admin/whatsapp/configuracoes'
-      preLoaderRoute: typeof AuthenticatedAdminWhatsappConfiguracoesRouteImport
-      parentRoute: typeof AuthenticatedAdminWhatsappRoute
-    }
-    '/_authenticated/admin/whatsapp/conexoes': {
-      id: '/_authenticated/admin/whatsapp/conexoes'
-      path: '/conexoes'
-      fullPath: '/admin/whatsapp/conexoes'
-      preLoaderRoute: typeof AuthenticatedAdminWhatsappConexoesRouteImport
-      parentRoute: typeof AuthenticatedAdminWhatsappRoute
-    }
-    '/_authenticated/admin/relatorios/new': {
-      id: '/_authenticated/admin/relatorios/new'
-      path: '/admin/relatorios/new'
-      fullPath: '/admin/relatorios/new'
-      preLoaderRoute: typeof AuthenticatedAdminRelatoriosNewRouteImport
+    '/_authenticated/admin/campaigns/$id': {
+      id: '/_authenticated/admin/campaigns/$id'
+      path: '/admin/campaigns/$id'
+      fullPath: '/admin/campaigns/$id'
+      preLoaderRoute: typeof AuthenticatedAdminCampaignsIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/admin/relatorios/magistrar': {
-      id: '/_authenticated/admin/relatorios/magistrar'
-      path: '/admin/relatorios/magistrar'
-      fullPath: '/admin/relatorios/magistrar'
-      preLoaderRoute: typeof AuthenticatedAdminRelatoriosMagistrarRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/relatorios/analytics': {
-      id: '/_authenticated/admin/relatorios/analytics'
-      path: '/admin/relatorios/analytics'
-      fullPath: '/admin/relatorios/analytics'
-      preLoaderRoute: typeof AuthenticatedAdminRelatoriosAnalyticsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/relatorios/$id': {
-      id: '/_authenticated/admin/relatorios/$id'
-      path: '/admin/relatorios/$id'
-      fullPath: '/admin/relatorios/$id'
-      preLoaderRoute: typeof AuthenticatedAdminRelatoriosIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/disparos/multi': {
-      id: '/_authenticated/admin/disparos/multi'
-      path: '/multi'
-      fullPath: '/admin/disparos/multi'
-      preLoaderRoute: typeof AuthenticatedAdminDisparosMultiRouteImport
-      parentRoute: typeof AuthenticatedAdminDisparosRoute
-    }
-    '/_authenticated/admin/disparos/direct-send': {
-      id: '/_authenticated/admin/disparos/direct-send'
-      path: '/direct-send'
-      fullPath: '/admin/disparos/direct-send'
-      preLoaderRoute: typeof AuthenticatedAdminDisparosDirectSendRouteImport
-      parentRoute: typeof AuthenticatedAdminDisparosRoute
-    }
-    '/_authenticated/admin/disparos/api-externa': {
-      id: '/_authenticated/admin/disparos/api-externa'
-      path: '/api-externa'
-      fullPath: '/admin/disparos/api-externa'
-      preLoaderRoute: typeof AuthenticatedAdminDisparosApiExternaRouteImport
-      parentRoute: typeof AuthenticatedAdminDisparosRoute
-    }
-    '/_authenticated/admin/disparos/$id': {
-      id: '/_authenticated/admin/disparos/$id'
-      path: '/$id'
-      fullPath: '/admin/disparos/$id'
-      preLoaderRoute: typeof AuthenticatedAdminDisparosIdRouteImport
-      parentRoute: typeof AuthenticatedAdminDisparosRoute
-    }
-    '/_authenticated/admin/contatos/listas': {
-      id: '/_authenticated/admin/contatos/listas'
-      path: '/admin/contatos/listas'
-      fullPath: '/admin/contatos/listas'
-      preLoaderRoute: typeof AuthenticatedAdminContatosListasRouteImport
+    '/_authenticated/admin/contatos/': {
+      id: '/_authenticated/admin/contatos/'
+      path: '/admin/contatos'
+      fullPath: '/admin/contatos/'
+      preLoaderRoute: typeof AuthenticatedAdminContatosIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/admin/contatos/auditoria': {
@@ -2111,11 +1817,326 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminContatosAuditoriaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/admin/campaigns/$id': {
-      id: '/_authenticated/admin/campaigns/$id'
-      path: '/admin/campaigns/$id'
-      fullPath: '/admin/campaigns/$id'
-      preLoaderRoute: typeof AuthenticatedAdminCampaignsIdRouteImport
+    '/_authenticated/admin/contatos/listas': {
+      id: '/_authenticated/admin/contatos/listas'
+      path: '/admin/contatos/listas'
+      fullPath: '/admin/contatos/listas'
+      preLoaderRoute: typeof AuthenticatedAdminContatosListasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/disparos/': {
+      id: '/_authenticated/admin/disparos/'
+      path: '/'
+      fullPath: '/admin/disparos/'
+      preLoaderRoute: typeof AuthenticatedAdminDisparosIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminDisparosRoute
+    }
+    '/_authenticated/admin/disparos/$id': {
+      id: '/_authenticated/admin/disparos/$id'
+      path: '/$id'
+      fullPath: '/admin/disparos/$id'
+      preLoaderRoute: typeof AuthenticatedAdminDisparosIdRouteImport
+      parentRoute: typeof AuthenticatedAdminDisparosRoute
+    }
+    '/_authenticated/admin/disparos/api-externa': {
+      id: '/_authenticated/admin/disparos/api-externa'
+      path: '/api-externa'
+      fullPath: '/admin/disparos/api-externa'
+      preLoaderRoute: typeof AuthenticatedAdminDisparosApiExternaRouteImport
+      parentRoute: typeof AuthenticatedAdminDisparosRoute
+    }
+    '/_authenticated/admin/disparos/direct-send': {
+      id: '/_authenticated/admin/disparos/direct-send'
+      path: '/direct-send'
+      fullPath: '/admin/disparos/direct-send'
+      preLoaderRoute: typeof AuthenticatedAdminDisparosDirectSendRouteImport
+      parentRoute: typeof AuthenticatedAdminDisparosRoute
+    }
+    '/_authenticated/admin/disparos/multi': {
+      id: '/_authenticated/admin/disparos/multi'
+      path: '/multi'
+      fullPath: '/admin/disparos/multi'
+      preLoaderRoute: typeof AuthenticatedAdminDisparosMultiRouteImport
+      parentRoute: typeof AuthenticatedAdminDisparosRoute
+    }
+    '/_authenticated/admin/relatorios/': {
+      id: '/_authenticated/admin/relatorios/'
+      path: '/admin/relatorios'
+      fullPath: '/admin/relatorios/'
+      preLoaderRoute: typeof AuthenticatedAdminRelatoriosIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/relatorios/$id': {
+      id: '/_authenticated/admin/relatorios/$id'
+      path: '/admin/relatorios/$id'
+      fullPath: '/admin/relatorios/$id'
+      preLoaderRoute: typeof AuthenticatedAdminRelatoriosIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/relatorios/analytics': {
+      id: '/_authenticated/admin/relatorios/analytics'
+      path: '/admin/relatorios/analytics'
+      fullPath: '/admin/relatorios/analytics'
+      preLoaderRoute: typeof AuthenticatedAdminRelatoriosAnalyticsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/relatorios/magistrar': {
+      id: '/_authenticated/admin/relatorios/magistrar'
+      path: '/admin/relatorios/magistrar'
+      fullPath: '/admin/relatorios/magistrar'
+      preLoaderRoute: typeof AuthenticatedAdminRelatoriosMagistrarRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/relatorios/new': {
+      id: '/_authenticated/admin/relatorios/new'
+      path: '/admin/relatorios/new'
+      fullPath: '/admin/relatorios/new'
+      preLoaderRoute: typeof AuthenticatedAdminRelatoriosNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/whatsapp/conexoes': {
+      id: '/_authenticated/admin/whatsapp/conexoes'
+      path: '/conexoes'
+      fullPath: '/admin/whatsapp/conexoes'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappConexoesRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
+    '/_authenticated/admin/whatsapp/configuracoes': {
+      id: '/_authenticated/admin/whatsapp/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/admin/whatsapp/configuracoes'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappConfiguracoesRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
+    '/_authenticated/admin/whatsapp/conversas': {
+      id: '/_authenticated/admin/whatsapp/conversas'
+      path: '/conversas'
+      fullPath: '/admin/whatsapp/conversas'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappConversasRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
+    '/_authenticated/admin/whatsapp/diagnostico': {
+      id: '/_authenticated/admin/whatsapp/diagnostico'
+      path: '/diagnostico'
+      fullPath: '/admin/whatsapp/diagnostico'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappDiagnosticoRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
+    '/_authenticated/admin/whatsapp/embedded-callback': {
+      id: '/_authenticated/admin/whatsapp/embedded-callback'
+      path: '/embedded-callback'
+      fullPath: '/admin/whatsapp/embedded-callback'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappEmbeddedCallbackRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
+    '/_authenticated/admin/whatsapp/embedded-signup': {
+      id: '/_authenticated/admin/whatsapp/embedded-signup'
+      path: '/embedded-signup'
+      fullPath: '/admin/whatsapp/embedded-signup'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappEmbeddedSignupRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
+    '/_authenticated/admin/whatsapp/inbox': {
+      id: '/_authenticated/admin/whatsapp/inbox'
+      path: '/inbox'
+      fullPath: '/admin/whatsapp/inbox'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappInboxRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
+    '/_authenticated/admin/whatsapp/liberacoes': {
+      id: '/_authenticated/admin/whatsapp/liberacoes'
+      path: '/liberacoes'
+      fullPath: '/admin/whatsapp/liberacoes'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappLiberacoesRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
+    '/_authenticated/admin/whatsapp/logs': {
+      id: '/_authenticated/admin/whatsapp/logs'
+      path: '/logs'
+      fullPath: '/admin/whatsapp/logs'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappLogsRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
+    '/_authenticated/admin/whatsapp/qualidade': {
+      id: '/_authenticated/admin/whatsapp/qualidade'
+      path: '/qualidade'
+      fullPath: '/admin/whatsapp/qualidade'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappQualidadeRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
+    '/_authenticated/admin/whatsapp/relatorios': {
+      id: '/_authenticated/admin/whatsapp/relatorios'
+      path: '/relatorios'
+      fullPath: '/admin/whatsapp/relatorios'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappRelatoriosRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
+    '/_authenticated/admin/whatsapp/saude': {
+      id: '/_authenticated/admin/whatsapp/saude'
+      path: '/saude'
+      fullPath: '/admin/whatsapp/saude'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappSaudeRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
+    '/_authenticated/admin/whatsapp/supressao': {
+      id: '/_authenticated/admin/whatsapp/supressao'
+      path: '/supressao'
+      fullPath: '/admin/whatsapp/supressao'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappSupressaoRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
+    '/_authenticated/admin/whatsapp/templates': {
+      id: '/_authenticated/admin/whatsapp/templates'
+      path: '/templates'
+      fullPath: '/admin/whatsapp/templates'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappTemplatesRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
+    '/_authenticated/admin/whatsapp/utility': {
+      id: '/_authenticated/admin/whatsapp/utility'
+      path: '/utility'
+      fullPath: '/admin/whatsapp/utility'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappUtilityRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
+    '/_authenticated/admin/whatsapp/wabas': {
+      id: '/_authenticated/admin/whatsapp/wabas'
+      path: '/wabas'
+      fullPath: '/admin/whatsapp/wabas'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappWabasRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
+    '/_authenticated/admin/whatsapp/webhooks': {
+      id: '/_authenticated/admin/whatsapp/webhooks'
+      path: '/webhooks'
+      fullPath: '/admin/whatsapp/webhooks'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappWebhooksRouteImport
+      parentRoute: typeof AuthenticatedAdminWhatsappRoute
+    }
+    '/api/public/ci/$': {
+      id: '/api/public/ci/$'
+      path: '/api/public/ci/$'
+      fullPath: '/api/public/ci/$'
+      preLoaderRoute: typeof ApiPublicCiSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/diag/egress-ip': {
+      id: '/api/public/diag/egress-ip'
+      path: '/api/public/diag/egress-ip'
+      fullPath: '/api/public/diag/egress-ip'
+      preLoaderRoute: typeof ApiPublicDiagEgressIpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/google/oauth-callback': {
+      id: '/api/public/google/oauth-callback'
+      path: '/api/public/google/oauth-callback'
+      fullPath: '/api/public/google/oauth-callback'
+      preLoaderRoute: typeof ApiPublicGoogleOauthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/automation-tick': {
+      id: '/api/public/hooks/automation-tick'
+      path: '/api/public/hooks/automation-tick'
+      fullPath: '/api/public/hooks/automation-tick'
+      preLoaderRoute: typeof ApiPublicHooksAutomationTickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/external-progress': {
+      id: '/api/public/hooks/external-progress'
+      path: '/api/public/hooks/external-progress'
+      fullPath: '/api/public/hooks/external-progress'
+      preLoaderRoute: typeof ApiPublicHooksExternalProgressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/inter-pix-poll': {
+      id: '/api/public/hooks/inter-pix-poll'
+      path: '/api/public/hooks/inter-pix-poll'
+      fullPath: '/api/public/hooks/inter-pix-poll'
+      preLoaderRoute: typeof ApiPublicHooksInterPixPollRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/notify-upcoming-campaigns': {
+      id: '/api/public/hooks/notify-upcoming-campaigns'
+      path: '/api/public/hooks/notify-upcoming-campaigns'
+      fullPath: '/api/public/hooks/notify-upcoming-campaigns'
+      preLoaderRoute: typeof ApiPublicHooksNotifyUpcomingCampaignsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/wa-templates-sync': {
+      id: '/api/public/hooks/wa-templates-sync'
+      path: '/api/public/hooks/wa-templates-sync'
+      fullPath: '/api/public/hooks/wa-templates-sync'
+      preLoaderRoute: typeof ApiPublicHooksWaTemplatesSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/whatsapp/harness': {
+      id: '/api/public/whatsapp/harness'
+      path: '/api/public/whatsapp/harness'
+      fullPath: '/api/public/whatsapp/harness'
+      preLoaderRoute: typeof ApiPublicWhatsappHarnessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/whatsapp/health-refresh': {
+      id: '/api/public/whatsapp/health-refresh'
+      path: '/api/public/whatsapp/health-refresh'
+      fullPath: '/api/public/whatsapp/health-refresh'
+      preLoaderRoute: typeof ApiPublicWhatsappHealthRefreshRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/whatsapp/queue-tick': {
+      id: '/api/public/whatsapp/queue-tick'
+      path: '/api/public/whatsapp/queue-tick'
+      fullPath: '/api/public/whatsapp/queue-tick'
+      preLoaderRoute: typeof ApiPublicWhatsappQueueTickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/whatsapp/service-tick': {
+      id: '/api/public/whatsapp/service-tick'
+      path: '/api/public/whatsapp/service-tick'
+      fullPath: '/api/public/whatsapp/service-tick'
+      preLoaderRoute: typeof ApiPublicWhatsappServiceTickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/whatsapp/sync-numbers': {
+      id: '/api/public/whatsapp/sync-numbers'
+      path: '/api/public/whatsapp/sync-numbers'
+      fullPath: '/api/public/whatsapp/sync-numbers'
+      preLoaderRoute: typeof ApiPublicWhatsappSyncNumbersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/whatsapp/webhook': {
+      id: '/api/public/whatsapp/webhook'
+      path: '/api/public/whatsapp/webhook'
+      fullPath: '/api/public/whatsapp/webhook'
+      preLoaderRoute: typeof ApiPublicWhatsappWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/whatsapp/webhook-health': {
+      id: '/api/public/whatsapp/webhook-health'
+      path: '/api/public/whatsapp/webhook-health'
+      fullPath: '/api/public/whatsapp/webhook-health'
+      preLoaderRoute: typeof ApiPublicWhatsappWebhookHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/admin/campaigns/$id/edit': {
+      id: '/_authenticated/admin/campaigns/$id/edit'
+      path: '/edit'
+      fullPath: '/admin/campaigns/$id/edit'
+      preLoaderRoute: typeof AuthenticatedAdminCampaignsIdEditRouteImport
+      parentRoute: typeof AuthenticatedAdminCampaignsIdRoute
+    }
+    '/_authenticated/admin/campaigns/$id/preview': {
+      id: '/_authenticated/admin/campaigns/$id/preview'
+      path: '/preview'
+      fullPath: '/admin/campaigns/$id/preview'
+      preLoaderRoute: typeof AuthenticatedAdminCampaignsIdPreviewRouteImport
+      parentRoute: typeof AuthenticatedAdminCampaignsIdRoute
+    }
+    '/_authenticated/admin/relatorios/importados/$id': {
+      id: '/_authenticated/admin/relatorios/importados/$id'
+      path: '/admin/relatorios/importados/$id'
+      fullPath: '/admin/relatorios/importados/$id'
+      preLoaderRoute: typeof AuthenticatedAdminRelatoriosImportadosIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/admin/whatsapp/numeros/': {
@@ -2131,27 +2152,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/public/automations/$id/webhook'
       preLoaderRoute: typeof ApiPublicAutomationsIdWebhookRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/admin/relatorios/importados/$id': {
-      id: '/_authenticated/admin/relatorios/importados/$id'
-      path: '/admin/relatorios/importados/$id'
-      fullPath: '/admin/relatorios/importados/$id'
-      preLoaderRoute: typeof AuthenticatedAdminRelatoriosImportadosIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/campaigns/$id/preview': {
-      id: '/_authenticated/admin/campaigns/$id/preview'
-      path: '/preview'
-      fullPath: '/admin/campaigns/$id/preview'
-      preLoaderRoute: typeof AuthenticatedAdminCampaignsIdPreviewRouteImport
-      parentRoute: typeof AuthenticatedAdminCampaignsIdRoute
-    }
-    '/_authenticated/admin/campaigns/$id/edit': {
-      id: '/_authenticated/admin/campaigns/$id/edit'
-      path: '/edit'
-      fullPath: '/admin/campaigns/$id/edit'
-      preLoaderRoute: typeof AuthenticatedAdminCampaignsIdEditRouteImport
-      parentRoute: typeof AuthenticatedAdminCampaignsIdRoute
     }
     '/_authenticated/admin/whatsapp/numeros/$id/perfil': {
       id: '/_authenticated/admin/whatsapp/numeros/$id/perfil'
