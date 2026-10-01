@@ -15,6 +15,7 @@ import { PacingPanel } from "@/components/campaigns/PacingPanel";
 import { NewContactListDialog } from "@/components/campaigns/NewContactListDialog";
 import { PageHeader } from "@/components/admin/page-header";
 import { Button } from "@/components/ui/button";
+import { listReplyAutomations, createReplyFlowFromButtons } from "@/lib/automations.functions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,6 +47,9 @@ function Page() {
   const startFn = useServerFn(startWaCampaign);
   const schedFn = useServerFn(scheduleWaCampaign);
   const testFn = useServerFn(testDirectSend);
+  const replyAutosFn = useServerFn(listReplyAutomations);
+  const createFlowFn = useServerFn(createReplyFlowFromButtons);
+  const [automationId, setAutomationId] = useState<string>("");
   const { data: conns = [] } = useQuery({ queryKey: ["wa-conns-all"], queryFn: () => connsFn() });
   const qc = useQueryClient();
   const [newListOpen, setNewListOpen] = useState(false);
@@ -81,6 +85,7 @@ function Page() {
     setButtonsType(c.buttons_type ?? "none");
     if (c.url_button) setUrlBtn(c.url_button);
     if (c.reply_buttons?.length) setReplies(c.reply_buttons);
+    setAutomationId(c.automation_id ?? "");
     setPacingOn(!!d.pacing_enabled);
     if (d.pacing_config) {
       const p = d.pacing_config;
@@ -108,6 +113,17 @@ function Page() {
     buttons_type: buttonsType,
     url_button: buttonsType === "url" ? urlBtn : null,
     reply_buttons: buttonsType === "reply" ? replies : null,
+    automation_id: automationId || null,
+  };
+  const replyAutosQ = useQuery({ queryKey: ["reply-automations", connId], queryFn: () => replyAutosFn({ data: { connectionId: connId || null } }), enabled: !!connId });
+  const createFlow = async () => {
+    try {
+      const r = await createFlowFn({ data: { connectionId: connId, name: name || "Direct Send", buttons: buttonsType === "reply" ? replies.filter((x) => x.id) : [] } });
+      setAutomationId(r.id);
+      qc.invalidateQueries({ queryKey: ["reply-automations", connId] });
+      window.open(`/admin/automacoes/${r.id}`, "_blank");
+      toast.success("Fluxo criado como rascunho. Ajuste as mensagens e publique.");
+    } catch (e: any) { toast.error(e.message); }
   };
   const unitK = pauseUnit === "min" ? 60 : 1;
   const toInt = (v: string) => (v.trim() === "" ? NaN : Number(v));
@@ -267,6 +283,26 @@ function Page() {
               )}
             </div>
           )}
+          <div className="space-y-2 rounded-lg border p-3">
+            <Label>Respostas automáticas (automação)</Label>
+            <p className="text-xs text-muted-foreground">Quando o lead tocar num botão ou responder, a automação escolhida continua a conversa: envia outra mensagem, segue o fluxo ou encaminha para atendimento. Um fluxo por lead neste disparo.</p>
+            <Select value={automationId || "__none__"} onValueChange={(v) => setAutomationId(v === "__none__" ? "" : v)} disabled={!connId}>
+              <SelectTrigger><SelectValue placeholder={connId ? "Escolha" : "Escolha o número primeiro"} /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Nenhuma</SelectItem>
+                {(replyAutosQ.data ?? []).map((a: any) => (
+                  <SelectItem key={a.id} value={a.id}>{a.name}{a.status !== "active" ? " (não publicada — não responde)" : ""}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" size="sm" variant="outline" disabled={!connId} onClick={createFlow}>Criar fluxo a partir dos botões</Button>
+              {automationId && <Button type="button" size="sm" variant="ghost" onClick={() => window.open(`/admin/automacoes/${automationId}`, "_blank")}>Abrir no editor</Button>}
+            </div>
+            {automationId && (replyAutosQ.data ?? []).find((a: any) => a.id === automationId)?.status !== "active" && (
+              <p className="text-xs text-destructive">Publique a automação antes do envio; senão as respostas não serão tratadas por ela.</p>
+            )}
+          </div>
           {interactive && (
             <>
               <div><Label>Cabeçalho</Label>

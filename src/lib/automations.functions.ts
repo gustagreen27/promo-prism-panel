@@ -241,3 +241,40 @@ export const runAutomation = createServerFn({ method: "POST" })
     await eng.processDueJobs(db, `manual-${r.runId}`, 8000);
     return { ok: true, issues: [], runId: r.runId };
   });
+
+/** Automações "Resposta a um disparo" disponíveis para o cliente dono do número. */
+export const listReplyAutomations = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ connectionId: uuid.nullable() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertStaff(context.supabase, context.userId);
+    if (!data.connectionId) return [];
+    const db = await admin();
+    const { data: c } = await db.from("whatsapp_connections").select("workspace_id").eq("id", data.connectionId).maybeSingle();
+    let q = db.from("automations").select("id, name, status, published_version_id").eq("trigger_type", "campaign_reply").neq("status", "archived").order("updated_at", { ascending: false });
+    if (c?.workspace_id) q = q.eq("workspace_id", c.workspace_id);
+    const { data: rows } = await q;
+    return rows ?? [];
+  });
+
+/** Cria (rascunho) um fluxo de respostas com uma ação por botão do Direct Send. */
+export const createReplyFlowFromButtons = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({
+    connectionId: uuid, name: z.string().min(1).max(120),
+    buttons: z.array(z.object({ id: z.string().min(1).max(256), title: z.string().max(20) })).max(3),
+  }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertStaff(context.supabase, context.userId);
+    const db = await admin();
+    const { data: c } = await db.from("whatsapp_connections").select("workspace_id").eq("id", data.connectionId).maybeSingle();
+    if (!c?.workspace_id) throw new Error("Número sem cliente vinculado");
+    const { replyFlowGraph } = await import("./automation-graph");
+    const graph = replyFlowGraph(data.buttons);
+    const { data: row, error } = await db.from("automations").insert({
+      name: `Respostas — ${data.name}`, description: "Continua a conversa conforme o botão ou resposta de cada lead do disparo.",
+      workspace_id: c.workspace_id, connection_id: data.connectionId, draft_graph: graph, trigger_type: "campaign_reply", created_by: context.userId, status: "draft",
+    }).select("id").maybeSingle();
+    if (error) throw new Error(error.message);
+    return { id: row.id };
+  });
