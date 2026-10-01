@@ -70,7 +70,7 @@ export const Route = createFileRoute("/campaigns/$id")({
     <div className="mx-auto flex min-h-screen max-w-md items-center justify-center p-6 text-center">
       <div>
         <h1 className="text-2xl font-semibold">Não foi possível carregar</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{error instanceof Error ? error.message : String(error)}</p>
       </div>
     </div>
   ),
