@@ -1035,10 +1035,11 @@ async function upsertConversationFromInbound(
 
   // Automações: respostas para esperas ativas e gatilho "mensagem recebida".
   // Evento durável deduplicado pelo wamid; falhas ficam pendentes para o scheduler.
+  let automationHandled = false;
   if (isNewest) {
     try {
       const { onInboundMessage } = await import("@/lib/automation-engine.server");
-      await onInboundMessage(supabaseAdmin, {
+      automationHandled = await onInboundMessage(supabaseAdmin, {
         campaignId,
         workspaceId,
         connectionId,
@@ -1055,8 +1056,9 @@ async function upsertConversationFromInbound(
 
   // Fluxo de resposta automática: só dispara para a mensagem mais nova
   // (mensagens fora de ordem não devem re-executar automação).
-  let campaignFlowSent = false;
-  if (campaignId && isNewest) {
+  // Se uma automação assumiu a resposta, as respostas automáticas antigas não disparam (evita mensagem dupla).
+  let campaignFlowSent = automationHandled;
+  if (campaignId && isNewest && !automationHandled) {
     try {
       campaignFlowSent = await applyResponseFlow(supabaseAdmin, {
         workspaceId,
