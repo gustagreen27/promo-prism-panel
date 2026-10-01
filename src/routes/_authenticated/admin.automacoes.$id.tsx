@@ -25,7 +25,7 @@ import {
   getAutomation, saveAutomationDraft, publishAutomation, setAutomationStatus, getAutomationOptions, getWorkspaceAssets, runAutomation, getWebhookInfo,
 } from "@/lib/automations.functions";
 import {
-  BLOCKS, BLOCK_MAP, CATEGORY_LABEL, VARIABLES, summarize, validateGraph, isTrigger,
+  BLOCKS, BLOCK_MAP, CATEGORY_LABEL, VARIABLES, summarize, validateGraph, isTrigger, responsePaths,
   type AutoGraph, type BlockCategory, type ValidationIssue,
 } from "@/lib/automation-graph";
 import { RunDetail, RunsPanel } from "@/components/admin/automation-runs";
