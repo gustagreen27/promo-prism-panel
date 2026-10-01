@@ -214,8 +214,22 @@ function Page() {
                 qc.invalidateQueries({ queryKey: ["contact-lists-all"] });
               }} />
           </div>
-          <div><Label>Mensagem (use {"{nome}"} para o nome do contato)</Label>
-            <Textarea rows={6} maxLength={BODY_MAX} value={text} onChange={(e) => setText(e.target.value)} />
+          <div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Label>Mensagem</Label>
+              <div className="flex gap-1">
+                {[{ k: "{nome}", l: "Nome do lead" }, { k: "{telefone}", l: "Telefone do lead" }].map((f) => (
+                  <Button key={f.k} type="button" size="sm" variant="outline" className="h-7 text-xs"
+                    onClick={() => {
+                      const el = document.getElementById("direct-text") as HTMLTextAreaElement | null;
+                      const s = el?.selectionStart ?? text.length, e = el?.selectionEnd ?? text.length;
+                      setText(text.slice(0, s) + f.k + text.slice(e));
+                    }}>+ {f.l}</Button>
+                ))}
+              </div>
+            </div>
+            <Textarea id="direct-text" rows={6} maxLength={BODY_MAX} value={text} onChange={(e) => setText(e.target.value)} />
+            <p className="mt-1 text-xs text-muted-foreground">Os campos {"{nome}"} e {"{telefone}"} (também aceitos como (nome) e (telefone)) são trocados pelos dados de cada lead. Sem nome cadastrado, aparece "cliente".</p>
             <p className="mt-1 text-xs text-muted-foreground">{text.length}/{BODY_MAX}</p>
           </div>
           <div><Label>Botões</Label>
