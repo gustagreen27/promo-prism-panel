@@ -224,9 +224,18 @@ function Editor() {
 
   const graph = useMemo(() => toGraph(nodes, edges), [nodes, edges]);
   const invalidIds = useMemo(() => new Set(issues.map((i) => i.nodeId).filter(Boolean) as string[]), [issues]);
+  const paths = useMemo(() => responsePaths(graph), [graph]);
+  const [pathKey, setPathKey] = useState<string | null>(null);
+  const activePath = paths.find((p) => p.key === pathKey) ?? null;
+  const displayEdges = useMemo(() => {
+    if (!activePath) return edges;
+    const on = new Set(activePath.edgeIds);
+    return edges.map((e) => on.has(e.id) ? { ...e, animated: true, style: { strokeWidth: 3, stroke: "var(--primary)" } } : { ...e, style: { opacity: 0.25 } });
+  }, [edges, activePath]);
   const displayNodes = useMemo(() => nodes.map((n) => ({
     ...n, data: { ...n.data, summary: summarize({ id: n.id, type: n.data.type, position: n.position, data: { config: n.data.config } }, names), invalid: invalidIds.has(n.id) },
-  })), [nodes, names, invalidIds]);
+    style: activePath && !activePath.nodeIds.includes(n.id) ? { opacity: 0.3 } : undefined,
+  })), [nodes, names, invalidIds, activePath]);
 
   const saveMut = useMutation({
     mutationFn: () => save({ data: { id, name, description: description || null, connectionId, graph } }),
@@ -331,7 +340,7 @@ function Editor() {
         {/* Canvas */}
         <div className="relative min-w-0 flex-1" onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }} onDrop={onDrop}>
           <ReactFlow
-            nodes={displayNodes} edges={edges} nodeTypes={nodeTypes}
+            nodes={displayNodes} edges={displayEdges} nodeTypes={nodeTypes}
             onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect}
             onNodeClick={(_, n) => setSelected(n.id)} onPaneClick={() => setSelected(null)}
             fitView deleteKeyCode={["Delete", "Backspace"]} defaultEdgeOptions={{ markerEnd: { type: MarkerType.ArrowClosed } }}
@@ -361,6 +370,17 @@ function Editor() {
             <div className="space-y-3">
               <div><Label>Descrição</Label><Textarea rows={3} value={description} onChange={(e) => { setDescription(e.target.value); setDirty(true); }} /></div>
               <p className="text-xs text-muted-foreground">Arraste blocos da esquerda para o quadro e ligue as saídas às entradas. Clique em um bloco para configurá-lo. Toda saída precisa levar a um bloco "Encerrar" ou "Encaminhar para atendente".</p>
+              <div className="space-y-1.5">
+                <Label>Caminhos por resposta</Label>
+                <p className="text-xs text-muted-foreground">Clique para destacar o caminho no quadro. Para mudar a mensagem ou ação, clique no bloco correspondente.</p>
+                {paths.map((p) => (
+                  <button key={p.key} type="button" onClick={() => setPathKey(pathKey === p.key ? null : p.key)}
+                    className={`block w-full rounded-md border p-2 text-left text-xs hover:bg-accent ${pathKey === p.key ? "border-primary bg-accent" : ""}`}>
+                    <div className="font-semibold">Quando: {p.when}</div>
+                    <div className="text-muted-foreground">→ {p.actions.join(" → ") || "Encerrar"}</div>
+                  </button>
+                ))}
+              </div>
               <p className="text-xs text-muted-foreground">Execuções já iniciadas continuam na versão em que começaram, mesmo depois de você publicar mudanças.</p>
             </div>
           )}

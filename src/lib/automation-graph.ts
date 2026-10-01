@@ -352,7 +352,44 @@ export function replyFlowGraph(buttons: { id: string; title: string }[]): AutoGr
     edges.push({ id: `e_msg_${i + 1}`, source: `msg_${i + 1}`, target: `end_${i + 1}`, sourceHandle: "out" });
     prev = cid; prevHandle = "false";
   });
-  mk("handoff", "act_handoff", 0, 160 + buttons.length * 200, { note: "Lead respondeu ao disparo com texto livre" }, "Outra resposta → atendimento");
+  // Regra de texto (editável): resposta digitada contendo "sim".
+  const ty = 160 + buttons.length * 200;
+  mk("txt_rule", "cond_reply", 0, ty, { op: "contains", value: "sim" }, 'Texto contém "sim"');
+  edges.push({ id: `e_${prev}_txt`, source: prev, target: "txt_rule", sourceHandle: prevHandle });
+  mk("msg_txt", "send_text", 300, ty, { text: "Perfeito, {{contact.name}}! Confirmado por aqui.", onMissing: "empty" }, "Resposta à regra de texto");
+  mk("end_txt", "end", 600, ty);
+  edges.push({ id: "e_txt_t", source: "txt_rule", target: "msg_txt", sourceHandle: "true" });
+  edges.push({ id: "e_msg_txt", source: "msg_txt", target: "end_txt", sourceHandle: "out" });
+  prev = "txt_rule"; prevHandle = "false";
+  mk("handoff", "act_handoff", 0, ty + 200, { note: "Lead respondeu ao disparo com texto livre" }, "Outra resposta → atendimento");
   edges.push({ id: `e_${prev}_handoff`, source: prev, target: "handoff", sourceHandle: prevHandle });
   return { schema: 1, nodes, edges };
+}
+
+export type ResponsePath = { key: string; when: string; actions: string[]; nodeIds: string[]; edgeIds: string[] };
+/** Lista cada caminho do gatilho até o fim: "quando" (regras atendidas) → ações. */
+export function responsePaths(g: AutoGraph, limit = 40): ResponsePath[] {
+  const trig = g.nodes.find((n) => isTrigger(n.type));
+  if (!trig) return [];
+  const byId = new Map(g.nodes.map((n) => [n.id, n]));
+  const out: ResponsePath[] = [];
+  const walk = (id: string, nodeIds: string[], edgeIds: string[], when: string[], seen: Set<string>) => {
+    if (out.length >= limit || seen.has(id)) return;
+    const n = byId.get(id); if (!n) return;
+    const s2 = new Set(seen); s2.add(id);
+    const outs = g.edges.filter((e) => e.source === id);
+    if (!outs.length) {
+      const acts = [...nodeIds, id].map((x) => byId.get(x)!).filter((x) => !isTrigger(x.type) && BLOCK_MAP[x.type]?.category !== "condition")
+        .map((x) => `${x.data.label || BLOCK_MAP[x.type]?.label}${summarize(x) ? ": " + summarize(x) : ""}`);
+      out.push({ key: [...nodeIds, id].join(">"), when: when.length ? when.join(" e ") : "Qualquer outra resposta", actions: acts, nodeIds: [...nodeIds, id], edgeIds });
+      return;
+    }
+    for (const e of outs) {
+      const isCond = BLOCK_MAP[n.type]?.category === "condition";
+      const w = isCond && e.sourceHandle === "true" ? [...when, n.data.label || summarize(n)] : when;
+      walk(e.target, [...nodeIds, id], [...edgeIds, e.id], w, s2);
+    }
+  };
+  walk(trig.id, [], [], [], new Set());
+  return out;
 }
