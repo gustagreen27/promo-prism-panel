@@ -661,9 +661,12 @@ export const getCampaignTimeline = createServerFn({ method: "GET" })
 
 export const getCampaignRecipients = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ id: z.string().uuid(), status: z.string().optional(), limit: z.number().optional() }).parse(d))
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid(), status: z.string().optional(), limit: z.number().optional(), afterPhone: z.string().optional(), offset: z.number().int().min(0).optional() }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    // Modo exportação em páginas: cursor por telefone (índice único campaign_id+phone),
+    // sem OFFSET profundo — cada chamada é curta mesmo em campanhas de 100 mil+.
+    const paged = data.afterPhone !== undefined;
     // Cap defensivo: sem limite explícito, no máximo 2000 (evita varrer 1M em campanhas grandes).
     const HARD_CAP = 2000;
     const requestedLimit = data.limit && data.limit > 0
@@ -688,15 +691,19 @@ export const getCampaignRecipients = createServerFn({ method: "GET" })
         // Usa coluna denormalizada contact_name — evita LEFT JOIN LATERAL contacts (Frente 1).
         .select("id,phone,status,attempt,sent_at,delivered_at,read_at,replied_at,failed_at,failed_reason,error_code,meta_message_id,contact_name")
         .eq("campaign_id", data.id)
-        .order("created_at", { ascending: true })
-        .range(from, to);
+        .order(paged ? "phone" : "created_at", { ascending: true })
+        .range(paged ? 0 : from, paged ? to - from : to);
+      if (paged) {
+        const last = rows.length ? rows[rows.length - 1].phone : data.afterPhone;
+        if (last) q = q.gt("phone", last);
+      }
       if (data.status && !isExternal) q = q.eq("status", data.status as any);
       const { data: page, error } = await q;
       if (error) throw error;
       // Compat: telas ainda leem r.contact?.name.
       page?.forEach((r, i) => {
         const base = { ...r, contact: { name: (r as any).contact_name ?? null } };
-        rows.push(isExternal ? simulateRecipient(base, from + i, camp as any) : base);
+        rows.push(isExternal ? simulateRecipient(base, (data.offset ?? 0) + from + i, camp as any) : base);
       });
       if (!page || page.length < PAGE) break;
     }

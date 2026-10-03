@@ -376,7 +376,16 @@ function Page() {
   const exportCsv = async () => {
     try {
       toast.info("Preparando CSV com todos os destinatários…");
-      const all = (await getRec({ data: { id, limit: 200000 } })) as any[];
+      // Busca em lotes curtos para não estourar o tempo do servidor em campanhas grandes.
+      const all: any[] = [];
+      let afterPhone = "";
+      for (let i = 0; i < 100; i++) {
+        const page = (await getRec({ data: { id, limit: 5000, afterPhone, offset: all.length } })) as any[];
+        all.push(...page);
+        if (page.length < 5000) break;
+        afterPhone = page[page.length - 1].phone;
+        if (i % 4 === 3) toast.info(`Preparando CSV… ${all.length.toLocaleString("pt-BR")} linhas`);
+      }
       if (!all?.length) { toast.warning("Sem dados"); return; }
       const esc = (v: any) => {
         const s = v == null ? "" : String(v);
