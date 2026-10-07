@@ -306,6 +306,7 @@ async function recordClick(
       user_agent: ua,
       language: lang,
       final_url: finalUrl,
+      blocked_reason: blockedReason ?? null,
     } as never)
     .select("id")
     .maybeSingle();
