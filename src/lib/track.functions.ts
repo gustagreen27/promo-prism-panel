@@ -414,20 +414,46 @@ export const resolveCampaign = createServerFn({ method: "POST" })
       }
     }
     const chosen = pickDestination(campaign as never, cursor);
-    let finalUrl = applyUtms(chosen, campaign);
-    const fbUrl = ((campaign as Record<string, unknown>).facebook_destination_url as string | null)?.trim() || null;
+    const finalUrl = applyUtms(chosen, campaign);
     const configuredMode = ((campaign as Record<string, unknown>).open_mode as string) || "smart";
-    let mode = configuredMode;
-    // Só o modo "smart" pode ser trocado automaticamente. Modos explícitos
-    // (redirect/iframe/wrapper) valem para qualquer dispositivo, rede ou VPN.
-    const autoMode = configuredMode === "smart";
+    const mode = configuredMode;
 
     const earlyIp = pickIp();
     const geoPromise = earlyIp ? lookupIp(earlyIp) : Promise.resolve(null);
     const uaHeader = getRequestHeader("user-agent") ?? "";
     const fbInApp = /FBAN|FBAV|FB_IAB|Instagram/i.test(uaHeader);
-    let isFacebookTraffic = fbInApp;
-    if (fbInApp && autoMode) mode = "wrapper";
+
+    // Geo com teto de espera: decide o bloqueio 404 sem segurar o link.
+    const earlyGeo = await Promise.race([
+      geoPromise,
+      new Promise<null>((r) => setTimeout(() => r(null), 350)),
+    ]);
+
+    // Bloqueio 404 (vale para QUALQUER modo de abertura): provedor de
+    // internet Facebook/Meta, VPN/proxy ou acesso de fora do Brasil.
+    // O clique é gravado normalmente — só a exibição vira 404.
+    const blocked =
+      fbInApp ||
+      isFacebookGeo(earlyGeo) ||
+      earlyGeo?.proxy === true ||
+      isNonBrazil(earlyGeo);
+    if (blocked) {
+      try {
+        const attribution = await resolveDispatchAttribution(
+          supabaseAdmin,
+          campaign.id,
+          data.wa_campaign_id,
+          data.recipient_id,
+        );
+        await Promise.race([
+          recordClick(supabaseAdmin, campaign, finalUrl, earlyGeo, attribution),
+          new Promise((r) => setTimeout(r, 4000)),
+        ]);
+      } catch {
+        /* métricas não devem quebrar o bloqueio */
+      }
+      return { ok: false as const, notFound: true as const };
+    }
 
     let iframeAllowed = true;
     if (mode === "redirect") {
@@ -455,33 +481,6 @@ export const resolveCampaign = createServerFn({ method: "POST" })
         }
       }
     }
-
-    // Geo nunca pode segurar o link: espera no máximo 350ms.
-    const earlyGeo = await Promise.race([
-      geoPromise,
-      new Promise<null>((r) => setTimeout(() => r(null), 350)),
-    ]);
-    if (!fbInApp && isFacebookGeo(earlyGeo)) {
-      isFacebookTraffic = true;
-      if (autoMode) {
-        mode = "wrapper";
-        iframeAllowed = false;
-      }
-    }
-
-    // Fora do Brasil: só no modo "smart" vai para a página estática.
-    const nonBrazil = isNonBrazil(earlyGeo);
-    if (nonBrazil && autoMode) {
-      mode = "wrapper";
-      iframeAllowed = false;
-    }
-
-    // Destino alternativo para tráfego do Facebook/Instagram e internacional.
-    // Não afeta os demais visitantes.
-    if ((isFacebookTraffic || nonBrazil) && fbUrl) {
-      finalUrl = applyUtms(fbUrl, campaign);
-    }
-
 
     // Grava clique/eventos server-side, mas com teto de espera: se o banco
     // demorar, respondemos o redirect na hora e o insert termina em segundo
