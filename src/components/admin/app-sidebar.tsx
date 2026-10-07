@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   Megaphone,
   Workflow,
+  ScanSearch,
   CalendarDays,
   Users,
   ListChecks,
