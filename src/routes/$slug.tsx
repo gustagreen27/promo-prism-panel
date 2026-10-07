@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { resolveCampaign, trackEvent } from "@/lib/track.functions";
 import { isMetaInAppBrowser, openInExternalBrowser } from "@/lib/external-open";
-import { NotFound as GhostNotFound } from "@/components/ui/ghost-404-page";
 import { DomainNotFound, useHostZone } from "@/components/domain-guard";
 
 function emitEvent(slug: string, event_type: string, metadata?: Record<string, unknown>) {
