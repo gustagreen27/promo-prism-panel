@@ -73,6 +73,7 @@ const GROUPS: NavGroup[] = [
       { title: "Disparos", to: "/admin/disparos", icon: Megaphone },
       { title: "Demandas de disparo", to: "/admin/demandas", icon: ClipboardCheck },
       { title: "Automações", to: "/admin/automacoes", icon: Workflow },
+      { title: "Auditoria de rastreamento", to: "/admin/auditoria-rastreamento", icon: ScanSearch },
       { title: "Agenda", to: "/admin/agenda", icon: CalendarDays },
     ],
   },
