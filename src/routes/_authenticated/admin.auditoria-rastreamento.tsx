@@ -54,7 +54,7 @@ function Page() {
           to: new Date(`${to}T23:59:59-03:00`).toISOString(),
         },
       });
-      setResult(r);
+      setResult(r as AuditResult);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha na análise.");
     } finally {

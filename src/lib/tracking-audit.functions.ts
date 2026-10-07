@@ -6,7 +6,7 @@ const BOT_RE = /bot|crawl|spider|facebookexternalhit|preview|headless|python|cur
 
 export type AuditFinding = { severity: "alta" | "media" | "baixa"; title: string; detail: string; suggestion: string };
 export type AuditResult = {
-  stats: Record<string, unknown>;
+  stats: Record<string, string | number | boolean | null | object>;
   summary: string;
   findings: AuditFinding[];
   truncated: boolean;
@@ -192,5 +192,5 @@ export const analyzeTracking = createServerFn({ method: "POST" })
     }
     let parsed: { summary?: string; findings?: AuditFinding[] } = {};
     try { parsed = JSON.parse(text); } catch { parsed = { summary: text }; }
-    return { stats, summary: parsed.summary ?? "", findings: parsed.findings ?? [], truncated };
+    return { stats: JSON.parse(JSON.stringify(stats)) as AuditResult["stats"], summary: parsed.summary ?? "", findings: parsed.findings ?? [], truncated };
   });
