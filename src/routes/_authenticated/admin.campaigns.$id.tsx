@@ -308,7 +308,7 @@ function CampaignDetail() {
               ))}
               {data.clicks.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground">
                     Nenhum acesso registrado ainda.
                   </TableCell>
                 </TableRow>
