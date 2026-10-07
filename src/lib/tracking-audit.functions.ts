@@ -122,31 +122,75 @@ export const analyzeTracking = createServerFn({ method: "POST" })
 
     const key = process.env["LOVABLE_API_KEY"];
     if (!key) throw new Error("Análise por IA indisponível no momento.");
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Lovable-API-Key": key, "X-Lovable-AIG-SDK": "lovable-app" },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "system",
-            content:
-              "Você audita rastreamento de cliques de links públicos. Cada acesso ao link deveria gerar 1 clique e eventos page_view e, conforme o modo, redirect_started/redirect_completed ou iframe_loaded/iframe_blocked. " +
-              "'Cliques únicos' contam IPs distintos. Analise só os números fornecidos; não invente. Aponte possíveis falhas de rastreamento (perda de cliques, eventos sem par, dados de IP/geo ausentes, bots inflando, quedas súbitas, picos anormais, redirecionamentos não concluídos, iframe bloqueado). " +
-              'Responda em português do Brasil, linguagem simples, JSON: {"summary": string, "findings": [{"severity":"alta"|"media"|"baixa","title":string,"detail":string,"suggestion":string}]}. Se tudo estiver normal, diga isso e retorne findings vazio ou só observações baixas.',
+    const system =
+      "Você audita rastreamento de cliques de links públicos. Cada acesso ao link deveria gerar 1 clique e eventos page_view e, conforme o modo, redirect_started/redirect_completed ou iframe_loaded/iframe_blocked. " +
+      "'Cliques únicos' contam IPs distintos. Analise só os números fornecidos; não invente. Aponte possíveis falhas de rastreamento (perda de cliques, eventos sem par, dados de IP/geo ausentes, bots inflando, quedas súbitas, picos anormais, redirecionamentos não concluídos, iframe bloqueado). " +
+      "Responda em português do Brasil, linguagem simples, no máximo 8 achados. Se tudo estiver normal, diga isso e retorne poucos ou nenhum achado.";
+    const schema = {
+      type: "object",
+      additionalProperties: false,
+      required: ["summary", "findings"],
+      properties: {
+        summary: { type: "string" },
+        findings: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["severity", "title", "detail", "suggestion"],
+            properties: {
+              severity: { type: "string", enum: ["alta", "media", "baixa"] },
+              title: { type: "string" },
+              detail: { type: "string" },
+              suggestion: { type: "string" },
+            },
           },
-          { role: "user", content: JSON.stringify(stats) },
-        ],
+        },
+      },
+    };
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/responses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Lovable-API-Key": key, "X-Lovable-AIG-SDK": "fetch" },
+      body: JSON.stringify({
+        model: "openai/gpt-6-astra",
+        stream: true,
+        store: false,
+        reasoning: { effort: "low" },
+        instructions: system,
+        input: [{ role: "user", content: JSON.stringify(stats) }],
+        text: { format: { type: "json_schema", name: "tracking_audit", strict: true, schema } },
       }),
     });
     if (res.status === 429) throw new Error("Muitas análises seguidas. Tente de novo em alguns instantes.");
     if (res.status === 402) throw new Error("Créditos de IA esgotados no workspace.");
-    if (!res.ok) throw new Error(`Falha na análise (${res.status}).`);
-    const j = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+    if (!res.ok || !res.body) throw new Error(`Falha na análise (${res.status}).`);
+
+    // Consome o stream SSE e junta o texto final.
+    let text = "";
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let idx;
+      while ((idx = buf.indexOf("\n")) >= 0) {
+        const line = buf.slice(0, idx).trim();
+        buf = buf.slice(idx + 1);
+        if (!line.startsWith("data:")) continue;
+        const payload = line.slice(5).trim();
+        if (!payload || payload === "[DONE]") continue;
+        try {
+          const ev = JSON.parse(payload);
+          if (ev.type === "response.output_text.delta" && typeof ev.delta === "string") text += ev.delta;
+          if (ev.type === "error" || ev.type === "response.failed") throw new Error("Falha na análise da IA.");
+        } catch (e) {
+          if (e instanceof Error && e.message.startsWith("Falha")) throw e;
+        }
+      }
+    }
     let parsed: { summary?: string; findings?: AuditFinding[] } = {};
-    try {
-      parsed = JSON.parse((j.choices?.[0]?.message?.content ?? "{}").replace(/^```json\s*|```$/g, ""));
-    } catch { parsed = { summary: j.choices?.[0]?.message?.content ?? "" }; }
+    try { parsed = JSON.parse(text); } catch { parsed = { summary: text }; }
     return { stats, summary: parsed.summary ?? "", findings: parsed.findings ?? [], truncated };
   });
