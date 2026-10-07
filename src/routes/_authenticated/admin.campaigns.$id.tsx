@@ -253,6 +253,7 @@ function CampaignDetail() {
             <TableHeader>
               <TableRow>
                 <TableHead>Quando</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>IP</TableHead>
                 <TableHead>Local</TableHead>
                 <TableHead>Provedor / ASN</TableHead>
@@ -267,6 +268,19 @@ function CampaignDetail() {
                 <TableRow key={c.id}>
                   <TableCell className="whitespace-nowrap">
                     {new Date(c.clicked_at as string).toLocaleString("pt-BR")}
+                  </TableCell>
+                  <TableCell>
+                    {c.blocked_reason ? (
+                      <Badge variant="destructive">
+                        {c.blocked_reason === "facebook"
+                          ? "Bloqueado · Facebook"
+                          : c.blocked_reason === "vpn"
+                            ? "Bloqueado · VPN"
+                            : "Bloqueado · Fora do Brasil"}
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary">Visualizou</Badge>
+                    )}
                   </TableCell>
                   <TableCell>{c.ip ?? "—"}</TableCell>
                   <TableCell>
