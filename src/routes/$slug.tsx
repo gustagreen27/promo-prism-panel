@@ -92,7 +92,7 @@ export const Route = createFileRoute("/$slug")({
     if (!loaderData || loaderData.status === "notfound") {
       return {
         meta: [
-          { title: "Campanha não encontrada" },
+          { title: "Página não encontrada" },
           { name: "robots", content: "noindex,nofollow" },
         ],
       };
@@ -216,14 +216,9 @@ function CampaignPublicPage() {
   }, [data]);
 
   if (data.status === "notfound" || (hostZone === "slug" && data.status === "unavailable")) {
-    // No domínio de páginas públicas o 404 é neutro (sem marca, sem dados privados).
-    if (hostZone === "slug") return <DomainNotFound zone="slug" />;
-    return (
-      <GhostNotFound
-        title="Campanha não encontrada"
-        description="Verifique o link ou contate o responsável pela campanha."
-      />
-    );
+    // 404 neutro e padrão (sem marca, sem dados privados) — usado também para
+    // tráfego bloqueado (Facebook/Meta, VPN/proxy, fora do Brasil).
+    return <DomainNotFound zone="slug" />;
   }
 
   if (data.status === "unavailable") {
