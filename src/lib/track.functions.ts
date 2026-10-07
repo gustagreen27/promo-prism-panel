@@ -482,33 +482,6 @@ export const resolveCampaign = createServerFn({ method: "POST" })
       }
     }
 
-    // Geo nunca pode segurar o link: espera no máximo 350ms.
-    const earlyGeo = await Promise.race([
-      geoPromise,
-      new Promise<null>((r) => setTimeout(() => r(null), 350)),
-    ]);
-    if (!fbInApp && isFacebookGeo(earlyGeo)) {
-      isFacebookTraffic = true;
-      if (autoMode) {
-        mode = "wrapper";
-        iframeAllowed = false;
-      }
-    }
-
-    // Fora do Brasil: só no modo "smart" vai para a página estática.
-    const nonBrazil = isNonBrazil(earlyGeo);
-    if (nonBrazil && autoMode) {
-      mode = "wrapper";
-      iframeAllowed = false;
-    }
-
-    // Destino alternativo para tráfego do Facebook/Instagram e internacional.
-    // Não afeta os demais visitantes.
-    if ((isFacebookTraffic || nonBrazil) && fbUrl) {
-      finalUrl = applyUtms(fbUrl, campaign);
-    }
-
-
     // Grava clique/eventos server-side, mas com teto de espera: se o banco
     // demorar, respondemos o redirect na hora e o insert termina em segundo
     // plano. Métricas nunca podem atrasar o link.
