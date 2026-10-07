@@ -36,6 +36,7 @@ import { Route as RelatoriosSlugRouteImport } from './routes/relatorios.$slug'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedAdminAgendaRouteImport } from './routes/_authenticated/admin.agenda'
 import { Route as AuthenticatedAdminAtendimentoRouteImport } from './routes/_authenticated/admin.atendimento'
+import { Route as AuthenticatedAdminAuditoriaRastreamentoRouteImport } from './routes/_authenticated/admin.auditoria-rastreamento'
 import { Route as AuthenticatedAdminAutomacoesRouteImport } from './routes/_authenticated/admin.automacoes'
 import { Route as AuthenticatedAdminCampanhasRouteImport } from './routes/_authenticated/admin.campanhas'
 import { Route as AuthenticatedAdminCampanhasAprovacaoRouteImport } from './routes/_authenticated/admin.campanhas-aprovacao'
@@ -252,6 +253,12 @@ const AuthenticatedAdminAtendimentoRoute =
   AuthenticatedAdminAtendimentoRouteImport.update({
     id: '/admin/atendimento',
     path: '/admin/atendimento',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminAuditoriaRastreamentoRoute =
+  AuthenticatedAdminAuditoriaRastreamentoRouteImport.update({
+    id: '/admin/auditoria-rastreamento',
+    path: '/admin/auditoria-rastreamento',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAdminAutomacoesRoute =
@@ -760,6 +767,7 @@ export interface FileRoutesByFullPath {
   '/painel/': typeof PainelIndexRoute
   '/admin/agenda': typeof AuthenticatedAdminAgendaRoute
   '/admin/atendimento': typeof AuthenticatedAdminAtendimentoRoute
+  '/admin/auditoria-rastreamento': typeof AuthenticatedAdminAuditoriaRastreamentoRoute
   '/admin/automacoes': typeof AuthenticatedAdminAutomacoesRouteWithChildren
   '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
   '/admin/campanhas-aprovacao': typeof AuthenticatedAdminCampanhasAprovacaoRoute
@@ -868,6 +876,7 @@ export interface FileRoutesByTo {
   '/painel': typeof PainelIndexRoute
   '/admin/agenda': typeof AuthenticatedAdminAgendaRoute
   '/admin/atendimento': typeof AuthenticatedAdminAtendimentoRoute
+  '/admin/auditoria-rastreamento': typeof AuthenticatedAdminAuditoriaRastreamentoRoute
   '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
   '/admin/campanhas-aprovacao': typeof AuthenticatedAdminCampanhasAprovacaoRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
@@ -977,6 +986,7 @@ export interface FileRoutesById {
   '/painel/': typeof PainelIndexRoute
   '/_authenticated/admin/agenda': typeof AuthenticatedAdminAgendaRoute
   '/_authenticated/admin/atendimento': typeof AuthenticatedAdminAtendimentoRoute
+  '/_authenticated/admin/auditoria-rastreamento': typeof AuthenticatedAdminAuditoriaRastreamentoRoute
   '/_authenticated/admin/automacoes': typeof AuthenticatedAdminAutomacoesRouteWithChildren
   '/_authenticated/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
   '/_authenticated/admin/campanhas-aprovacao': typeof AuthenticatedAdminCampanhasAprovacaoRoute
@@ -1088,6 +1098,7 @@ export interface FileRouteTypes {
     | '/painel/'
     | '/admin/agenda'
     | '/admin/atendimento'
+    | '/admin/auditoria-rastreamento'
     | '/admin/automacoes'
     | '/admin/campanhas'
     | '/admin/campanhas-aprovacao'
@@ -1196,6 +1207,7 @@ export interface FileRouteTypes {
     | '/painel'
     | '/admin/agenda'
     | '/admin/atendimento'
+    | '/admin/auditoria-rastreamento'
     | '/admin/campanhas'
     | '/admin/campanhas-aprovacao'
     | '/admin/clientes'
@@ -1304,6 +1316,7 @@ export interface FileRouteTypes {
     | '/painel/'
     | '/_authenticated/admin/agenda'
     | '/_authenticated/admin/atendimento'
+    | '/_authenticated/admin/auditoria-rastreamento'
     | '/_authenticated/admin/automacoes'
     | '/_authenticated/admin/campanhas'
     | '/_authenticated/admin/campanhas-aprovacao'
@@ -1611,6 +1624,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/atendimento'
       fullPath: '/admin/atendimento'
       preLoaderRoute: typeof AuthenticatedAdminAtendimentoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/auditoria-rastreamento': {
+      id: '/_authenticated/admin/auditoria-rastreamento'
+      path: '/admin/auditoria-rastreamento'
+      fullPath: '/admin/auditoria-rastreamento'
+      preLoaderRoute: typeof AuthenticatedAdminAuditoriaRastreamentoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/admin/automacoes': {
@@ -2310,6 +2330,7 @@ const AuthenticatedAdminCampaignsIdRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminAgendaRoute: typeof AuthenticatedAdminAgendaRoute
   AuthenticatedAdminAtendimentoRoute: typeof AuthenticatedAdminAtendimentoRoute
+  AuthenticatedAdminAuditoriaRastreamentoRoute: typeof AuthenticatedAdminAuditoriaRastreamentoRoute
   AuthenticatedAdminAutomacoesRoute: typeof AuthenticatedAdminAutomacoesRouteWithChildren
   AuthenticatedAdminCampanhasRoute: typeof AuthenticatedAdminCampanhasRoute
   AuthenticatedAdminCampanhasAprovacaoRoute: typeof AuthenticatedAdminCampanhasAprovacaoRoute
@@ -2348,6 +2369,8 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminAgendaRoute: AuthenticatedAdminAgendaRoute,
   AuthenticatedAdminAtendimentoRoute: AuthenticatedAdminAtendimentoRoute,
+  AuthenticatedAdminAuditoriaRastreamentoRoute:
+    AuthenticatedAdminAuditoriaRastreamentoRoute,
   AuthenticatedAdminAutomacoesRoute:
     AuthenticatedAdminAutomacoesRouteWithChildren,
   AuthenticatedAdminCampanhasRoute: AuthenticatedAdminCampanhasRoute,
