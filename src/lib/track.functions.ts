@@ -245,6 +245,7 @@ async function recordClick(
   finalUrl: string,
   preloadedGeo?: Record<string, unknown> | null,
   attribution?: { wa_campaign_id: string; recipient_id: string } | null,
+  blockedReason?: "facebook" | "vpn" | "fora_do_brasil" | null,
 ): Promise<string | null> {
   const ip = pickIp();
   const ua = getRequestHeader("user-agent") ?? null;
@@ -431,13 +432,17 @@ export const resolveCampaign = createServerFn({ method: "POST" })
 
     // Bloqueio 404 (vale para QUALQUER modo de abertura): provedor de
     // internet Facebook/Meta, VPN/proxy ou acesso de fora do Brasil.
-    // O clique é gravado normalmente — só a exibição vira 404.
-    const blocked =
-      fbInApp ||
-      isFacebookGeo(earlyGeo) ||
-      earlyGeo?.proxy === true ||
-      isNonBrazil(earlyGeo);
-    if (blocked) {
+    // O clique é gravado normalmente, com o motivo do bloqueio — só a
+    // exibição vira 404.
+    const blockedReason: "facebook" | "vpn" | "fora_do_brasil" | null =
+      fbInApp || isFacebookGeo(earlyGeo)
+        ? "facebook"
+        : earlyGeo?.proxy === true
+          ? "vpn"
+          : isNonBrazil(earlyGeo)
+            ? "fora_do_brasil"
+            : null;
+    if (blockedReason) {
       try {
         const attribution = await resolveDispatchAttribution(
           supabaseAdmin,
@@ -446,7 +451,7 @@ export const resolveCampaign = createServerFn({ method: "POST" })
           data.recipient_id,
         );
         await Promise.race([
-          recordClick(supabaseAdmin, campaign, finalUrl, earlyGeo, attribution),
+          recordClick(supabaseAdmin, campaign, finalUrl, earlyGeo, attribution, blockedReason),
           new Promise((r) => setTimeout(r, 4000)),
         ]);
       } catch {
