@@ -105,7 +105,6 @@ export const RESERVED_SLUGS = new Set<string>([
   // reservas defensivas
   "api",
   "dashboard",
-  "register",
   "configuracoes",
   "usuarios",
   "empresas",
