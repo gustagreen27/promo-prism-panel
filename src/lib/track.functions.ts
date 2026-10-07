@@ -252,7 +252,13 @@ async function recordClick(
   const lang = getRequestHeader("accept-language") ?? null;
 
   let geo: Record<string, unknown> | null = preloadedGeo ?? null;
-  if (!geo && ip) geo = await lookupIp(ip);
+  // Localização nunca pode impedir o registro: espera no máximo 1,5s.
+  if (!geo && ip) {
+    geo = await Promise.race([
+      lookupIp(ip).catch(() => null),
+      new Promise<null>((r) => setTimeout(() => r(null), 1500)),
+    ]);
+  }
 
   let parsed: ReturnType<UAParser["getResult"]> | null = null;
   if (ua) {
@@ -488,12 +494,18 @@ export const resolveCampaign = createServerFn({ method: "POST" })
           data.wa_campaign_id,
           data.recipient_id,
         );
-        await recordClick(supabaseAdmin, campaign, finalUrl, earlyGeo ?? (await geoPromise), attribution);
+        const geo = earlyGeo ?? (await Promise.race([
+          Promise.resolve(geoPromise).catch(() => null),
+          new Promise<null>((r) => setTimeout(() => r(null), 1500)),
+        ]));
+        await recordClick(supabaseAdmin, campaign, finalUrl, geo, attribution);
       } catch {
         /* ignore — métricas não devem quebrar o link */
       }
     })();
-    await Promise.race([clickWrite, new Promise((r) => setTimeout(r, 500))]);
+    // Aguarda a gravação terminar: em servidor sem estado, trabalho deixado em
+    // segundo plano após a resposta pode ser cortado e o clique se perderia.
+    await Promise.race([clickWrite, new Promise((r) => setTimeout(r, 4000))]);
 
 
     return {
