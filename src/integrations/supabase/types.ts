@@ -699,6 +699,7 @@ export type Database = {
         Row: {
           as_name: string | null
           as_number: string | null
+          blocked_reason: string | null
           browser: string | null
           browser_version: string | null
           calling_code: string | null
@@ -742,6 +743,7 @@ export type Database = {
         Insert: {
           as_name?: string | null
           as_number?: string | null
+          blocked_reason?: string | null
           browser?: string | null
           browser_version?: string | null
           calling_code?: string | null
@@ -785,6 +787,7 @@ export type Database = {
         Update: {
           as_name?: string | null
           as_number?: string | null
+          blocked_reason?: string | null
           browser?: string | null
           browser_version?: string | null
           calling_code?: string | null
