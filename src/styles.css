@@ -360,7 +360,7 @@
 .automation-node-solid .automation-node-heading { border-radius: 6px; min-height: 48px; }
 .automation-node-note { position: absolute; top: calc(100% + 10px); left: 0; width: 250px; font-size: 11px; line-height: 1.55; color: var(--muted-foreground); white-space: pre-wrap; pointer-events: none; }
 .automation-audio-preview { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 9px; font-size: 11px; color: var(--flow-tone); background: color-mix(in oklab, var(--flow-tone) 10%, var(--card)); }
-.automation-trigger-message { margin: 8px; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; background: var(--card); }
+.automation-trigger-message { margin: 8px; border: 1px solid var(--border); border-radius: 5px; overflow: visible; background: var(--card); }
 .automation-node {
   --flow-heading-ink: var(--flow-light-ink);
   width: 220px;
