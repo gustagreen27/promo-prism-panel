@@ -191,7 +191,7 @@ export function summarize(n: AutoNode, names?: { tags?: Record<string, string>; 
     case "trigger_scheduled": return c.at ? `${new Date(c.at).toLocaleString("pt-BR")} · ${names?.lists?.[c.listId] ?? "lista"}` : "Sem data";
     case "send_template": return c.templateName ? `${c.templateName} (${c.language})` : "Sem template";
     case "send_text": return c.text ? String(c.text).slice(0, 60) : "Sem texto";
-    case "send_media": return `${c.mediaType ?? "image"} · ${c.url ? "com link" : "sem link"}`;
+    case "send_media": return `${c.mediaType ?? "image"} · ${c.mediaType === "audio" && c.mediaPath ? "arquivo carregado" : c.url ? "com link" : "sem link"}`;
     case "send_buttons": return `${(c.buttons ?? []).length} botão(ões)`;
     case "cond_reply": return `${({ equals: "Igual a", contains: "Contém", starts_with: "Começa com" } as any)[c.op] ?? c.op} "${c.value ?? ""}"`;
     case "cond_contact_field": return `${c.field} ${c.op} ${c.value ?? ""}`.trim();
@@ -224,7 +224,7 @@ function requiredConfig(n: AutoNode): string[] {
     case "trigger_scheduled": need(!!c.at && !isNaN(Date.parse(c.at)), "Informe data e horário"); need(!!c.listId, "Escolha a lista"); break;
     case "send_template": need(!!c.templateName, "Escolha o template"); need(!!c.language, "Informe o idioma"); break;
     case "send_text": need(!!String(c.text ?? "").trim(), "Escreva o texto"); break;
-    case "send_media": need(/^https:\/\//.test(String(c.url ?? "")) || varsIn(c.url).length > 0, "Informe o link HTTPS da mídia"); break;
+    case "send_media": need((c.mediaType === "audio" && /^automation-audio\/[a-f0-9-]+\.(mp3|ogg|aac|amr|m4a)$/i.test(String(c.mediaPath ?? ""))) || /^https:\/\//.test(String(c.url ?? "")) || varsIn(c.url).length > 0, "Carregue o arquivo ou informe o link HTTPS da mídia"); break;
     case "send_buttons": {
       need(!!String(c.text ?? "").trim(), "Escreva o texto");
       const b = Array.isArray(c.buttons) ? c.buttons : [];

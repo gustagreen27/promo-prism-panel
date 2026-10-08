@@ -67,7 +67,7 @@ export function AutomationFlowNode({ data, selected }: NodeProps<Node<FlowNodeDa
         </div>
       ) : !compact && !solid && <>
         {media === "audio" ? (
-          <div className="automation-audio-preview"><Volume2 size={20} />{c.url ? "Áudio adicionado" : "Adicionar áudio"}</div>
+          <div className="automation-audio-preview"><Volume2 size={20} />{c.mediaPath || c.url ? "Áudio adicionado" : "Adicionar áudio"}</div>
         ) : media ? (
           <div className="automation-media-preview">
             {c.url && media === "image" ? <img src={c.url} alt={c.caption || "Imagem da mensagem"} className="h-full w-full object-contain" />
