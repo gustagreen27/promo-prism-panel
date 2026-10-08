@@ -75,6 +75,7 @@ function Page() {
   const [pacingOn, setPacingOn] = useState(false);
   const [pace, setPace] = useState({ msgs_min: "3", msgs_max: "6", interval_min_s: "10", interval_max_s: "30", pause_min: "2", pause_max: "5" });
   const [customVars, setCustomVars] = useState<(CustomVar & { raw: string })[]>([]);
+  const [variants, setVariants] = useState<string[]>([]);
   const [previewIdx, setPreviewIdx] = useState(0);
   const [pauseUnit, setPauseUnit] = useState<"s" | "min">("min");
 
@@ -90,6 +91,7 @@ function Page() {
     if (c.reply_buttons?.length) setReplies(c.reply_buttons);
     setAutomationId(c.automation_id ?? "");
     setCustomVars((c.custom_vars ?? []).map((v: any) => ({ ...v, values: v.values ?? [], raw: (v.values ?? []).join("\n") })));
+    setVariants(c.message_variants ?? []);
     setPacingOn(!!d.pacing_enabled);
     if (d.pacing_config) {
       const p = d.pacing_config;
@@ -119,9 +121,11 @@ function Page() {
     reply_buttons: buttonsType === "reply" ? replies : null,
     automation_id: automationId || null,
     custom_vars: customVars.length ? customVars.map(({ raw: _r, ...v }) => ({ ...v, name: v.name.trim(), column: v.mode === "column" ? (v.column ?? "").trim() : null })) : null,
+    message_variants: variants.map((v) => v.trim()).filter(Boolean).length ? variants.map((v) => v.trim()).filter(Boolean) : null,
   };
   const cleanVars = config.custom_vars ?? [];
-  const previewBody = (idx: number) => render(applyCustomVars(text, cleanVars, { index: idx }).text, testName);
+  const cleanVariants = config.message_variants ?? [];
+  const previewBody = (idx: number) => render(applyCustomVars(pickDirectText(text, cleanVariants, idx), cleanVars, { index: idx }).text, testName);
   const updVar = (i: number, patch: Partial<CustomVar & { raw: string }>) =>
     setCustomVars((vs) => vs.map((v, j) => (j === i ? { ...v, ...patch } : v)));
   const replyAutosQ = useQuery({ queryKey: ["reply-automations", connId], queryFn: () => replyAutosFn({ data: { connectionId: connId || null } }), enabled: !!connId });
