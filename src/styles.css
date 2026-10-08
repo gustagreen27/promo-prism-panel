@@ -80,6 +80,7 @@
   --color-report-success: var(--report-success);
   --color-report-danger: var(--report-danger);
   --color-report-warn: var(--report-warn);
+  --color-flow-canvas: var(--flow-canvas);
 }
 
 :root {
@@ -316,3 +317,66 @@
 .atd-theme .atd-rail-btn:hover { background: oklch(1 0 0 / 6%); color: oklch(1 0 0); }
 .atd-theme .atd-rail-btn[data-active="true"] { background: oklch(0.36 0.05 167); color: oklch(0.83 0.13 165); }
 .atd-theme .atd-eyebrow { letter-spacing: 0.14em; }
+
+/* Visual automation editor: type colors stay scoped to the canvas. */
+:root {
+  --flow-canvas: oklch(0.978 0.004 85);
+  --flow-dot: oklch(0.78 0.008 85);
+  --flow-start: oklch(0.46 0.14 153);
+  --flow-text: oklch(0.52 0.18 251);
+  --flow-buttons: oklch(0.79 0.18 130);
+  --flow-media: oklch(0.72 0.12 179);
+  --flow-delay: oklch(0.52 0.1 223);
+  --flow-condition: oklch(0.52 0.22 313);
+  --flow-template: oklch(0.66 0.12 288);
+  --flow-handoff: oklch(0.59 0.13 168);
+  --flow-end: oklch(0.46 0.17 8);
+  --flow-light-ink: oklch(0.99 0 0);
+  --flow-dark-ink: oklch(0.23 0.035 155);
+  --flow-selection: 0 0 0 4px color-mix(in oklab, var(--flow-tone) 20%, transparent);
+}
+.dark {
+  --flow-canvas: oklch(0.17 0.008 155);
+  --flow-dot: oklch(0.35 0.01 155);
+}
+.automation-editor [data-tone="start"] { --flow-tone: var(--flow-start); }
+.automation-editor [data-tone="text"] { --flow-tone: var(--flow-text); }
+.automation-editor [data-tone="buttons"] { --flow-tone: var(--flow-buttons); --flow-heading-ink: var(--flow-dark-ink); }
+.automation-editor [data-tone="media"] { --flow-tone: var(--flow-media); --flow-heading-ink: var(--flow-dark-ink); }
+.automation-editor [data-tone="delay"] { --flow-tone: var(--flow-delay); }
+.automation-editor [data-tone="condition"] { --flow-tone: var(--flow-condition); }
+.automation-editor [data-tone="template"] { --flow-tone: var(--flow-template); }
+.automation-editor [data-tone="handoff"] { --flow-tone: var(--flow-handoff); }
+.automation-editor [data-tone="end"] { --flow-tone: var(--flow-end); }
+.automation-node {
+  --flow-heading-ink: var(--flow-light-ink);
+  width: 220px;
+  border: 1px solid color-mix(in oklab, var(--flow-tone) 45%, var(--card));
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--card-foreground);
+  padding: 4px;
+  box-shadow: var(--shadow-xs);
+}
+.automation-node[data-selected="true"] { box-shadow: var(--flow-selection); border-color: var(--flow-tone); }
+.automation-node[data-invalid="true"] { border-color: var(--destructive); }
+.automation-node-heading { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 7px 9px; border-radius: 5px 5px 0 0; background: var(--flow-tone); color: var(--flow-heading-ink); }
+.automation-node-icon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.automation-node[data-tone="start"] .automation-node-icon { width: 30px; height: 30px; border-radius: 50%; color: var(--flow-start); background: var(--flow-light-ink); }
+.automation-node-number { border-radius: 3px; padding: 1px 5px; background: color-mix(in oklab, var(--flow-dark-ink) 17%, transparent); font-size: 11px; font-weight: 700; }
+.automation-node-body { padding: 12px 9px; font-size: 12px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 180px; overflow: hidden; }
+.automation-button-preview { border-top: 1px solid var(--border); text-align: center; font-size: 11px; font-weight: 600; color: var(--flow-text); padding: 8px; overflow-wrap: anywhere; }
+.automation-node-outputs { border-top: 1px solid var(--border); }
+.automation-node-output { position: relative; padding: 9px; text-align: center; font-size: 11px; font-weight: 600; color: var(--flow-tone); }
+.automation-node-output + .automation-node-output { border-top: 1px solid var(--border); }
+.automation-editor .automation-port { width: 10px; height: 10px; background: var(--card); border: 2px solid var(--flow-tone); }
+.automation-node-compact { width: 160px; border-style: dashed; background: color-mix(in oklab, var(--flow-tone) 8%, var(--card)); }
+.automation-node-compact .automation-node-heading { background: transparent; color: var(--flow-tone); border-radius: 5px; }
+.automation-node-compact .automation-node-icon svg { width: 30px; height: 30px; }
+.automation-media-preview { height: 100px; display: flex; align-items: center; justify-content: center; background: color-mix(in oklab, var(--flow-media) 12%, var(--card)); color: var(--flow-tone); }
+.automation-tool-icon { display: flex; align-items: center; justify-content: center; border-radius: 5px; width: 23px; height: 23px; background: var(--flow-tone); color: var(--flow-heading-ink, var(--flow-light-ink)); }
+.automation-editor .react-flow__edge-path { stroke: var(--flow-text); stroke-width: 1.5; }
+.automation-editor .react-flow__controls { border: 1px solid var(--border); border-radius: 6px; box-shadow: var(--shadow-sm); overflow: hidden; }
+.automation-editor .react-flow__controls-button { background: var(--card); color: var(--foreground); border-color: var(--border); fill: currentColor; }
+.automation-editor .react-flow__minimap { background: var(--card); border: 1px solid var(--border); border-radius: 6px; }
+@media (max-width: 767px) { .automation-editor .react-flow__minimap { display: none; } }

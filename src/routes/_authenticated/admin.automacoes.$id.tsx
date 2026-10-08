@@ -3,14 +3,14 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import {
-  ReactFlow, ReactFlowProvider, Background, BackgroundVariant, Controls, MiniMap, Handle, Position,
+  ReactFlow, ReactFlowProvider, Background, BackgroundVariant, Controls, MiniMap,
   addEdge, applyEdgeChanges, applyNodeChanges, useReactFlow, MarkerType,
-  type Node, type Edge, type NodeProps, type Connection, type NodeChange, type EdgeChange,
+  type Node, type Edge, type Connection, type NodeChange, type EdgeChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Save, CheckCircle2, Rocket, Pause, Play, FlaskConical, Undo2, Redo2, Copy, Trash2, LayoutGrid, Braces, AlertTriangle, History,
+  ArrowLeft, Save, CheckCircle2, Rocket, Pause, Play, FlaskConical, Undo2, Redo2, Copy, Trash2, LayoutGrid, Braces, AlertTriangle, History, Settings2, ChevronDown, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,12 +26,13 @@ import {
 } from "@/lib/automations.functions";
 import {
   BLOCKS, BLOCK_MAP, CATEGORY_LABEL, VARIABLES, summarize, validateGraph, isTrigger, responsePaths,
-  type AutoGraph, type BlockCategory, type ValidationIssue,
+  type AutoGraph, type ValidationIssue,
 } from "@/lib/automation-graph";
+import { AutomationFlowNode, blockAppearance, type FlowNodeData } from "@/components/admin/automation-flow-node";
 import { RunDetail, RunsPanel } from "@/components/admin/automation-runs";
 
 export const Route = createFileRoute("/_authenticated/admin/automacoes/$id")({
-  head: () => ({ meta: [{ title: "Editor de automação — Next Disparos" }] }),
+  head: () => ({ meta: [{ title: "Editor de automação — Next Disparos" }, { name: "description", content: "Configure mensagens e caminhos de resposta nas automações do Next Disparos." }, { property: "og:title", content: "Editor de automação — Next Disparos" }, { property: "og:description", content: "Mensagens, ações e caminhos de resposta em um quadro visual." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: () => (
     <ReactFlowProvider>
       <Editor />
@@ -39,40 +40,8 @@ export const Route = createFileRoute("/_authenticated/admin/automacoes/$id")({
   ),
 });
 
-type NodeData = { type: string; label?: string; config: Record<string, any>; summary?: string; invalid?: boolean };
-
-const CAT_STYLE: Record<BlockCategory, string> = {
-  trigger: "border-primary bg-primary/10",
-  whatsapp: "border-chart-2 bg-chart-2/10",
-  condition: "border-chart-4 bg-chart-4/10",
-  wait: "border-chart-3 bg-chart-3/10",
-  action: "border-chart-5 bg-chart-5/10",
-};
-
-function FlowNode({ data, selected }: NodeProps<Node<NodeData>>) {
-  const def = BLOCK_MAP[data.type];
-  if (!def) return null;
-  return (
-    <div className={`min-w-[200px] max-w-[240px] rounded-xl border-2 bg-card px-3 py-2 shadow-sm ${CAT_STYLE[def.category]} ${selected ? "ring-2 ring-ring" : ""} ${data.invalid ? "border-destructive" : ""}`}>
-      {!isTrigger(data.type) && <Handle type="target" position={Position.Top} className="!h-3 !w-3 !bg-foreground" />}
-      <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{CATEGORY_LABEL[def.category]} · {def.label}</div>
-      <div className="truncate text-sm font-semibold">{data.label || def.label}</div>
-      <div className="truncate text-xs text-muted-foreground">{data.summary}</div>
-      {def.outputs.length > 0 && (
-        <div className="mt-2 flex justify-between gap-2">
-          {def.outputs.map((o, i) => (
-            <div key={o.id} className="relative flex-1 text-center text-[10px] font-medium text-muted-foreground">
-              {o.label}
-              <Handle id={o.id} type="source" position={Position.Bottom}
-                style={{ left: `${((i + 1) / (def.outputs.length + 1)) * 100}%` }} className="!h-3 !w-3 !bg-foreground" />
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-const nodeTypes = { block: FlowNode };
+type NodeData = FlowNodeData;
+const nodeTypes = { block: AutomationFlowNode };
 
 let idSeq = 0;
 const newId = (p: string) => `${p}_${Date.now().toString(36)}${(idSeq++).toString(36)}`;
@@ -112,6 +81,7 @@ function Editor() {
   const [connectionId, setConnectionId] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [issues, setIssues] = useState<ValidationIssue[]>([]);
   const [testOpen, setTestOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -167,16 +137,19 @@ function Editor() {
     setEdges((es) => addEdge({ ...c, sourceHandle: handle, id: newId("e"), markerEnd: { type: MarkerType.ArrowClosed } }, es.filter((e) => !(e.source === c.source && (e.sourceHandle ?? "out") === handle))));
   }, [snapshot]);
 
-  const onDrop = (ev: DragEvent) => {
-    ev.preventDefault();
-    const type = ev.dataTransfer.getData("application/automation-block");
-    if (!type || !BLOCK_MAP[type]) return;
+  const addBlock = (type: string, position?: { x: number; y: number }) => {
+    const def = BLOCK_MAP[type];
+    if (!def) return;
     if (isTrigger(type) && nodes.some((n) => isTrigger(n.data.type))) { toast.error("Use apenas um gatilho por automação"); return; }
-    const position = rf.screenToFlowPosition({ x: ev.clientX, y: ev.clientY });
     snapshot();
     const nid = newId(type.split("_")[0]);
-    setNodes((ns) => [...ns, { id: nid, type: "block", position, data: { type, config: structuredClone(BLOCK_MAP[type].defaults) } }]);
+    const origin = position ?? rf.screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+    setNodes((ns) => [...ns, { id: nid, type: "block", position: origin, data: { type, config: structuredClone(def.defaults) } }]);
     setSelected(nid);
+  };
+  const onDrop = (ev: DragEvent) => {
+    ev.preventDefault();
+    addBlock(ev.dataTransfer.getData("application/automation-block"), rf.screenToFlowPosition({ x: ev.clientX, y: ev.clientY }));
   };
 
   const updateNode = (nid: string, patch: Partial<NodeData>) => {
@@ -205,7 +178,8 @@ function Editor() {
     const queue = trig ? [trig.id] : [];
     if (trig) depth.set(trig.id, 0);
     while (queue.length) {
-      const cur = queue.shift()!;
+      const cur = queue.shift();
+      if (!cur) continue;
       for (const e of g.edges.filter((x) => x.source === cur)) {
         const d = (depth.get(cur) ?? 0) + 1;
         if ((depth.get(e.target) ?? -1) < d && d < 100) { depth.set(e.target, d); queue.push(e.target); }
@@ -215,9 +189,10 @@ function Editor() {
     for (const n of g.nodes) { const d = depth.get(n.id) ?? 0; rows.set(d, [...(rows.get(d) ?? []), n.id]); }
     setNodes((ns) => ns.map((n) => {
       const d = depth.get(n.id) ?? 0;
-      const row = rows.get(d)!;
+      const row = rows.get(d);
+      if (!row) return n;
       const i = row.indexOf(n.id);
-      return { ...n, position: { x: (i - (row.length - 1) / 2) * 280, y: d * 160 } };
+      return { ...n, position: { x: d * 300, y: i * 230 } };
     }));
     setTimeout(() => rf.fitView({ padding: 0.2 }), 50);
   };
@@ -232,8 +207,8 @@ function Editor() {
     const on = new Set(activePath.edgeIds);
     return edges.map((e) => on.has(e.id) ? { ...e, animated: true, style: { strokeWidth: 3, stroke: "var(--primary)" } } : { ...e, style: { opacity: 0.25 } });
   }, [edges, activePath]);
-  const displayNodes = useMemo(() => nodes.map((n) => ({
-    ...n, data: { ...n.data, summary: summarize({ id: n.id, type: n.data.type, position: n.position, data: { config: n.data.config } }, names), invalid: invalidIds.has(n.id) },
+  const displayNodes = useMemo(() => nodes.map((n, index) => ({
+    ...n, data: { ...n.data, ordinal: String(index + 1).padStart(2, "0"), summary: summarize({ id: n.id, type: n.data.type, position: n.position, data: { config: n.data.config } }, names), invalid: invalidIds.has(n.id) },
     style: activePath && !activePath.nodeIds.includes(n.id) ? { opacity: 0.3 } : undefined,
   })), [nodes, names, invalidIds, activePath]);
 
@@ -290,7 +265,7 @@ function Editor() {
   const lastVersion = versions.sort((x: any, y: any) => y.version - x.version)[0];
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col">
+    <div className="automation-editor flex h-[calc(100dvh-4rem)] min-h-[540px] flex-col">
       <div className="flex flex-wrap items-center gap-2 border-b bg-card px-3 py-2">
         <Button variant="ghost" size="icon" asChild><Link to="/admin/automacoes"><ArrowLeft className="h-4 w-4" /></Link></Button>
         <Input value={name} onChange={(e) => { setName(e.target.value); setDirty(true); }} className="h-8 w-56 font-semibold" />
@@ -298,6 +273,7 @@ function Editor() {
         {lastVersion && <Badge variant="outline">Publicada v{lastVersion.version}</Badge>}
         {dirty && <span className="text-xs font-medium text-destructive">● Alterações não salvas</span>}
         <div className="ml-auto flex flex-wrap items-center gap-1.5">
+          <Button size="icon" variant="ghost" title="Configurações e caminhos" aria-label="Configurações e caminhos" onClick={() => { setSelected(null); setSettingsOpen((v) => !v); }}><Settings2 className="h-4 w-4" /></Button>
           <Button size="icon" variant="ghost" title="Desfazer (Ctrl+Z)" onClick={undo}><Undo2 className="h-4 w-4" /></Button>
           <Button size="icon" variant="ghost" title="Refazer (Ctrl+Y)" onClick={redo}><Redo2 className="h-4 w-4" /></Button>
           <Button size="icon" variant="ghost" title="Organizar automaticamente" onClick={autoLayout}><LayoutGrid className="h-4 w-4" /></Button>
@@ -314,38 +290,43 @@ function Editor() {
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1">
-        {/* Biblioteca */}
-        <aside className="w-56 shrink-0 overflow-y-auto border-r bg-card p-2">
-          <div className="mb-2 space-y-1">
-            <Label className="text-xs">Número WhatsApp</Label>
-            <Select value={connectionId ?? ""} onValueChange={(v) => { setConnectionId(v); setDirty(true); }}>
-              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Escolha" /></SelectTrigger>
-              <SelectContent>{conns.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name} {c.display_phone ?? ""}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          {(Object.keys(CATEGORY_LABEL) as BlockCategory[]).map((cat) => (
-            <div key={cat} className="mb-3">
-              <div className="mb-1 px-1 text-[11px] font-semibold uppercase text-muted-foreground">{CATEGORY_LABEL[cat]}</div>
-              {BLOCKS.filter((b) => b.category === cat).map((b) => (
-                <div key={b.type} draggable onDragStart={(e) => { e.dataTransfer.setData("application/automation-block", b.type); e.dataTransfer.effectAllowed = "move"; }}
-                  className={`mb-1 cursor-grab rounded-md border-l-4 bg-background px-2 py-1.5 text-xs shadow-sm hover:bg-accent ${CAT_STYLE[cat]}`} title={b.description}>
-                  {b.label}
-                </div>
-              ))}
-            </div>
-          ))}
-        </aside>
-
+      <div className="flex shrink-0 items-center gap-4 overflow-x-auto border-b bg-card px-4 py-2">
+        <span className="whitespace-nowrap text-xs font-semibold">Adicionar bloco</span>
+        {[
+          { label: "Mensagem", types: ["send_text", "send_buttons", "send_template"] },
+          { label: "Mídia", types: ["send_media"] },
+          { label: "Fluxo", types: ["wait_duration", "cond_reply", "act_handoff", "end"] },
+        ].map((group) => <div key={group.label} className="shrink-0 border-r pr-4">
+          <div className="mb-1 text-[10px] font-medium uppercase text-muted-foreground">{group.label}</div>
+          <div className="flex items-center gap-1">{group.types.map((type) => {
+            const appearance = blockAppearance(type);
+            const Icon = appearance.icon;
+            return <Button key={type} variant="ghost" size="sm" draggable data-tone={appearance.tone} title={BLOCK_MAP[type].description}
+              className="h-8 gap-2 px-2 font-normal" onClick={() => addBlock(type)}
+              onDragStart={(e) => { e.dataTransfer.setData("application/automation-block", type); e.dataTransfer.effectAllowed = "copy"; }}>
+              <span className="automation-tool-icon"><Icon size={14} /></span>{appearance.label}
+            </Button>;
+          })}</div>
+        </div>)}
+        <Popover><PopoverTrigger asChild><Button variant="ghost" size="sm">Todos os blocos<ChevronDown size={14} /></Button></PopoverTrigger>
+          <PopoverContent className="max-h-[65vh] w-72 overflow-y-auto" align="end">
+            {Object.entries(CATEGORY_LABEL).map(([category, label]) => <div key={category} className="mb-3">
+              <div className="mb-1 text-[10px] font-semibold uppercase text-muted-foreground">{label}</div>
+              {BLOCKS.filter((block) => block.category === category).map((block) => <Button key={block.type} variant="ghost" size="sm" className="w-full justify-start" onClick={() => addBlock(block.type)}>{block.label}</Button>)}
+            </div>)}
+          </PopoverContent>
+        </Popover>
+      </div>
+      <div className="relative flex min-h-0 flex-1">
         {/* Canvas */}
-        <div className="relative min-w-0 flex-1" onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }} onDrop={onDrop}>
+        <div className="relative min-w-0 flex-1 bg-flow-canvas" onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }} onDrop={onDrop}>
           <ReactFlow
             nodes={displayNodes} edges={displayEdges} nodeTypes={nodeTypes}
             onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect}
-            onNodeClick={(_, n) => setSelected(n.id)} onPaneClick={() => setSelected(null)}
+            onNodeClick={(_, n) => setSelected(n.id)} onPaneClick={() => { setSelected(null); setSettingsOpen(false); }}
             fitView deleteKeyCode={["Delete", "Backspace"]} defaultEdgeOptions={{ markerEnd: { type: MarkerType.ArrowClosed } }}
           >
-            <Background variant={BackgroundVariant.Dots} gap={18} size={1.2} />
+            <Background variant={BackgroundVariant.Dots} gap={14} size={1} color="var(--flow-dot)" />
             <Controls />
             <MiniMap pannable zoomable />
           </ReactFlow>
@@ -362,17 +343,19 @@ function Editor() {
         </div>
 
         {/* Configuração */}
-        <aside className="w-80 shrink-0 overflow-y-auto border-l bg-card p-3">
+        {(sel || settingsOpen) && <aside className="absolute inset-y-0 right-0 z-20 w-[min(320px,90%)] overflow-y-auto border-l bg-card p-3 shadow-elegant md:static md:w-80 md:shrink-0 md:shadow-none">
+          <div className="mb-3 flex items-center justify-between"><span className="text-sm font-semibold">{sel ? "Configurar bloco" : "Configurações do fluxo"}</span><Button variant="ghost" size="icon" aria-label="Fechar configurações" onClick={() => { setSelected(null); setSettingsOpen(false); }}><X size={16} /></Button></div>
           {sel ? (
             <NodeConfig key={sel.id} node={sel} nodes={nodes} assets={assets.data} automationId={id}
               onChange={(patch) => updateNode(sel.id, patch)} onDuplicate={() => duplicateNode(sel.id)} onDelete={() => deleteNode(sel.id)} />
           ) : (
             <div className="space-y-3">
+              <div><Label>Número WhatsApp</Label><Select value={connectionId ?? ""} onValueChange={(v) => { setConnectionId(v); setDirty(true); }}><SelectTrigger><SelectValue placeholder="Escolha o número" /></SelectTrigger><SelectContent>{conns.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name} {c.display_phone ?? ""}</SelectItem>)}</SelectContent></Select></div>
               <div><Label>Descrição</Label><Textarea rows={3} value={description} onChange={(e) => { setDescription(e.target.value); setDirty(true); }} /></div>
-              <p className="text-xs text-muted-foreground">Arraste blocos da esquerda para o quadro e ligue as saídas às entradas. Clique em um bloco para configurá-lo. Toda saída precisa levar a um bloco "Encerrar" ou "Encaminhar para atendente".</p>
+              
               <div className="space-y-1.5">
                 <Label>Caminhos por resposta</Label>
-                <p className="text-xs text-muted-foreground">Clique para destacar o caminho no quadro. Para mudar a mensagem ou ação, clique no bloco correspondente.</p>
+                
                 {paths.map((p) => (
                   <button key={p.key} type="button" onClick={() => setPathKey(pathKey === p.key ? null : p.key)}
                     className={`block w-full rounded-md border p-2 text-left text-xs hover:bg-accent ${pathKey === p.key ? "border-primary bg-accent" : ""}`}>
@@ -381,10 +364,10 @@ function Editor() {
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground">Execuções já iniciadas continuam na versão em que começaram, mesmo depois de você publicar mudanças.</p>
+              
             </div>
           )}
-        </aside>
+        </aside>}
       </div>
 
       <TestDialog open={testOpen} onOpenChange={setTestOpen} automationId={id} status={a.status} triggerType={a.trigger_type} />
