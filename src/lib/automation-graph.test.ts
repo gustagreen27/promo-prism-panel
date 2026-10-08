@@ -70,3 +70,19 @@ describe("regras de execução", () => {
     expect(isBlockedHost("api.example.com")).toBe(false);
   });
 });
+
+import { campaignReplyHandle, outputsFor } from "./automation-graph";
+describe("caminho por botão no início", () => {
+  const cfg = { buttons: [{ id: "quero", title: "Quero saber mais" }, { id: "nao", title: "Não quero mais" }] };
+  it("cada botão tem sua saída, mais 'Outra resposta'", () => {
+    expect(outputsFor({ type: "trigger_campaign_reply", data: { config: cfg } }).map((o) => o.id)).toEqual(["btn:quero", "btn:nao", "other"]);
+  });
+  it("escolhe pelo identificador, pelo texto igual ao botão ou cai em outra resposta", () => {
+    expect(campaignReplyHandle(cfg, { buttonId: "nao" })).toBe("btn:nao");
+    expect(campaignReplyHandle(cfg, { text: "quero saber MAIS" })).toBe("btn:quero");
+    expect(campaignReplyHandle(cfg, { text: "quanto custa?" })).toBe("other");
+  });
+  it("aleatorizador tem um caminho por ramo", () => {
+    expect(outputsFor({ type: "flow_random", data: { config: { branches: 3 } } }).length).toBe(3);
+  });
+});

@@ -137,19 +137,20 @@ function Editor() {
     setEdges((es) => addEdge({ ...c, sourceHandle: handle, id: newId("e"), markerEnd: { type: MarkerType.ArrowClosed } }, es.filter((e) => !(e.source === c.source && (e.sourceHandle ?? "out") === handle))));
   }, [snapshot]);
 
-  const addBlock = (type: string, position?: { x: number; y: number }) => {
+  const addBlock = (type: string, position?: { x: number; y: number }, preset?: Record<string, any>) => {
     const def = BLOCK_MAP[type];
     if (!def) return;
     if (isTrigger(type) && nodes.some((n) => isTrigger(n.data.type))) { toast.error("Use apenas um gatilho por automação"); return; }
     snapshot();
     const nid = newId(type.split("_")[0]);
     const origin = position ?? rf.screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-    setNodes((ns) => [...ns, { id: nid, type: "block", position: origin, data: { type, config: structuredClone(def.defaults) } }]);
+    setNodes((ns) => [...ns, { id: nid, type: "block", position: origin, data: { type, config: { ...structuredClone(def.defaults), ...(preset ?? {}) } } }]);
     setSelected(nid);
   };
   const onDrop = (ev: DragEvent) => {
     ev.preventDefault();
-    addBlock(ev.dataTransfer.getData("application/automation-block"), rf.screenToFlowPosition({ x: ev.clientX, y: ev.clientY }));
+    const [t, m] = ev.dataTransfer.getData("application/automation-block").split(":");
+    addBlock(t, rf.screenToFlowPosition({ x: ev.clientX, y: ev.clientY }), m ? { mediaType: m } : undefined);
   };
 
   const updateNode = (nid: string, patch: Partial<NodeData>) => {
@@ -185,14 +186,20 @@ function Editor() {
         if ((depth.get(e.target) ?? -1) < d && d < 100) { depth.set(e.target, d); queue.push(e.target); }
       }
     }
-    const rows = new Map<number, string[]>();
-    for (const n of g.nodes) { const d = depth.get(n.id) ?? 0; rows.set(d, [...(rows.get(d) ?? []), n.id]); }
+    // Horizontal: cada nível vira uma coluna; ramos descem em linhas, seguindo a ordem das saídas.
+    const rowOf = new Map<string, number>();
+    let nextRow = 0;
+    const place = (id: string, row: number, seen: Set<string>) => {
+      if (seen.has(id) || rowOf.has(id)) return;
+      seen.add(id); rowOf.set(id, row);
+      const outs = g.edges.filter((x) => x.source === id);
+      outs.forEach((e, i) => place(e.target, i === 0 ? row : ++nextRow, seen));
+    };
+    if (trig) place(trig.id, 0, new Set());
+    for (const n of g.nodes) if (!rowOf.has(n.id)) rowOf.set(n.id, ++nextRow);
     setNodes((ns) => ns.map((n) => {
       const d = depth.get(n.id) ?? 0;
-      const row = rows.get(d);
-      if (!row) return n;
-      const i = row.indexOf(n.id);
-      return { ...n, position: { x: d * 300, y: i * 230 } };
+      return { ...n, position: { x: d * 330, y: (rowOf.get(n.id) ?? 0) * 210 } };
     }));
     setTimeout(() => rf.fitView({ padding: 0.2 }), 50);
   };
@@ -203,10 +210,15 @@ function Editor() {
   const [pathKey, setPathKey] = useState<string | null>(null);
   const activePath = paths.find((p) => p.key === pathKey) ?? null;
   const displayEdges = useMemo(() => {
-    if (!activePath) return edges;
+    const typeOf = new Map(nodes.map((n) => [n.id, n.data.type]));
+    const base = edges.map((e) => {
+      const t = typeOf.get(e.source) ?? "";
+      return t.startsWith("wait_") ? { ...e, style: { strokeDasharray: "3 4", strokeWidth: 2, stroke: "var(--flow-delay)" } } : { ...e, style: { strokeWidth: 1.5 } };
+    });
+    if (!activePath) return base;
     const on = new Set(activePath.edgeIds);
-    return edges.map((e) => on.has(e.id) ? { ...e, animated: true, style: { strokeWidth: 3, stroke: "var(--primary)" } } : { ...e, style: { opacity: 0.25 } });
-  }, [edges, activePath]);
+    return base.map((e) => on.has(e.id) ? { ...e, animated: true, style: { strokeWidth: 3, stroke: "var(--primary)" } } : { ...e, style: { opacity: 0.25 } });
+  }, [edges, nodes, activePath]);
   const displayNodes = useMemo(() => nodes.map((n, index) => ({
     ...n, data: { ...n.data, ordinal: String(index + 1).padStart(2, "0"), summary: summarize({ id: n.id, type: n.data.type, position: n.position, data: { config: n.data.config } }, names), invalid: invalidIds.has(n.id) },
     style: activePath && !activePath.nodeIds.includes(n.id) ? { opacity: 0.3 } : undefined,
@@ -294,16 +306,18 @@ function Editor() {
         <span className="whitespace-nowrap text-xs font-semibold">Adicionar bloco</span>
         {[
           { label: "Mensagem", types: ["send_text", "send_buttons", "send_template"] },
-          { label: "Mídia", types: ["send_media"] },
-          { label: "Fluxo", types: ["wait_duration", "cond_reply", "act_handoff", "end"] },
+          { label: "Mídia", types: ["send_media:audio", "send_media:video", "send_media:image"] },
+          { label: "Fluxo", types: ["wait_duration", "flow_random", "act_blacklist", "cond_reply", "act_handoff", "end"] },
         ].map((group) => <div key={group.label} className="shrink-0 border-r pr-4">
           <div className="mb-1 text-[10px] font-medium uppercase text-muted-foreground">{group.label}</div>
-          <div className="flex items-center gap-1">{group.types.map((type) => {
-            const appearance = blockAppearance(type);
+          <div className="flex items-center gap-1">{group.types.map((key) => {
+            const [type, media] = key.split(":");
+            const preset = media ? { mediaType: media } : undefined;
+            const appearance = blockAppearance(type, preset);
             const Icon = appearance.icon;
-            return <Button key={type} variant="ghost" size="sm" draggable data-tone={appearance.tone} title={BLOCK_MAP[type].description}
-              className="h-8 gap-2 px-2 font-normal" onClick={() => addBlock(type)}
-              onDragStart={(e) => { e.dataTransfer.setData("application/automation-block", type); e.dataTransfer.effectAllowed = "copy"; }}>
+            return <Button key={key} variant="ghost" size="sm" draggable data-tone={appearance.tone} title={BLOCK_MAP[type].description}
+              className="h-8 gap-2 px-2 font-normal" onClick={() => addBlock(type, undefined, preset)}
+              onDragStart={(e) => { e.dataTransfer.setData("application/automation-block", key); e.dataTransfer.effectAllowed = "copy"; }}>
               <span className="automation-tool-icon"><Icon size={14} /></span>{appearance.label}
             </Button>;
           })}</div>
@@ -480,6 +494,19 @@ function NodeConfig({ node, nodes, assets, automationId, onChange, onDuplicate, 
           <div className="text-muted-foreground">Corpo JSON: {"{"} "phone": "5562999999999", "name": "...", "event_id": "id-único", "data": {"{ }"} {"}"}</div>
         </div>
       )}
+      {node.data.type === "trigger_campaign_reply" && (<>
+        <div><Label className="text-xs">Mensagem do disparo (só para visualizar)</Label><Textarea rows={3} value={c.text ?? ""} onChange={(e) => set("text", e.target.value)} /></div>
+        <Label className="text-xs">Botões do disparo — cada um tem o próprio caminho</Label>
+        {(c.buttons ?? []).map((b: any, i: number) => (
+          <div key={i} className="flex gap-1">
+            <Input className="w-28" placeholder="ID" value={b.id} onChange={(e) => { const bs = [...c.buttons]; bs[i] = { ...b, id: e.target.value.replace(/\s/g, "_") }; set("buttons", bs); }} />
+            <Input placeholder="Texto do botão" maxLength={20} value={b.title} onChange={(e) => { const bs = [...c.buttons]; bs[i] = { ...b, title: e.target.value }; set("buttons", bs); }} />
+            <Button size="icon" variant="ghost" onClick={() => set("buttons", c.buttons.filter((_: any, j: number) => j !== i))}><Trash2 className="h-4 w-4" /></Button>
+          </div>
+        ))}
+        {(c.buttons ?? []).length < 3 && <Button size="sm" variant="outline" onClick={() => set("buttons", [...(c.buttons ?? []), { id: `opcao_${(c.buttons ?? []).length + 1}`, title: "" }])}>Adicionar botão</Button>}
+        <p className="text-xs text-muted-foreground">O ID precisa ser o mesmo do botão no Direct Send. Respostas digitadas iguais ao texto do botão seguem o mesmo caminho; o resto sai por "Outra resposta".</p>
+      </>)}
       {node.data.type === "trigger_manual" && <p className="text-xs text-muted-foreground">Inicie pelo botão "Testar" (rascunho) ou, depois de publicada, em modo real para um contato.</p>}
 
       {node.data.type === "send_template" && (<>
@@ -503,10 +530,11 @@ function NodeConfig({ node, nodes, assets, automationId, onChange, onDuplicate, 
       {node.data.type === "send_media" && (<>
         <div><Label className="text-xs">Tipo</Label>
           <Select value={c.mediaType ?? "image"} onValueChange={(v) => set("mediaType", v)}><SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="image">Imagem</SelectItem><SelectItem value="video">Vídeo</SelectItem><SelectItem value="document">Documento</SelectItem></SelectContent></Select>
+            <SelectContent><SelectItem value="audio">Áudio</SelectItem><SelectItem value="image">Imagem</SelectItem><SelectItem value="video">Vídeo</SelectItem><SelectItem value="document">Documento</SelectItem></SelectContent></Select>
         </div>
         <div><Label className="text-xs">Link HTTPS público</Label><VarField value={c.url ?? ""} onChange={(v) => set("url", v)} /></div>
-        <div><Label className="text-xs">Legenda</Label><VarField value={c.caption ?? ""} onChange={(v) => set("caption", v)} /></div>
+        {c.mediaType === "audio" ? <p className="text-xs text-muted-foreground">Áudio aceito pelo WhatsApp: MP3, OGG (opus), AAC, AMR ou M4A, até 16 MB. Áudio não tem legenda.</p>
+          : <div><Label className="text-xs">Legenda</Label><VarField value={c.caption ?? ""} onChange={(v) => set("caption", v)} /></div>}
         {c.mediaType === "document" && <div><Label className="text-xs">Nome do arquivo</Label><Input value={c.filename ?? ""} onChange={(e) => set("filename", e.target.value)} /></div>}
         <Missing />
       </>)}
@@ -558,7 +586,7 @@ function NodeConfig({ node, nodes, assets, automationId, onChange, onDuplicate, 
         <div className="flex gap-2">
           <Input type="number" min={1} value={c.amount} onChange={(e) => set("amount", Number(e.target.value))} />
           <Select value={c.unit} onValueChange={(v) => set("unit", v)}><SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="minutes">Minutos</SelectItem><SelectItem value="hours">Horas</SelectItem><SelectItem value="days">Dias</SelectItem></SelectContent></Select>
+            <SelectContent><SelectItem value="seconds">Segundos</SelectItem><SelectItem value="minutes">Minutos</SelectItem><SelectItem value="hours">Horas</SelectItem><SelectItem value="days">Dias</SelectItem></SelectContent></Select>
         </div>
       )}
       {node.data.type === "wait_until" && <div><Label className="text-xs">Data e horário</Label><Input type="datetime-local" value={c.at ? toLocalInput(c.at) : ""} onChange={(e) => set("at", e.target.value ? new Date(e.target.value).toISOString() : "")} /></div>}
@@ -577,6 +605,12 @@ function NodeConfig({ node, nodes, assets, automationId, onChange, onDuplicate, 
         <div><Label className="text-xs">Valor</Label><VarField value={c.value ?? ""} onChange={(v) => set("value", v)} /></div>
         <Missing />
       </>)}
+      {node.data.type === "flow_random" && (<>
+        <div><Label className="text-xs">Quantidade de caminhos</Label><Input type="number" min={2} max={10} value={c.branches ?? 2} onChange={(e) => set("branches", Math.min(10, Math.max(2, Number(e.target.value) || 2)))} /></div>
+        <p className="text-xs text-muted-foreground">Cada contato segue um caminho sorteado, com a mesma chance para todos.</p>
+      </>)}
+      {node.data.type === "act_blacklist" && <p className="text-xs text-muted-foreground">O telefone entra na lista de bloqueio e é pulado nos próximos envios.</p>}
+      {node.data.type !== "act_handoff" && <div><Label className="text-xs">Observação (aparece abaixo do bloco)</Label><Textarea rows={2} value={c.note ?? ""} onChange={(e) => set("note", e.target.value)} /></div>}
       {node.data.type === "act_handoff" && (<>
         <div><Label className="text-xs">Nota para o atendente (opcional)</Label><Input value={c.note ?? ""} onChange={(e) => set("note", e.target.value)} /></div>
         <p className="text-xs text-muted-foreground">Distribui a conversa para a equipe do cliente e encerra a automação. Enquanto houver atendente na conversa, outras automações não enviam mensagens para esse contato.</p>

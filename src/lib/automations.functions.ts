@@ -264,6 +264,7 @@ export const createReplyFlowFromButtons = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({
     connectionId: uuid, name: z.string().min(1).max(120),
     buttons: z.array(z.object({ id: z.string().min(1).max(256), title: z.string().max(20) })).max(3),
+    text: z.string().max(1024).optional(),
   }).parse(d))
   .handler(async ({ data, context }) => {
     await assertStaff(context.supabase, context.userId);
@@ -271,7 +272,7 @@ export const createReplyFlowFromButtons = createServerFn({ method: "POST" })
     const { data: c } = await db.from("whatsapp_connections").select("workspace_id").eq("id", data.connectionId).maybeSingle();
     if (!c?.workspace_id) throw new Error("Número sem cliente vinculado");
     const { replyFlowGraph } = await import("./automation-graph");
-    const graph = replyFlowGraph(data.buttons);
+    const graph = replyFlowGraph(data.buttons, data.text ?? "");
     const { data: row, error } = await db.from("automations").insert({
       name: `Respostas — ${data.name}`, description: "Continua a conversa conforme o botão ou resposta de cada lead do disparo.",
       workspace_id: c.workspace_id, connection_id: data.connectionId, draft_graph: graph, trigger_type: "campaign_reply", created_by: context.userId, status: "draft",

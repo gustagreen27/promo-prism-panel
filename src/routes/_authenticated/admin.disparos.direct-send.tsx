@@ -127,7 +127,7 @@ function Page() {
   const replyAutosQ = useQuery({ queryKey: ["reply-automations", connId], queryFn: () => replyAutosFn({ data: { connectionId: connId || null } }), enabled: !!connId });
   const createFlow = async () => {
     try {
-      const r = await createFlowFn({ data: { connectionId: connId, name: name || "Direct Send", buttons: buttonsType === "reply" ? replies.filter((x) => x.id) : [] } });
+      const r = await createFlowFn({ data: { connectionId: connId, name: name || "Direct Send", buttons: buttonsType === "reply" ? replies.filter((x) => x.id) : [], text } });
       setAutomationId(r.id);
       qc.invalidateQueries({ queryKey: ["reply-automations", connId] });
       window.open(`/admin/automacoes/${r.id}`, "_blank");
