@@ -448,11 +448,9 @@ async function doSend(db: Db, run: any, node: AutoNode, ctx: VarContext, onMissi
   const token = await resolveConnectionToken(db, conn);
   if (!token) throw new PermanentError("Sem credencial para o número");
 
-  // Atendimento humano em andamento: não enviar automático.
-  const { data: conv } = await db.from("wa_conversations").select("id, assigned_user_id, service_window_expires_at").eq("phone_number_id", conn.phone_number_id).eq("contact_phone", phone).order("updated_at", { ascending: false }).limit(1).maybeSingle();
-  if (conv?.assigned_user_id && conv?.service_window_expires_at && Date.parse(conv.service_window_expires_at) > Date.now()) {
-    throw new PermanentError("Contato em atendimento humano — automação não envia mensagens");
-  }
+  // Conversa atribuída a um atendente NÃO bloqueia a automação (decisão do usuário):
+  // o fluxo publicado sempre segue; só a janela de 24h da Meta limita mensagens livres.
+  const { data: conv } = await db.from("wa_conversations").select("id, service_window_expires_at").eq("phone_number_id", conn.phone_number_id).eq("contact_phone", phone).order("updated_at", { ascending: false }).limit(1).maybeSingle();
   if (node.type !== "send_template") {
     const open = conv?.service_window_expires_at && Date.parse(conv.service_window_expires_at) > Date.now();
     if (!open) throw new PermanentError("Janela de 24h fechada: fora dela só é permitido template aprovado");
