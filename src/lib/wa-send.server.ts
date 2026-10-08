@@ -1,3 +1,4 @@
+import { applyCustomVars } from "@/lib/direct-send";
 import { GRAPH_VERSION } from "@/lib/meta/graph-version";
 // Server-only helper for sending official WhatsApp Cloud API messages.
 // Never import this from a route or *.functions.ts module scope.
@@ -540,6 +541,20 @@ export async function sendDirectUtilityText(input: DirectUtilityInput): Promise<
 
 /** Renderiza {nome}, {{nome}}, (nome), [nome] e o mesmo para telefone no texto do Direct Send. */
 export function renderDirectText(text: string, vars: { nome?: string | null; telefone?: string | null }) {
+  return renderDirectBase(text, vars);
+}
+
+/** Variáveis personalizadas (lista alternada / coluna do contato) + nome/telefone. */
+export function renderDirectFull(
+  text: string,
+  vars: { nome?: string | null; telefone?: string | null },
+  custom: { vars?: any[] | null; index: number; fields?: Record<string, any> | null },
+) {
+  const r = applyCustomVars(text, custom.vars as any, { index: custom.index, fields: custom.fields });
+  return { text: renderDirectBase(r.text, vars), missing: r.missing };
+}
+
+function renderDirectBase(text: string, vars: { nome?: string | null; telefone?: string | null }) {
   const nome = (vars.nome ?? "").trim() || "cliente";
   const tel = (vars.telefone ?? "").trim();
   const v = (k: string) => new RegExp(`\\{\\{\\s*${k}\\s*\\}\\}|\\{\\s*${k}\\s*\\}|\\(\\s*${k}\\s*\\)|\\[\\s*${k}\\s*\\]`, "gi");
