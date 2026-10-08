@@ -32,13 +32,13 @@ export const BLOCKS: BlockDef[] = [
   { type: "trigger_contact_created", category: "trigger", label: "Contato criado", description: "Quando um contato é cadastrado no cliente.", outputs: OUT, defaults: {} },
   { type: "trigger_message_received", category: "trigger", label: "Mensagem recebida", description: "Mensagem recebida no número WhatsApp da automação.", outputs: OUT, defaults: { keyword: "", match: "any" } },
   { type: "trigger_tag_added", category: "trigger", label: "Etiqueta adicionada", description: "Quando uma etiqueta é adicionada ao contato.", outputs: OUT, defaults: { tagId: "" } },
-  { type: "trigger_campaign_reply", category: "trigger", label: "Resposta a um disparo", description: "Lead respondeu (texto ou botão) a um Direct Send vinculado.", outputs: OUT, defaults: {} },
+  { type: "trigger_campaign_reply", category: "trigger", label: "Resposta a um disparo", description: "Lead respondeu (texto ou botão) a um Direct Send vinculado.", outputs: OUT, defaults: { text: "", buttons: [] } },
   { type: "trigger_webhook", category: "trigger", label: "Webhook externo", description: "Chamada autenticada de outro sistema.", outputs: OUT, defaults: {} },
   { type: "trigger_scheduled", category: "trigger", label: "Data e horário", description: "Executa uma vez para os contatos de uma lista.", outputs: OUT, defaults: { at: "", listId: "" } },
 
   { type: "send_template", category: "whatsapp", label: "Enviar template", description: "Template aprovado pela Meta.", outputs: OUT, defaults: { templateName: "", language: "pt_BR", params: [], headerUrl: "", onMissing: "fail" } },
   { type: "send_text", category: "whatsapp", label: "Enviar texto", description: "Só dentro da janela de 24h.", outputs: OUT, defaults: { text: "", onMissing: "fail" } },
-  { type: "send_media", category: "whatsapp", label: "Enviar mídia", description: "Imagem, vídeo ou documento (janela de 24h).", outputs: OUT, defaults: { mediaType: "image", url: "", caption: "", filename: "", onMissing: "fail" } },
+  { type: "send_media", category: "whatsapp", label: "Enviar mídia", description: "Áudio, imagem, vídeo ou documento (janela de 24h).", outputs: OUT, defaults: { mediaType: "image", url: "", caption: "", filename: "", onMissing: "fail" } },
   { type: "send_buttons", category: "whatsapp", label: "Enviar botões", description: "Até 3 botões de resposta (janela de 24h).", outputs: OUT, defaults: { text: "", buttons: [{ id: "sim", title: "Sim" }], onMissing: "fail" } },
 
   { type: "cond_reply", category: "condition", label: "Conteúdo da resposta", description: "Compara o texto recebido.", outputs: TF, defaults: { op: "contains", value: "" } },
@@ -51,6 +51,8 @@ export const BLOCKS: BlockDef[] = [
   { type: "wait_until", category: "wait", label: "Aguardar até", description: "Pausa até data e horário.", outputs: OUT, defaults: { at: "" } },
   { type: "wait_reply", category: "wait", label: "Aguardar resposta", description: "Espera o contato responder, com prazo.", outputs: [{ id: "replied", label: "Respondeu" }, { id: "timeout", label: "Prazo encerrado" }], defaults: { timeoutMinutes: 30 } },
 
+  { type: "flow_random", category: "action", label: "Aleatorizador", description: "Sorteia um dos caminhos para cada contato.", outputs: [{ id: "r1", label: "Caminho A" }, { id: "r2", label: "Caminho B" }], defaults: { branches: 2 } },
+  { type: "act_blacklist", category: "action", label: "Blacklist", description: "Bloqueia o contato: o telefone é pulado nos próximos envios.", outputs: OUT, defaults: { reason: "automacao" } },
   { type: "act_add_tag", category: "action", label: "Adicionar etiqueta", description: "", outputs: OUT, defaults: { tagId: "" } },
   { type: "act_remove_tag", category: "action", label: "Remover etiqueta", description: "", outputs: OUT, defaults: { tagId: "" } },
   { type: "act_update_field", category: "action", label: "Atualizar campo", description: "Nome, e-mail ou campo personalizado.", outputs: OUT, defaults: { field: "name", value: "", onMissing: "fail" } },
@@ -150,6 +152,34 @@ export class MissingVariableError extends Error {
   }
 }
 
+// ───────────── Saídas (algumas dependem da configuração) ─────────────
+const LETTERS = "ABCDEFGHIJ";
+/** Saídas reais do bloco: botões do gatilho de resposta e caminhos do aleatorizador variam com a configuração. */
+export function outputsFor(n: { type: string; data?: { config?: Record<string, any> } }): { id: string; label: string }[] {
+  const c = n.data?.config ?? {};
+  if (n.type === "trigger_campaign_reply") {
+    const b = (Array.isArray(c.buttons) ? c.buttons : []).filter((x: any) => x?.id);
+    if (!b.length) return OUT;
+    return [...b.map((x: any) => ({ id: `btn:${x.id}`, label: x.title || x.id })), { id: "other", label: "Outra resposta" }];
+  }
+  if (n.type === "flow_random") {
+    const k = Math.min(10, Math.max(2, Number(c.branches) || 2));
+    return Array.from({ length: k }, (_, i) => ({ id: `r${i + 1}`, label: `Caminho ${LETTERS[i]}` }));
+  }
+  return BLOCK_MAP[n.type]?.outputs ?? [];
+}
+
+/** Saída do gatilho de resposta conforme o botão (id) ou o texto igual ao título do botão. */
+export function campaignReplyHandle(config: Record<string, any>, reply: { buttonId?: string | null; text?: string | null }): string {
+  const b = (Array.isArray(config?.buttons) ? config.buttons : []).filter((x: any) => x?.id);
+  if (!b.length) return "out";
+  const byId = reply.buttonId ? b.find((x: any) => String(x.id) === String(reply.buttonId)) : null;
+  const t = String(reply.text ?? "").trim().toLowerCase();
+  const byTitle = !byId && t ? b.find((x: any) => String(x.title ?? "").trim().toLowerCase() === t) : null;
+  const hit = byId ?? byTitle;
+  return hit ? `btn:${hit.id}` : "other";
+}
+
 // ───────────── Resumo exibido no bloco ─────────────
 export function summarize(n: AutoNode, names?: { tags?: Record<string, string>; lists?: Record<string, string> }): string {
   const c = n.data?.config ?? {};
@@ -168,7 +198,9 @@ export function summarize(n: AutoNode, names?: { tags?: Record<string, string>; 
     case "cond_has_tag": return tag(c.tagId);
     case "cond_button": return c.buttonId ? `Botão = ${c.buttonId}` : "Sem botão";
     case "cond_message_status": return `Status ${c.status}`;
-    case "wait_duration": return `${c.amount} ${({ minutes: "min", hours: "h", days: "dia(s)" } as any)[c.unit] ?? c.unit}`;
+    case "flow_random": return `${Math.max(2, Number(c.branches) || 2)} caminhos sorteados`;
+    case "act_blacklist": return "Bloqueia o contato";
+    case "wait_duration": return `${c.amount} ${({ seconds: "s", minutes: "min", hours: "h", days: "dia(s)" } as any)[c.unit] ?? c.unit}`;
     case "wait_until": return c.at ? new Date(c.at).toLocaleString("pt-BR") : "Sem data";
     case "wait_reply": return `Prazo ${c.timeoutMinutes} min`;
     case "act_add_tag": case "act_remove_tag": return tag(c.tagId);
@@ -233,14 +265,14 @@ export function validateGraph(g: AutoGraph): ValidationIssue[] {
     const s = byId.get(e.source), t = byId.get(e.target);
     if (!s || !t) { issues.push({ message: "Conexão aponta para bloco inexistente" }); continue; }
     if (isTrigger(t.type)) issues.push({ nodeId: t.id, message: "Gatilho não pode receber conexões" });
-    const handles = BLOCK_MAP[s.type]?.outputs.map((o) => o.id) ?? [];
+    const handles = outputsFor(s).map((o) => o.id);
     if (!handles.includes(e.sourceHandle ?? "out")) issues.push({ nodeId: s.id, message: "Conexão em saída inválida" });
   }
 
   for (const n of nodes) {
     const def = BLOCK_MAP[n.type];
     if (!def) continue;
-    for (const o of def.outputs) {
+    for (const o of outputsFor(n)) {
       const outs = edges.filter((e) => e.source === n.id && (e.sourceHandle ?? "out") === o.id);
       if (outs.length === 0) issues.push({ nodeId: n.id, message: o.label ? `Saída "${o.label}" sem conexão` : "Bloco sem próxima etapa (termine com Encerrar)" });
       if (outs.length > 1) issues.push({ nodeId: n.id, message: "Execução paralela não é permitida: uma saída só pode ter uma conexão" });
@@ -334,35 +366,30 @@ export function emptyGraph(): AutoGraph {
 }
 
 /** Fluxo inicial de respostas para um Direct Send: uma ação por botão, demais respostas vão para atendimento. */
-export function replyFlowGraph(buttons: { id: string; title: string }[]): AutoGraph {
+export function replyFlowGraph(buttons: { id: string; title: string }[], text = ""): AutoGraph {
   const nodes: AutoNode[] = [];
   const edges: AutoEdge[] = [];
   const mk = (id: string, type: string, x: number, y: number, config: Record<string, any> = {}, label?: string) =>
     nodes.push({ id, type, position: { x, y }, data: { label, config: { ...BLOCK_MAP[type].defaults, ...config } } });
-  mk("trigger", "trigger_campaign_reply", 0, 0);
-  let prev = "trigger", prevHandle = "out";
-  buttons.forEach((b, i) => {
-    const y = 160 + i * 200;
-    const cid = `btn_${i + 1}`;
-    mk(cid, "cond_button", 0, y, { buttonId: b.id }, `Botão "${b.title || b.id}"`);
-    edges.push({ id: `e_${prev}_${cid}`, source: prev, target: cid, sourceHandle: prevHandle });
-    mk(`msg_${i + 1}`, "send_text", 300, y, { text: `Obrigado, {{contact.name}}! Recebemos sua resposta: ${b.title || b.id}.`, onMissing: "empty" }, `Resposta ao botão ${i + 1}`);
-    mk(`end_${i + 1}`, "end", 600, y);
-    edges.push({ id: `e_${cid}_t`, source: cid, target: `msg_${i + 1}`, sourceHandle: "true" });
+  const btns = buttons.filter((b) => b.id);
+  mk("trigger", "trigger_campaign_reply", 0, 0, { text, buttons: btns.map((b) => ({ id: b.id, title: b.title })) });
+  btns.forEach((b, i) => {
+    const y = i * 220;
+    mk(`msg_${i + 1}`, "send_text", 380, y, { text: `Obrigado, {{contact.name}}! Recebemos sua resposta: ${b.title || b.id}.`, onMissing: "empty" }, `Resposta ao botão ${i + 1}`);
+    mk(`end_${i + 1}`, "end", 720, y);
+    edges.push({ id: `e_btn_${i + 1}`, source: "trigger", target: `msg_${i + 1}`, sourceHandle: btns.length ? `btn:${b.id}` : "out" });
     edges.push({ id: `e_msg_${i + 1}`, source: `msg_${i + 1}`, target: `end_${i + 1}`, sourceHandle: "out" });
-    prev = cid; prevHandle = "false";
   });
-  // Regra de texto (editável): resposta digitada contendo "sim".
-  const ty = 160 + buttons.length * 200;
-  mk("txt_rule", "cond_reply", 0, ty, { op: "contains", value: "sim" }, 'Texto contém "sim"');
-  edges.push({ id: `e_${prev}_txt`, source: prev, target: "txt_rule", sourceHandle: prevHandle });
-  mk("msg_txt", "send_text", 300, ty, { text: "Perfeito, {{contact.name}}! Confirmado por aqui.", onMissing: "empty" }, "Resposta à regra de texto");
-  mk("end_txt", "end", 600, ty);
+  // Resposta digitada: regra de texto editável; o resto vai para o atendimento.
+  const ty = btns.length * 220;
+  mk("txt_rule", "cond_reply", 380, ty, { op: "contains", value: "sim" }, 'Texto contém "sim"');
+  edges.push({ id: "e_other", source: "trigger", target: "txt_rule", sourceHandle: btns.length ? "other" : "out" });
+  mk("msg_txt", "send_text", 720, ty, { text: "Perfeito, {{contact.name}}! Confirmado por aqui.", onMissing: "empty" }, "Resposta à regra de texto");
+  mk("end_txt", "end", 1060, ty);
   edges.push({ id: "e_txt_t", source: "txt_rule", target: "msg_txt", sourceHandle: "true" });
   edges.push({ id: "e_msg_txt", source: "msg_txt", target: "end_txt", sourceHandle: "out" });
-  prev = "txt_rule"; prevHandle = "false";
-  mk("handoff", "act_handoff", 0, ty + 200, { note: "Lead respondeu ao disparo com texto livre" }, "Outra resposta → atendimento");
-  edges.push({ id: `e_${prev}_handoff`, source: prev, target: "handoff", sourceHandle: prevHandle });
+  mk("handoff", "act_handoff", 720, ty + 220, { note: "Lead respondeu ao disparo com texto livre" }, "Outra resposta → atendimento");
+  edges.push({ id: "e_txt_handoff", source: "txt_rule", target: "handoff", sourceHandle: "false" });
   return { schema: 1, nodes, edges };
 }
 
@@ -386,7 +413,10 @@ export function responsePaths(g: AutoGraph, limit = 40): ResponsePath[] {
     }
     for (const e of outs) {
       const isCond = BLOCK_MAP[n.type]?.category === "condition";
-      const w = isCond && e.sourceHandle === "true" ? [...when, n.data.label || summarize(n)] : when;
+      const outLabel = outputsFor(n).find((o) => o.id === e.sourceHandle)?.label;
+      const w = isCond && e.sourceHandle === "true" ? [...when, n.data.label || summarize(n)]
+        : (isTrigger(n.type) || n.type === "flow_random") && outLabel ? [...when, n.type === "flow_random" ? outLabel : e.sourceHandle === "other" ? "Outra resposta" : `Botão "${outLabel}"`]
+        : when;
       walk(e.target, [...nodeIds, id], [...edgeIds, e.id], w, s2);
     }
   };

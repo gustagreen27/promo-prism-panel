@@ -107,7 +107,7 @@ function scheduleFor(node: AutoNode, ctx: VarContext, simulate: boolean): Date {
   if (simulate) return now;
   const c = node.data.config ?? {};
   if (node.type === "wait_duration") {
-    const mult = c.unit === "days" ? 86400000 : c.unit === "hours" ? 3600000 : 60000;
+    const mult = c.unit === "days" ? 86400000 : c.unit === "hours" ? 3600000 : c.unit === "seconds" ? 1000 : 60000;
     return new Date(now.getTime() + Math.max(1, Number(c.amount) || 1) * mult);
   }
   if (node.type === "wait_until") {
@@ -221,8 +221,11 @@ async function executeNode(db: Db, run: any, graph: AutoGraph, node: AutoNode) {
   const stepId = await stepStart(db, run, node, { config: c });
   try {
     if (isTrigger(node.type)) {
-      await stepEnd(db, stepId, { status: "completed", output_handle: "out" });
-      return advance(db, run, graph, node.id, "out");
+      const h = node.type === "trigger_campaign_reply"
+        ? campaignReplyHandle(c, { buttonId: ctx.button?.id ?? null, text: ctx.message?.text ?? null })
+        : "out";
+      await stepEnd(db, stepId, { status: "completed", output_handle: h });
+      return advance(db, run, graph, node.id, h);
     }
     switch (node.type) {
       case "end":
@@ -268,6 +271,24 @@ async function executeNode(db: Db, run: any, graph: AutoGraph, node: AutoNode) {
       case "act_update_field": {
         const out = await doContactAction(db, run, node, ctx, onMissing);
         await stepEnd(db, stepId, { status: run.simulate ? "simulated" : "completed", output: out, output_handle: "out" });
+        return advance(db, run, graph, node.id, "out");
+      }
+
+      case "flow_random": {
+        const outs = outputsFor(node);
+        const pick = outs[Math.floor(Math.random() * outs.length)]?.id ?? "r1";
+        await stepEnd(db, stepId, { status: run.simulate ? "simulated" : "completed", output_handle: pick, output: { path: pick } });
+        return advance(db, run, graph, node.id, pick);
+      }
+
+      case "act_blacklist": {
+        const phone = String(ctx.contact?.phone ?? "").replace(/\D/g, "");
+        if (!phone) throw new PermanentError("Contato sem telefone para bloquear");
+        if (!run.simulate) {
+          const { error } = await db.rpc("wa_suppression_add", { _phone: phone, _reason: "automacao", _permanent: true, _note: `Automação ${run.automation_id}` } as any);
+          if (error) throw new Error(`Falha ao bloquear contato: ${error.message}`);
+        }
+        await stepEnd(db, stepId, { status: run.simulate ? "simulated" : "completed", output: { phone }, output_handle: "out" });
         return advance(db, run, graph, node.id, "out");
       }
 
