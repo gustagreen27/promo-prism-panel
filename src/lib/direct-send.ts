@@ -38,6 +38,7 @@ export const directConfigSchema = z.object({
   // Cache de upload na Meta: { [phone_number_id]: { id, uploaded_at } }
   // Automação que continua a conversa conforme o botão/resposta de cada lead.
   automation_id: z.string().uuid().optional().nullable(),
+  custom_vars: z.array(z.lazy(() => customVarSchema)).max(20).optional().nullable(),
   media_ids: z.record(z.string(), z.object({ id: z.string(), uploaded_at: z.string(), path: z.string().optional().nullable() })).optional().nullable(),
 });
 export type DirectConfig = z.infer<typeof directConfigSchema>;
@@ -57,6 +58,7 @@ export function validateDirectConfig(text: string, cfg: DirectConfig): string[] 
   const body = text.trim();
   if (!body) errs.push("O texto da mensagem é obrigatório.");
   if (body.length > BODY_MAX) errs.push(`O texto aceita até ${BODY_MAX} caracteres no Direct Send.`);
+  errs.push(...validateCustomVars(text, cfg.custom_vars));
   const interactive = cfg.buttons_type !== "none";
   if (!interactive) {
     if (cfg.header_type !== "none") errs.push("Cabeçalho só é aceito em mensagens com botões.");
@@ -148,4 +150,86 @@ export function buildDirectPayload(
 
 export function needsMedia(cfg: DirectConfig | null | undefined) {
   return !!cfg && cfg.buttons_type !== "none" && (cfg.header_type === "image" || cfg.header_type === "video");
+}
+
+// ── Variáveis personalizadas ─────────────────────────────────────────────
+// "rotate": alterna os valores em sequência entre os contatos (volta ao primeiro após o último).
+//           Use só para textos que podem variar livremente.
+// "column": usa o valor da coluna da lista de cada contato (dados factuais, ex.: pendência real).
+//           Se o contato não tiver o valor, usa os valores de reserva (se houver); senão não envia para ele.
+export const customVarSchema = z.object({
+  name: z.string().trim().min(1).max(60),
+  mode: z.enum(["rotate", "column"]).default("rotate"),
+  values: z.array(z.string().max(500)).max(500).default([]),
+  column: z.string().max(100).optional().nullable(),
+});
+export type CustomVar = z.infer<typeof customVarSchema>;
+
+export const RESERVED_VARS = ["nome", "telefone"];
+
+/** "a, b" ou um por linha → lista limpa. */
+export function parseVarValues(raw: string): string[] {
+  const parts = raw.includes("\n") ? raw.split(/\r?\n/) : raw.split(",");
+  return parts.map((s) => s.trim()).filter(Boolean);
+}
+
+const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
+function varRegex(name: string) {
+  const k = esc(name.trim());
+  return new RegExp(`\\{\\{\\s*${k}\\s*\\}\\}|\\{\\s*${k}\\s*\\}|\\(\\s*${k}\\s*\\)|\\[\\s*${k}\\s*\\]`, "gi");
+}
+
+export function textUsesVar(text: string, name: string) {
+  return varRegex(name).test(text);
+}
+
+function readField(fields: Record<string, any> | null | undefined, column: string) {
+  if (!fields || !column) return "";
+  const want = column.trim().toLowerCase();
+  for (const [k, v] of Object.entries(fields)) {
+    if (k.trim().toLowerCase() === want && v != null && String(v).trim() !== "") return String(v).trim();
+  }
+  return "";
+}
+
+/**
+ * Substitui as variáveis personalizadas. `index` = posição do contato na sequência de envio.
+ * Retorna `missing` com nomes de variáveis sem valor para esse contato (não enviar).
+ */
+export function applyCustomVars(
+  text: string,
+  vars: CustomVar[] | null | undefined,
+  opts: { index: number; fields?: Record<string, any> | null },
+): { text: string; missing: string[] } {
+  let out = text;
+  const missing: string[] = [];
+  for (const v of vars ?? []) {
+    if (!v?.name?.trim() || !textUsesVar(out, v.name)) continue;
+    let value = "";
+    if (v.mode === "column" && v.column) value = readField(opts.fields, v.column);
+    if (!value && v.values.length) {
+      const i = ((Math.floor(opts.index) % v.values.length) + v.values.length) % v.values.length;
+      value = v.values[i];
+    }
+    if (!value) { missing.push(v.name); continue; }
+    out = out.replace(varRegex(v.name), () => value);
+  }
+  return { text: out, missing };
+}
+
+/** Erros de configuração das variáveis usadas no texto (bloqueiam o envio). */
+export function validateCustomVars(text: string, vars: CustomVar[] | null | undefined): string[] {
+  const errs: string[] = [];
+  const seen = new Set<string>();
+  for (const v of vars ?? []) {
+    const n = v.name.trim().toLowerCase();
+    if (!n) { errs.push("Uma variável personalizada está sem nome."); continue; }
+    if (RESERVED_VARS.includes(n)) errs.push(`"${v.name}" já é uma variável do sistema; use outro nome.`);
+    if (seen.has(n)) errs.push(`Variável "${v.name}" repetida.`);
+    seen.add(n);
+    if (!textUsesVar(text, v.name)) continue;
+    if (v.mode === "rotate" && v.values.length === 0) errs.push(`A variável "${v.name}" está no texto, mas não tem valores.`);
+    if (v.mode === "column" && !v.column?.trim()) errs.push(`Informe a coluna da lista para a variável "${v.name}".`);
+  }
+  return errs;
 }

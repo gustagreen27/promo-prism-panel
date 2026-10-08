@@ -894,7 +894,7 @@ export const testDirectSend = createServerFn({ method: "POST" })
     const cfg = (data.direct_config ?? null) as any;
     const errs = validateDirectConfig(data.text, cfg ?? { header_type: "none", buttons_type: "none" });
     if (errs.length) return { ok: false, wamid: null, error: errs.join(" "), code: "validation", not_enabled: false, payload: null, at: new Date().toISOString() };
-    const { sendDirectUtilityText, isDirectSendNotEnabled, renderDirectText, signDirectMediaLink, redactDirectPayload } = await import("@/lib/wa-send.server");
+    const { sendDirectUtilityText, isDirectSendNotEnabled, renderDirectFull, signDirectMediaLink, redactDirectPayload } = await import("@/lib/wa-send.server");
     let mediaLink: string | null = null;
     let upload: any = null;
     if (cfg && cfg.buttons_type !== "none" && (cfg.header_type === "image" || cfg.header_type === "video")) {
@@ -911,7 +911,7 @@ export const testDirectSend = createServerFn({ method: "POST" })
       accessToken: token,
       graphVersion: resolveGraphVersion((conn as any).graph_api_version),
       to,
-      text: renderDirectText(data.text, { nome: data.nome ?? null, telefone: to }),
+      text: renderDirectFull(data.text, { nome: data.nome ?? null, telefone: to }, { vars: cfg?.custom_vars ?? null, index: 0 }).text,
       directConfig: cfg,
       mediaLink,
     });
