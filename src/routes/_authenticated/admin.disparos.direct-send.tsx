@@ -9,7 +9,7 @@ import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
 import {
   validateDirectConfig, BODY_MAX, IMAGE_MIME, VIDEO_MIME, IMAGE_MAX_MB, VIDEO_MAX_MB,
   type DirectConfig, type DirectHeaderType, type DirectButtonsType,
-  applyCustomVars, parseVarValues, textUsesVar, type CustomVar,
+  applyCustomVars, parseVarValues, textUsesVar, pickDirectText, type CustomVar,
 } from "@/lib/direct-send";
 import { validatePacing, type PacingConfig } from "@/lib/direct-pacing";
 import { PacingPanel } from "@/components/campaigns/PacingPanel";
@@ -260,6 +260,31 @@ function Page() {
             <Textarea id="direct-text" rows={6} maxLength={BODY_MAX} value={text} onChange={(e) => setText(e.target.value)} />
             <p className="mt-1 text-xs text-muted-foreground">Os campos {"{nome}"} e {"{telefone}"} (também aceitos como (nome) e (telefone)) são trocados pelos dados de cada lead. Sem nome cadastrado, aparece "cliente".</p>
             <p className="mt-1 text-xs text-muted-foreground">{text.length}/{BODY_MAX}</p>
+          </div>
+          <div className="space-y-3 rounded-lg border border-dashed p-3">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <div className="text-sm font-medium">Variações da mensagem</div>
+                <p className="text-xs text-muted-foreground">
+                  Crie outras versões com a mesma base (ex.: 10 textos). O 1º contato recebe a mensagem principal,
+                  o 2º recebe a variação 2, e assim por diante; depois da última, volta à principal. Botões, mídia e variáveis valem para todas.
+                </p>
+              </div>
+              <Button type="button" size="sm" variant="outline" disabled={variants.length >= 50} onClick={() => setVariants((vs) => [...vs, ""])}>
+                <Plus className="mr-1 h-4 w-4" />Variação
+              </Button>
+            </div>
+            {variants.map((v, i) => (
+              <div key={i} className="space-y-1 rounded-md border bg-muted/30 p-3">
+                <div className="flex items-center justify-between">
+                  <Label>Variação {i + 2}</Label>
+                  <Button type="button" size="icon" variant="ghost" onClick={() => setVariants((vs) => vs.filter((_, j) => j !== i))}><Trash2 className="h-4 w-4" /></Button>
+                </div>
+                <Textarea rows={4} maxLength={BODY_MAX} value={v} placeholder="Mesma base, com outras palavras…"
+                  onChange={(e) => setVariants((vs) => vs.map((x, j) => (j === i ? e.target.value : x)))} />
+                <p className="text-xs text-muted-foreground">{v.length}/{BODY_MAX}</p>
+              </div>
+            ))}
           </div>
           <div className="space-y-3 rounded-lg border border-dashed p-3">
             <div className="flex items-center justify-between gap-2">
