@@ -29,6 +29,7 @@ import {
   type AutoGraph, type ValidationIssue,
 } from "@/lib/automation-graph";
 import { AutomationFlowNode, blockAppearance, type FlowNodeData } from "@/components/admin/automation-flow-node";
+import { legacyButtonPresentation } from "@/lib/automation-flow-presentation";
 import { RunDetail, RunsPanel } from "@/components/admin/automation-runs";
 
 export const Route = createFileRoute("/_authenticated/admin/automacoes/$id")({
@@ -88,6 +89,7 @@ function Editor() {
   const loaded = useRef(false);
   const past = useRef<{ nodes: Node<NodeData>[]; edges: Edge[] }[]>([]);
   const future = useRef<{ nodes: Node<NodeData>[]; edges: Edge[] }[]>([]);
+  const presentation = useMemo(() => legacyButtonPresentation(toGraph(nodes, edges)), [nodes, edges]);
 
   useEffect(() => {
     if (!q.data || loaded.current) return;
@@ -131,11 +133,13 @@ function Editor() {
   }, [snapshot]);
   const onConnect = useCallback((c: Connection) => {
     if (c.source === c.target) return;
-    const handle = c.sourceHandle ?? "out";
+    const legacy = c.source === presentation.triggerId ? presentation.outputs.find((o) => o.id === c.sourceHandle) : undefined;
+    const connection = legacy ? { ...c, source: legacy.source, sourceHandle: legacy.sourceHandle } : c;
+    const handle = connection.sourceHandle ?? "out";
     snapshot();
     // Uma saída = uma conexão (sem execução paralela): substitui a anterior.
-    setEdges((es) => addEdge({ ...c, sourceHandle: handle, id: newId("e"), markerEnd: { type: MarkerType.ArrowClosed } }, es.filter((e) => !(e.source === c.source && (e.sourceHandle ?? "out") === handle))));
-  }, [snapshot]);
+    setEdges((es) => addEdge({ ...connection, sourceHandle: handle, id: newId("e"), markerEnd: { type: MarkerType.ArrowClosed } }, es.filter((e) => !(e.source === connection.source && (e.sourceHandle ?? "out") === handle))));
+  }, [snapshot, presentation]);
 
   const addBlock = (type: string, position?: { x: number; y: number }, preset?: Record<string, any>) => {
     const def = BLOCK_MAP[type];
@@ -173,7 +177,7 @@ function Editor() {
   };
   const autoLayout = () => {
     snapshot();
-    const g = toGraph(nodes, edges);
+    const g = { ...toGraph(nodes, edges), nodes: toGraph(nodes, edges).nodes.filter((n) => !presentation.hiddenNodeIds.includes(n.id)), edges: presentation.edges };
     const trig = g.nodes.find((n) => isTrigger(n.type));
     const depth = new Map<string, number>();
     const queue = trig ? [trig.id] : [];
@@ -211,18 +215,18 @@ function Editor() {
   const activePath = paths.find((p) => p.key === pathKey) ?? null;
   const displayEdges = useMemo(() => {
     const typeOf = new Map(nodes.map((n) => [n.id, n.data.type]));
-    const base = edges.map((e) => {
+    const base = presentation.edges.map((e) => {
       const t = typeOf.get(e.source) ?? "";
       return t.startsWith("wait_") ? { ...e, style: { strokeDasharray: "3 4", strokeWidth: 2, stroke: "var(--flow-delay)" } } : { ...e, style: { strokeWidth: 1.5 } };
     });
     if (!activePath) return base;
     const on = new Set(activePath.edgeIds);
     return base.map((e) => on.has(e.id) ? { ...e, animated: true, style: { strokeWidth: 3, stroke: "var(--primary)" } } : { ...e, style: { opacity: 0.25 } });
-  }, [edges, nodes, activePath]);
-  const displayNodes = useMemo(() => nodes.map((n, index) => ({
-    ...n, data: { ...n.data, ordinal: String(index + 1).padStart(2, "0"), summary: summarize({ id: n.id, type: n.data.type, position: n.position, data: { config: n.data.config } }, names), invalid: invalidIds.has(n.id) },
+  }, [presentation, nodes, activePath]);
+  const displayNodes = useMemo(() => nodes.filter((n) => !presentation.hiddenNodeIds.includes(n.id)).map((n, index) => ({
+    ...n, data: { ...n.data, displayOutputs: n.id === presentation.triggerId ? presentation.outputs : undefined, ordinal: String(index + 1).padStart(2, "0"), summary: summarize({ id: n.id, type: n.data.type, position: n.position, data: { config: n.data.config } }, names), invalid: invalidIds.has(n.id) },
     style: activePath && !activePath.nodeIds.includes(n.id) ? { opacity: 0.3 } : undefined,
-  })), [nodes, names, invalidIds, activePath]);
+  })), [nodes, names, invalidIds, activePath, presentation]);
 
   const saveMut = useMutation({
     mutationFn: () => save({ data: { id, name, description: description || null, connectionId, graph } }),
@@ -360,8 +364,11 @@ function Editor() {
         {(sel || settingsOpen) && <aside className="absolute inset-y-0 right-0 z-20 w-[min(320px,90%)] overflow-y-auto border-l bg-card p-3 shadow-elegant md:static md:w-80 md:shrink-0 md:shadow-none">
           <div className="mb-3 flex items-center justify-between"><span className="text-sm font-semibold">{sel ? "Configurar bloco" : "Configurações do fluxo"}</span><Button variant="ghost" size="icon" aria-label="Fechar configurações" onClick={() => { setSelected(null); setSettingsOpen(false); }}><X size={16} /></Button></div>
           {sel ? (
+            <>
+            {sel.id === presentation.triggerId && <div className="mb-3 space-y-1"><Label>Caminhos dos botões</Label>{presentation.outputs.filter((o) => o.sourceHandle === "true").map((output) => <Button key={output.id} variant="outline" size="sm" className="w-full justify-start" onClick={() => setSelected(output.source)}>{output.label}</Button>)}</div>}
             <NodeConfig key={sel.id} node={sel} nodes={nodes} assets={assets.data} automationId={id}
               onChange={(patch) => updateNode(sel.id, patch)} onDuplicate={() => duplicateNode(sel.id)} onDelete={() => deleteNode(sel.id)} />
+            </>
           ) : (
             <div className="space-y-3">
               <div><Label>Número WhatsApp</Label><Select value={connectionId ?? ""} onValueChange={(v) => { setConnectionId(v); setDirty(true); }}><SelectTrigger><SelectValue placeholder="Escolha o número" /></SelectTrigger><SelectContent>{conns.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name} {c.display_phone ?? ""}</SelectItem>)}</SelectContent></Select></div>
