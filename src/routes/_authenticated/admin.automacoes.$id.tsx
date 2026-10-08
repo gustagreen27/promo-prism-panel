@@ -31,6 +31,7 @@ import {
 import { AutomationFlowNode, blockAppearance, type FlowNodeData } from "@/components/admin/automation-flow-node";
 import { legacyButtonPresentation } from "@/lib/automation-flow-presentation";
 import { RunDetail, RunsPanel } from "@/components/admin/automation-runs";
+import { AutomationAudioUpload } from "@/components/admin/automation-audio-upload";
 
 export const Route = createFileRoute("/_authenticated/admin/automacoes/$id")({
   head: () => ({ meta: [{ title: "Editor de automação — Next Disparos" }, { name: "description", content: "Configure mensagens e caminhos de resposta nas automações do Next Disparos." }, { property: "og:title", content: "Editor de automação — Next Disparos" }, { property: "og:description", content: "Mensagens, ações e caminhos de resposta em um quadro visual." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -539,7 +540,8 @@ function NodeConfig({ node, nodes, assets, automationId, onChange, onDuplicate, 
           <Select value={c.mediaType ?? "image"} onValueChange={(v) => set("mediaType", v)}><SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent><SelectItem value="audio">Áudio</SelectItem><SelectItem value="image">Imagem</SelectItem><SelectItem value="video">Vídeo</SelectItem><SelectItem value="document">Documento</SelectItem></SelectContent></Select>
         </div>
-        <div><Label className="text-xs">Link HTTPS público</Label><VarField value={c.url ?? ""} onChange={(v) => set("url", v)} /></div>
+        {c.mediaType === "audio" && <AutomationAudioUpload path={c.mediaPath} onChange={(v) => set("mediaPath", v)} />}
+        {!(c.mediaType === "audio" && c.mediaPath) && <div><Label className="text-xs">Link HTTPS público</Label><VarField value={c.url ?? ""} onChange={(v) => set("url", v)} /></div>}
         {c.mediaType === "audio" ? <p className="text-xs text-muted-foreground">Áudio aceito pelo WhatsApp: MP3, OGG (opus), AAC, AMR ou M4A, até 16 MB. Áudio não tem legenda.</p>
           : <div><Label className="text-xs">Legenda</Label><VarField value={c.caption ?? ""} onChange={(v) => set("caption", v)} /></div>}
         {c.mediaType === "document" && <div><Label className="text-xs">Nome do arquivo</Label><Input value={c.filename ?? ""} onChange={(e) => set("filename", e.target.value)} /></div>}
