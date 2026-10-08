@@ -86,3 +86,17 @@ describe("caminho por botão no início", () => {
     expect(outputsFor({ type: "flow_random", data: { config: { branches: 3 } } }).length).toBe(3);
   });
 });
+
+import { campaignAutomationAllowed } from "./automation-engine.server";
+describe("disparo aciona a automação vinculada", () => {
+  it("mesmo número aciona, mesmo com o disparo gravado em outro cliente", () => {
+    expect(campaignAutomationAllowed({ workspace_id: "jhonatan", connection_id: "n1" }, { workspace_id: "interno", connection_id: "n1" })).toBe(true);
+  });
+  it("número diferente não aciona", () => {
+    expect(campaignAutomationAllowed({ workspace_id: "w", connection_id: "n1" }, { workspace_id: "w", connection_id: "n2" })).toBe(false);
+  });
+  it("sem número no fluxo, exige o mesmo cliente", () => {
+    expect(campaignAutomationAllowed({ workspace_id: "a", connection_id: null }, { workspace_id: "b", connection_id: "n1" })).toBe(false);
+    expect(campaignAutomationAllowed({ workspace_id: "a", connection_id: null }, { workspace_id: "a", connection_id: "n1" })).toBe(true);
+  });
+});
