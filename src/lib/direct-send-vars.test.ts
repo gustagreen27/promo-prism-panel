@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { applyCustomVars, validateCustomVars, parseVarValues } from "./direct-send";
+import { applyCustomVars, validateCustomVars, parseVarValues, pickDirectText, validateDirectConfig } from "./direct-send";
 
 const txt = "Oi, (nome)! Pendência: (pendência real). Pode verificar?";
 const rot = [{ name: "pendência real", mode: "rotate" as const, values: ["A", "B", "C"] }];

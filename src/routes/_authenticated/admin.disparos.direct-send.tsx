@@ -464,8 +464,8 @@ function Page() {
           {draftId && <PacingPanel id={draftId} />}
           <div className="rounded-xl border bg-card p-4">
             <div className="mb-2 flex items-center justify-between text-xs font-medium text-muted-foreground">
-              <span>Prévia{cleanVars.length ? ` — contato ${previewIdx + 1}` : ""}</span>
-              {cleanVars.length > 0 && (
+              <span>Prévia{cleanVars.length || cleanVariants.length ? ` — contato ${previewIdx + 1}${cleanVariants.length ? ` · variação ${(previewIdx % (cleanVariants.length + 1)) + 1}` : ""}` : ""}</span>
+              {(cleanVars.length > 0 || cleanVariants.length > 0) && (
                 <span className="flex gap-1">
                   <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-xs" disabled={previewIdx === 0} onClick={() => setPreviewIdx((n) => n - 1)}>Anterior</Button>
                   <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => setPreviewIdx((n) => n + 1)}>Próximo</Button>
