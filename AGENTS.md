@@ -11,3 +11,4 @@
 
 - Pix Inter passa pela ponte externa no Render (inter-pix-bridge, HMAC INTER_BRIDGE_SECRET): o runtime do painel ignora certificado de cliente (mTLS), confirmado em teste.
 - Confirmação de Pix por consulta periódica que só fica ligada com Pix pendente, e crédito só via confirm_pix_deposit (idempotente): o webhook do Inter exige mTLS de entrada, indisponível.
+- Keep automation-node presentation in the shared AutomationFlowNode component, with scoped semantic flow tokens; visual changes must preserve persisted graph IDs, output handles and execution behavior.

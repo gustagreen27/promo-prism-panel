@@ -1,0 +1,6 @@
+---
+name: Visual de Automações
+description: Referência visual escolhida para o editor de Automações
+type: design
+---
+O editor de Automações deve seguir a imagem enviada: quadro pontilhado, barra superior agrupada de blocos, cartões coloridos por tipo com cabeçalho e conteúdo visível, conexões laterais formando caminhos horizontais.
