@@ -9,6 +9,7 @@ import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
 import {
   validateDirectConfig, BODY_MAX, IMAGE_MIME, VIDEO_MIME, IMAGE_MAX_MB, VIDEO_MAX_MB,
   type DirectConfig, type DirectHeaderType, type DirectButtonsType,
+  applyCustomVars, parseVarValues, textUsesVar, type CustomVar,
 } from "@/lib/direct-send";
 import { validatePacing, type PacingConfig } from "@/lib/direct-pacing";
 import { PacingPanel } from "@/components/campaigns/PacingPanel";
@@ -73,6 +74,8 @@ function Page() {
   const [replies, setReplies] = useState([{ id: "opcao_1", title: "" }]);
   const [pacingOn, setPacingOn] = useState(false);
   const [pace, setPace] = useState({ msgs_min: "3", msgs_max: "6", interval_min_s: "10", interval_max_s: "30", pause_min: "2", pause_max: "5" });
+  const [customVars, setCustomVars] = useState<(CustomVar & { raw: string })[]>([]);
+  const [previewIdx, setPreviewIdx] = useState(0);
   const [pauseUnit, setPauseUnit] = useState<"s" | "min">("min");
 
   const draftQ = useQuery({ queryKey: ["direct-draft", draftId], queryFn: () => getFn({ data: { id: draftId! } }), enabled: !!draftId });
@@ -86,6 +89,7 @@ function Page() {
     if (c.url_button) setUrlBtn(c.url_button);
     if (c.reply_buttons?.length) setReplies(c.reply_buttons);
     setAutomationId(c.automation_id ?? "");
+    setCustomVars((c.custom_vars ?? []).map((v: any) => ({ ...v, values: v.values ?? [], raw: (v.values ?? []).join("\n") })));
     setPacingOn(!!d.pacing_enabled);
     if (d.pacing_config) {
       const p = d.pacing_config;
@@ -114,7 +118,12 @@ function Page() {
     url_button: buttonsType === "url" ? urlBtn : null,
     reply_buttons: buttonsType === "reply" ? replies : null,
     automation_id: automationId || null,
+    custom_vars: customVars.length ? customVars.map(({ raw: _r, ...v }) => ({ ...v, name: v.name.trim(), column: v.mode === "column" ? (v.column ?? "").trim() : null })) : null,
   };
+  const cleanVars = config.custom_vars ?? [];
+  const previewBody = (idx: number) => render(applyCustomVars(text, cleanVars, { index: idx }).text, testName);
+  const updVar = (i: number, patch: Partial<CustomVar & { raw: string }>) =>
+    setCustomVars((vs) => vs.map((v, j) => (j === i ? { ...v, ...patch } : v)));
   const replyAutosQ = useQuery({ queryKey: ["reply-automations", connId], queryFn: () => replyAutosFn({ data: { connectionId: connId || null } }), enabled: !!connId });
   const createFlow = async () => {
     try {
@@ -248,6 +257,55 @@ function Page() {
             <p className="mt-1 text-xs text-muted-foreground">Os campos {"{nome}"} e {"{telefone}"} (também aceitos como (nome) e (telefone)) são trocados pelos dados de cada lead. Sem nome cadastrado, aparece "cliente".</p>
             <p className="mt-1 text-xs text-muted-foreground">{text.length}/{BODY_MAX}</p>
           </div>
+          <div className="space-y-3 rounded-lg border border-dashed p-3">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <div className="text-sm font-medium">Variáveis personalizadas</div>
+                <p className="text-xs text-muted-foreground">Escreva no texto, por exemplo, (pendência real) e cadastre a variável aqui com o mesmo nome.</p>
+              </div>
+              <Button type="button" size="sm" variant="outline" onClick={() => setCustomVars((vs) => [...vs, { name: "", mode: "column", values: [], column: "", raw: "" }])}>
+                <Plus className="mr-1 h-4 w-4" />Variável
+              </Button>
+            </div>
+            {customVars.map((v, i) => {
+              const used = v.name.trim() ? textUsesVar(text, v.name) : false;
+              return (
+                <div key={i} className="space-y-2 rounded-md border bg-muted/30 p-3">
+                  <div className="flex gap-2">
+                    <Input placeholder="Nome (ex.: pendência real)" value={v.name} onChange={(e) => updVar(i, { name: e.target.value })} />
+                    <Button type="button" size="icon" variant="ghost" disabled={!v.name.trim()} title="Inserir no texto"
+                      onClick={() => {
+                        const el = document.getElementById("direct-text") as HTMLTextAreaElement | null;
+                        const s0 = el?.selectionStart ?? text.length, e0 = el?.selectionEnd ?? text.length;
+                        setText(text.slice(0, s0) + `(${v.name.trim()})` + text.slice(e0));
+                      }}><Plus className="h-4 w-4" /></Button>
+                    <Button type="button" size="icon" variant="ghost" onClick={() => setCustomVars((vs) => vs.filter((_, j) => j !== i))}><Trash2 className="h-4 w-4" /></Button>
+                  </div>
+                  <Select value={v.mode} onValueChange={(m) => updVar(i, { mode: m as CustomVar["mode"] })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="column">Valor de cada contato (coluna da lista)</SelectItem>
+                      <SelectItem value="rotate">Alternar valores em sequência</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {v.mode === "column" && (
+                    <div>
+                      <Input placeholder="Nome da coluna na lista (ex.: pendencia)" value={v.column ?? ""} onChange={(e) => updVar(i, { column: e.target.value })} />
+                      <p className="mt-1 text-xs text-muted-foreground">Use para informações reais de cada pessoa, como a pendência do perfil. Contatos sem esse dado usam os valores de reserva abaixo; sem reserva, não recebem a mensagem.</p>
+                    </div>
+                  )}
+                  <div>
+                    <Textarea rows={3} placeholder={v.mode === "column" ? "Valores de reserva (opcional) — separados por vírgula ou um por linha" : "Cadastro desatualizado, E-mail incorreto, Dados de contato"}
+                      value={v.raw} onChange={(e) => updVar(i, { raw: e.target.value, values: parseVarValues(e.target.value) })} />
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {v.values.length} valor(es){v.mode === "rotate" ? " · alterna entre os contatos e volta ao primeiro depois do último. Use só para textos que podem variar livremente, nunca para dados reais da pessoa." : ""}
+                      {v.name.trim() && !used ? ` · ainda não aparece no texto como (${v.name.trim()}).` : ""}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
           <div><Label>Botões</Label>
             <Select value={buttonsType} onValueChange={(v) => { setButtonsType(v as DirectButtonsType); setTestResult(null); }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -376,9 +434,17 @@ function Page() {
         <div className="space-y-3">
           {draftId && <PacingPanel id={draftId} />}
           <div className="rounded-xl border bg-card p-4">
-            <div className="mb-2 text-xs font-medium text-muted-foreground">Prévia</div>
+            <div className="mb-2 flex items-center justify-between text-xs font-medium text-muted-foreground">
+              <span>Prévia{cleanVars.length ? ` — contato ${previewIdx + 1}` : ""}</span>
+              {cleanVars.length > 0 && (
+                <span className="flex gap-1">
+                  <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-xs" disabled={previewIdx === 0} onClick={() => setPreviewIdx((n) => n - 1)}>Anterior</Button>
+                  <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => setPreviewIdx((n) => n + 1)}>Próximo</Button>
+                </span>
+              )}
+            </div>
             <WhatsAppPreview
-              body={render(text, testName)}
+              body={previewBody(previewIdx)}
               header={effHeader === "none" ? null : { type: effHeader, text: headerText, media_url: media?.previewUrl }}
               footer={interactive ? footer : null}
               buttons={buttonsType === "url" ? [{ type: "url", text: urlBtn.text }] : buttonsType === "reply" ? replies.map((r) => ({ type: "reply", text: r.title })) : []}
