@@ -15,6 +15,21 @@ export function normPhone(p: string | null | undefined): string {
   return String(p ?? "").replace(/\D/g, "");
 }
 
+/**
+ * Um disparo pode acionar a automação vinculada a ele quando os dois usam o mesmo número
+ * (o Direct Send do admin grava o disparo no cliente interno, mas o número e o fluxo
+ * pertencem ao cliente dono do número). Sem número em comum, exige o mesmo cliente.
+ */
+export function campaignAutomationAllowed(
+  a: { workspace_id?: string | null; connection_id?: string | null },
+  camp: { workspace_id?: string | null; connection_id?: string | null } | null | undefined,
+): boolean {
+  if (!camp) return false;
+  if (a.connection_id && camp.connection_id) return a.connection_id === camp.connection_id;
+  return !a.workspace_id || !camp.workspace_id || a.workspace_id === camp.workspace_id;
+}
+
+
 class PermanentError extends Error {}
 class TransientError extends Error {}
 class UncertainError extends Error {}
