@@ -22,8 +22,9 @@ export function AutomationVideoUpload({ path, onChange }: { path?: string; onCha
       toast.error("Selecione um vídeo MP4 ou 3GP.");
       return;
     }
-    if (!file.size || file.size > 16 * 1024 * 1024) {
-      toast.error("O vídeo deve ter conteúdo e no máximo 16 MB.");
+    // O WhatsApp recusa vídeos perto do limite de 16 MB; 15 MB deixa margem segura.
+    if (!file.size || file.size > 15 * 1000 * 1000) {
+      toast.error("O vídeo deve ter no máximo 15 MB (MP4 com vídeo H.264 e áudio AAC).");
       return;
     }
     setBusy(true);
