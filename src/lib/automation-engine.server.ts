@@ -5,7 +5,7 @@
 
 import {
   type AutoGraph, type AutoNode, type VarContext,
-  BLOCK_MAP, isTrigger, nextNodeId, renderVars, evalCompare, mergeDeliveryStatus, MissingVariableError,
+  BLOCK_MAP, isTrigger, nextNodeId, outputsFor, campaignReplyHandle, renderVars, evalCompare, mergeDeliveryStatus, MissingVariableError,
 } from "./automation-graph";
 
 type Db = any;
