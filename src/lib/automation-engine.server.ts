@@ -665,19 +665,21 @@ async function handleEvent(db: Db, ev: any): Promise<boolean> {
     // 2) Resposta a um Direct Send vinculado a uma automação ("Resposta a um disparo").
     //    Um fluxo por lead por disparo; respostas seguintes vão para a espera do fluxo (se houver).
     if (p.campaign_id) {
-      const { data: camp } = await db.from("wa_campaigns").select("id, workspace_id, direct_config").eq("id", p.campaign_id).maybeSingle();
+      const { data: camp } = await db.from("wa_campaigns").select("id, workspace_id, connection_id, direct_config").eq("id", p.campaign_id).maybeSingle();
       const autoId = (camp?.direct_config as any)?.automation_id;
       if (autoId) {
-        const { data: a } = await db.from("automations").select("id, status, trigger_type, published_version_id, workspace_id").eq("id", autoId).maybeSingle();
-        if (a && a.status === "active" && a.trigger_type === "campaign_reply" && a.published_version_id && (!a.workspace_id || !camp.workspace_id || a.workspace_id === camp.workspace_id)) {
-          await startRun(db, {
+        const { data: a } = await db.from("automations").select("id, status, trigger_type, published_version_id, workspace_id, connection_id").eq("id", autoId).maybeSingle();
+        if (a && a.status === "active" && a.trigger_type === "campaign_reply" && a.published_version_id && campaignAutomationAllowed(a, camp)) {
+          const r = await startRun(db, {
             automationId: a.id, versionId: a.published_version_id, triggerType: "campaign_reply", contactPhone: p.from,
             triggerData: { campaign_id: p.campaign_id, text: p.text, button_id: p.button_id },
             message: { text: p.text, buttonId: p.button_id, buttonTitle: p.button_title },
             dedupKey: `camp:${a.id}:${p.campaign_id}:${normPhone(p.from)}`,
           });
+          if (!r.runId && !r.duplicate) throw new Error(`Automação não iniciou: ${r.error ?? "erro desconhecido"}`);
           return true;
         }
+        console.warn("campaign_reply ignorado", { campaign: p.campaign_id, automation: autoId, status: a?.status, published: !!a?.published_version_id });
       }
     }
     // 3) Gatilho "mensagem recebida".
