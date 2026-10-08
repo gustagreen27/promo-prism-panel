@@ -2,7 +2,7 @@ import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { Play, MessageSquare, MousePointerClick, Image, Video, FileText, Clock3, GitBranch, Tags, Headphones, Globe, CircleStop, LayoutTemplate, Volume2, Shuffle, Ban } from "lucide-react";
 import { BLOCK_MAP, isTrigger, outputsFor } from "@/lib/automation-graph";
 
-export type FlowNodeData = { type: string; label?: string; config: Record<string, any>; summary?: string; invalid?: boolean; ordinal?: string };
+export type FlowNodeData = { type: string; label?: string; config: Record<string, any>; summary?: string; invalid?: boolean; ordinal?: string; displayOutputs?: { id: string; label: string }[] };
 
 export function blockAppearance(type: string, config: Record<string, any> = {}) {
   if (isTrigger(type)) return { tone: "start", icon: Play, label: "Início" };
@@ -37,7 +37,7 @@ export function AutomationFlowNode({ data, selected }: NodeProps<Node<FlowNodeDa
   const trigger = isTrigger(data.type);
   const compact = data.type === "wait_duration" || data.type === "end";
   const solid = data.type === "act_blacklist";
-  const outputs = outputsFor({ type: data.type, data: { config: c } });
+  const outputs = data.displayOutputs ?? outputsFor({ type: data.type, data: { config: c } });
   const replyTrigger = data.type === "trigger_campaign_reply" && outputs.length > 1;
   const text = c.text || c.caption || data.summary;
   const media = data.type === "send_media" ? (c.mediaType ?? "image") : null;
