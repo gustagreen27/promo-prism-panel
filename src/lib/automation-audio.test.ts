@@ -11,3 +11,14 @@ it("permite publicar áudio carregado sem um link permanente", () => {
   message.data.config.mediaPath = "";
   expect(validateGraph(graph).some((issue) => issue.nodeId === message.id)).toBe(true);
 });
+
+it("permite publicar vídeo carregado sem um link permanente", () => {
+  const graph = replyFlowGraph([{ id: "sim", title: "Sim" }]);
+  const message = graph.nodes.find((n) => n.type === "send_text");
+  if (!message) throw new Error("Mensagem ausente");
+  message.type = "send_media";
+  message.data.config = { mediaType: "video", mediaPath: "automation-video/12345678-abcd-1234-abcd-123456789abc.mp4", url: "" };
+  expect(validateGraph(graph)).toEqual([]);
+  message.data.config.mediaPath = "";
+  expect(validateGraph(graph).some((issue) => issue.nodeId === message.id)).toBe(true);
+});
