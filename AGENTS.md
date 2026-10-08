@@ -13,3 +13,4 @@
 - Confirmação de Pix por consulta periódica que só fica ligada com Pix pendente, e crédito só via confirm_pix_deposit (idempotente): o webhook do Inter exige mTLS de entrada, indisponível.
 - Keep automation-node presentation in the shared AutomationFlowNode component, with scoped semantic flow tokens; visual changes must preserve persisted graph IDs, output handles and execution behavior.
 - Project legacy initial button-check chains through automation-flow-presentation in the editor only; map connections back to their saved sources so published execution stays unchanged.
+- Store uploaded automation audio as private storage paths and issue a fresh signed URL at execution time, so saved flows do not depend on expiring editor preview links.

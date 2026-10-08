@@ -409,7 +409,7 @@ async function doSend(db: Db, run: any, node: AutoNode, ctx: VarContext, onMissi
   const payload: any = { type: node.type };
   if (node.type === "send_template") Object.assign(payload, { template: c.templateName, language: c.language, params: (c.params ?? []).map(r), headerUrl: c.headerUrl ? r(c.headerUrl) : null });
   if (node.type === "send_text") payload.text = r(c.text);
-  if (node.type === "send_media") Object.assign(payload, { mediaType: c.mediaType, url: r(c.url), caption: c.caption ? r(c.caption) : "", filename: c.filename ?? "" });
+  if (node.type === "send_media") Object.assign(payload, { mediaType: c.mediaType, url: c.mediaType === "audio" && c.mediaPath ? "" : r(c.url), mediaPath: c.mediaType === "audio" ? c.mediaPath : undefined, caption: c.caption ? r(c.caption) : "", filename: c.filename ?? "" });
   if (node.type === "send_buttons") Object.assign(payload, { text: r(c.text), buttons: c.buttons });
   if (run.simulate) return { simulated: true, payload };
 
@@ -457,6 +457,12 @@ async function doSend(db: Db, run: any, node: AutoNode, ctx: VarContext, onMissi
     });
     res = out.ok ? { ok: true, wamid: out.metaMessageId } : { ok: false, error: out.error, code: out.code, httpStatus: out.httpStatus };
   } else {
+    if (node.type === "send_media" && payload.mediaPath) {
+      if (!/^automation-audio\/[a-f0-9-]+\.(mp3|ogg|aac|amr|m4a)$/i.test(payload.mediaPath)) throw new PermanentError("Arquivo de áudio inválido");
+      const { data: signed, error } = await db.storage.from("campaign-images").createSignedUrl(payload.mediaPath, 3600);
+      if (error || !signed?.signedUrl) throw new TransientError("Não foi possível acessar o áudio salvo");
+      payload.url = signed.signedUrl;
+    }
     const svc = await import("@/lib/wa-service-send.server");
     const base = { phoneNumberId: conn.phone_number_id, accessToken: token, to: phone, bizOpaqueCallbackData: biz };
     const out = node.type === "send_text" ? await svc.sendServiceText(base, payload.text)
