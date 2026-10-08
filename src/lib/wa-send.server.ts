@@ -1,4 +1,4 @@
-import { applyCustomVars } from "@/lib/direct-send";
+import { applyCustomVars, pickDirectText } from "@/lib/direct-send";
 import { GRAPH_VERSION } from "@/lib/meta/graph-version";
 // Server-only helper for sending official WhatsApp Cloud API messages.
 // Never import this from a route or *.functions.ts module scope.

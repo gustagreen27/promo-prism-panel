@@ -1259,6 +1259,7 @@ async function processCampaignTickInner(
           telefone: directTo,
         }, {
           vars: directConfig?.custom_vars ?? null,
+          variants: directConfig?.message_variants ?? null,
           index: directSeq++,
           fields: { ...((r as any)._contact?.metadata ?? {}), ...((r as any).variables ?? {}) },
         });
