@@ -9,7 +9,7 @@ import { WhatsAppPreview } from "@/components/campaigns/wizard/WhatsAppPreview";
 import {
   validateDirectConfig, BODY_MAX, IMAGE_MIME, VIDEO_MIME, IMAGE_MAX_MB, VIDEO_MAX_MB,
   type DirectConfig, type DirectHeaderType, type DirectButtonsType,
-  applyCustomVars, parseVarValues, textUsesVar, type CustomVar,
+  applyCustomVars, parseVarValues, textUsesVar, pickDirectText, type CustomVar,
 } from "@/lib/direct-send";
 import { validatePacing, type PacingConfig } from "@/lib/direct-pacing";
 import { PacingPanel } from "@/components/campaigns/PacingPanel";
@@ -75,6 +75,7 @@ function Page() {
   const [pacingOn, setPacingOn] = useState(false);
   const [pace, setPace] = useState({ msgs_min: "3", msgs_max: "6", interval_min_s: "10", interval_max_s: "30", pause_min: "2", pause_max: "5" });
   const [customVars, setCustomVars] = useState<(CustomVar & { raw: string })[]>([]);
+  const [variants, setVariants] = useState<string[]>([]);
   const [previewIdx, setPreviewIdx] = useState(0);
   const [pauseUnit, setPauseUnit] = useState<"s" | "min">("min");
 
@@ -90,6 +91,7 @@ function Page() {
     if (c.reply_buttons?.length) setReplies(c.reply_buttons);
     setAutomationId(c.automation_id ?? "");
     setCustomVars((c.custom_vars ?? []).map((v: any) => ({ ...v, values: v.values ?? [], raw: (v.values ?? []).join("\n") })));
+    setVariants(c.message_variants ?? []);
     setPacingOn(!!d.pacing_enabled);
     if (d.pacing_config) {
       const p = d.pacing_config;
@@ -119,9 +121,11 @@ function Page() {
     reply_buttons: buttonsType === "reply" ? replies : null,
     automation_id: automationId || null,
     custom_vars: customVars.length ? customVars.map(({ raw: _r, ...v }) => ({ ...v, name: v.name.trim(), column: v.mode === "column" ? (v.column ?? "").trim() : null })) : null,
+    message_variants: variants.map((v) => v.trim()).filter(Boolean).length ? variants.map((v) => v.trim()).filter(Boolean) : null,
   };
   const cleanVars = config.custom_vars ?? [];
-  const previewBody = (idx: number) => render(applyCustomVars(text, cleanVars, { index: idx }).text, testName);
+  const cleanVariants = config.message_variants ?? [];
+  const previewBody = (idx: number) => render(applyCustomVars(pickDirectText(text, cleanVariants, idx), cleanVars, { index: idx }).text, testName);
   const updVar = (i: number, patch: Partial<CustomVar & { raw: string }>) =>
     setCustomVars((vs) => vs.map((v, j) => (j === i ? { ...v, ...patch } : v)));
   const replyAutosQ = useQuery({ queryKey: ["reply-automations", connId], queryFn: () => replyAutosFn({ data: { connectionId: connId || null } }), enabled: !!connId });
@@ -256,6 +260,31 @@ function Page() {
             <Textarea id="direct-text" rows={6} maxLength={BODY_MAX} value={text} onChange={(e) => setText(e.target.value)} />
             <p className="mt-1 text-xs text-muted-foreground">Os campos {"{nome}"} e {"{telefone}"} (também aceitos como (nome) e (telefone)) são trocados pelos dados de cada lead. Sem nome cadastrado, aparece "cliente".</p>
             <p className="mt-1 text-xs text-muted-foreground">{text.length}/{BODY_MAX}</p>
+          </div>
+          <div className="space-y-3 rounded-lg border border-dashed p-3">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <div className="text-sm font-medium">Variações da mensagem</div>
+                <p className="text-xs text-muted-foreground">
+                  Crie outras versões com a mesma base (ex.: 10 textos). O 1º contato recebe a mensagem principal,
+                  o 2º recebe a variação 2, e assim por diante; depois da última, volta à principal. Botões, mídia e variáveis valem para todas.
+                </p>
+              </div>
+              <Button type="button" size="sm" variant="outline" disabled={variants.length >= 50} onClick={() => setVariants((vs) => [...vs, ""])}>
+                <Plus className="mr-1 h-4 w-4" />Variação
+              </Button>
+            </div>
+            {variants.map((v, i) => (
+              <div key={i} className="space-y-1 rounded-md border bg-muted/30 p-3">
+                <div className="flex items-center justify-between">
+                  <Label>Variação {i + 2}</Label>
+                  <Button type="button" size="icon" variant="ghost" onClick={() => setVariants((vs) => vs.filter((_, j) => j !== i))}><Trash2 className="h-4 w-4" /></Button>
+                </div>
+                <Textarea rows={4} maxLength={BODY_MAX} value={v} placeholder="Mesma base, com outras palavras…"
+                  onChange={(e) => setVariants((vs) => vs.map((x, j) => (j === i ? e.target.value : x)))} />
+                <p className="text-xs text-muted-foreground">{v.length}/{BODY_MAX}</p>
+              </div>
+            ))}
           </div>
           <div className="space-y-3 rounded-lg border border-dashed p-3">
             <div className="flex items-center justify-between gap-2">
@@ -435,8 +464,8 @@ function Page() {
           {draftId && <PacingPanel id={draftId} />}
           <div className="rounded-xl border bg-card p-4">
             <div className="mb-2 flex items-center justify-between text-xs font-medium text-muted-foreground">
-              <span>Prévia{cleanVars.length ? ` — contato ${previewIdx + 1}` : ""}</span>
-              {cleanVars.length > 0 && (
+              <span>Prévia{cleanVars.length || cleanVariants.length ? ` — contato ${previewIdx + 1}${cleanVariants.length ? ` · variação ${(previewIdx % (cleanVariants.length + 1)) + 1}` : ""}` : ""}</span>
+              {(cleanVars.length > 0 || cleanVariants.length > 0) && (
                 <span className="flex gap-1">
                   <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-xs" disabled={previewIdx === 0} onClick={() => setPreviewIdx((n) => n - 1)}>Anterior</Button>
                   <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => setPreviewIdx((n) => n + 1)}>Próximo</Button>

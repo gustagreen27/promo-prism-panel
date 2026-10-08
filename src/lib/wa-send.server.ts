@@ -1,4 +1,4 @@
-import { applyCustomVars } from "@/lib/direct-send";
+import { applyCustomVars, pickDirectText } from "@/lib/direct-send";
 import { GRAPH_VERSION } from "@/lib/meta/graph-version";
 // Server-only helper for sending official WhatsApp Cloud API messages.
 // Never import this from a route or *.functions.ts module scope.
@@ -548,10 +548,11 @@ export function renderDirectText(text: string, vars: { nome?: string | null; tel
 export function renderDirectFull(
   text: string,
   vars: { nome?: string | null; telefone?: string | null },
-  custom: { vars?: any[] | null; index: number; fields?: Record<string, any> | null },
+  custom: { vars?: any[] | null; index: number; fields?: Record<string, any> | null; variants?: string[] | null },
 ) {
-  const r = applyCustomVars(text, custom.vars as any, { index: custom.index, fields: custom.fields });
-  return { text: renderDirectBase(r.text, vars), missing: r.missing };
+  const picked = pickDirectText(text, custom.variants, custom.index);
+  const r = applyCustomVars(picked, custom.vars as any, { index: custom.index, fields: custom.fields });
+  return { text: renderDirectBase(r.text, vars), missing: r.missing, variant: picked !== text };
 }
 
 function renderDirectBase(text: string, vars: { nome?: string | null; telefone?: string | null }) {
