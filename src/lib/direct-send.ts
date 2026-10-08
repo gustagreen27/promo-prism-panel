@@ -39,6 +39,9 @@ export const directConfigSchema = z.object({
   // Automação que continua a conversa conforme o botão/resposta de cada lead.
   automation_id: z.string().uuid().optional().nullable(),
   custom_vars: z.array(z.lazy(() => customVarSchema)).max(20).optional().nullable(),
+  // Variações da mensagem: textos alternativos com a mesma base, alternados em
+  // sequência entre os contatos (1º contato = texto principal, 2º = variação 1…).
+  message_variants: z.array(z.string().max(BODY_MAX)).max(50).optional().nullable(),
   media_ids: z.record(z.string(), z.object({ id: z.string(), uploaded_at: z.string(), path: z.string().optional().nullable() })).optional().nullable(),
 });
 export type DirectConfig = z.infer<typeof directConfigSchema>;
@@ -58,7 +61,13 @@ export function validateDirectConfig(text: string, cfg: DirectConfig): string[] 
   const body = text.trim();
   if (!body) errs.push("O texto da mensagem é obrigatório.");
   if (body.length > BODY_MAX) errs.push(`O texto aceita até ${BODY_MAX} caracteres no Direct Send.`);
+  const variants = (cfg.message_variants ?? []).map((v) => v.trim()).filter(Boolean);
+  variants.forEach((v, i) => {
+    if (v.length > BODY_MAX) errs.push(`A variação ${i + 2} passa de ${BODY_MAX} caracteres.`);
+    if (v === body) errs.push(`A variação ${i + 2} está igual à mensagem principal.`);
+  });
   errs.push(...validateCustomVars(text, cfg.custom_vars));
+  for (const v of variants) errs.push(...validateCustomVars(v, cfg.custom_vars));
   const interactive = cfg.buttons_type !== "none";
   if (!interactive) {
     if (cfg.header_type !== "none") errs.push("Cabeçalho só é aceito em mensagens com botões.");
@@ -181,6 +190,16 @@ function varRegex(name: string) {
 
 export function textUsesVar(text: string, name: string) {
   return varRegex(name).test(text);
+}
+
+/**
+ * Escolhe o texto do contato na posição `index`: o texto principal é a variação 1;
+ * as demais vêm de `variants`. Depois da última, volta ao principal.
+ */
+export function pickDirectText(base: string, variants: string[] | null | undefined, index: number): string {
+  const all = [base, ...(variants ?? []).map((v) => v.trim()).filter(Boolean)];
+  const i = ((Math.floor(index) % all.length) + all.length) % all.length;
+  return all[i];
 }
 
 function readField(fields: Record<string, any> | null | undefined, column: string) {
