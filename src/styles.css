@@ -331,6 +331,10 @@
   --flow-template: oklch(0.66 0.12 288);
   --flow-handoff: oklch(0.59 0.13 168);
   --flow-end: oklch(0.46 0.17 8);
+  --flow-audio: oklch(0.68 0.15 300);
+  --flow-video: oklch(0.6 0.2 0);
+  --flow-random: oklch(0.55 0.25 320);
+  --flow-blacklist: oklch(0.42 0.15 5);
   --flow-light-ink: oklch(0.99 0 0);
   --flow-dark-ink: oklch(0.23 0.035 155);
   --flow-selection: 0 0 0 4px color-mix(in oklab, var(--flow-tone) 20%, transparent);
@@ -348,6 +352,15 @@
 .automation-editor [data-tone="template"] { --flow-tone: var(--flow-template); }
 .automation-editor [data-tone="handoff"] { --flow-tone: var(--flow-handoff); }
 .automation-editor [data-tone="end"] { --flow-tone: var(--flow-end); }
+.automation-editor [data-tone="audio"] { --flow-tone: var(--flow-audio); }
+.automation-editor [data-tone="video"] { --flow-tone: var(--flow-video); }
+.automation-editor [data-tone="random"] { --flow-tone: var(--flow-random); }
+.automation-editor [data-tone="blacklist"] { --flow-tone: var(--flow-blacklist); }
+.automation-node-solid { width: 200px; border: none; background: var(--flow-tone); color: var(--flow-light-ink); }
+.automation-node-solid .automation-node-heading { border-radius: 6px; min-height: 48px; }
+.automation-node-note { position: absolute; top: calc(100% + 10px); left: 0; width: 250px; font-size: 11px; line-height: 1.55; color: var(--muted-foreground); white-space: pre-wrap; pointer-events: none; }
+.automation-audio-preview { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 9px; font-size: 11px; color: var(--flow-tone); background: color-mix(in oklab, var(--flow-tone) 10%, var(--card)); }
+.automation-trigger-message { margin: 8px; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; background: var(--card); }
 .automation-node {
   --flow-heading-ink: var(--flow-light-ink);
   width: 220px;
