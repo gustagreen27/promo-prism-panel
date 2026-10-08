@@ -887,7 +887,7 @@ export const getRecipientPreviews = createServerFn({ method: "GET" })
     const btnMap = (camp.button_url_mapping as any) ?? {};
     const bodyVars = metaVarsIn(tpl?.body ?? "");
     const btns = (Array.isArray(tpl?.buttons) ? tpl.buttons : []) as any[];
-    const { renderDirectText } = await import("@/lib/wa-send.server");
+    const { renderDirectFull } = await import("@/lib/wa-send.server");
 
     const result = recs.map((r: any) => {
       const ctx = buildContext({
@@ -900,10 +900,12 @@ export const getRecipientPreviews = createServerFn({ method: "GET" })
       const warnings: string[] = [];
 
       if (isDirect && directCfg) {
-        const body = renderDirectText(String((camp as any).direct_text ?? ""), {
+        const rd = renderDirectFull(String((camp as any).direct_text ?? ""), {
           nome: r.contact?.name ?? null,
           telefone: r.phone,
-        });
+        }, { vars: (directCfg as any).custom_vars ?? null, index: recs.indexOf(r), fields: { ...(r.contact?.metadata ?? {}), ...(r.variables ?? {}) } });
+        if (rd.missing.length) warnings.push(`Sem valor para: ${rd.missing.join(", ")} — este contato não receberá.`);
+        const body = rd.text;
         const buttons: { text: string; url: string }[] = [];
         if (directCfg.buttons_type === "url" && directCfg.url_button) {
           buttons.push({ text: directCfg.url_button.text, url: directCfg.url_button.url });

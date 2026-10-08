@@ -1,6 +1,6 @@
 // Server-only queue processor for WhatsApp campaigns (async worker with lease + timeline + final report).
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { sendTemplateMessage, sendDirectUtilityText, isDirectSendNotEnabled, classifyDirectSendError, renderDirectText, signDirectMediaLink } from "@/lib/wa-send.server";
+import { sendTemplateMessage, sendDirectUtilityText, isDirectSendNotEnabled, classifyDirectSendError, renderDirectText, renderDirectFull, signDirectMediaLink } from "@/lib/wa-send.server";
 import { renderMapping, buildContext } from "@/lib/wa-variables";
 import { GRAPH_VERSION, resolveGraphVersion } from "@/lib/meta/graph-version";
 import { classifyMetaError, detectFatalAccountCode as classifyFatalCode } from "@/lib/wa/error-classifier";
@@ -551,6 +551,8 @@ async function processCampaignTickInner(
     const isDirect = (camp as any).send_mode === "direct_utility";
     const directConfig: any = (camp as any).direct_config ?? null;
     let directMediaPromise: Promise<any> | null = null;
+    // Posição na sequência de alternância das variáveis personalizadas (continua entre ciclos).
+    let directSeq = Number((camp as any).sent_count ?? 0) + Number((camp as any).failed_count ?? 0);
     if (!camp.connection_id || (!isDirect && !camp.template_id) || (isDirect && !String((camp as any).direct_text ?? "").trim())) {
       await supabaseAdmin
         .from("wa_campaigns")
@@ -1252,10 +1254,23 @@ async function processCampaignTickInner(
       // Persistimos o timestamp junto com o resultado final abaixo.
       if (isDirect) {
         const directTo = r.phone.replace(/\D/g, "");
-        const directText = renderDirectText(String((camp as any).direct_text ?? ""), {
+        const rendered = renderDirectFull(String((camp as any).direct_text ?? ""), {
           nome: (r as any)._contact?.name ?? (r as any).variables?.nome ?? (r as any).variables?.name ?? null,
           telefone: directTo,
+        }, {
+          vars: directConfig?.custom_vars ?? null,
+          index: directSeq++,
+          fields: { ...((r as any)._contact?.metadata ?? {}), ...((r as any).variables ?? {}) },
         });
+        if (rendered.missing.length) {
+          const reason = `Contato sem valor para: ${rendered.missing.join(", ")}`;
+          await supabaseAdmin.from("campaign_recipients")
+            .update({ status: "failed", failed_at: new Date().toISOString(), failed_reason: reason, error_code: "missing_variable" } as any)
+            .eq("id", r.id);
+          await logEvent(campaignId, "direct_missing_variable", reason, { recipient_id: r.id });
+          return;
+        }
+        const directText = rendered.text;
         directMediaPromise ??= (async () => {
           const dc: any = directConfig;
           if (!dc || dc.buttons_type === "none" || (dc.header_type !== "image" && dc.header_type !== "video")) return { ok: true, link: null };
