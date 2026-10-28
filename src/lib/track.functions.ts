@@ -444,6 +444,13 @@ export const resolveCampaign = createServerFn({ method: "POST" })
             ? "fora_do_brasil"
             : null;
     if (blockedReason) {
+      // Tráfego Facebook/Instagram com destino próprio configurado: abre esse
+      // destino em vez do 404. Sem destino, continua 404.
+      const fbDestRaw = ((campaign as Record<string, unknown>).facebook_destination_url as string | null)?.trim();
+      const fbDest =
+        blockedReason === "facebook" && fbDestRaw && /^https?:\/\//i.test(fbDestRaw)
+          ? applyUtms(fbDestRaw, campaign)
+          : null;
       try {
         const attribution = await resolveDispatchAttribution(
           supabaseAdmin,
@@ -452,11 +459,20 @@ export const resolveCampaign = createServerFn({ method: "POST" })
           data.recipient_id,
         );
         await Promise.race([
-          recordClick(supabaseAdmin, campaign, finalUrl, earlyGeo, attribution, blockedReason),
+          recordClick(supabaseAdmin, campaign, fbDest ?? finalUrl, earlyGeo, attribution, blockedReason),
           new Promise((r) => setTimeout(r, 4000)),
         ]);
       } catch {
         /* métricas não devem quebrar o bloqueio */
+      }
+      if (fbDest) {
+        return {
+          ok: true as const,
+          destination_url: fbDest,
+          open_mode: "redirect" as const,
+          iframeAllowed: false,
+          meta: pickMeta(campaign),
+        };
       }
       return { ok: false as const, notFound: true as const };
     }
