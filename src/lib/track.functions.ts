@@ -438,7 +438,7 @@ export const resolveCampaign = createServerFn({ method: "POST" })
     // Geo com teto de espera: decide o bloqueio 404 sem segurar o link.
     const earlyGeo = await Promise.race([
       geoPromise,
-      new Promise<null>((r) => setTimeout(() => r(null), 350)),
+      new Promise<null>((r) => setTimeout(() => r(null), 3000)),
     ]);
 
     // Bloqueio 404 (vale para QUALQUER modo de abertura): provedor de
