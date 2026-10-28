@@ -219,7 +219,7 @@ function pickMeta(c: Record<string, unknown>) {
 
 const WRAPPER_ASN_RE = /facebook|meta platforms|amazon(\.com)?|amazon technologies|aws|amazon-02/i;
 // Faixas IPv4/IPv6 da Meta (AS32934): decide sem esperar a consulta de IP.
-const META_V4 = ["31.13.","66.220.","69.63.","69.171.","157.240.","173.252.","179.60.","185.60.","204.15.20.","129.134.","163.70.","147.75."];
+const META_V4 = ["31.13.","66.220.","69.63.","69.171.","157.240.","173.252.","179.60.","185.60.","204.15.20.","129.134.","163.70.","147.75.","57.141.","57.144.","102.132.","103.4.96.","103.4.97.","185.89.218.","185.89.219.","45.64.40.","45.64.41."];
 function isMetaIp(ip: string | null | undefined): boolean {
   if (!ip) return false;
   const v = ip.toLowerCase();
