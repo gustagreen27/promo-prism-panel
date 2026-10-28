@@ -218,6 +218,14 @@ function pickMeta(c: Record<string, unknown>) {
 }
 
 const WRAPPER_ASN_RE = /facebook|meta platforms|amazon(\.com)?|amazon technologies|aws|amazon-02/i;
+// Faixas IPv4/IPv6 da Meta (AS32934): decide sem esperar a consulta de IP.
+const META_V4 = ["31.13.","66.220.","69.63.","69.171.","157.240.","173.252.","179.60.","185.60.","204.15.20.","129.134.","163.70.","147.75."];
+function isMetaIp(ip: string | null | undefined): boolean {
+  if (!ip) return false;
+  const v = ip.toLowerCase();
+  return META_V4.some((p) => v.startsWith(p)) || v.startsWith("2a03:2880:") || v.startsWith("2620:0:1c");
+}
+
 function isFacebookGeo(geo: Record<string, unknown> | null): boolean {
   if (!geo) return false;
   const fields = [geo.isp, geo.org, geo.as, geo.asname]
@@ -423,7 +431,9 @@ export const resolveCampaign = createServerFn({ method: "POST" })
     const earlyIp = pickIp();
     const geoPromise = earlyIp ? lookupIp(earlyIp) : Promise.resolve(null);
     const uaHeader = getRequestHeader("user-agent") ?? "";
-    const fbInApp = /FBAN|FBAV|FB_IAB|Instagram/i.test(uaHeader);
+    const fbInApp =
+      /FBAN|FBAV|FB_IAB|Instagram|facebookexternalhit|facebookcatalog|meta-externalagent|meta-externalfetcher|Facebot/i.test(uaHeader) ||
+      isMetaIp(earlyIp);
 
     // Geo com teto de espera: decide o bloqueio 404 sem segurar o link.
     const earlyGeo = await Promise.race([
