@@ -57,14 +57,21 @@ function mapRow(data: any): PlatformCapacity {
 export const getPlatformCapacity = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<PlatformCapacity | null> => {
+    // Equipe interna lê a linha completa (RLS). Clientes recebem só os contadores públicos.
     const { data, error } = await context.supabase
       .from("platform_capacity")
       .select(SELECT)
       .limit(1)
       .maybeSingle();
     if (error) throw error;
-    if (!data) return null;
-    return mapRow(data);
+    if (data) return mapRow(data);
+
+    const { data: pub, error: pubErr } = await context.supabase
+      .rpc("get_platform_capacity_public")
+      .maybeSingle();
+    if (pubErr) throw pubErr;
+    if (!pub) return null;
+    return mapRow({ ...(pub as any), internal_note: null, auto_enabled: false });
   });
 
 const intPositive = z.number().int().min(0).max(1_000_000_000);

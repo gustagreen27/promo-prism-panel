@@ -6304,7 +6304,25 @@ export type Database = {
         Returns: string
       }
       cron_headers: { Args: { _src?: string }; Returns: Json }
+      get_billing_settings: {
+        Args: never
+        Returns: {
+          currency: string
+          default_minimum_messages: number
+          default_price_cents: number
+          id: number
+          minimum_deposit_cents: number
+        }[]
+      }
       get_my_context: { Args: never; Returns: Json }
+      get_platform_capacity_public: {
+        Args: never
+        Returns: {
+          daily_capacity: number
+          daily_completed: number
+          updated_at: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

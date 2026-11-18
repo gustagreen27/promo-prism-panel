@@ -28,7 +28,7 @@ export async function getWorkspaceCredits(supabase: any, workspaceId: string): P
       .select('balance_cents, reserved_cents, custom_price_cents')
       .eq('workspace_id', workspaceId)
       .maybeSingle(),
-    supabase.from('billing_settings').select('default_price_cents').eq('id', 1).maybeSingle(),
+    supabase.rpc('get_billing_settings').maybeSingle(),
   ])
   const unitPriceCents = Number(wallet?.custom_price_cents ?? settings?.default_price_cents ?? 20) || 20
   const balanceCents = Number(wallet?.balance_cents ?? 0)

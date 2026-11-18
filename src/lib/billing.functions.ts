@@ -34,7 +34,7 @@ export const getBillingSettings = createServerFn({ method: 'GET' })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase } = context as any
-    const { data } = await supabase.from('billing_settings').select('id, default_price_cents, minimum_deposit_cents, default_minimum_messages, currency').eq('id', 1).maybeSingle()
+    const { data } = await supabase.rpc('get_billing_settings').maybeSingle()
     return data ?? {
       default_price_cents: 20,
       minimum_deposit_cents: 15000,
@@ -53,7 +53,7 @@ export const getMyWallet = createServerFn({ method: 'POST' })
     await assertMember(supabase, userId, data.workspace_id)
     const [{ data: wallet }, { data: settings }] = await Promise.all([
       supabase.from('workspace_wallets').select('*').eq('workspace_id', data.workspace_id).maybeSingle(),
-      supabase.from('billing_settings').select('id, default_price_cents, minimum_deposit_cents, default_minimum_messages, currency').eq('id', 1).maybeSingle(),
+      supabase.rpc('get_billing_settings').maybeSingle(),
     ])
     const w = wallet ?? { balance_cents: 0, reserved_cents: 0, custom_price_cents: null, custom_minimum_messages: null }
     const defaultPrice = settings?.default_price_cents ?? 20
@@ -130,7 +130,7 @@ export const createDepositCheckout = createServerFn({ method: 'POST' })
     const { supabase, userId } = context as any
     await assertMember(supabase, userId, data.workspace_id)
     const [{ data: settings }, { data: wallet }] = await Promise.all([
-      supabase.from('billing_settings').select('id, default_price_cents, minimum_deposit_cents, default_minimum_messages, currency').eq('id', 1).maybeSingle(),
+      supabase.rpc('get_billing_settings').maybeSingle(),
       supabase.from('workspace_wallets').select('custom_price_cents, custom_minimum_messages').eq('workspace_id', data.workspace_id).maybeSingle(),
     ])
     const globalMinDeposit = settings?.minimum_deposit_cents ?? 15000
@@ -415,7 +415,7 @@ export const adminListClientAccounts = createServerFn({ method: 'GET' })
     await assertStaff(supabase, userId)
 
     const [{ data: settings }, { data: workspaces, error }] = await Promise.all([
-      supabase.from('billing_settings').select('default_price_cents').eq('id', 1).maybeSingle(),
+      supabase.rpc('get_billing_settings').maybeSingle(),
       supabase
         .from('workspaces')
         .select('id, name, slug, plan, status, blocked_at, created_at, workspace_wallets(balance_cents, reserved_cents, custom_price_cents, custom_minimum_messages)')
@@ -493,7 +493,7 @@ export const adminAddCredits = createServerFn({ method: 'POST' })
     await assertStaff(supabase, userId)
 
     const [{ data: settings }, { data: wallet }] = await Promise.all([
-      supabase.from('billing_settings').select('default_price_cents').eq('id', 1).maybeSingle(),
+      supabase.rpc('get_billing_settings').maybeSingle(),
       supabase.from('workspace_wallets').select('custom_price_cents').eq('workspace_id', data.workspace_id).maybeSingle(),
     ])
     const unit = Number(wallet?.custom_price_cents ?? settings?.default_price_cents ?? 20) || 20

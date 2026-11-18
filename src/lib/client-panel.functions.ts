@@ -92,7 +92,7 @@ export const getMyBalance = createServerFn({ method: 'POST' })
     await assertWorkspaceMember(supabase, userId, data.workspace_id)
     const [{ data: wallet }, { data: settings }] = await Promise.all([
       supabase.from('workspace_wallets').select('*').eq('workspace_id', data.workspace_id).maybeSingle(),
-      supabase.from('billing_settings').select('default_price_cents').eq('id', 1).maybeSingle(),
+      supabase.rpc('get_billing_settings').maybeSingle(),
     ])
     const balance = Number(wallet?.balance_cents ?? 0)
     const reserved = Number(wallet?.reserved_cents ?? 0)
@@ -406,7 +406,7 @@ export const startClientCampaign = createServerFn({ method: 'POST' })
 
       const [{ data: wallet }, { data: settings }] = await Promise.all([
         supabase.from('workspace_wallets').select('custom_price_cents').eq('workspace_id', c.workspace_id).maybeSingle(),
-        supabase.from('billing_settings').select('default_price_cents').eq('id', 1).maybeSingle(),
+        supabase.rpc('get_billing_settings').maybeSingle(),
       ])
       const unit = wallet?.custom_price_cents ?? settings?.default_price_cents ?? 15
       const { data: reservation, error: resErr } = await supabase.rpc('wallet_reserve', {
@@ -455,7 +455,7 @@ export const getClientDashboard = createServerFn({ method: 'POST' })
     const [{ data: wallet }, { data: settings }, { data: txs }, { data: camps }, { data: projects }] =
       await Promise.all([
         supabase.from('workspace_wallets').select('balance_cents, reserved_cents, custom_price_cents').eq('workspace_id', data.workspace_id).maybeSingle(),
-        supabase.from('billing_settings').select('default_price_cents').eq('id', 1).maybeSingle(),
+        supabase.rpc('get_billing_settings').maybeSingle(),
         supabase.from('wallet_transactions').select('amount_cents').eq('workspace_id', data.workspace_id),
         supabase
           .from('wa_campaigns')
