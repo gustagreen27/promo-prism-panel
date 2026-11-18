@@ -2,6 +2,7 @@
 // criando uma campanha filha por "perna" (BM + número + template).
 // Reaproveita 100% do motor de envio existente — cada filha é uma campanha normal.
 import { createServerFn } from "@tanstack/react-start";
+import { appBaseUrl } from "@/lib/app-base-url";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -197,9 +198,9 @@ export const createSplitDispatch = createServerFn({ method: "POST" })
 
 function kickTick() {
   try {
-    const base =
+    const base = appBaseUrl(
       process.env.SUPABASE_URL?.replace(".supabase.co", ".lovable.app") ??
-      "https://project--9c7682d6-edcd-4388-a36c-36249d4d6ab8.lovable.app";
+      "https://project--9c7682d6-edcd-4388-a36c-36249d4d6ab8.lovable.app");
     fetch(new URL("/api/public/whatsapp/queue-tick", base).toString(), {
       method: "POST",
       headers: { "content-type": "application/json" },

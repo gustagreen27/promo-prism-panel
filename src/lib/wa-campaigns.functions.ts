@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { appBaseUrl } from "@/lib/app-base-url";
 import { directConfigSchema, validateDirectConfig } from "@/lib/direct-send";
 import { pacingConfigSchema, validatePacing } from "@/lib/direct-pacing";
 import { z } from "zod";
@@ -280,7 +281,7 @@ export const startWaCampaign = createServerFn({ method: "POST" })
       } as any)
       .eq("id", data.id);
     try {
-      const url = new URL("/api/public/whatsapp/queue-tick", process.env.SUPABASE_URL?.replace(".supabase.co", ".lovable.app") ?? "https://project--9c7682d6-edcd-4388-a36c-36249d4d6ab8.lovable.app");
+      const url = new URL("/api/public/whatsapp/queue-tick", appBaseUrl(process.env.SUPABASE_URL?.replace(".supabase.co", ".lovable.app") ?? "https://project--9c7682d6-edcd-4388-a36c-36249d4d6ab8.lovable.app"));
       fetch(url.toString(), { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).catch(() => {});
     } catch {}
     return { ok: true, preflight };
@@ -672,8 +673,8 @@ export const swapCampaignConfig = createServerFn({ method: "POST" })
 
     // Dispara tick (fire-and-forget)
     try {
-      const base = process.env.SUPABASE_URL?.replace(".supabase.co", ".lovable.app")
-        ?? "https://project--9c7682d6-edcd-4388-a36c-36249d4d6ab8.lovable.app";
+      const base = appBaseUrl(process.env.SUPABASE_URL?.replace(".supabase.co", ".lovable.app")
+        ?? "https://project--9c7682d6-edcd-4388-a36c-36249d4d6ab8.lovable.app");
       const url = new URL("/api/public/whatsapp/queue-tick", base);
       fetch(url.toString(), {
         method: "POST",

@@ -1,0 +1,9 @@
+node_modules
+.output
+dist
+.git
+.lovable
+e2e
+*.log
+deploy/vps/app.env
+deploy/vps/arquivos

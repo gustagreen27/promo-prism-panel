@@ -1,0 +1,26 @@
+# Painel + HTTPS automático (Caddy). O servidor de dados (Supabase) roda à parte,
+# pelo docker compose oficial em ~/supabase/docker (veja o README).
+services:
+  painel:
+    build:
+      context: ../..
+      dockerfile: deploy/vps/Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
+    env_file: app.env
+    network_mode: host        # escuta só em 127.0.0.1:3000
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    network_mode: host        # portas 80 e 443
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

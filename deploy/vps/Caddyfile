@@ -1,0 +1,20 @@
+# HTTPS automático para cada domínio assim que o DNS apontar para a VPS.
+# Durante o teste, use só os subdomínios de teste (veja o README, etapa 6).
+
+# Servidor de dados (login, banco, arquivos) — Kong do Supabase na porta 8000
+api.aagencianext.com {
+	reverse_proxy 127.0.0.1:8000
+}
+
+# Painel e links públicos — todos os domínios caem no mesmo painel,
+# que decide o que mostrar pelo domínio acessado.
+aagencianext.com, www.aagencianext.com, backend.aagencianext.com,
+agencianext.app, www.agencianext.app,
+nextdisparos.com, www.nextdisparos.com, painel.nextdisparos.com,
+nextdisparo.com, www.nextdisparo.com,
+disparosfr.com, www.disparosfr.com,
+acompanhamentofacil.app, www.acompanhamentofacil.app,
+metodovidacursos.com.br {
+	encode gzip
+	reverse_proxy 127.0.0.1:3000
+}

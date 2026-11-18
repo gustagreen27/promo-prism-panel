@@ -14,3 +14,4 @@
 - Keep automation-node presentation in the shared AutomationFlowNode component, with scoped semantic flow tokens; visual changes must preserve persisted graph IDs, output handles and execution behavior.
 - Project legacy initial button-check chains through automation-flow-presentation in the editor only; map connections back to their saved sources so published execution stays unchanged.
 - Store uploaded automation audio as private storage paths and issue a fresh signed URL at execution time, so saved flows do not depend on expiring editor preview links.
+- Self-calls to the app's own routes use appBaseUrl() (APP_BASE_URL env, Lovable fallback) and AI calls use aiEndpoint() (own AI_API_KEY, else Lovable gateway), so the same code runs on Lovable and on the self-hosted VPS kit in deploy/vps.

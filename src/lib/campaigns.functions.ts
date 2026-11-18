@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { aiEndpoint } from "@/lib/ai-endpoint.server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { slugify } from "./slugify";
@@ -646,11 +647,11 @@ export const analyzeCampaignIntent = createServerFn({ method: "POST" })
 
     // Análise por IA (qualitativa)
     let aiReport: { score: number; summary: string; checks: IntentCheck[] } | null = null;
-    const key = process.env.LOVABLE_API_KEY;
-    if (key) {
+    const ai = aiEndpoint("/chat/completions", "google/gemini-3.8-flash", "lovable-app");
+    if (ai.available) {
       try {
         const payload = {
-          model: "google/gemini-2.5-flash",
+          model: ai.model,
           messages: [
             {
               role: "system",
@@ -684,12 +685,11 @@ export const analyzeCampaignIntent = createServerFn({ method: "POST" })
           ],
           response_format: { type: "json_object" },
         };
-        const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const aiRes = await fetch(ai.url, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Lovable-API-Key": key,
-            "X-Lovable-AIG-SDK": "lovable-app",
+            ...ai.headers,
           },
           body: JSON.stringify(payload),
         });

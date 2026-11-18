@@ -1,5 +1,6 @@
 // Server functions for the async campaign runner (preflight, start/pause/resume/cancel/retry, progress, timeline, report, CSV export)
 import { createServerFn } from "@tanstack/react-start";
+import { appBaseUrl } from "@/lib/app-base-url";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -96,7 +97,7 @@ function triggerQueueTick(source = "manual", baseUrl?: string | null) {
   try {
     const url = new URL(
       "/api/public/whatsapp/queue-tick",
-      baseUrl ?? `https://project--${PROJECT_ID}.lovable.app`,
+      baseUrl ?? appBaseUrl(`https://project--${PROJECT_ID}.lovable.app`),
     );
     fetch(url.toString(), {
       method: "POST",

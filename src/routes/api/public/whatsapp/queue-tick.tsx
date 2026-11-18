@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { appBaseUrl } from "@/lib/app-base-url";
 
 // URL estável do próprio endpoint (self-chain via pg_net).
 // Publicada e preview usam project--{id}.lovable.app como fallback estável.
 const PROJECT_ID = "9c7682d6-edcd-4388-a36c-36249d4d6ab8";
 const FALLBACK_CHAIN_URL =
   process.env.WA_TICK_CHAIN_URL ||
-  `https://project--${PROJECT_ID}.lovable.app/api/public/whatsapp/queue-tick`;
+  `${appBaseUrl(`https://project--${PROJECT_ID}.lovable.app`)}/api/public/whatsapp/queue-tick`;
 // Segredo interno usado para autenticar o self-chain (header `apikey`).
 const CHAIN_APIKEY = process.env.WA_CRON_SECRET || "";
 

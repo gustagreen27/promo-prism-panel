@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { aiEndpoint } from "@/lib/ai-endpoint.server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -120,8 +121,8 @@ export const analyzeTracking = createServerFn({ method: "POST" })
       amostra_limitada: truncated,
     };
 
-    const key = process.env["LOVABLE_API_KEY"];
-    if (!key) throw new Error("Análise por IA indisponível no momento.");
+    const ai = aiEndpoint("/responses", "openai/gpt-6-astra", "fetch");
+    if (!ai.available) throw new Error("Análise por IA indisponível no momento.");
     const system =
       "Você audita rastreamento de cliques de links públicos. Cada acesso ao link deveria gerar 1 clique e eventos page_view e, conforme o modo, redirect_started/redirect_completed ou iframe_loaded/iframe_blocked. " +
       "'Cliques únicos' contam IPs distintos. Analise só os números fornecidos; não invente. Aponte possíveis falhas de rastreamento (perda de cliques, eventos sem par, dados de IP/geo ausentes, bots inflando, quedas súbitas, picos anormais, redirecionamentos não concluídos, iframe bloqueado). " +
@@ -148,11 +149,11 @@ export const analyzeTracking = createServerFn({ method: "POST" })
         },
       },
     };
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/responses", {
+    const res = await fetch(ai.url, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Lovable-API-Key": key, "X-Lovable-AIG-SDK": "fetch" },
+      headers: { "Content-Type": "application/json", ...ai.headers },
       body: JSON.stringify({
-        model: "openai/gpt-6-astra",
+        model: ai.model,
         stream: true,
         store: false,
         reasoning: { effort: "low" },
